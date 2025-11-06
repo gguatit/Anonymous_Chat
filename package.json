@@ -1,0 +1,30 @@
+{
+  "name": "anonymous-chat",
+  "version": "1.0.0",
+  "description": "Anonymous real-time chat application using Cloudflare Workers and Pages",
+  "main": "src/worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy:worker": "wrangler deploy",
+    "deploy:pages": "wrangler pages deploy public",
+    "deploy": "npm run deploy:worker && npm run deploy:pages",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/**/*.js public/**/*.js"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "websocket",
+    "chat",
+    "anonymous"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231025.0",
+    "eslint": "^8.54.0",
+    "vitest": "^1.0.4",
+    "wrangler": "^3.18.0"
+  }
+}

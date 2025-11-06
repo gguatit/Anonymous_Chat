@@ -1,0 +1,19 @@
+name = "anonymous-chat-worker"
+main = "src/worker.js"
+compatibility_date = "2023-11-21"
+
+# Durable Objects for WebSocket state management
+[[durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom"]
+
+# Environment variables (can be overridden in dashboard)
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[env.development]
+vars = { ENVIRONMENT = "development" }

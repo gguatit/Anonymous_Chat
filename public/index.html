@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="익명 실시간 채팅 - Anonymous Real-time Chat">
+    <title>익명 채팅 | Anonymous Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {}
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .message-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .typing-indicator span {
+            animation: blink 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes blink {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="dark bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700 py-4 px-6 shadow-lg">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">💬 익명 채팅</h1>
+            <div class="flex items-center gap-4">
+                <span id="user-count" class="text-sm bg-gray-700 px-3 py-1 rounded-full" aria-live="polite">
+                    👥 <span id="count-number">0</span>명 접속
+                </span>
+                <div id="connection-status" class="flex items-center gap-2" aria-live="polite">
+                    <span class="w-3 h-3 rounded-full bg-gray-500"></span>
+                    <span class="text-sm">연결 중...</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Chat Area -->
+    <main class="flex-1 flex flex-col max-w-4xl w-full mx-auto p-4 overflow-hidden">
+        <!-- Messages Container -->
+        <div id="messages-container" class="flex-1 overflow-y-auto space-y-3 mb-4 px-4 py-2 bg-gray-800 rounded-lg shadow-inner" 
+             role="log" 
+             aria-label="채팅 메시지" 
+             aria-live="polite">
+            <!-- Welcome message -->
+            <div class="text-center text-gray-500 text-sm py-8">
+                익명 채팅에 오신 것을 환영합니다! 🎉<br>
+                모든 메시지는 세션 동안만 유지되며 영구 저장되지 않습니다.
+            </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div id="typing-indicator" class="px-4 py-2 text-sm text-gray-400 typing-indicator hidden" aria-live="polite">
+            <span>●</span><span>●</span><span>●</span> 누군가 입력 중...
+        </div>
+
+        <!-- Input Area -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-4">
+            <form id="message-form" class="flex gap-2">
+                <label for="message-input" class="sr-only">메시지 입력</label>
+                <input 
+                    type="text" 
+                    id="message-input" 
+                    class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="메시지를 입력하세요 (최대 500자)"
+                    maxlength="500"
+                    autocomplete="off"
+                    aria-label="메시지 입력"
+                    required
+                />
+                <button 
+                    type="submit" 
+                    id="send-button"
+                    class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label="메시지 전송">
+                    전송
+                </button>
+            </form>
+            <div class="mt-2 text-xs text-gray-500" role="status" aria-live="polite">
+                <span id="char-count">0</span>/500 자
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-gray-700 py-3 px-6 text-center text-sm text-gray-500">
+        <p>Cloudflare Workers & Pages 기반 익명 채팅 | 보안 연결 | 임시 메시지</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
