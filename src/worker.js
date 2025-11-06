@@ -23,7 +23,7 @@ const metrics = {
 };
 
 export default {
-    async fetch(request, env, ctx) {
+    async fetch(request, env, _ctx) {
         try {
             const url = new URL(request.url);
 
@@ -149,7 +149,7 @@ export class ChatRoom {
 
                 // Handle different message types
                 switch (data.type) {
-                    case 'join':
+                    case 'join': {
                         sessionId = data.sessionId || this.generateSessionId();
                         
                         // Initialize user metadata
@@ -180,8 +180,9 @@ export class ChatRoom {
                         });
 
                         break;
+                    }
 
-                    case 'message':
+                    case 'message': {
                         if (!sessionId || !metadata) {
                             this.sendToSession(sessionId, {
                                 type: 'error',
@@ -221,6 +222,7 @@ export class ChatRoom {
 
                         this.broadcast(message);
                         break;
+                    }
 
                     case 'typing':
                         if (!sessionId) return;
@@ -308,6 +310,7 @@ export class ChatRoom {
 
     sanitizeInput(input) {
         // Basic sanitization - remove control characters
+        // eslint-disable-next-line no-control-regex
         return input.replace(/[\x00-\x1F\x7F]/g, '').trim();
     }
 
