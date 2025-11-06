@@ -17,7 +17,7 @@ class ChatClient {
 
     generateSessionId() {
         // Generate a random session ID for anonymous user
-        return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        return 'user_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
     }
 
     initializeUI() {

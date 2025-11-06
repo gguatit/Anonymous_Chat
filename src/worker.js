@@ -315,7 +315,7 @@ export class ChatRoom {
     }
 
     generateSessionId() {
-        return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        return 'user_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
     }
 
     broadcast(message, excludeSessionId = null) {

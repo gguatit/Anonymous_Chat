@@ -77,7 +77,7 @@ describe('Chat Worker Tests', () => {
     describe('Session Management Tests', () => {
         it('should generate unique session IDs', () => {
             const generateSessionId = () => {
-                return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                return 'user_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
             };
 
             const id1 = generateSessionId();
@@ -290,7 +290,7 @@ describe('Client-side Tests', () => {
 
     describe('Session ID Generation', () => {
         it('should generate valid session IDs', () => {
-            const sessionId = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            const sessionId = 'user_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
             
             expect(sessionId).toMatch(/^user_[a-z0-9]+_\d+$/);
             expect(sessionId.length).toBeGreaterThan(15);
