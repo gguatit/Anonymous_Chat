@@ -315,7 +315,9 @@ export class ChatRoom {
     }
 
     generateSessionId() {
-        return 'user_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+        // Use crypto.randomUUID() for cryptographically secure session IDs
+        // Note: This is safe for anonymous sessions that don't involve authentication
+        return 'user_' + crypto.randomUUID().replace(/-/g, '').substring(0, 16) + '_' + Date.now();
     }
 
     broadcast(message, excludeSessionId = null) {
