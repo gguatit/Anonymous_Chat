@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy:worker": "wrangler deploy",
-    "deploy:pages": "wrangler pages deploy public",
+    "deploy:pages": "wrangler pages deploy .",
     "deploy": "npm run deploy:worker && npm run deploy:pages",
     "test": "vitest run",
     "test:watch": "vitest",
