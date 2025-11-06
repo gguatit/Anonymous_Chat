@@ -27,7 +27,7 @@ wrangler deploy
 
 echo ""
 echo "🌐 Deploying to Cloudflare Pages..."
-wrangler pages deploy public --project-name=anonymous-chat
+wrangler pages deploy . --project-name=anonymous-chat
 
 echo ""
 echo "✅ Deployment completed successfully!"
