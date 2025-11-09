@@ -123,6 +123,9 @@ class ChatClient {
         this.generateMessageSignature(messageData).then(signature => {
             messageData.signature = signature;
             this.wsManager.send(messageData);
+            
+            // 메시지 전송 후 즉시 스크롤
+            this.ui.scrollToBottom(true);
         });
 
         this.lastMessageTime = now;
