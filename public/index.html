@@ -81,6 +81,16 @@
         <div id="typing-indicator" class="px-4 py-1.5 text-xs text-gray-400 typing-indicator hidden bg-gray-800" aria-live="polite">
             <span>●</span><span>●</span><span>●</span> 입력 중
         </div>
+        
+        <!-- Scroll to Bottom Button -->
+        <button id="scroll-to-bottom" 
+                class="fixed bottom-24 right-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg transition-all duration-300 opacity-0 pointer-events-none z-30"
+                aria-label="최신 메시지로 이동"
+                title="최신 메시지로 이동">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+            </svg>
+        </button>
     </main>
 
     <!-- Input Area - Fixed at bottom -->

@@ -43,6 +43,7 @@ class ChatClient {
         this.userCount = document.getElementById('count-number');
         this.typingIndicator = document.getElementById('typing-indicator');
         this.charCount = document.getElementById('char-count');
+        this.scrollButton = document.getElementById('scroll-to-bottom');
 
         // Event listeners
         this.messageForm.addEventListener('submit', (e) => this.handleSubmit(e));
@@ -52,6 +53,16 @@ class ChatClient {
         // Update character count
         this.messageInput.addEventListener('input', () => {
             this.charCount.textContent = this.messageInput.value.length;
+        });
+        
+        // Scroll to bottom button
+        this.scrollButton.addEventListener('click', () => {
+            this.scrollToBottom(true);
+        });
+        
+        // Show/hide scroll button based on scroll position
+        this.messagesContainer.addEventListener('scroll', () => {
+            this.updateScrollButton();
         });
     }
 
@@ -313,8 +324,29 @@ class ChatClient {
         statusDot.className = `w-2 h-2 rounded-full ${colors[status] || 'bg-gray-500'}`;
     }
 
-    scrollToBottom() {
-        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+    scrollToBottom(smooth = false) {
+        if (smooth) {
+            this.messagesContainer.scrollTo({
+                top: this.messagesContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        } else {
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        }
+        this.updateScrollButton();
+    }
+    
+    updateScrollButton() {
+        const container = this.messagesContainer;
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+        
+        if (isAtBottom) {
+            this.scrollButton.classList.add('opacity-0', 'pointer-events-none');
+            this.scrollButton.classList.remove('opacity-100', 'pointer-events-auto');
+        } else {
+            this.scrollButton.classList.remove('opacity-0', 'pointer-events-none');
+            this.scrollButton.classList.add('opacity-100', 'pointer-events-auto');
+        }
     }
 }
 
