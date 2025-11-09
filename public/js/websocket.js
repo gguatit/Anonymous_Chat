@@ -11,7 +11,7 @@ export class WebSocketManager {
 
     connect() {
         try {
-            // Use WebSocket protocol - in production, this would be wss://
+            // Force WSS in production for security (encrypted WebSocket)
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
             

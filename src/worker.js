@@ -12,6 +12,8 @@ const SECURITY = {
     MAX_MESSAGE_LENGTH: 500,
     BANNED_IPS: new Set(), // Can be populated from KV or environment
     IP_WHITELIST: null, // null means all IPs allowed
+    ALLOWED_ORIGINS: ['https://anonymous-chat.pages.dev', 'http://localhost:8787'], // Add your domain
+    HMAC_SECRET: 'your-secret-key-change-this-in-production', // Should be in env variable
 };
 
 // Metrics storage (in-memory, per-worker instance)
@@ -26,6 +28,11 @@ export default {
     async fetch(request, env, ctx) {
         try {
             const url = new URL(request.url);
+
+            // Force HTTPS redirect in production
+            if (url.protocol === 'http:' && !url.hostname.includes('localhost')) {
+                return Response.redirect(`https://${url.hostname}${url.pathname}${url.search}`, 301);
+            }
 
             // CORS headers for API requests
             const corsHeaders = {
@@ -103,6 +110,13 @@ async function handleWebSocket(request, env) {
         return new Response('Expected Upgrade: websocket', { status: 426 });
     }
 
+    // Verify Origin header to prevent CSRF attacks
+    const origin = request.headers.get('Origin');
+    if (origin && !isAllowedOrigin(origin)) {
+        console.warn('Blocked WebSocket from unauthorized origin:', origin);
+        return new Response('Unauthorized Origin', { status: 403 });
+    }
+
     // Get client IP for rate limiting and access control
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
     
@@ -121,6 +135,56 @@ async function handleWebSocket(request, env) {
 
     // Forward the request to the Durable Object
     return room.fetch(request);
+}
+
+// Check if origin is allowed
+function isAllowedOrigin(origin) {
+    try {
+        const url = new URL(origin);
+        // In development, allow localhost
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+            return true;
+        }
+        // In production, check against allowed origins
+        return SECURITY.ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed));
+    } catch {
+        return false;
+    }
+}
+
+// HMAC signature generation for message integrity
+async function generateMessageSignature(message, secret) {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(JSON.stringify({
+        content: message.content,
+        sessionId: message.sessionId,
+        timestamp: message.timestamp
+    }));
+    
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', key, messageData);
+    return arrayBufferToHex(signature);
+}
+
+// Verify HMAC signature
+async function verifyMessageSignature(message, signature, secret) {
+    const expectedSignature = await generateMessageSignature(message, secret);
+    return signature === expectedSignature;
+}
+
+// Helper function to convert ArrayBuffer to hex string
+function arrayBufferToHex(buffer) {
+    return Array.from(new Uint8Array(buffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
 }
 
 // Durable Object for managing chat room state
@@ -243,6 +307,38 @@ export class ChatRoom {
                             return;
                         }
 
+                        // Verify message signature if provided
+                        if (data.signature) {
+                            const isValid = await verifyMessageSignature(
+                                {
+                                    content: data.content,
+                                    sessionId: data.sessionId,
+                                    timestamp: data.timestamp
+                                },
+                                data.signature,
+                                SECURITY.HMAC_SECRET
+                            );
+                            
+                            if (!isValid) {
+                                this.sendToSession(sessionId, {
+                                    type: 'error',
+                                    content: '메시지 무결성 검증 실패'
+                                });
+                                console.warn('Invalid message signature from session:', sessionId);
+                                return;
+                            }
+                        }
+
+                        // Verify session ID matches
+                        if (data.sessionId !== sessionId) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '세션 ID가 일치하지 않습니다.'
+                            });
+                            console.warn('Session ID mismatch:', data.sessionId, '!=', sessionId);
+                            return;
+                        }
+
                         // Validate message
                         const validationError = this.validateMessage(data, metadata);
                         if (validationError) {
@@ -258,13 +354,16 @@ export class ChatRoom {
                         metadata.lastMessageTime = Date.now();
                         metrics.totalMessages++;
 
-                        // Create message object
+                        // Create message object with signature
                         const message = {
                             type: 'message',
                             content: this.sanitizeInput(data.content),
                             sessionId: sessionId,
                             timestamp: Date.now()
                         };
+                        
+                        // Generate server signature
+                        message.signature = await generateMessageSignature(message, SECURITY.HMAC_SECRET);
 
                         // Add to messages array
                         this.messages.push(message);
@@ -374,9 +473,10 @@ export class ChatRoom {
     }
 
     generateSessionId() {
-        // Use crypto.randomUUID() for cryptographically secure session IDs
-        // Note: This is safe for anonymous sessions that don't involve authentication
-        return 'user_' + crypto.randomUUID().replace(/-/g, '').substring(0, 16) + '_' + Date.now();
+        // Generate cryptographically secure session ID with timestamp
+        const randomPart = crypto.randomUUID().replace(/-/g, '');
+        const timestampPart = Date.now().toString(36);
+        return `user_${randomPart.substring(0, 16)}_${timestampPart}`;
     }
 
     broadcast(message, excludeSessionId = null) {

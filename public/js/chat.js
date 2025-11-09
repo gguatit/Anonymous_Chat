@@ -111,15 +111,53 @@ class ChatClient {
             return;
         }
 
-        this.wsManager.send({
+        // Prepare message data
+        const messageData = {
             type: 'message',
             content: this.ui.sanitizeInput(message),
             sessionId: this.sessionManager.getSessionId(),
             timestamp: now
+        };
+
+        // Generate client-side signature for message integrity
+        this.generateMessageSignature(messageData).then(signature => {
+            messageData.signature = signature;
+            this.wsManager.send(messageData);
         });
 
         this.lastMessageTime = now;
         this.ui.clearInput();
+    }
+
+    // Generate HMAC signature for message integrity verification
+    async generateMessageSignature(message) {
+        try {
+            const encoder = new TextEncoder();
+            // Use a client-side key (in production, this should be from secure key exchange)
+            const secret = 'your-secret-key-change-this-in-production';
+            const keyData = encoder.encode(secret);
+            const messageData = encoder.encode(JSON.stringify({
+                content: message.content,
+                sessionId: message.sessionId,
+                timestamp: message.timestamp
+            }));
+            
+            const key = await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: 'SHA-256' },
+                false,
+                ['sign']
+            );
+            
+            const signature = await crypto.subtle.sign('HMAC', key, messageData);
+            return Array.from(new Uint8Array(signature))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+        } catch (error) {
+            console.error('Signature generation error:', error);
+            return '';
+        }
     }
 
     handleInput() {
