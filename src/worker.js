@@ -263,7 +263,6 @@ export class ChatRoom {
                             type: 'message',
                             content: this.sanitizeInput(data.content),
                             sessionId: sessionId,
-                            nickname: data.nickname || null, // Include nickname if provided
                             timestamp: Date.now()
                         };
 

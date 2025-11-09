@@ -2,7 +2,6 @@
 export class SessionManager {
     constructor() {
         this.sessionId = this.getOrCreateSessionId();
-        this.nickname = this.getNickname();
     }
 
     getOrCreateSessionId() {
@@ -24,32 +23,7 @@ export class SessionManager {
         return 'user_' + crypto.randomUUID().replace(/-/g, '').substring(0, 16) + '_' + Date.now();
     }
 
-    getNickname() {
-        return localStorage.getItem('chatNickname') || null;
-    }
-
-    setNickname(nickname) {
-        if (nickname && nickname.trim()) {
-            const sanitized = nickname.trim().substring(0, 20); // Max 20 chars
-            localStorage.setItem('chatNickname', sanitized);
-            this.nickname = sanitized;
-        } else {
-            localStorage.removeItem('chatNickname');
-            this.nickname = null;
-        }
-        return this.nickname;
-    }
-
-    clearNickname() {
-        localStorage.removeItem('chatNickname');
-        this.nickname = null;
-    }
-
     getSessionId() {
         return this.sessionId;
-    }
-
-    getDisplayName() {
-        return this.nickname || '익명';
     }
 }

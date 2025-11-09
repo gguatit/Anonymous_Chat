@@ -27,11 +27,6 @@
         <div class="max-w-5xl mx-auto flex justify-between items-center">
             <h1 class="text-xl font-bold text-gray-100">익명 채팅</h1>
             <div class="flex items-center gap-3">
-                <button id="nickname-button" 
-                        class="text-xs bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-full font-medium transition-colors"
-                        aria-label="닉네임 설정">
-                    닉네임 설정
-                </button>
                 <span id="user-count" class="text-xs bg-gray-700 px-3 py-1.5 rounded-full font-medium" aria-live="polite">
                     <span id="count-number">0</span>명
                 </span>
@@ -101,58 +96,6 @@
                     <span id="char-count">0</span>/500
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Nickname Modal -->
-    <div id="nickname-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-100">닉네임 설정</h2>
-                <button id="close-modal-button" 
-                        class="text-gray-400 hover:text-gray-200 transition-colors"
-                        aria-label="닫기">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            
-            <p class="text-sm text-gray-400 mb-4">
-                원하는 닉네임을 설정할 수 있습니다. (최대 20자)
-            </p>
-            
-            <p id="current-nickname-display" class="text-sm text-blue-400 mb-4 hidden"></p>
-            
-            <form id="nickname-form" class="space-y-4">
-                <div>
-                    <label for="nickname-input" class="block text-sm font-medium text-gray-300 mb-2">
-                        닉네임
-                    </label>
-                    <input 
-                        type="text" 
-                        id="nickname-input" 
-                        class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-400"
-                        placeholder="닉네임 입력"
-                        maxlength="20"
-                        autocomplete="off"
-                    />
-                </div>
-                
-                <div class="flex gap-2">
-                    <button 
-                        type="submit"
-                        class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        설정
-                    </button>
-                    <button 
-                        type="button"
-                        id="clear-nickname-button"
-                        class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 hidden">
-                        닉네임 제거
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 

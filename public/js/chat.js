@@ -35,15 +35,8 @@ class ChatClient {
             onInput: () => this.handleInput(),
             onTyping: () => this.handleTyping(),
             onScrollClick: () => this.ui.scrollToBottom(true),
-            onScroll: () => this.ui.updateScrollButton(),
-            onNicknameClick: () => this.handleNicknameClick(),
-            onNicknameSubmit: (e) => this.handleNicknameSubmit(e),
-            onNicknameClear: () => this.handleNicknameClear(),
-            onModalClose: () => this.handleModalClose()
+            onScroll: () => this.ui.updateScrollButton()
         });
-        
-        // Update initial nickname display
-        this.ui.updateNicknameDisplay(this.sessionManager.getNickname());
     }
 
     handleMessage(data) {
@@ -52,8 +45,7 @@ class ChatClient {
                 this.ui.displayMessage(
                     data, 
                     data.sessionId === this.sessionManager.getSessionId(),
-                    this.sessionManager.getSessionId(),
-                    data.nickname // Pass nickname from message data
+                    this.sessionManager.getSessionId()
                 );
                 break;
             case 'user_count':
@@ -123,7 +115,6 @@ class ChatClient {
             type: 'message',
             content: this.ui.sanitizeInput(message),
             sessionId: this.sessionManager.getSessionId(),
-            nickname: this.sessionManager.getNickname(), // Include nickname in message
             timestamp: now
         });
 
@@ -163,39 +154,6 @@ class ChatClient {
                 });
             }
         }, 2000);
-    }
-
-    handleNicknameClick() {
-        this.ui.showNicknameModal();
-    }
-
-    handleNicknameSubmit(e) {
-        e.preventDefault();
-        
-        const nickname = this.ui.getNicknameInputValue();
-        if (nickname) {
-            // Validate nickname length
-            if (nickname.length > 20) {
-                this.ui.displayError('닉네임은 최대 20자까지 가능합니다.');
-                return;
-            }
-            
-            this.sessionManager.setNickname(nickname);
-            this.ui.updateNicknameDisplay(nickname);
-            this.ui.hideNicknameModal();
-            this.ui.displaySystemMessage(`닉네임이 "${nickname}"(으)로 설정되었습니다.`);
-        }
-    }
-
-    handleNicknameClear() {
-        this.sessionManager.clearNickname();
-        this.ui.updateNicknameDisplay(null);
-        this.ui.hideNicknameModal();
-        this.ui.displaySystemMessage('닉네임이 제거되었습니다.');
-    }
-
-    handleModalClose() {
-        this.ui.hideNicknameModal();
     }
 }
 
