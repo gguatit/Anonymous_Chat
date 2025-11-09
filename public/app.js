@@ -2,7 +2,7 @@
 class ChatClient {
     constructor() {
         this.ws = null;
-        this.sessionId = this.generateSessionId();
+        this.sessionId = this.getOrCreateSessionId();
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 10;
         this.baseReconnectDelay = 1000;
@@ -13,6 +13,19 @@ class ChatClient {
         
         this.initializeUI();
         this.connect();
+    }
+
+    getOrCreateSessionId() {
+        // Try to get existing sessionId from localStorage
+        let sessionId = localStorage.getItem('chatSessionId');
+        
+        if (!sessionId) {
+            // Generate new sessionId if not exists
+            sessionId = this.generateSessionId();
+            localStorage.setItem('chatSessionId', sessionId);
+        }
+        
+        return sessionId;
     }
 
     generateSessionId() {
