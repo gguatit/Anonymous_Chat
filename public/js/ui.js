@@ -4,7 +4,6 @@ export class UIManager {
         this.messageForm = document.getElementById('message-form');
         this.messageInput = document.getElementById('message-input');
         this.sendButton = document.getElementById('send-button');
-        this.sendButton = document.getElementById('send-button');
         this.messagesContainer = document.getElementById('messages-container');
         this.connectionStatus = document.getElementById('connection-status');
         this.userCount = document.getElementById('count-number');
@@ -89,9 +88,13 @@ export class UIManager {
         // 메시지를 DOM에 추가
         this.messagesContainer.appendChild(messageDiv);
         
-        // 자동 스크롤이 활성화되어 있을 때만 스크롤
-        if (this.autoScrollEnabled) {
+        // 내가 보낸 메시지는 무조건 스크롤, 다른 사람 메시지는 자동 스크롤 설정 따름
+        if (isOwnMessage || this.autoScrollEnabled) {
             this.scrollToBottom();
+            // 내가 메시지를 보냈으면 자동 스크롤 활성화
+            if (isOwnMessage) {
+                this.autoScrollEnabled = true;
+            }
         }
     }
 
