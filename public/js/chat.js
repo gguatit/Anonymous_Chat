@@ -42,11 +42,17 @@ class ChatClient {
     handleMessage(data) {
         switch (data.type) {
             case 'message':
+                const isOwnMessage = data.sessionId === this.sessionManager.getSessionId();
                 this.ui.displayMessage(
                     data, 
-                    data.sessionId === this.sessionManager.getSessionId(),
+                    isOwnMessage,
                     this.sessionManager.getSessionId()
                 );
+                
+                // 내가 보낸 메시지면 자동으로 스크롤
+                if (isOwnMessage) {
+                    this.ui.scrollToBottom(true);
+                }
                 break;
             case 'user_count':
                 this.ui.updateUserCount(data.count);
@@ -123,9 +129,6 @@ class ChatClient {
         this.generateMessageSignature(messageData).then(signature => {
             messageData.signature = signature;
             this.wsManager.send(messageData);
-            
-            // 메시지 전송 후 즉시 스크롤
-            this.ui.scrollToBottom(true);
         });
 
         this.lastMessageTime = now;
