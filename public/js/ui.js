@@ -10,6 +10,13 @@ export class UIManager {
         this.typingIndicator = document.getElementById('typing-indicator');
         this.charCount = document.getElementById('char-count');
         this.scrollButton = document.getElementById('scroll-to-bottom');
+        this.nicknameButton = document.getElementById('nickname-button');
+        this.nicknameModal = document.getElementById('nickname-modal');
+        this.nicknameInput = document.getElementById('nickname-input');
+        this.nicknameForm = document.getElementById('nickname-form');
+        this.clearNicknameButton = document.getElementById('clear-nickname');
+        this.closeModalButton = document.getElementById('close-modal');
+        this.currentNicknameDisplay = document.getElementById('current-nickname');
     }
 
     initializeEventListeners(callbacks) {
@@ -28,9 +35,22 @@ export class UIManager {
         // Scroll button
         this.scrollButton.addEventListener('click', callbacks.onScrollClick);
         this.messagesContainer.addEventListener('scroll', callbacks.onScroll);
+        
+        // Nickname modal
+        this.nicknameButton.addEventListener('click', callbacks.onNicknameClick);
+        this.nicknameForm.addEventListener('submit', callbacks.onNicknameSubmit);
+        this.clearNicknameButton.addEventListener('click', callbacks.onNicknameClear);
+        this.closeModalButton.addEventListener('click', callbacks.onModalClose);
+        
+        // Close modal on background click
+        this.nicknameModal.addEventListener('click', (e) => {
+            if (e.target === this.nicknameModal) {
+                callbacks.onModalClose();
+            }
+        });
     }
 
-    displayMessage(data, isOwnMessage, sessionId) {
+    displayMessage(data, isOwnMessage, sessionId, nickname = null) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
             (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
@@ -41,10 +61,14 @@ export class UIManager {
             minute: '2-digit'
         });
 
+        const displayName = isOwnMessage 
+            ? (nickname || '나') 
+            : (data.nickname || '익명');
+
         messageDiv.innerHTML = `
             <div class="flex items-start justify-between gap-2 mb-1">
                 <span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">
-                    ${isOwnMessage ? '나' : '익명'}
+                    ${displayName}
                 </span>
                 <span class="text-xs text-gray-500">${timestamp}</span>
             </div>
@@ -153,5 +177,29 @@ export class UIManager {
         const div = document.createElement('div');
         div.textContent = input;
         return div.innerHTML;
+    }
+
+    showNicknameModal() {
+        this.nicknameModal.classList.remove('hidden');
+    }
+
+    hideNicknameModal() {
+        this.nicknameModal.classList.add('hidden');
+        this.nicknameInput.value = '';
+    }
+
+    updateNicknameDisplay(nickname) {
+        if (nickname) {
+            this.currentNicknameDisplay.textContent = `현재 닉네임: ${this.sanitizeInput(nickname)}`;
+            this.currentNicknameDisplay.classList.remove('hidden');
+            this.clearNicknameButton.classList.remove('hidden');
+        } else {
+            this.currentNicknameDisplay.classList.add('hidden');
+            this.clearNicknameButton.classList.add('hidden');
+        }
+    }
+
+    getNicknameInputValue() {
+        return this.nicknameInput.value.trim();
     }
 }
