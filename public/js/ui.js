@@ -167,29 +167,17 @@ export class UIManager {
     scrollToBottom(smooth = false) {
         const container = this.messagesContainer;
         
-        console.log('Container info:', {
-            scrollTop: container.scrollTop,
+        // 즉시 스크롤 (비동기 없이)
+        const targetScroll = container.scrollHeight;
+        container.scrollTop = targetScroll;
+        
+        console.log('Scroll executed:', {
+            target: targetScroll,
+            current: container.scrollTop,
             scrollHeight: container.scrollHeight,
             clientHeight: container.clientHeight,
-            offsetHeight: container.offsetHeight
+            canScroll: container.scrollHeight > container.clientHeight
         });
-        
-        if (smooth) {
-            // 부드러운 스크롤 애니메이션
-            container.scrollTo({
-                top: container.scrollHeight,
-                behavior: 'smooth'
-            });
-        } else {
-            // 즉시 스크롤 - scrollTop 직접 설정
-            container.scrollTop = container.scrollHeight;
-            
-            // 강제로 다시 시도 (DOM 업데이트 후)
-            setTimeout(() => {
-                container.scrollTop = container.scrollHeight;
-                console.log('After scroll attempt - scrollTop:', container.scrollTop);
-            }, 0);
-        }
         
         // 스크롤 버튼 상태 업데이트
         this.updateScrollButton();
