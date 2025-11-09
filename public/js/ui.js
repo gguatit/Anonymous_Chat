@@ -26,7 +26,6 @@ export class UIManager {
                     for (const node of mutation.addedNodes) {
                         // data-message 표식이 있는 요소가 추가되면 스크롤
                         if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-message')) {
-                            console.log('New message detected, scrolling to bottom');
                             this.scrollToBottom();
                             return; // 한 번만 스크롤
                         }
@@ -40,8 +39,6 @@ export class UIManager {
             childList: true,
             subtree: false
         });
-        
-        console.log('MutationObserver initialized for:', this.messagesContainer);
     }
 
     initializeEventListeners(callbacks) {
@@ -167,17 +164,16 @@ export class UIManager {
     scrollToBottom(smooth = false) {
         const container = this.messagesContainer;
         
-        // 즉시 스크롤 (비동기 없이)
-        const targetScroll = container.scrollHeight;
-        container.scrollTop = targetScroll;
-        
-        console.log('Scroll executed:', {
-            target: targetScroll,
-            current: container.scrollTop,
-            scrollHeight: container.scrollHeight,
-            clientHeight: container.clientHeight,
-            canScroll: container.scrollHeight > container.clientHeight
-        });
+        if (smooth) {
+            // 부드러운 스크롤 애니메이션
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth'
+            });
+        } else {
+            // 즉시 스크롤
+            container.scrollTop = container.scrollHeight;
+        }
         
         // 스크롤 버튼 상태 업데이트
         this.updateScrollButton();
