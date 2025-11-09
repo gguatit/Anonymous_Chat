@@ -27,10 +27,11 @@
         <div class="max-w-5xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <button id="info-toggle" 
-                        class="text-gray-400 hover:text-gray-200 transition-colors cursor-pointer z-50"
+                        class="text-gray-400 hover:text-gray-200 transition-colors cursor-pointer z-50 p-2"
                         type="button"
+                        onclick="document.getElementById('platform-info').classList.toggle('-translate-x-full'); console.log('Button clicked!');"
                         aria-label="플랫폼 정보 토글">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                     </svg>
                 </button>
@@ -181,31 +182,5 @@
 
     <!-- JavaScript Modules -->
     <script type="module" src="/js/chat.js"></script>
-    
-    <!-- Platform Info Toggle Script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const panel = document.getElementById('platform-info');
-            const toggle = document.getElementById('info-toggle');
-            
-            if (!panel || !toggle) {
-                console.error('Platform info elements not found');
-                return;
-            }
-            
-            toggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                panel.classList.toggle('-translate-x-full');
-                console.log('Panel toggled:', !panel.classList.contains('-translate-x-full'));
-            });
-            
-            // Close panel when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!panel.contains(e.target) && !toggle.contains(e.target)) {
-                    panel.classList.add('-translate-x-full');
-                }
-            });
-        });
-    </script>
 </body>
 </html>
