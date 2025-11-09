@@ -12,7 +12,7 @@ const SECURITY = {
     MAX_MESSAGE_LENGTH: 500,
     BANNED_IPS: new Set(), // Can be populated from KV or environment
     IP_WHITELIST: null, // null means all IPs allowed
-    ALLOWED_ORIGINS: ['https://anonymous-chat.pages.dev', 'http://localhost:8787'], // Add your domain
+    ALLOWED_ORIGINS: null, // null means all origins allowed (개발 중에는 이렇게 설정)
     HMAC_SECRET: 'your-secret-key-change-this-in-production', // Should be in env variable
 };
 
@@ -112,7 +112,7 @@ async function handleWebSocket(request, env) {
 
     // Verify Origin header to prevent CSRF attacks
     const origin = request.headers.get('Origin');
-    if (origin && !isAllowedOrigin(origin)) {
+    if (origin && SECURITY.ALLOWED_ORIGINS && !isAllowedOrigin(origin)) {
         console.warn('Blocked WebSocket from unauthorized origin:', origin);
         return new Response('Unauthorized Origin', { status: 403 });
     }
