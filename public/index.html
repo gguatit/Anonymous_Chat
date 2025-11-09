@@ -39,9 +39,10 @@
     </header>
 
     <!-- Main Chat Area -->
-    <main class="flex-1 flex flex-col max-w-5xl w-full mx-auto overflow-hidden pb-32">
+    <main class="flex-1 flex flex-col max-w-5xl w-full mx-auto pb-32" style="height: calc(100vh - 180px);">
         <!-- Messages Container -->
         <div id="messages-container" class="flex-1 overflow-y-auto space-y-2 p-3 bg-gray-800" 
+             style="max-height: 100%;"
              role="log" 
              aria-label="채팅 메시지" 
              aria-live="polite">
