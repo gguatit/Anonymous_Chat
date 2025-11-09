@@ -42,17 +42,11 @@ class ChatClient {
     handleMessage(data) {
         switch (data.type) {
             case 'message':
-                const isOwnMessage = data.sessionId === this.sessionManager.getSessionId();
                 this.ui.displayMessage(
                     data, 
-                    isOwnMessage,
+                    data.sessionId === this.sessionManager.getSessionId(),
                     this.sessionManager.getSessionId()
                 );
-                
-                // 내가 보낸 메시지면 자동으로 스크롤
-                if (isOwnMessage) {
-                    this.ui.scrollToBottom(true);
-                }
                 break;
             case 'user_count':
                 this.ui.updateUserCount(data.count);

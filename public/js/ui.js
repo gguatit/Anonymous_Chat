@@ -52,7 +52,16 @@ export class UIManager {
         `;
 
         this.messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
+        
+        // 내 메시지면 즉시 스크롤
+        if (isOwnMessage) {
+            setTimeout(() => {
+                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                this.updateScrollButton();
+            }, 0);
+        } else {
+            this.scrollToBottom();
+        }
     }
 
     displaySystemMessage(content) {
