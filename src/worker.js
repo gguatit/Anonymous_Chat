@@ -12,7 +12,7 @@ const SECURITY = {
     MAX_MESSAGE_LENGTH: 500,
     BANNED_IPS: new Set(), // Can be populated from KV or environment
     IP_WHITELIST: null, // null means all IPs allowed
-    ALLOWED_ORIGINS: null, // null means all origins allowed (개발 중에는 이렇게 설정)
+    ALLOWED_ORIGINS: ['https://kalpha.mmv.kr'], // Production domain
     HMAC_SECRET: 'your-secret-key-change-this-in-production', // Should be in env variable
 };
 
