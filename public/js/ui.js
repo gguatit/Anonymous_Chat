@@ -4,12 +4,17 @@ export class UIManager {
         this.messageForm = document.getElementById('message-form');
         this.messageInput = document.getElementById('message-input');
         this.sendButton = document.getElementById('send-button');
+        this.sendButton = document.getElementById('send-button');
         this.messagesContainer = document.getElementById('messages-container');
         this.connectionStatus = document.getElementById('connection-status');
         this.userCount = document.getElementById('count-number');
         this.typingIndicator = document.getElementById('typing-indicator');
         this.charCount = document.getElementById('char-count');
         this.scrollButton = document.getElementById('scroll-to-bottom');
+        
+        // Auto-scroll control (사용자가 스크롤 위치를 조작했는지 추적)
+        this.autoScrollEnabled = true;
+        this.scrollThreshold = 50; // 하단에서 50px 이상 떨어지면 자동 스크롤 비활성화
     }
 
     initializeEventListeners(callbacks) {
@@ -25,9 +30,39 @@ export class UIManager {
             this.charCount.textContent = this.messageInput.value.length;
         });
         
-        // Scroll button
-        this.scrollButton.addEventListener('click', callbacks.onScrollClick);
-        this.messagesContainer.addEventListener('scroll', callbacks.onScroll);
+        // Scroll button - 클릭 시 자동 스크롤 재활성화
+        this.scrollButton.addEventListener('click', () => {
+            this.autoScrollEnabled = true;
+            callbacks.onScrollClick();
+        });
+        
+        // Scroll event - 사용자가 위로 스크롤하면 자동 스크롤 비활성화
+        this.messagesContainer.addEventListener('scroll', () => {
+            this.checkScrollPosition();
+            callbacks.onScroll();
+        });
+    }
+    
+    /**
+     * 스크롤 위치를 확인하여 자동 스크롤 활성화/비활성화 결정
+     * 사용자가 맨 아래에서 threshold 이상 위로 스크롤하면 자동 스크롤 비활성화
+     */
+    checkScrollPosition() {
+        const container = this.messagesContainer;
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        
+        // 현재 스크롤 위치가 하단에서 threshold 이내인지 확인
+        const isNearBottom = (scrollTop + clientHeight) >= (scrollHeight - this.scrollThreshold);
+        
+        // 사용자가 맨 아래에 있으면 자동 스크롤 활성화
+        if (isNearBottom) {
+            this.autoScrollEnabled = true;
+        } else {
+            // 위로 스크롤했으면 자동 스크롤 비활성화
+            this.autoScrollEnabled = false;
+        }
     }
 
     displayMessage(data, isOwnMessage, sessionId) {
@@ -51,8 +86,13 @@ export class UIManager {
             <div class="text-sm break-words leading-relaxed">${this.sanitizeInput(data.content)}</div>
         `;
 
+        // 메시지를 DOM에 추가
         this.messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
+        
+        // 자동 스크롤이 활성화되어 있을 때만 스크롤
+        if (this.autoScrollEnabled) {
+            this.scrollToBottom();
+        }
     }
 
     displaySystemMessage(content) {
@@ -60,7 +100,11 @@ export class UIManager {
         messageDiv.className = 'text-center text-xs text-gray-500 py-1.5';
         messageDiv.textContent = content;
         this.messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
+        
+        // 시스템 메시지는 항상 자동 스크롤
+        if (this.autoScrollEnabled) {
+            this.scrollToBottom();
+        }
     }
 
     displayError(content) {
@@ -68,7 +112,11 @@ export class UIManager {
         errorDiv.className = 'text-center text-xs text-red-400 py-2 bg-red-900/20 rounded-lg mx-4';
         errorDiv.textContent = content;
         this.messagesContainer.appendChild(errorDiv);
-        this.scrollToBottom();
+        
+        // 에러 메시지는 항상 자동 스크롤
+        if (this.autoScrollEnabled) {
+            this.scrollToBottom();
+        }
         
         // Auto-remove error after 4 seconds
         setTimeout(() => {
@@ -124,14 +172,22 @@ export class UIManager {
     }
 
     scrollToBottom(smooth = false) {
+        const container = this.messagesContainer;
+        
         if (smooth) {
-            this.messagesContainer.scrollTo({
-                top: this.messagesContainer.scrollHeight,
+            // 부드러운 스크롤 애니메이션
+            container.scrollTo({
+                top: container.scrollHeight,
                 behavior: 'smooth'
             });
         } else {
-            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            // 즉시 스크롤 (requestAnimationFrame으로 DOM 업데이트 후 실행)
+            requestAnimationFrame(() => {
+                container.scrollTop = container.scrollHeight;
+            });
         }
+        
+        // 스크롤 버튼 상태 업데이트
         this.updateScrollButton();
     }
     
