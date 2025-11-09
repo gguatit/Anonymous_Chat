@@ -1,3 +1,3 @@
-# Cloudflare Pages redirects
-# Single Page Application routing
-/*    /index.html   200
+# Cloudflare Workers Assets redirects
+# Note: Workers Assets handles routing differently than Pages
+# The /* redirect is handled by the Worker itself

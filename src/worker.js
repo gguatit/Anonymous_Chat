@@ -65,9 +65,22 @@ export default {
             // Serve static files from assets binding
             if (env.ASSETS) {
                 try {
-                    return await env.ASSETS.fetch(request);
+                    // Try to fetch the requested asset
+                    const assetResponse = await env.ASSETS.fetch(request);
+                    
+                    // If asset found, return it
+                    if (assetResponse.status === 200) {
+                        return assetResponse;
+                    }
+                    
+                    // For SPA routing: if not found and not an API endpoint, serve index.html
+                    if (assetResponse.status === 404 && !url.pathname.startsWith('/api')) {
+                        const indexRequest = new Request(new URL('/index.html', request.url), request);
+                        return await env.ASSETS.fetch(indexRequest);
+                    }
+                    
+                    return assetResponse;
                 } catch (e) {
-                    // If asset not found, continue to 404
                     console.log('Asset fetch error:', e);
                 }
             }
