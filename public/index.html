@@ -48,7 +48,7 @@
 </head>
 <body class="dark bg-gray-900 text-gray-100 min-h-screen flex flex-col">
     <!-- Header -->
-    <header class="bg-gray-800 border-b border-gray-700 py-3 px-4 shadow-lg">
+    <header class="bg-gray-800 border-b border-gray-700 py-3 px-4 shadow-lg sticky top-0 z-10">
         <div class="max-w-5xl mx-auto flex justify-between items-center">
             <h1 class="text-xl font-bold text-gray-100">익명 채팅</h1>
             <div class="flex items-center gap-3">
@@ -64,9 +64,9 @@
     </header>
 
     <!-- Main Chat Area -->
-    <main class="flex-1 flex flex-col max-w-5xl w-full mx-auto p-3 overflow-hidden">
+    <main class="flex-1 flex flex-col max-w-5xl w-full mx-auto overflow-hidden pb-32">
         <!-- Messages Container -->
-        <div id="messages-container" class="flex-1 overflow-y-auto space-y-2 mb-3 px-3 py-3 bg-gray-800 rounded-lg shadow-inner" 
+        <div id="messages-container" class="flex-1 overflow-y-auto space-y-2 p-3 bg-gray-800" 
              role="log" 
              aria-label="채팅 메시지" 
              aria-live="polite">
@@ -78,40 +78,44 @@
         </div>
 
         <!-- Typing Indicator -->
-        <div id="typing-indicator" class="px-4 py-1.5 text-xs text-gray-400 typing-indicator hidden" aria-live="polite">
+        <div id="typing-indicator" class="px-4 py-1.5 text-xs text-gray-400 typing-indicator hidden bg-gray-800" aria-live="polite">
             <span>●</span><span>●</span><span>●</span> 입력 중
-        </div>
-
-        <!-- Input Area -->
-        <div class="bg-gray-800 rounded-lg shadow-lg p-3">
-            <form id="message-form" class="flex gap-2">
-                <label for="message-input" class="sr-only">메시지 입력</label>
-                <input 
-                    type="text" 
-                    id="message-input" 
-                    class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
-                    placeholder="메시지 입력 (최대 500자)"
-                    maxlength="500"
-                    autocomplete="off"
-                    aria-label="메시지 입력"
-                    required
-                />
-                <button 
-                    type="submit" 
-                    id="send-button"
-                    class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-label="메시지 전송">
-                    전송
-                </button>
-            </form>
-            <div class="mt-1.5 text-xs text-gray-500 text-right" role="status" aria-live="polite">
-                <span id="char-count">0</span>/500
-            </div>
         </div>
     </main>
 
+    <!-- Input Area - Fixed at bottom -->
+    <div class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-20">
+        <div class="max-w-5xl mx-auto p-3">
+            <div class="bg-gray-800 rounded-lg shadow-lg p-3">
+                <form id="message-form" class="flex gap-2">
+                    <label for="message-input" class="sr-only">메시지 입력</label>
+                    <input 
+                        type="text" 
+                        id="message-input" 
+                        class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
+                        placeholder="메시지 입력 (최대 500자)"
+                        maxlength="500"
+                        autocomplete="off"
+                        aria-label="메시지 입력"
+                        required
+                    />
+                    <button 
+                        type="submit" 
+                        id="send-button"
+                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="메시지 전송">
+                        전송
+                    </button>
+                </form>
+                <div class="mt-1.5 text-xs text-gray-500 text-right" role="status" aria-live="polite">
+                    <span id="char-count">0</span>/500
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
-    <footer class="bg-gray-800 border-t border-gray-700 py-2 px-4 text-center text-xs text-gray-500">
+    <footer class="bg-gray-800 border-t border-gray-700 py-2 px-4 text-center text-xs text-gray-500 fixed bottom-0 left-0 right-0 opacity-0 pointer-events-none">
         <p>Cloudflare Workers 기반 익명 채팅</p>
     </footer>
 
