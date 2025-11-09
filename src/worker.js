@@ -300,6 +300,16 @@ export class ChatRoom {
                         }, sessionId);
                         break;
 
+                    case 'ping':
+                        // Respond to ping with pong
+                        if (sessionId) {
+                            this.sendToSession(sessionId, {
+                                type: 'pong',
+                                timestamp: Date.now()
+                            });
+                        }
+                        break;
+
                     default:
                         console.log('Unknown message type:', data.type);
                 }

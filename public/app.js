@@ -10,6 +10,9 @@ class ChatClient {
         this.lastMessageTime = 0;
         this.messageRateLimit = 1000; // 1 message per second
         this.isTyping = false;
+        this.pingInterval = null;
+        this.pingTimeout = null;
+        this.lastPingTime = 0;
         
         this.initializeUI();
         this.connect();
@@ -44,6 +47,7 @@ class ChatClient {
         this.typingIndicator = document.getElementById('typing-indicator');
         this.charCount = document.getElementById('char-count');
         this.scrollButton = document.getElementById('scroll-to-bottom');
+        this.pingDisplay = document.getElementById('ping-value');
 
         // Event listeners
         this.messageForm.addEventListener('submit', (e) => this.handleSubmit(e));
@@ -100,6 +104,9 @@ class ChatClient {
             sessionId: this.sessionId,
             timestamp: Date.now()
         });
+        
+        // Start ping interval (every 5 seconds)
+        this.startPingInterval();
     }
 
     handleMessage(event) {
@@ -122,6 +129,9 @@ class ChatClient {
                 case 'error':
                     this.displayError(data.content);
                     break;
+                case 'pong':
+                    this.handlePong();
+                    break;
                 default:
                     console.log('Unknown message type:', data.type);
             }
@@ -136,6 +146,9 @@ class ChatClient {
         this.sendButton.disabled = true;
         this.messageInput.disabled = true;
         
+        // Stop ping interval
+        this.stopPingInterval();
+        
         if (!event.wasClean) {
             this.scheduleReconnect();
         }
@@ -144,6 +157,7 @@ class ChatClient {
     handleError(error) {
         console.error('WebSocket error:', error);
         this.updateConnectionStatus('error', '오류 발생');
+        this.stopPingInterval();
     }
 
     scheduleReconnect() {
@@ -346,6 +360,73 @@ class ChatClient {
         } else {
             this.scrollButton.classList.remove('opacity-0', 'pointer-events-none');
             this.scrollButton.classList.add('opacity-100', 'pointer-events-auto');
+        }
+    }
+    
+    startPingInterval() {
+        // Clear existing interval
+        this.stopPingInterval();
+        
+        // Send ping every 5 seconds
+        this.pingInterval = setInterval(() => {
+            this.sendPing();
+        }, 5000);
+        
+        // Send initial ping
+        this.sendPing();
+    }
+    
+    stopPingInterval() {
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = null;
+        }
+        if (this.pingTimeout) {
+            clearTimeout(this.pingTimeout);
+            this.pingTimeout = null;
+        }
+        this.pingDisplay.textContent = '--';
+    }
+    
+    sendPing() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.lastPingTime = Date.now();
+            this.send({
+                type: 'ping',
+                timestamp: this.lastPingTime
+            });
+            
+            // Timeout after 3 seconds
+            this.pingTimeout = setTimeout(() => {
+                this.pingDisplay.textContent = '---';
+            }, 3000);
+        }
+    }
+    
+    handlePong() {
+        if (this.pingTimeout) {
+            clearTimeout(this.pingTimeout);
+        }
+        
+        const ping = Date.now() - this.lastPingTime;
+        this.updatePingDisplay(ping);
+    }
+    
+    updatePingDisplay(ping) {
+        this.pingDisplay.textContent = ping;
+        
+        // Color coding based on ping
+        const pingElement = document.getElementById('ping-display');
+        pingElement.classList.remove('bg-green-700', 'bg-yellow-700', 'bg-orange-700', 'bg-red-700');
+        
+        if (ping < 50) {
+            pingElement.classList.add('bg-green-700');
+        } else if (ping < 100) {
+            pingElement.classList.add('bg-yellow-700');
+        } else if (ping < 200) {
+            pingElement.classList.add('bg-orange-700');
+        } else {
+            pingElement.classList.add('bg-red-700');
         }
     }
 }
