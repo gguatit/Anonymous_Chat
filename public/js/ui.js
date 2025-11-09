@@ -11,9 +11,34 @@ export class UIManager {
         this.charCount = document.getElementById('char-count');
         this.scrollButton = document.getElementById('scroll-to-bottom');
         
-        // Auto-scroll control (사용자가 스크롤 위치를 조작했는지 추적)
-        this.autoScrollEnabled = true;
-        this.scrollThreshold = 50; // 하단에서 50px 이상 떨어지면 자동 스크롤 비활성화
+        // MutationObserver로 메시지 추가 감지하여 자동 스크롤
+        this.initAutoScroll();
+    }
+    
+    /**
+     * MutationObserver를 사용하여 새 메시지 추가 시 자동 스크롤
+     */
+    initAutoScroll() {
+        const observer = new MutationObserver((mutations) => {
+            // 새로운 메시지(data-message 속성을 가진 요소)가 추가되었는지 확인
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    for (const node of mutation.addedNodes) {
+                        // data-message 표식이 있는 요소가 추가되면 스크롤
+                        if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-message')) {
+                            this.scrollToBottom();
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        
+        // messagesContainer의 자식 요소 변경 감지
+        observer.observe(this.messagesContainer, {
+            childList: true,
+            subtree: false
+        });
     }
 
     initializeEventListeners(callbacks) {
@@ -29,39 +54,9 @@ export class UIManager {
             this.charCount.textContent = this.messageInput.value.length;
         });
         
-        // Scroll button - 클릭 시 자동 스크롤 재활성화
-        this.scrollButton.addEventListener('click', () => {
-            this.autoScrollEnabled = true;
-            callbacks.onScrollClick();
-        });
-        
-        // Scroll event - 사용자가 위로 스크롤하면 자동 스크롤 비활성화
-        this.messagesContainer.addEventListener('scroll', () => {
-            this.checkScrollPosition();
-            callbacks.onScroll();
-        });
-    }
-    
-    /**
-     * 스크롤 위치를 확인하여 자동 스크롤 활성화/비활성화 결정
-     * 사용자가 맨 아래에서 threshold 이상 위로 스크롤하면 자동 스크롤 비활성화
-     */
-    checkScrollPosition() {
-        const container = this.messagesContainer;
-        const scrollTop = container.scrollTop;
-        const scrollHeight = container.scrollHeight;
-        const clientHeight = container.clientHeight;
-        
-        // 현재 스크롤 위치가 하단에서 threshold 이내인지 확인
-        const isNearBottom = (scrollTop + clientHeight) >= (scrollHeight - this.scrollThreshold);
-        
-        // 사용자가 맨 아래에 있으면 자동 스크롤 활성화
-        if (isNearBottom) {
-            this.autoScrollEnabled = true;
-        } else {
-            // 위로 스크롤했으면 자동 스크롤 비활성화
-            this.autoScrollEnabled = false;
-        }
+        // Scroll button
+        this.scrollButton.addEventListener('click', callbacks.onScrollClick);
+        this.messagesContainer.addEventListener('scroll', callbacks.onScroll);
     }
 
     displayMessage(data, isOwnMessage, sessionId) {
@@ -69,6 +64,9 @@ export class UIManager {
         messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
             (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
         messageDiv.style.maxWidth = '75%';
+        
+        // 메시지 표식 추가 (MutationObserver가 감지)
+        messageDiv.setAttribute('data-message', 'true');
         
         const timestamp = new Date(data.timestamp).toLocaleTimeString('ko-KR', {
             hour: '2-digit',
@@ -85,41 +83,30 @@ export class UIManager {
             <div class="text-sm break-words leading-relaxed">${this.sanitizeInput(data.content)}</div>
         `;
 
-        // 메시지를 DOM에 추가
+        // 메시지를 DOM에 추가 (MutationObserver가 자동으로 스크롤 처리)
         this.messagesContainer.appendChild(messageDiv);
-        
-        // 내가 보낸 메시지는 무조건 스크롤, 다른 사람 메시지는 자동 스크롤 설정 따름
-        if (isOwnMessage || this.autoScrollEnabled) {
-            this.scrollToBottom();
-            // 내가 메시지를 보냈으면 자동 스크롤 활성화
-            if (isOwnMessage) {
-                this.autoScrollEnabled = true;
-            }
-        }
     }
 
     displaySystemMessage(content) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'text-center text-xs text-gray-500 py-1.5';
         messageDiv.textContent = content;
-        this.messagesContainer.appendChild(messageDiv);
         
-        // 시스템 메시지는 항상 자동 스크롤
-        if (this.autoScrollEnabled) {
-            this.scrollToBottom();
-        }
+        // 시스템 메시지 표식 추가
+        messageDiv.setAttribute('data-message', 'true');
+        
+        this.messagesContainer.appendChild(messageDiv);
     }
 
     displayError(content) {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'text-center text-xs text-red-400 py-2 bg-red-900/20 rounded-lg mx-4';
         errorDiv.textContent = content;
-        this.messagesContainer.appendChild(errorDiv);
         
-        // 에러 메시지는 항상 자동 스크롤
-        if (this.autoScrollEnabled) {
-            this.scrollToBottom();
-        }
+        // 에러 메시지 표식 추가
+        errorDiv.setAttribute('data-message', 'true');
+        
+        this.messagesContainer.appendChild(errorDiv);
         
         // Auto-remove error after 4 seconds
         setTimeout(() => {
@@ -184,7 +171,7 @@ export class UIManager {
                 behavior: 'smooth'
             });
         } else {
-            // 즉시 스크롤 (requestAnimationFrame으로 DOM 업데이트 후 실행)
+            // 즉시 스크롤
             requestAnimationFrame(() => {
                 container.scrollTop = container.scrollHeight;
             });
