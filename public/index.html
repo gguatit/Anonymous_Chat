@@ -183,19 +183,27 @@
     
     <!-- Platform Info Toggle Script -->
     <script>
-        document.getElementById('info-toggle').addEventListener('click', () => {
-            const panel = document.getElementById('platform-info');
-            panel.classList.toggle('-translate-x-full');
-        });
-        
-        // Close panel when clicking outside
-        document.addEventListener('click', (e) => {
+        document.addEventListener('DOMContentLoaded', () => {
             const panel = document.getElementById('platform-info');
             const toggle = document.getElementById('info-toggle');
             
-            if (!panel.contains(e.target) && !toggle.contains(e.target)) {
-                panel.classList.add('-translate-x-full');
+            if (!panel || !toggle) {
+                console.error('Platform info elements not found');
+                return;
             }
+            
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                panel.classList.toggle('-translate-x-full');
+                console.log('Panel toggled:', !panel.classList.contains('-translate-x-full'));
+            });
+            
+            // Close panel when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!panel.contains(e.target) && !toggle.contains(e.target)) {
+                    panel.classList.add('-translate-x-full');
+                }
+            });
         });
     </script>
 </body>
