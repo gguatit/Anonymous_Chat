@@ -132,13 +132,36 @@ export class ChatRoom {
         this.ipConnections = new Map(); // IP -> count
         this.userMetadata = new Map(); // sessionId -> { ip, joinTime, messageCount, lastMessageTime }
         this.typingUsers = new Set();
-        this.messages = []; // In-memory message history (not persisted)
+        this.messages = []; // In-memory cache
+        this.initialized = false;
         
-        // Periodic cleanup of stale data
-        this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+        // Periodic cleanup of stale data (every 5 minutes)
+        this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
+    }
+
+    async initializeMessages() {
+        if (this.initialized) return;
+        
+        // Load messages from Durable Object storage
+        const stored = await this.state.storage.get('messages');
+        if (stored) {
+            // Filter out messages older than 12 hours
+            const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+            this.messages = stored.filter(msg => msg.timestamp > twelveHoursAgo);
+            
+            // Save cleaned messages back if any were removed
+            if (this.messages.length !== stored.length) {
+                await this.state.storage.put('messages', this.messages);
+            }
+        }
+        
+        this.initialized = true;
     }
 
     async fetch(request) {
+        // Initialize messages from storage on first request
+        await this.initializeMessages();
+        
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         
         // Check IP-based connection limit
@@ -196,11 +219,17 @@ export class ChatRoom {
                         // Broadcast user count
                         this.broadcastUserCount();
 
-                        // Send welcome message
+                        // Send welcome message and recent messages
                         this.sendToSession(sessionId, {
                             type: 'system',
                             content: '채팅방에 입장했습니다.'
                         });
+                        
+                        // Send last 50 messages to new user
+                        const recentMessages = this.messages.slice(-50);
+                        for (const msg of recentMessages) {
+                            this.sendToSession(sessionId, msg);
+                        }
 
                         break;
                     }
@@ -229,7 +258,7 @@ export class ChatRoom {
                         metadata.lastMessageTime = Date.now();
                         metrics.totalMessages++;
 
-                        // Broadcast message to all users
+                        // Create message object
                         const message = {
                             type: 'message',
                             content: this.sanitizeInput(data.content),
@@ -237,12 +266,19 @@ export class ChatRoom {
                             timestamp: Date.now()
                         };
 
+                        // Add to messages array
                         this.messages.push(message);
-                        // Keep only last 100 messages in memory
-                        if (this.messages.length > 100) {
-                            this.messages.shift();
-                        }
+                        
+                        // Clean up messages older than 12 hours and limit to 500 messages
+                        const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+                        this.messages = this.messages
+                            .filter(msg => msg.timestamp > twelveHoursAgo)
+                            .slice(-500); // Keep max 500 messages
+                        
+                        // Persist to Durable Object storage (async, non-blocking)
+                        this.state.storage.put('messages', this.messages);
 
+                        // Broadcast message to all users
                         this.broadcast(message);
                         break;
                     }
@@ -376,10 +412,12 @@ export class ChatRoom {
     cleanup() {
         // Clean up stale sessions and connections
         const now = Date.now();
-        const timeout = 300000; // 5 minutes
+        const sessionTimeout = 300000; // 5 minutes
+        const messageRetention = 12 * 60 * 60 * 1000; // 12 hours
 
+        // Clean up inactive sessions
         for (const [sessionId, metadata] of this.userMetadata) {
-            if (now - metadata.lastMessageTime > timeout && now - metadata.joinTime > timeout) {
+            if (now - metadata.lastMessageTime > sessionTimeout && now - metadata.joinTime > sessionTimeout) {
                 const websocket = this.sessions.get(sessionId);
                 if (websocket) {
                     try {
@@ -391,6 +429,16 @@ export class ChatRoom {
                 this.sessions.delete(sessionId);
                 this.userMetadata.delete(sessionId);
             }
+        }
+        
+        // Clean up old messages (older than 12 hours)
+        const twelveHoursAgo = now - messageRetention;
+        const initialLength = this.messages.length;
+        this.messages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
+        
+        // If messages were cleaned, update storage
+        if (this.messages.length !== initialLength) {
+            this.state.storage.put('messages', this.messages);
         }
     }
 }
