@@ -25,7 +25,16 @@
     <!-- Header -->
     <header class="bg-gray-800 border-b border-gray-700 py-3 px-4 shadow-lg sticky top-0 z-10">
         <div class="max-w-5xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold text-gray-100">익명 채팅</h1>
+            <div class="flex items-center gap-3">
+                <button id="info-toggle" 
+                        class="text-gray-400 hover:text-gray-200 transition-colors"
+                        aria-label="플랫폼 정보 토글">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <h1 class="text-xl font-bold text-gray-100">익명 채팅</h1>
+            </div>
             <div class="flex items-center gap-3">
                 <span id="user-count" class="text-xs bg-gray-700 px-3 py-1.5 rounded-full font-medium" aria-live="polite">
                     <span id="count-number">0</span>명
@@ -37,6 +46,70 @@
             </div>
         </div>
     </header>
+
+    <!-- Platform Info Panel -->
+    <aside id="platform-info" 
+           class="fixed left-0 top-16 bg-gray-800 border-r border-gray-700 shadow-lg transition-transform duration-300 z-20 -translate-x-full"
+           style="width: 300px; max-height: calc(100vh - 64px); overflow-y: auto;">
+        <div class="p-4">
+            <h3 class="text-sm font-bold text-gray-100 mb-3 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+                플랫폼 호환성
+            </h3>
+            
+            <div class="space-y-3 text-xs">
+                <div class="bg-gray-700/50 rounded-lg p-3">
+                    <div class="flex items-start gap-2 mb-2">
+                        <span class="text-green-400">✅</span>
+                        <div>
+                            <p class="font-semibold text-gray-200 mb-1">완전 지원</p>
+                            <ul class="text-gray-400 space-y-1">
+                                <li>• Windows 11</li>
+                                <li>• Arch Linux</li>
+                                <li>• Ubuntu</li>
+                                <li>• Garuda Linux</li>
+                            </ul>
+                            <p class="text-gray-500 mt-2 text-xs">모든 기능 정상 작동</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-700/50 rounded-lg p-3">
+                    <div class="flex items-start gap-2 mb-2">
+                        <span class="text-yellow-400">⚠️</span>
+                        <div>
+                            <p class="font-semibold text-gray-200 mb-1">부분 지원</p>
+                            <ul class="text-gray-400 space-y-1">
+                                <li>• Android 16</li>
+                            </ul>
+                            <p class="text-yellow-500 mt-2 text-xs">⚠ 자동 스크롤 미작동<br>수동 스크롤 필요</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-700/50 rounded-lg p-3">
+                    <div class="flex items-start gap-2 mb-2">
+                        <span class="text-red-400">❌</span>
+                        <div>
+                            <p class="font-semibold text-gray-200 mb-1">최적화 안 됨</p>
+                            <ul class="text-gray-400 space-y-1">
+                                <li>• iOS</li>
+                                <li>• macOS</li>
+                            </ul>
+                            <p class="text-red-500 mt-2 text-xs">테스트되지 않음</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-900/20 border border-blue-700 rounded-lg p-3">
+                    <p class="text-blue-400 font-semibold mb-1">💡 권장 환경</p>
+                    <p class="text-gray-400">데스크톱 PC (Windows, Linux)에서 최상의 경험을 제공합니다.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
 
     <!-- Main Chat Area -->
     <main class="flex flex-col max-w-5xl w-full mx-auto" style="height: calc(100vh - 120px); padding-bottom: 8rem;">
@@ -101,16 +174,29 @@
     </div>
 
     <!-- Footer -->
-    <footer class="bg-gray-800 border-t border-gray-700 py-3 px-4 text-center text-xs text-gray-500">
-        <p class="mb-2">Cloudflare Workers 기반 익명 채팅</p>
-        <p class="text-gray-600">
-            ✅ PC 완전 지원 (Windows, Linux) | 
-            ⚠️ 모바일 부분 지원 (자동 스크롤 미작동) | 
-            ❌ iOS/macOS 최적화 안 됨
-        </p>
+    <footer class="bg-gray-800 border-t border-gray-700 py-2 px-4 text-center text-xs text-gray-500">
+        <p>Cloudflare Workers 기반 익명 채팅</p>
     </footer>
 
     <!-- JavaScript Modules -->
     <script type="module" src="/js/chat.js"></script>
+    
+    <!-- Platform Info Toggle Script -->
+    <script>
+        document.getElementById('info-toggle').addEventListener('click', () => {
+            const panel = document.getElementById('platform-info');
+            panel.classList.toggle('-translate-x-full');
+        });
+        
+        // Close panel when clicking outside
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('platform-info');
+            const toggle = document.getElementById('info-toggle');
+            
+            if (!panel.contains(e.target) && !toggle.contains(e.target)) {
+                panel.classList.add('-translate-x-full');
+            }
+        });
+    </script>
 </body>
 </html>
