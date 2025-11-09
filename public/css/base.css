@@ -2,3 +2,13 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
+
+/* Hide scrollbar for messages container */
+#messages-container {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+#messages-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
