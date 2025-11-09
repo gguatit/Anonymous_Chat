@@ -167,7 +167,12 @@ export class UIManager {
     scrollToBottom(smooth = false) {
         const container = this.messagesContainer;
         
-        console.log('Scrolling to bottom. Current scrollTop:', container.scrollTop, 'scrollHeight:', container.scrollHeight);
+        console.log('Container info:', {
+            scrollTop: container.scrollTop,
+            scrollHeight: container.scrollHeight,
+            clientHeight: container.clientHeight,
+            offsetHeight: container.offsetHeight
+        });
         
         if (smooth) {
             // 부드러운 스크롤 애니메이션
@@ -176,11 +181,14 @@ export class UIManager {
                 behavior: 'smooth'
             });
         } else {
-            // 즉시 스크롤
-            requestAnimationFrame(() => {
+            // 즉시 스크롤 - scrollTop 직접 설정
+            container.scrollTop = container.scrollHeight;
+            
+            // 강제로 다시 시도 (DOM 업데이트 후)
+            setTimeout(() => {
                 container.scrollTop = container.scrollHeight;
-                console.log('After scroll - scrollTop:', container.scrollTop);
-            });
+                console.log('After scroll attempt - scrollTop:', container.scrollTop);
+            }, 0);
         }
         
         // 스크롤 버튼 상태 업데이트
