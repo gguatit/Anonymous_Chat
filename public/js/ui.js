@@ -53,17 +53,10 @@ export class UIManager {
 
         this.messagesContainer.appendChild(messageDiv);
         
-        // 내 메시지면 강제 스크롤 (requestAnimationFrame으로 DOM 렌더링 후)
-        if (isOwnMessage) {
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-                    this.updateScrollButton();
-                });
-            });
-        } else {
-            this.scrollToBottom();
-        }
+        // 모든 메시지에 대해 무조건 최하단으로 스크롤
+        requestAnimationFrame(() => {
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        });
     }
 
     displaySystemMessage(content) {
@@ -71,7 +64,11 @@ export class UIManager {
         messageDiv.className = 'text-center text-xs text-gray-500 py-1.5';
         messageDiv.textContent = content;
         this.messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
+        
+        // 시스템 메시지도 무조건 스크롤
+        requestAnimationFrame(() => {
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        });
     }
 
     displayError(content) {
@@ -79,7 +76,11 @@ export class UIManager {
         errorDiv.className = 'text-center text-xs text-red-400 py-2 bg-red-900/20 rounded-lg mx-4';
         errorDiv.textContent = content;
         this.messagesContainer.appendChild(errorDiv);
-        this.scrollToBottom();
+        
+        // 에러 메시지도 무조건 스크롤
+        requestAnimationFrame(() => {
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        });
         
         // Auto-remove error after 4 seconds
         setTimeout(() => {
