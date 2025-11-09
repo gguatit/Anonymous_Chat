@@ -48,7 +48,7 @@ class ChatClient {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
             
-            this.updateConnectionStatus('connecting', '연결 중...');
+            this.updateConnectionStatus('connecting', '연결 중');
             
             this.ws = new WebSocket(wsUrl);
             
@@ -124,7 +124,7 @@ class ChatClient {
 
     scheduleReconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            this.displayError('최대 재연결 시도 횟수를 초과했습니다. 페이지를 새로고침해주세요.');
+            this.displayError('재연결 실패. 페이지를 새로고침해주세요.');
             return;
         }
 
@@ -135,7 +135,7 @@ class ChatClient {
         );
         
         this.reconnectAttempts++;
-        this.updateConnectionStatus('reconnecting', `재연결 중... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        this.updateConnectionStatus('reconnecting', `재연결 중 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
         
         setTimeout(() => {
             console.log(`Reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
@@ -152,13 +152,13 @@ class ChatClient {
         // Rate limiting check
         const now = Date.now();
         if (now - this.lastMessageTime < this.messageRateLimit) {
-            this.displayError('메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 시도해주세요.');
+            this.displayError('메시지를 너무 빠르게 전송하고 있습니다.');
             return;
         }
 
         // Validate message length
         if (message.length > 500) {
-            this.displayError('메시지는 최대 500자까지 입력할 수 있습니다.');
+            this.displayError('메시지는 최대 500자까지 가능합니다.');
             return;
         }
 
@@ -223,9 +223,9 @@ class ChatClient {
 
     displayMessage(data) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'message-enter p-3 rounded-lg ' + 
-            (data.sessionId === this.sessionId ? 'bg-blue-900 ml-auto' : 'bg-gray-700');
-        messageDiv.style.maxWidth = '80%';
+        messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
+            (data.sessionId === this.sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
+        messageDiv.style.maxWidth = '75%';
         
         const isOwnMessage = data.sessionId === this.sessionId;
         
@@ -236,12 +236,12 @@ class ChatClient {
 
         messageDiv.innerHTML = `
             <div class="flex items-start justify-between gap-2 mb-1">
-                <span class="text-xs font-semibold ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">
+                <span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">
                     ${isOwnMessage ? '나' : '익명'}
                 </span>
                 <span class="text-xs text-gray-500">${timestamp}</span>
             </div>
-            <div class="text-sm break-words">${this.sanitizeInput(data.content)}</div>
+            <div class="text-sm break-words leading-relaxed">${this.sanitizeInput(data.content)}</div>
         `;
 
         this.messagesContainer.appendChild(messageDiv);
@@ -250,7 +250,7 @@ class ChatClient {
 
     displaySystemMessage(content) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'text-center text-sm text-gray-500 py-2';
+        messageDiv.className = 'text-center text-xs text-gray-500 py-1.5';
         messageDiv.textContent = content;
         this.messagesContainer.appendChild(messageDiv);
         this.scrollToBottom();
@@ -258,15 +258,15 @@ class ChatClient {
 
     displayError(content) {
         const errorDiv = document.createElement('div');
-        errorDiv.className = 'text-center text-sm text-red-400 py-2 bg-red-900/20 rounded-lg';
-        errorDiv.textContent = '⚠️ ' + content;
+        errorDiv.className = 'text-center text-xs text-red-400 py-2 bg-red-900/20 rounded-lg mx-4';
+        errorDiv.textContent = content;
         this.messagesContainer.appendChild(errorDiv);
         this.scrollToBottom();
         
-        // Auto-remove error after 5 seconds
+        // Auto-remove error after 4 seconds
         setTimeout(() => {
             errorDiv.remove();
-        }, 5000);
+        }, 4000);
     }
 
     showTypingIndicator(data) {
@@ -284,8 +284,8 @@ class ChatClient {
     }
 
     updateConnectionStatus(status, text) {
-        const statusDot = this.connectionStatus.querySelector('.w-3');
-        const statusText = this.connectionStatus.querySelector('.text-sm');
+        const statusDot = this.connectionStatus.querySelector('.w-2');
+        const statusText = this.connectionStatus.querySelector('.text-xs');
         
         statusText.textContent = text;
         
@@ -297,7 +297,7 @@ class ChatClient {
             error: 'bg-red-600'
         };
         
-        statusDot.className = `w-3 h-3 rounded-full ${colors[status] || 'bg-gray-500'}`;
+        statusDot.className = `w-2 h-2 rounded-full ${colors[status] || 'bg-gray-500'}`;
     }
 
     scrollToBottom() {
