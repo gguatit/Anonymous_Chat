@@ -1,6 +1,6 @@
-name = "kalpha-mmv-kr"
+name = "anonymous-chat"
 main = "src/worker.js"
-compatibility_date = "2023-11-21"
+compatibility_date = "2024-11-01"
 
 # Durable Objects for WebSocket state management
 [[durable_objects.bindings]]
@@ -9,11 +9,18 @@ class_name = "ChatRoom"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["ChatRoom"]
+new_classes = ["ChatRoom"]
 
-# Environment variables (can be overridden in dashboard)
-[env.production]
-vars = { ENVIRONMENT = "production" }
+# Pages integration (for hybrid deployment)
+[assets]
+directory = "public"
+binding = "ASSETS"
 
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+
+# Development environment
 [env.development]
-vars = { ENVIRONMENT = "development" }
+[env.development.vars]
+ENVIRONMENT = "development"

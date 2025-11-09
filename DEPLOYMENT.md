@@ -37,13 +37,13 @@ chmod +x deploy.sh
 이 스크립트는 다음을 자동으로 수행합니다:
 - Wrangler 설치 확인
 - 인증 상태 확인
-- Worker 배포
-- Pages 배포
+- Worker 배포 (정적 assets 포함)
 - 배포 결과 표시
 
 ### 방법 2: 수동 배포
 
-#### Worker 배포
+#### Worker 배포 (static assets 포함)
+
 ```bash
 # 개발 환경에 배포
 wrangler deploy
@@ -52,12 +52,15 @@ wrangler deploy
 wrangler deploy --env production
 ```
 
-#### Pages 배포
-```bash
-# 프로젝트 생성 (최초 1회만)
-wrangler pages project create anonymous-chat
+**Note**: Cloudflare Workers는 이제 `[assets]` 바인딩을 통해 정적 파일을 직접 서빙합니다.
+별도의 Pages 배포는 필요하지 않습니다.
 
-# 배포
+#### Pages 별도 배포 (선택사항)
+
+Pages를 독립적으로 배포하려면:
+
+```bash
+# Pages 배포
 wrangler pages deploy public --project-name=anonymous-chat
 ```
 
@@ -87,20 +90,16 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Deploy Worker
+      - name: Deploy Worker with Assets
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy
-      
-      - name: Deploy Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: pages deploy public --project-name=anonymous-chat
 ```
 
 GitHub Secrets에 `CLOUDFLARE_API_TOKEN` 추가 필요.
+
+**Note**: Worker가 assets 바인딩으로 정적 파일을 포함하므로 별도의 Pages 배포 단계가 필요 없습니다.
 
 ## 설정 및 환경 변수
 
@@ -109,16 +108,24 @@ GitHub Secrets에 `CLOUDFLARE_API_TOKEN` 추가 필요.
 프로젝트의 `wrangler.toml` 파일에서 다음을 확인:
 
 ```toml
-name = "anonymous-chat-worker"
+name = "anonymous-chat"
 main = "src/worker.js"
-compatibility_date = "2023-11-21"
+compatibility_date = "2024-11-01"
 
 [[durable_objects.bindings]]
 name = "CHAT_ROOM"
 class_name = "ChatRoom"
 
-[env.production]
-vars = { ENVIRONMENT = "production" }
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom"]
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+
+[vars]
+ENVIRONMENT = "production"
 ```
 
 ### 환경별 설정

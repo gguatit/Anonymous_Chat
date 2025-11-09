@@ -5,9 +5,8 @@
   "main": "src/worker.js",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy:worker": "wrangler deploy",
-    "deploy:pages": "wrangler pages deploy .",
-    "deploy": "npm run deploy:worker && npm run deploy:pages",
+    "deploy": "wrangler deploy",
+    "deploy:pages": "wrangler pages deploy public",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/**/*.js public/**/*.js"

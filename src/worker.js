@@ -23,7 +23,7 @@ const metrics = {
 };
 
 export default {
-    async fetch(request, env, _ctx) {
+    async fetch(request, env, ctx) {
         try {
             const url = new URL(request.url);
 
@@ -62,7 +62,17 @@ export default {
                 });
             }
 
-            // Serve static files from Pages (fallback)
+            // Serve static files from assets binding
+            if (env.ASSETS) {
+                try {
+                    return await env.ASSETS.fetch(request);
+                } catch (e) {
+                    // If asset not found, continue to 404
+                    console.log('Asset fetch error:', e);
+                }
+            }
+
+            // Fallback 404
             return new Response('Not Found', { status: 404 });
 
         } catch (error) {

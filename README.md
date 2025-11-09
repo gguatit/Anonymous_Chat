@@ -108,10 +108,15 @@ npm run dev
 ```
 
 #### 수동 배포
-```bash
-# Worker 배포
-npm run deploy:worker
 
+```bash
+# Worker와 static assets를 함께 배포
+npm run deploy
+```
+
+또는 Pages만 별도 배포:
+
+```bash
 # Pages 배포
 npm run deploy:pages
 ```
@@ -133,16 +138,21 @@ npm run lint
 
 ```
 Anonymous_Chat/
-├── public/              # 정적 파일 (Pages에 배포)
+├── public/              # 정적 파일 (Pages/Assets에 배포)
 │   ├── index.html      # 메인 HTML
-│   └── app.js          # 클라이언트 JavaScript
+│   ├── app.js          # 클라이언트 JavaScript
+│   ├── _headers        # Cloudflare Pages 보안 헤더
+│   └── _redirects      # Cloudflare Pages 리다이렉트
 ├── src/                # Worker 소스
 │   └── worker.js       # Worker 및 Durable Object
 ├── test/               # 테스트 파일
 │   └── worker.test.js  # Worker 테스트
 ├── package.json        # 프로젝트 설정
 ├── wrangler.toml       # Cloudflare 설정
+├── vitest.config.js    # Vitest 설정
 ├── deploy.sh           # 배포 스크립트
+├── ARCHITECTURE.md     # 아키텍처 문서
+├── DEPLOYMENT.md       # 배포 가이드
 └── README.md           # 문서
 ```
 
