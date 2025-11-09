@@ -53,12 +53,14 @@ export class UIManager {
 
         this.messagesContainer.appendChild(messageDiv);
         
-        // 내 메시지면 즉시 스크롤
+        // 내 메시지면 강제 스크롤 (requestAnimationFrame으로 DOM 렌더링 후)
         if (isOwnMessage) {
-            setTimeout(() => {
-                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-                this.updateScrollButton();
-            }, 0);
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                    this.updateScrollButton();
+                });
+            });
         } else {
             this.scrollToBottom();
         }

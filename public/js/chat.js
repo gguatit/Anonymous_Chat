@@ -123,6 +123,11 @@ class ChatClient {
         this.generateMessageSignature(messageData).then(signature => {
             messageData.signature = signature;
             this.wsManager.send(messageData);
+            
+            // 전송 직후 강제 스크롤
+            setTimeout(() => {
+                this.ui.messagesContainer.scrollTop = this.ui.messagesContainer.scrollHeight;
+            }, 100);
         });
 
         this.lastMessageTime = now;
