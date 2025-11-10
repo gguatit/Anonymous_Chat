@@ -228,11 +228,11 @@
 
     <!-- Bug Report Modal -->
     <div id="bug-report-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-gray-800 rounded-lg shadow-2xl max-w-md w-full border border-gray-700">
+        <div class="bg-gray-800 rounded-lg shadow-2xl max-w-sm w-full border border-gray-700 max-h-[85vh] flex flex-col">
             <!-- Modal Header -->
-            <div class="flex items-center justify-between p-4 border-b border-gray-700">
-                <h3 class="text-lg font-bold text-gray-100 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+            <div class="flex items-center justify-between p-3 border-b border-gray-700 flex-shrink-0">
+                <h3 class="text-base font-bold text-gray-100 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                     </svg>
                     오류 제보
@@ -240,65 +240,62 @@
                 <button id="close-modal" 
                         class="text-gray-400 hover:text-gray-200 transition-colors"
                         aria-label="닫기">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
 
-            <!-- Modal Body -->
-            <div class="p-6">
-                <div class="text-center mb-6">
-                    <div class="bg-red-900/20 border border-red-700 rounded-lg p-4 mb-4">
-                        <p class="text-sm text-gray-300 mb-2">
-                            발견한 오류를 제보해주시면 빠르게 개선하겠습니다.
-                        </p>
-                        <p class="text-xs text-gray-400">
-                            아래 버튼을 클릭하면 이메일 앱이 자동으로 열립니다.
-                        </p>
-                    </div>
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-4 overflow-y-auto flex-1">
+                <div class="bg-red-900/20 border border-red-700 rounded-lg p-3 mb-3">
+                    <p class="text-xs text-gray-300 mb-1">
+                        발견한 오류를 제보해주시면 빠르게 개선하겠습니다.
+                    </p>
+                    <p class="text-xs text-gray-400">
+                        버튼 클릭 시 이메일 앱이 열립니다.
+                    </p>
                 </div>
 
                 <!-- Bug Category Buttons -->
-                <div class="space-y-2 mb-6">
-                    <p class="text-sm font-medium text-gray-300 mb-3">오류 유형을 선택하세요:</p>
+                <div class="space-y-2 mb-3">
+                    <p class="text-xs font-medium text-gray-300 mb-2">오류 유형 선택:</p>
                     
                     <a href="mailto:dev@kalpha.kr?subject=[버그제보] 연결 오류&body=■ 오류 유형: 연결 오류%0D%0A%0D%0A■ 발생 시간:%0D%0A%0D%0A■ 상세 내용:%0D%0A%0D%0A■ 브라우저/OS:%0D%0A%0D%0A■ 재현 방법:%0D%0A" 
-                       class="block w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-lg text-sm transition-colors text-left">
+                       class="block w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-xs transition-colors text-left">
                         🔌 연결 오류
                     </a>
                     
                     <a href="mailto:dev@kalpha.kr?subject=[버그제보] 메시지 전송 실패&body=■ 오류 유형: 메시지 전송 실패%0D%0A%0D%0A■ 발생 시간:%0D%0A%0D%0A■ 상세 내용:%0D%0A%0D%0A■ 브라우저/OS:%0D%0A%0D%0A■ 재현 방법:%0D%0A" 
-                       class="block w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-lg text-sm transition-colors text-left">
+                       class="block w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-xs transition-colors text-left">
                         📤 메시지 전송 실패
                     </a>
                     
                     <a href="mailto:dev@kalpha.kr?subject=[버그제보] UI/UX 문제&body=■ 오류 유형: UI/UX 문제%0D%0A%0D%0A■ 발생 시간:%0D%0A%0D%0A■ 상세 내용:%0D%0A%0D%0A■ 브라우저/OS:%0D%0A%0D%0A■ 스크린샷: (첨부 가능)%0D%0A" 
-                       class="block w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-lg text-sm transition-colors text-left">
+                       class="block w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-xs transition-colors text-left">
                         🎨 UI/UX 문제
                     </a>
                     
                     <a href="mailto:dev@kalpha.kr?subject=[버그제보] 보안 취약점&body=■ 오류 유형: 보안 취약점%0D%0A%0D%0A■ 취약점 설명:%0D%0A%0D%0A■ 위험도:%0D%0A%0D%0A■ 재현 방법:%0D%0A%0D%0A■ 권장 조치:%0D%0A" 
-                       class="block w-full bg-red-700 hover:bg-red-600 text-white px-4 py-3 rounded-lg text-sm transition-colors text-left">
+                       class="block w-full bg-red-700 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs transition-colors text-left">
                         🔒 보안 취약점
                     </a>
                     
                     <a href="mailto:dev@kalpha.kr?subject=[버그제보] 기타&body=■ 오류 유형: 기타%0D%0A%0D%0A■ 발생 시간:%0D%0A%0D%0A■ 상세 내용:%0D%0A%0D%0A■ 브라우저/OS:%0D%0A" 
-                       class="block w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-lg text-sm transition-colors text-left">
+                       class="block w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-xs transition-colors text-left">
                         📝 기타
                     </a>
                 </div>
 
-                <div class="bg-blue-900/20 border border-blue-700 rounded-lg p-3 mb-4">
+                <div class="bg-blue-900/20 border border-blue-700 rounded-lg p-2 mb-3">
                     <p class="text-xs text-blue-400">
-                        💡 <strong>dev@kalpha.kr</strong>로 이메일이 전송됩니다.<br>
-                        템플릿에 맞춰 내용을 작성해주세요.
+                        💡 <strong>dev@kalpha.kr</strong>로 전송됩니다.
                     </p>
                 </div>
 
                 <!-- Close Button -->
                 <button id="cancel-modal"
-                        class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
+                        class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg font-medium text-sm transition-colors">
                     닫기
                 </button>
             </div>
