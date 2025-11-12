@@ -68,6 +68,7 @@ export class UIManager {
         // 메시지 표식 추가 (MutationObserver가 감지)
         messageDiv.setAttribute('data-message', 'true');
         messageDiv.setAttribute('data-message-id', data.messageId);
+        messageDiv.setAttribute('data-timestamp', data.timestamp);
         
         const timestamp = new Date(data.timestamp).toLocaleTimeString('ko-KR', {
             hour: '2-digit',
@@ -90,14 +91,14 @@ export class UIManager {
 
         // Add long-press and right-click for editing own messages
         if (canEdit) {
-            this.addEditInteractions(messageDiv, data.messageId, data.content);
+            this.addEditInteractions(messageDiv, data.messageId);
         }
 
         // 메시지를 DOM에 추가 (MutationObserver가 자동으로 스크롤 처리)
         this.messagesContainer.appendChild(messageDiv);
     }
 
-    addEditInteractions(messageDiv, messageId, content) {
+    addEditInteractions(messageDiv, messageId) {
         let longPressTimer;
         let isLongPress = false;
 
@@ -106,7 +107,7 @@ export class UIManager {
             isLongPress = false;
             longPressTimer = setTimeout(() => {
                 isLongPress = true;
-                this.showContextMenu(e, messageId, content);
+                this.showContextMenu(e, messageId);
             }, 500); // 500ms long press
         });
 
@@ -121,7 +122,7 @@ export class UIManager {
         // Right-click for desktop
         messageDiv.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            this.showContextMenu(e, messageId, content);
+            this.showContextMenu(e, messageId);
         });
 
         // Add visual feedback
@@ -129,7 +130,7 @@ export class UIManager {
         messageDiv.style.userSelect = 'none';
     }
 
-    showContextMenu(event, messageId, content) {
+    showContextMenu(event, messageId) {
         // Remove existing context menu if any
         const existingMenu = document.getElementById('message-context-menu');
         if (existingMenu) {
@@ -170,9 +171,12 @@ export class UIManager {
         const editButton = menu.querySelector('button');
         editButton.addEventListener('click', () => {
             menu.remove();
-            this.showEditMode(messageId, content);
+            // Get current content from DOM (최신 수정된 내용)
+            const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+            const contentDiv = messageDiv.querySelector('.message-content');
+            const currentContent = contentDiv.textContent;
+            this.showEditMode(messageId, currentContent);
         });
-
         // Close menu when clicking outside
         const closeMenu = (e) => {
             if (!menu.contains(e.target)) {
@@ -188,8 +192,7 @@ export class UIManager {
         }, 100);
     }
 
-    showEditMode(messageId, currentContent) {
-        const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+    showEditMode(messageId, currentContent) {iner.querySelector(`[data-message-id="${messageId}"]`);
         if (!messageDiv) return;
 
         const contentDiv = messageDiv.querySelector('.message-content');
