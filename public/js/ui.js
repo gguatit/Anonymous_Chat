@@ -52,40 +52,11 @@ export class UIManager {
         // Character count
         this.messageInput.addEventListener('input', () => {
             this.charCount.textContent = this.messageInput.value.length;
-            // Auto-resize textarea
-            this.autoResizeTextarea();
-            // Update send button state
-            this.updateSendButtonState();
-        });
-
-        // Auto-resize on input
-        this.messageInput.addEventListener('input', () => {
-            this.autoResizeTextarea();
-        });
-
-        // Handle Enter key (send) vs Shift+Enter (new line)
-        this.messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.messageForm.dispatchEvent(new Event('submit'));
-            }
         });
         
         // Scroll button
         this.scrollButton.addEventListener('click', callbacks.onScrollClick);
         this.messagesContainer.addEventListener('scroll', callbacks.onScroll);
-    }
-
-    autoResizeTextarea() {
-        const textarea = this.messageInput;
-        textarea.style.height = 'auto';
-        const newHeight = Math.min(textarea.scrollHeight, 120); // Max 120px (약 5줄)
-        textarea.style.height = newHeight + 'px';
-    }
-
-    updateSendButtonState() {
-        const hasContent = this.messageInput.value.trim().length > 0;
-        this.sendButton.disabled = !hasContent;
     }
 
     displayMessage(data, isOwnMessage, sessionId) {
@@ -133,9 +104,6 @@ export class UIManager {
 
         console.log('Adding edit interactions for messageId:', messageId);
 
-        // Add hover effect for editable messages
-        messageDiv.classList.add('editable-message');
-
         // Long press for mobile
         messageDiv.addEventListener('touchstart', (e) => {
             isLongPress = false;
@@ -164,7 +132,6 @@ export class UIManager {
         // Add visual feedback
         messageDiv.style.cursor = 'pointer';
         messageDiv.style.userSelect = 'none';
-        messageDiv.title = '우클릭 또는 길게 눌러서 수정';
     }
 
     showContextMenu(event, messageId) {
@@ -388,8 +355,6 @@ export class UIManager {
     clearInput() {
         this.messageInput.value = '';
         this.charCount.textContent = '0';
-        this.autoResizeTextarea(); // Reset height
-        this.updateSendButtonState(); // Disable button
     }
 
     getInputValue() {

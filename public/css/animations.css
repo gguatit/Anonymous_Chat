@@ -14,35 +14,9 @@
     }
 }
 
-/* Editable message hover effect */
-.editable-message {
-    transition: all 0.2s ease;
-}
-
-.editable-message:hover {
-    background-color: rgba(59, 130, 246, 0.15) !important;
-    transform: translateX(-2px);
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
-}
-
-/* Typing indicator animation - improved */
-.typing-indicator {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
+/* Typing indicator animation */
 .typing-indicator span {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: #9CA3AF;
-    animation: typingBounce 1.4s infinite ease-in-out;
-}
-
-.typing-indicator span:nth-child(1) {
-    animation-delay: 0s;
+    animation: blink 1.4s infinite;
 }
 
 .typing-indicator span:nth-child(2) {
@@ -53,14 +27,11 @@
     animation-delay: 0.4s;
 }
 
-@keyframes typingBounce {
-    0%, 60%, 100% {
-        transform: translateY(0);
-        opacity: 0.4;
+@keyframes blink {
+    0%, 60%, 100% { 
+        opacity: 0.3; 
     }
-    30% {
-        transform: translateY(-10px);
-        opacity: 1;
+    30% { 
+        opacity: 1; 
     }
 }
-

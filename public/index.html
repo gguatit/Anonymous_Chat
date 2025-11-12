@@ -161,13 +161,8 @@
         </div>
 
         <!-- Typing Indicator -->
-        <div id="typing-indicator" class="px-4 py-2 text-xs text-gray-400 hidden bg-gray-800 flex items-center gap-2" aria-live="polite">
-            <div class="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-            <span class="ml-1">입력 중</span>
+        <div id="typing-indicator" class="px-4 py-1.5 text-xs text-gray-400 typing-indicator hidden bg-gray-800" aria-live="polite">
+            <span>●</span><span>●</span><span>●</span> 입력 중
         </div>
         
         <!-- Scroll to Bottom Button -->
@@ -185,24 +180,23 @@
     <div class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-20">
         <div class="max-w-5xl mx-auto p-3">
             <div class="bg-gray-800 rounded-lg shadow-lg p-3">
-                <form id="message-form" class="flex gap-2 items-end">
+                <form id="message-form" class="flex gap-2">
                     <label for="message-input" class="sr-only">메시지 입력</label>
-                    <textarea 
+                    <input 
+                        type="text" 
                         id="message-input" 
-                        class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 resize-none overflow-hidden"
-                        placeholder="메시지 입력 (최대 500자, Shift+Enter로 줄바꿈)"
+                        class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
+                        placeholder="메시지 입력 (최대 500자)"
                         maxlength="500"
                         autocomplete="off"
                         aria-label="메시지 입력"
-                        rows="1"
                         required
-                    ></textarea>
+                    />
                     <button 
                         type="submit" 
                         id="send-button"
                         class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        aria-label="메시지 전송"
-                        disabled>
+                        aria-label="메시지 전송">
                         전송
                     </button>
                 </form>
