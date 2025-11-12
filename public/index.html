@@ -61,7 +61,6 @@
                 <button id="info-toggle" 
                         class="text-gray-400 hover:text-gray-200 transition-colors cursor-pointer z-50 p-2"
                         type="button"
-                        onclick="document.getElementById('platform-info').classList.toggle('-translate-x-full'); console.log('Button clicked!');"
                         aria-label="플랫폼 정보 토글">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
@@ -83,7 +82,7 @@
 
     <!-- Platform Info Panel -->
     <aside id="platform-info" 
-           class="fixed left-0 bg-gray-800 border-r border-gray-700 shadow-lg transition-transform duration-300 -translate-x-full"
+           class="fixed left-0 bg-gray-800 border-r border-gray-700 shadow-lg transition-all duration-300 -translate-x-full"
            style="width: 300px; top: 56px; height: calc(100vh - 56px); overflow-y: auto; z-index: 40;">
         <div class="p-4">
             <h3 class="text-sm font-bold text-gray-100 mb-3 flex items-center gap-2">
@@ -146,7 +145,7 @@
     </aside>
 
     <!-- Main Chat Area -->
-    <main class="flex flex-col max-w-5xl w-full mx-auto" style="height: calc(100vh - 120px); padding-bottom: 8rem;">
+    <main id="chat-main" class="flex flex-col max-w-5xl w-full mx-auto transition-all duration-300" style="height: calc(100vh - 120px); padding-bottom: 8rem;">
         <!-- Messages Container -->
         <div id="messages-container" class="overflow-y-auto space-y-2 p-3 bg-gray-800" 
              style="height: 100%; max-height: 100%;"
@@ -177,7 +176,7 @@
     </main>
 
     <!-- Input Area - Fixed at bottom -->
-    <div class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-20">
+    <div id="chat-input" class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-20 transition-all duration-300">
         <div class="max-w-5xl mx-auto p-3">
             <div class="bg-gray-800 rounded-lg shadow-lg p-3">
                 <form id="message-form" class="flex gap-2">
@@ -304,7 +303,32 @@
 
     <!-- JavaScript Modules -->
     <script type="module" src="/js/chat.js"></script>
+        <!-- JavaScript Modules -->
+    <script type="module" src="/js/chat.js"></script>
     <script>
+        // Platform Info Panel Toggle with Chat Area Adjustment
+        const infoToggle = document.getElementById('info-toggle');
+        const platformInfo = document.getElementById('platform-info');
+        const chatMain = document.getElementById('chat-main');
+        const chatInput = document.getElementById('chat-input');
+        let isPanelOpen = false;
+
+        infoToggle.addEventListener('click', () => {
+            isPanelOpen = !isPanelOpen;
+            
+            if (isPanelOpen) {
+                // Open panel
+                platformInfo.classList.remove('-translate-x-full');
+                chatMain.style.marginLeft = '300px';
+                chatInput.style.left = '300px';
+            } else {
+                // Close panel
+                platformInfo.classList.add('-translate-x-full');
+                chatMain.style.marginLeft = '0';
+                chatInput.style.left = '0';
+            }
+        });
+
         // Bug Report Modal
         const bugReportBtn = document.getElementById('bug-report-btn');
         const bugReportModal = document.getElementById('bug-report-modal');
@@ -337,6 +361,8 @@
             }
         });
     </script>
+</body>
+</html>
 </body>
 </html>
 
