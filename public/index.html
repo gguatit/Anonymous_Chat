@@ -177,7 +177,7 @@
 
     <!-- Input Area - Fixed at bottom -->
     <div id="chat-input" class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-20 transition-all duration-300">
-        <div class="max-w-5xl mx-auto p-3">
+        <div class="max-w-5xl mx-auto p-3" style="margin-left: auto; margin-right: auto;">
             <div class="bg-gray-800 rounded-lg shadow-lg p-3">
                 <form id="message-form" class="flex gap-2">
                     <label for="message-input" class="sr-only">메시지 입력</label>
@@ -317,15 +317,17 @@
             isPanelOpen = !isPanelOpen;
             
             if (isPanelOpen) {
-                // Open panel
+                // Open panel - chat area shrinks from left
                 platformInfo.classList.remove('-translate-x-full');
                 chatMain.style.marginLeft = '300px';
-                chatInput.style.left = '300px';
+                chatMain.style.width = 'calc(100% - 300px)';
+                chatInput.style.paddingLeft = '300px';
             } else {
-                // Close panel
+                // Close panel - chat area expands back
                 platformInfo.classList.add('-translate-x-full');
                 chatMain.style.marginLeft = '0';
-                chatInput.style.left = '0';
+                chatMain.style.width = '100%';
+                chatInput.style.paddingLeft = '0';
             }
         });
 
