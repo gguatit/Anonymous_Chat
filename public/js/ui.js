@@ -102,11 +102,14 @@ export class UIManager {
         let longPressTimer;
         let isLongPress = false;
 
+        console.log('Adding edit interactions for messageId:', messageId);
+
         // Long press for mobile
         messageDiv.addEventListener('touchstart', (e) => {
             isLongPress = false;
             longPressTimer = setTimeout(() => {
                 isLongPress = true;
+                console.log('Long press detected');
                 this.showContextMenu(e, messageId);
             }, 500); // 500ms long press
         });
@@ -122,6 +125,7 @@ export class UIManager {
         // Right-click for desktop
         messageDiv.addEventListener('contextmenu', (e) => {
             e.preventDefault();
+            console.log('Right-click detected for messageId:', messageId);
             this.showContextMenu(e, messageId);
         });
 
@@ -131,6 +135,8 @@ export class UIManager {
     }
 
     showContextMenu(event, messageId) {
+        console.log('showContextMenu called with messageId:', messageId);
+        
         // Remove existing context menu if any
         const existingMenu = document.getElementById('message-context-menu');
         if (existingMenu) {
@@ -157,6 +163,7 @@ export class UIManager {
         menu.style.top = `${y}px`;
 
         document.body.appendChild(menu);
+        console.log('Context menu added to DOM');
 
         // Adjust position if menu goes off-screen
         const rect = menu.getBoundingClientRect();
@@ -170,11 +177,17 @@ export class UIManager {
         // Add click handler
         const editButton = menu.querySelector('button');
         editButton.addEventListener('click', () => {
+            console.log('Edit button clicked for messageId:', messageId);
             menu.remove();
             // Get current content from DOM (최신 수정된 내용)
             const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageDiv) {
+                console.error('Message div not found for messageId:', messageId);
+                return;
+            }
             const contentDiv = messageDiv.querySelector('.message-content');
             const currentContent = contentDiv.textContent;
+            console.log('Current content:', currentContent);
             this.showEditMode(messageId, currentContent);
         });
         // Close menu when clicking outside
@@ -192,7 +205,8 @@ export class UIManager {
         }, 100);
     }
 
-    showEditMode(messageId, currentContent) {iner.querySelector(`[data-message-id="${messageId}"]`);
+    showEditMode(messageId, currentContent) {
+        const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
         if (!messageDiv) return;
 
         const contentDiv = messageDiv.querySelector('.message-content');
