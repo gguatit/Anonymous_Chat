@@ -61,6 +61,7 @@
                 <button id="info-toggle" 
                         class="text-gray-400 hover:text-gray-200 transition-colors cursor-pointer z-50 p-2"
                         type="button"
+                        onclick="document.getElementById('platform-info').classList.toggle('-translate-x-full'); console.log('Button clicked!');"
                         aria-label="플랫폼 정보 토글">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
@@ -82,7 +83,7 @@
 
     <!-- Platform Info Panel -->
     <aside id="platform-info" 
-           class="fixed left-0 bg-gray-800 border-r border-gray-700 shadow-lg transition-all duration-300 -translate-x-full"
+           class="fixed left-0 bg-gray-800 border-r border-gray-700 shadow-lg transition-transform duration-300 -translate-x-full"
            style="width: 300px; top: 56px; height: calc(100vh - 56px); overflow-y: auto; z-index: 40;">
         <div class="p-4">
             <h3 class="text-sm font-bold text-gray-100 mb-3 flex items-center gap-2">
@@ -145,7 +146,7 @@
     </aside>
 
     <!-- Main Chat Area -->
-    <main id="chat-main" class="flex flex-col max-w-5xl w-full mx-auto transition-all duration-300" style="height: calc(100vh - 120px); padding-bottom: 8rem;">
+    <main class="flex flex-col max-w-5xl w-full mx-auto" style="height: calc(100vh - 120px); padding-bottom: 8rem;">
         <!-- Messages Container -->
         <div id="messages-container" class="overflow-y-auto space-y-2 p-3 bg-gray-800" 
              style="height: 100%; max-height: 100%;"
@@ -160,8 +161,13 @@
         </div>
 
         <!-- Typing Indicator -->
-        <div id="typing-indicator" class="px-4 py-1.5 text-xs text-gray-400 typing-indicator hidden bg-gray-800" aria-live="polite">
-            <span>●</span><span>●</span><span>●</span> 입력 중
+        <div id="typing-indicator" class="px-4 py-2 text-xs text-gray-400 hidden bg-gray-800 flex items-center gap-2" aria-live="polite">
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span class="ml-1">입력 중</span>
         </div>
         
         <!-- Scroll to Bottom Button -->
@@ -176,26 +182,27 @@
     </main>
 
     <!-- Input Area - Fixed at bottom -->
-    <div id="chat-input" class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-20 transition-all duration-300">
-        <div class="max-w-5xl mx-auto p-3" style="margin-left: auto; margin-right: auto;">
+    <div class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-20">
+        <div class="max-w-5xl mx-auto p-3">
             <div class="bg-gray-800 rounded-lg shadow-lg p-3">
-                <form id="message-form" class="flex gap-2">
+                <form id="message-form" class="flex gap-2 items-end">
                     <label for="message-input" class="sr-only">메시지 입력</label>
-                    <input 
-                        type="text" 
+                    <textarea 
                         id="message-input" 
-                        class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
-                        placeholder="메시지 입력 (최대 500자)"
+                        class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 resize-none overflow-hidden"
+                        placeholder="메시지 입력 (최대 500자, Shift+Enter로 줄바꿈)"
                         maxlength="500"
                         autocomplete="off"
                         aria-label="메시지 입력"
+                        rows="1"
                         required
-                    />
+                    ></textarea>
                     <button 
                         type="submit" 
                         id="send-button"
                         class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        aria-label="메시지 전송">
+                        aria-label="메시지 전송"
+                        disabled>
                         전송
                     </button>
                 </form>
@@ -303,34 +310,7 @@
 
     <!-- JavaScript Modules -->
     <script type="module" src="/js/chat.js"></script>
-        <!-- JavaScript Modules -->
-    <script type="module" src="/js/chat.js"></script>
     <script>
-        // Platform Info Panel Toggle with Chat Area Adjustment
-        const infoToggle = document.getElementById('info-toggle');
-        const platformInfo = document.getElementById('platform-info');
-        const chatMain = document.getElementById('chat-main');
-        const chatInput = document.getElementById('chat-input');
-        let isPanelOpen = false;
-
-        infoToggle.addEventListener('click', () => {
-            isPanelOpen = !isPanelOpen;
-            
-            if (isPanelOpen) {
-                // Open panel - chat area shrinks from left
-                platformInfo.classList.remove('-translate-x-full');
-                chatMain.style.marginLeft = '300px';
-                chatMain.style.width = 'calc(100% - 300px)';
-                chatInput.style.paddingLeft = '300px';
-            } else {
-                // Close panel - chat area expands back
-                platformInfo.classList.add('-translate-x-full');
-                chatMain.style.marginLeft = '0';
-                chatMain.style.width = '100%';
-                chatInput.style.paddingLeft = '0';
-            }
-        });
-
         // Bug Report Modal
         const bugReportBtn = document.getElementById('bug-report-btn');
         const bugReportModal = document.getElementById('bug-report-modal');
@@ -363,8 +343,6 @@
             }
         });
     </script>
-</body>
-</html>
 </body>
 </html>
 
