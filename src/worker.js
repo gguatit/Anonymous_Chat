@@ -354,12 +354,17 @@ export class ChatRoom {
                         metadata.lastMessageTime = Date.now();
                         metrics.totalMessages++;
 
+                        // Generate unique message ID
+                        const messageId = `msg_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+
                         // Create message object with signature
                         const message = {
                             type: 'message',
+                            messageId: messageId,
                             content: this.sanitizeInput(data.content),
                             sessionId: sessionId,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
+                            editedAt: null
                         };
                         
                         // Generate server signature
@@ -379,6 +384,122 @@ export class ChatRoom {
 
                         // Broadcast message to all users
                         this.broadcast(message);
+                        break;
+                    }
+
+                    case 'edit': {
+                        if (!sessionId || !metadata) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '세션이 유효하지 않습니다.'
+                            });
+                            return;
+                        }
+
+                        // Verify edit request signature
+                        if (data.signature) {
+                            const isValid = await verifyMessageSignature(
+                                {
+                                    content: data.newContent,
+                                    sessionId: data.sessionId,
+                                    timestamp: data.timestamp
+                                },
+                                data.signature,
+                                SECURITY.HMAC_SECRET
+                            );
+                            
+                            if (!isValid) {
+                                this.sendToSession(sessionId, {
+                                    type: 'error',
+                                    content: '메시지 수정 요청 검증 실패'
+                                });
+                                console.warn('Invalid edit signature from session:', sessionId);
+                                return;
+                            }
+                        }
+
+                        // Verify session ID matches
+                        if (data.sessionId !== sessionId) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '세션 ID가 일치하지 않습니다.'
+                            });
+                            return;
+                        }
+
+                        // Find the original message
+                        const messageIndex = this.messages.findIndex(msg => msg.messageId === data.messageId);
+                        
+                        if (messageIndex === -1) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '수정할 메시지를 찾을 수 없습니다.'
+                            });
+                            return;
+                        }
+
+                        const originalMessage = this.messages[messageIndex];
+
+                        // Verify ownership
+                        if (originalMessage.sessionId !== sessionId) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '자신의 메시지만 수정할 수 있습니다.'
+                            });
+                            console.warn('Unauthorized edit attempt:', sessionId, 'tried to edit message from', originalMessage.sessionId);
+                            return;
+                        }
+
+                        // Verify 10-minute time limit
+                        const now = Date.now();
+                        const tenMinutes = 10 * 60 * 1000;
+                        if (now - originalMessage.timestamp > tenMinutes) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '메시지는 작성 후 10분 이내에만 수정할 수 있습니다.'
+                            });
+                            return;
+                        }
+
+                        // Validate new content
+                        if (!data.newContent || data.newContent.trim().length === 0) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '수정할 내용이 비어있습니다.'
+                            });
+                            return;
+                        }
+
+                        if (data.newContent.length > SECURITY.MAX_MESSAGE_LENGTH) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: `메시지는 최대 ${SECURITY.MAX_MESSAGE_LENGTH}자까지 입력할 수 있습니다.`
+                            });
+                            return;
+                        }
+
+                        // Update message
+                        const editedMessage = {
+                            ...originalMessage,
+                            content: this.sanitizeInput(data.newContent),
+                            editedAt: now
+                        };
+
+                        // Generate new server signature for edited message
+                        editedMessage.signature = await generateMessageSignature(editedMessage, SECURITY.HMAC_SECRET);
+
+                        // Update in messages array
+                        this.messages[messageIndex] = editedMessage;
+
+                        // Persist to Durable Object storage
+                        this.state.storage.put('messages', this.messages);
+
+                        // Broadcast edited message to all users
+                        this.broadcast({
+                            type: 'message_edited',
+                            message: editedMessage
+                        });
+
                         break;
                     }
 

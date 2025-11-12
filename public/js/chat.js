@@ -48,6 +48,10 @@ class ChatClient {
                     this.sessionManager.getSessionId()
                 );
                 break;
+            case 'message_edited':
+                // Update existing message in UI
+                this.ui.updateMessage(data.message.messageId, data.message.content, data.message.editedAt);
+                break;
             case 'user_count':
                 this.ui.updateUserCount(data.count);
                 break;
@@ -192,6 +196,42 @@ class ChatClient {
                 });
             }
         }, 2000);
+    }
+
+    async editMessage(messageId, newContent) {
+        // Validate new content
+        if (!newContent || newContent.trim().length === 0) {
+            this.ui.displayError('메시지 내용이 비어있습니다.');
+            return;
+        }
+
+        if (newContent.length > 500) {
+            this.ui.displayError('메시지는 최대 500자까지 가능합니다.');
+            return;
+        }
+
+        const now = Date.now();
+
+        // Prepare edit data
+        const editData = {
+            type: 'edit',
+            messageId: messageId,
+            newContent: newContent,
+            sessionId: this.sessionManager.getSessionId(),
+            timestamp: now
+        };
+
+        // Generate client-side signature for edit request
+        const signature = await this.generateMessageSignature({
+            content: newContent,
+            sessionId: editData.sessionId,
+            timestamp: editData.timestamp
+        });
+
+        editData.signature = signature;
+
+        // Send edit request to server
+        this.wsManager.send(editData);
     }
 }
 
