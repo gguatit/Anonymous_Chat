@@ -425,12 +425,7 @@ if (messagesThisMinute >= MAX_MESSAGES_PER_MINUTE) {
 | 🐧 Arch Linux | Latest | ✅ | 모든 기능 정상 작동 |
 | 🐧 Ubuntu | 20.04+ | ✅ | 모든 기능 정상 작동 |
 | 🐧 Garuda Linux | Latest | ✅ | 모든 기능 정상 작동 |
-
-### ⚠️ 부분 지원
-
-| 플랫폼 | 버전 | 상태 | 제한사항 |
-|--------|------|------|----------|
-| 📱 Android | 16 | ⚠️ | 자동 스크롤 미작동, 수동 스크롤 필요 |
+| 📱 Android | 16 | ✅ | 모든 기능 정상 작동 |
 
 ### ❌ 미지원 (테스트 안 됨)
 
@@ -441,8 +436,8 @@ if (messagesThisMinute >= MAX_MESSAGES_PER_MINUTE) {
 
 ### 💡 권장 환경
 
-> **최상의 경험**: 데스크톱 PC (Windows, Linux)  
-> **모바일**: 기본 채팅 기능은 작동하나 UX 제한 있음
+> **데스크톱 및 모바일 모두 완벽하게 지원됩니다**  
+> Windows, Linux, Android에서 최상의 경험을 제공합니다
 
 ---
 
@@ -685,17 +680,6 @@ wrangler rollback [deployment-id]
 1. 잠시 대기 (1분 후 자동 해제)
 2. 불필요한 브라우저 탭 닫기
 3. `src/worker.js`에서 `RATE_LIMIT` 값 조정 (필요시)
-</details>
-
-<details>
-<summary><b>❓ 자동 스크롤이 작동하지 않아요 (모바일)</b></summary>
-
-**원인:**
-- Android 브라우저의 스크롤 동작 차이
-
-**해결:**
-- 수동으로 스크롤하여 최신 메시지 확인
-- 데스크톱 환경 사용 권장
 </details>
 
 <details>
