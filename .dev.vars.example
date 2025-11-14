@@ -1,0 +1,5 @@
+# Development environment variables
+# Copy this file to .dev.vars for local development
+
+# HMAC Secret for message signing (generate with: openssl rand -hex 32)
+HMAC_SECRET=your-random-secret-key-here-use-openssl-rand-hex-32

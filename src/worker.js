@@ -13,7 +13,6 @@ const SECURITY = {
     BANNED_IPS: new Set(), // Can be populated from KV or environment
     IP_WHITELIST: null, // null means all IPs allowed
     ALLOWED_ORIGINS: ['https://kalpha.mmv.kr'], // Production domain
-    HMAC_SECRET: 'your-secret-key-change-this-in-production', // Should be in env variable
 };
 
 // Metrics storage (in-memory, per-worker instance)
@@ -27,6 +26,9 @@ const metrics = {
 export default {
     async fetch(request, env, ctx) {
         try {
+            // Get HMAC secret from environment variable or generate random for development
+            const HMAC_SECRET = env.HMAC_SECRET || crypto.randomUUID();
+            
             const url = new URL(request.url);
 
             // Force HTTPS redirect in production
@@ -48,7 +50,7 @@ export default {
 
             // WebSocket upgrade request
             if (url.pathname === '/ws') {
-                return await handleWebSocket(request, env);
+                return await handleWebSocket(request, env, HMAC_SECRET);
             }
 
             // Metrics endpoint (minimal anonymous data)
@@ -103,7 +105,7 @@ export default {
     }
 };
 
-async function handleWebSocket(request, env) {
+async function handleWebSocket(request, env, HMAC_SECRET) {
     // Check for WebSocket upgrade
     const upgradeHeader = request.headers.get('Upgrade');
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
@@ -133,8 +135,14 @@ async function handleWebSocket(request, env) {
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
 
-    // Forward the request to the Durable Object
-    return room.fetch(request);
+    // Forward the request to the Durable Object with HMAC_SECRET in headers
+    const modifiedRequest = new Request(request, {
+        headers: {
+            ...Object.fromEntries(request.headers),
+            'X-HMAC-Secret': HMAC_SECRET
+        }
+    });
+    return room.fetch(modifiedRequest);
 }
 
 // Check if origin is allowed
@@ -223,6 +231,9 @@ export class ChatRoom {
     }
 
     async fetch(request) {
+        // Get HMAC_SECRET from request headers
+        const HMAC_SECRET = request.headers.get('X-HMAC-Secret');
+        
         // Initialize messages from storage on first request
         await this.initializeMessages();
         
@@ -307,7 +318,7 @@ export class ChatRoom {
                             return;
                         }
 
-                        // Verify message signature if provided
+                        // Verify message signature if provided (server-side only)
                         if (data.signature) {
                             const isValid = await verifyMessageSignature(
                                 {
@@ -316,7 +327,7 @@ export class ChatRoom {
                                     timestamp: data.timestamp
                                 },
                                 data.signature,
-                                SECURITY.HMAC_SECRET
+                                HMAC_SECRET
                             );
                             
                             if (!isValid) {
@@ -368,7 +379,7 @@ export class ChatRoom {
                         };
                         
                         // Generate server signature
-                        message.signature = await generateMessageSignature(message, SECURITY.HMAC_SECRET);
+                        message.signature = await generateMessageSignature(message, HMAC_SECRET);
 
                         // Add to messages array
                         this.messages.push(message);
@@ -396,7 +407,7 @@ export class ChatRoom {
                             return;
                         }
 
-                        // Verify edit request signature
+                        // Verify edit request signature (server-side only)
                         if (data.signature) {
                             const isValid = await verifyMessageSignature(
                                 {
@@ -405,7 +416,7 @@ export class ChatRoom {
                                     timestamp: data.timestamp
                                 },
                                 data.signature,
-                                SECURITY.HMAC_SECRET
+                                HMAC_SECRET
                             );
                             
                             if (!isValid) {
@@ -486,7 +497,7 @@ export class ChatRoom {
                         };
 
                         // Generate new server signature for edited message
-                        editedMessage.signature = await generateMessageSignature(editedMessage, SECURITY.HMAC_SECRET);
+                        editedMessage.signature = await generateMessageSignature(editedMessage, HMAC_SECRET);
 
                         // Update in messages array
                         this.messages[messageIndex] = editedMessage;

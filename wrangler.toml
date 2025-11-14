@@ -19,6 +19,8 @@ binding = "ASSETS"
 # Environment variables
 [vars]
 ENVIRONMENT = "production"
+# HMAC_SECRET should be set in production via: wrangler secret put HMAC_SECRET
+# For development, a random secret is auto-generated
 
 # Observability configuration
 [observability]
