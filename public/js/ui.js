@@ -60,6 +60,11 @@ export class UIManager {
     }
 
     displayMessage(data, isOwnMessage, sessionId) {
+        // 중복 메시지 체크 - 이미 표시된 메시지는 무시
+        if (data.messageId && this.messagesContainer.querySelector(`[data-message-id="${data.messageId}"]`)) {
+            return; // 이미 표시된 메시지는 스킵
+        }
+
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
             (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');

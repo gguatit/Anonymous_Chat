@@ -78,6 +78,7 @@ class ChatClient {
             case 'connected':
                 statusText = '연결됨';
                 this.ui.setInputEnabled(true);
+                // 재연결 시에도 기존 메시지는 유지됨 (중복 체크로 자동 필터링)
                 break;
             case 'disconnected':
                 statusText = '연결 끊김';
