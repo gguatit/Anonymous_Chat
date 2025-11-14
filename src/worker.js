@@ -250,7 +250,7 @@ export class ChatRoom {
         const [client, server] = Object.values(pair);
 
         // Accept the WebSocket connection
-        await this.handleSession(server, clientIP);
+        await this.handleSession(server, clientIP, HMAC_SECRET);
 
         return new Response(null, {
             status: 101,
@@ -258,7 +258,7 @@ export class ChatRoom {
         });
     }
 
-    async handleSession(websocket, clientIP) {
+    async handleSession(websocket, clientIP, HMAC_SECRET) {
         websocket.accept();
 
         let sessionId = null;
