@@ -65,17 +65,6 @@ export default {
 
             // File upload endpoint
             if (url.pathname === '/api/upload' && request.method === 'POST') {
-                // R2 바인딩 확인
-                if (!env.FILE_BUCKET) {
-                    console.error('FILE_BUCKET binding is not available');
-                    return new Response(JSON.stringify({ 
-                        error: 'R2 버킷이 연결되지 않았습니다. 관리자에게 문의하세요.',
-                        debug: 'FILE_BUCKET binding missing'
-                    }), {
-                        status: 500,
-                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                    });
-                }
                 return await handleFileUpload(request, env, corsHeaders);
             }
 

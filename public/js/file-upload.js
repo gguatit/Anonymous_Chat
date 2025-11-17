@@ -13,53 +13,20 @@ export class FileUploadManager {
         this.currentFile = null;
         this.maxFileSize = 10 * 1024 * 1024; // 10MB
         
-        // DOM 요소 확인
-        console.log('FileUploadManager initialized');
-        console.log('Elements found:', {
-            fileInput: !!this.fileInput,
-            uploadSection: !!this.uploadSection,
-            filePreview: !!this.filePreview,
-            fileIcon: !!this.fileIcon
-        });
-        
         this.initializeEventListeners();
     }
 
     initializeEventListeners() {
-        if (!this.fileInput) {
-            console.error('File input element not found!');
-            return;
-        }
-        
-        this.fileInput.addEventListener('change', (e) => {
-            console.log('File input change event triggered');
-            this.handleFileSelect(e);
-        });
-        
-        if (this.cancelButton) {
-            this.cancelButton.addEventListener('click', () => this.cancelUpload());
-        }
+        this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        this.cancelButton.addEventListener('click', () => this.cancelUpload());
     }
 
     handleFileSelect(event) {
-        console.log('handleFileSelect called', event);
         const file = event.target.files[0];
-        console.log('Selected file:', file);
-        
-        if (!file) {
-            console.log('No file selected');
-            return;
-        }
-
-        console.log('File details:', {
-            name: file.name,
-            type: file.type,
-            size: file.size
-        });
+        if (!file) return;
 
         // 파일 크기 체크
         if (file.size > this.maxFileSize) {
-            console.error('File too large:', file.size);
             alert('파일 크기는 10MB를 초과할 수 없습니다.');
             this.fileInput.value = '';
             return;
@@ -70,27 +37,19 @@ export class FileUploadManager {
     }
 
     showUploadSection(file) {
-        console.log('Showing upload section for file:', file.name, file.type);
-        
         this.fileName.textContent = file.name;
         this.fileSize.textContent = this.formatFileSize(file.size);
         
         // 이미지 파일인 경우 미리보기 표시
         if (file.type.startsWith('image/')) {
-            console.log('Image file detected, loading preview...');
             const reader = new FileReader();
             reader.onload = (e) => {
-                console.log('Image loaded, showing preview');
                 this.filePreview.src = e.target.result;
                 this.filePreview.classList.remove('hidden');
                 this.fileIcon.classList.add('hidden');
             };
-            reader.onerror = (error) => {
-                console.error('Failed to load image preview:', error);
-            };
             reader.readAsDataURL(file);
         } else {
-            console.log('Non-image file, showing icon');
             this.filePreview.classList.add('hidden');
             this.fileIcon.classList.remove('hidden');
         }
@@ -139,12 +98,7 @@ export class FileUploadManager {
 
         } catch (error) {
             console.error('Upload error:', error);
-            console.error('Upload error details:', error.message);
-            
-            // 더 상세한 에러 메시지 표시
-            const errorMessage = error.message || '파일 업로드 중 오류가 발생했습니다.';
-            alert(`파일 업로드 실패:\n${errorMessage}\n\n브라우저 콘솔(F12)에서 자세한 내용을 확인하세요.`);
-            
+            alert(error.message || '파일 업로드 중 오류가 발생했습니다.');
             this.cancelUpload();
             return null;
         }
