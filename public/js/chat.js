@@ -35,7 +35,8 @@ class ChatClient {
             onInput: () => this.handleInput(),
             onTyping: () => this.handleTyping(),
             onScrollClick: () => this.ui.scrollToBottom(true),
-            onScroll: () => this.ui.updateScrollButton()
+            onScroll: () => this.ui.updateScrollButton(),
+            onDelete: (messageId) => this.deleteMessage(messageId)
         });
     }
 
@@ -51,6 +52,10 @@ class ChatClient {
             case 'message_edited':
                 // Update existing message in UI
                 this.ui.updateMessage(data.message.messageId, data.message.content, data.message.editedAt);
+                break;
+            case 'message_deleted':
+                // Remove message from UI
+                this.ui.removeMessage(data.messageId);
                 break;
             case 'user_count':
                 this.ui.updateUserCount(data.count);
@@ -193,6 +198,18 @@ class ChatClient {
 
         // Send edit request to server without signature
         this.wsManager.send(editData);
+    }
+
+    async deleteMessage(messageId) {
+        const deleteData = {
+            type: 'delete',
+            messageId: messageId,
+            sessionId: this.sessionManager.getSessionId(),
+            timestamp: Date.now()
+        };
+
+        // Send delete request to server
+        this.wsManager.send(deleteData);
     }
 }
 

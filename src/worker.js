@@ -515,6 +515,73 @@ export class ChatRoom {
                         break;
                     }
 
+                    case 'delete': {
+                        if (!sessionId || !metadata) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '세션이 유효하지 않습니다.'
+                            });
+                            return;
+                        }
+
+                        // Verify session ID matches
+                        if (data.sessionId !== sessionId) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '세션 ID가 일치하지 않습니다.'
+                            });
+                            return;
+                        }
+
+                        // Find the message to delete
+                        const messageIndex = this.messages.findIndex(msg => msg.messageId === data.messageId);
+                        
+                        if (messageIndex === -1) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '삭제할 메시지를 찾을 수 없습니다.'
+                            });
+                            return;
+                        }
+
+                        const messageToDelete = this.messages[messageIndex];
+
+                        // Verify ownership
+                        if (messageToDelete.sessionId !== sessionId) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '자신의 메시지만 삭제할 수 있습니다.'
+                            });
+                            console.warn('Unauthorized delete attempt:', sessionId, 'tried to delete message from', messageToDelete.sessionId);
+                            return;
+                        }
+
+                        // Verify 10-minute time limit
+                        const now = Date.now();
+                        const tenMinutes = 10 * 60 * 1000;
+                        if (now - messageToDelete.timestamp > tenMinutes) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '메시지는 작성 후 10분 이내에만 삭제할 수 있습니다.'
+                            });
+                            return;
+                        }
+
+                        // Remove message from array
+                        this.messages.splice(messageIndex, 1);
+
+                        // Persist to Durable Object storage
+                        this.state.storage.put('messages', this.messages);
+
+                        // Broadcast deletion to all users
+                        this.broadcast({
+                            type: 'message_deleted',
+                            messageId: data.messageId
+                        });
+
+                        break;
+                    }
+
                     case 'typing':
                         if (!sessionId) return;
 

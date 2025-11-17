@@ -57,6 +57,9 @@ export class UIManager {
         // Scroll button
         this.scrollButton.addEventListener('click', callbacks.onScrollClick);
         this.messagesContainer.addEventListener('scroll', callbacks.onScroll);
+        
+        // Store delete callback
+        this.onDelete = callbacks.onDelete;
     }
 
     displayMessage(data, isOwnMessage, sessionId) {
@@ -155,8 +158,11 @@ export class UIManager {
         menu.style.minWidth = '120px';
 
         menu.innerHTML = `
-            <button class="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
+            <button class="edit-message-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
                 메시지 수정
+            </button>
+            <button class="delete-message-btn w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-colors">
+                메시지 삭제
             </button>
         `;
 
@@ -179,8 +185,10 @@ export class UIManager {
             menu.style.top = `${y - rect.height}px`;
         }
 
-        // Add click handler
-        const editButton = menu.querySelector('button');
+        // Add click handlers
+        const editButton = menu.querySelector('.edit-message-btn');
+        const deleteButton = menu.querySelector('.delete-message-btn');
+        
         editButton.addEventListener('click', () => {
             console.log('Edit button clicked for messageId:', messageId);
             menu.remove();
@@ -195,6 +203,13 @@ export class UIManager {
             console.log('Current content:', currentContent);
             this.showEditMode(messageId, currentContent);
         });
+
+        deleteButton.addEventListener('click', () => {
+            console.log('Delete button clicked for messageId:', messageId);
+            menu.remove();
+            this.confirmDelete(messageId);
+        });
+
         // Close menu when clicking outside
         const closeMenu = (e) => {
             if (!menu.contains(e.target)) {
@@ -208,6 +223,17 @@ export class UIManager {
             document.addEventListener('click', closeMenu);
             document.addEventListener('touchstart', closeMenu);
         }, 100);
+    }
+
+    confirmDelete(messageId) {
+        // Show confirmation dialog
+        const confirmed = confirm('이 메시지를 삭제하시겠습니까?');
+        if (!confirmed) return;
+
+        // Emit delete event
+        if (this.onDelete) {
+            this.onDelete(messageId);
+        }
     }
 
     showEditMode(messageId, currentContent) {
@@ -293,6 +319,14 @@ export class UIManager {
             if (Date.now() - messageTimestamp >= 10 * 60 * 1000) {
                 editBtn.remove();
             }
+        }
+    }
+
+    removeMessage(messageId) {
+        const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageDiv) {
+            messageDiv.remove();
+            console.log('Message removed:', messageId);
         }
     }
 
@@ -411,9 +445,27 @@ export class UIManager {
     formatMessageContent(content) {
         if (!content) return '';
         
-        // URL 자동 링크
-        return this.sanitizeInput(content)
-            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">$1</a>')
-            .replace(/\n/g, '<br>');
+        // Sanitize first
+        const sanitized = this.sanitizeInput(content);
+        
+        // URL 패턴 매칭 (더 정확한 패턴)
+        const urlPattern = /(https?:\/\/[^\s<]+[^\s<.,)])/g;
+        
+        // URL을 링크로 변환하고 프리뷰 생성
+        const formatted = sanitized.replace(urlPattern, (url) => {
+            // URL이 이미지인지 확인
+            const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i;
+            if (imageExtensions.test(url)) {
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline block">${url}</a>
+                    <img src="${url}" alt="Image preview" class="mt-2 max-w-full max-h-64 rounded-lg border border-gray-600 object-contain" 
+                         onerror="this.style.display='none'" loading="lazy">`;
+            }
+            
+            // 일반 링크
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${url}</a>`;
+        });
+        
+        // 줄바꿈 처리
+        return formatted.replace(/\n/g, '<br>');
     }
 }
