@@ -2,14 +2,12 @@
 import { SessionManager } from './session.js';
 import { WebSocketManager } from './websocket.js';
 import { UIManager } from './ui.js';
-import { FileUploadManager } from './file-upload.js';
 
 class ChatClient {
     constructor() {
         // Initialize managers
         this.sessionManager = new SessionManager();
         this.ui = new UIManager();
-        this.fileManager = new FileUploadManager();
         
         // State
         this.typingTimeout = null;
@@ -101,12 +99,6 @@ class ChatClient {
 
     async handleSubmit(e) {
         e.preventDefault();
-        
-        // 파일이 선택되어 있으면 파일 업로드 먼저 처리
-        if (this.fileManager.hasFile()) {
-            await this.handleFileUpload();
-            return;
-        }
 
         const message = this.ui.getInputValue();
         if (!message) return;
@@ -134,57 +126,6 @@ class ChatClient {
 
         // Send without signature - server will sign it
         this.wsManager.send(messageData);
-
-        this.lastMessageTime = now;
-        this.ui.clearInput();
-    }
-
-    async handleFileUpload() {
-        try {
-            this.ui.displaySystemMessage('파일 업로드 중...');
-            
-            const result = await this.fileManager.uploadFile();
-            
-            if (result && result.success) {
-                const downloadUrl = window.location.origin + result.downloadUrl;
-                
-                // 이미지 파일 여부 확인
-                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(result.fileName);
-                
-                let fileMessage;
-                if (isImage) {
-                    // 이미지는 <img> 태그로 표시 (특수 마커 포함)
-                    fileMessage = `[IMAGE]${downloadUrl}[/IMAGE]\n📎 ${result.fileName} (${this.formatFileSize(result.fileSize)}) - ${result.expiresIn} 후 삭제`;
-                } else {
-                    // 일반 파일은 다운로드 링크
-                    fileMessage = `📎 파일: ${result.fileName} (${this.formatFileSize(result.fileSize)})\n` +
-                                  `다운로드: ${downloadUrl}\n` +
-                                  `만료: ${result.expiresIn} 후 자동 삭제`;
-                }
-                
-                const messageData = {
-                    type: 'message',
-                    content: fileMessage,
-                    sessionId: this.sessionManager.getSessionId(),
-                    timestamp: Date.now()
-                };
-
-                this.wsManager.send(messageData);
-                this.ui.displaySystemMessage('파일이 업로드되었습니다. (12시간 후 자동 삭제)');
-            }
-        } catch (error) {
-            console.error('File upload failed:', error);
-            this.ui.displayError('파일 업로드에 실패했습니다.');
-        }
-    }
-
-    formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-    }
 
         this.lastMessageTime = now;
         this.ui.clearInput();

@@ -411,17 +411,7 @@ export class UIManager {
     formatMessageContent(content) {
         if (!content) return '';
         
-        // 이미지 마커 감지: [IMAGE]url[/IMAGE]
-        const imageRegex = /\[IMAGE\](.*?)\[\/IMAGE\]/g;
-        
-        if (imageRegex.test(content)) {
-            // 이미지가 포함된 경우
-            return content.replace(imageRegex, (match, url) => {
-                return `<img src="${this.sanitizeInput(url)}" alt="이미지" class="max-w-full max-h-96 rounded-lg my-2" loading="lazy" />`;
-            }).replace(/\n/g, '<br>');
-        }
-        
-        // 일반 텍스트 (URL 자동 링크)
+        // URL 자동 링크
         return this.sanitizeInput(content)
             .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">$1</a>')
             .replace(/\n/g, '<br>');

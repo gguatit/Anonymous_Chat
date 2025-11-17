@@ -5,7 +5,6 @@ const RATE_LIMIT = {
     MAX_MESSAGES_PER_MINUTE: 30,
     MAX_CONNECTIONS_PER_IP: 5,
     MESSAGE_COOLDOWN: 1000, // 1 second between messages
-    MAX_FILES_PER_IP_PER_DAY: 50, // 파일 업로드 제한
 };
 
 // Security configuration
@@ -16,25 +15,11 @@ const SECURITY = {
     ALLOWED_ORIGINS: ['https://kalpha.mmv.kr'], // Production domain
 };
 
-// File upload configuration (무료 범위 최적화)
-const FILE_CONFIG = {
-    MAX_SIZE: 10 * 1024 * 1024, // 10MB
-    RETENTION_HOURS: 12, // 12시간 후 자동 삭제
-    ALLOWED_TYPES: [
-        'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-        'application/pdf',
-        'text/plain', 'text/csv',
-        'application/zip',
-        'video/mp4', 'video/webm',
-    ],
-};
-
 // Metrics storage (in-memory, per-worker instance)
 const metrics = {
     totalConnections: 0,
     activeConnections: 0,
     totalMessages: 0,
-    totalFiles: 0,
     errors: 0,
 };
 
@@ -61,21 +46,6 @@ export default {
             // Handle CORS preflight
             if (request.method === 'OPTIONS') {
                 return new Response(null, { headers: corsHeaders });
-            }
-
-            // File upload endpoint
-            if (url.pathname === '/api/upload' && request.method === 'POST') {
-                return await handleFileUpload(request, env, corsHeaders);
-            }
-
-            // File download endpoint
-            if (url.pathname.startsWith('/api/file/')) {
-                return await handleFileDownload(request, env, corsHeaders);
-            }
-
-            // File delete endpoint (optional)
-            if (url.pathname.startsWith('/api/file/') && request.method === 'DELETE') {
-                return await handleFileDelete(request, env, corsHeaders);
             }
 
             // WebSocket upgrade request
@@ -132,12 +102,6 @@ export default {
             console.error('Worker error:', error);
             return new Response('Internal Server Error', { status: 500 });
         }
-    },
-
-    // Cron Trigger: 12시간마다 만료된 파일 삭제 (무료)
-    async scheduled(event, env, ctx) {
-        console.log('Cron triggered: Cleaning up expired files');
-        await cleanupExpiredFiles(env);
     }
 };
 
@@ -197,197 +161,6 @@ function isAllowedOrigin(origin) {
 }
 
 // 파일 업로드 핸들러 (무료 범위 최적화)
-async function handleFileUpload(request, env, corsHeaders) {
-    try {
-        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
-        
-        // Rate limiting check (IP당 하루 50개)
-        const uploadKey = `upload_count_${clientIP}_${new Date().toISOString().split('T')[0]}`;
-        const uploadCount = await env.FILE_BUCKET.get(uploadKey);
-        
-        if (uploadCount && parseInt(uploadCount) >= RATE_LIMIT.MAX_FILES_PER_IP_PER_DAY) {
-            return new Response(JSON.stringify({ 
-                error: '일일 업로드 한도를 초과했습니다. (최대 50개)' 
-            }), { 
-                status: 429, 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            });
-        }
-
-        const formData = await request.formData();
-        const file = formData.get('file');
-        
-        if (!file) {
-            return new Response(JSON.stringify({ error: '파일이 없습니다.' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-        }
-
-        // 파일 크기 체크 (10MB)
-        if (file.size > FILE_CONFIG.MAX_SIZE) {
-            return new Response(JSON.stringify({ 
-                error: `파일 크기는 ${FILE_CONFIG.MAX_SIZE / 1024 / 1024}MB를 초과할 수 없습니다.` 
-            }), {
-                status: 413,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-        }
-
-        // 파일 타입 체크
-        if (!FILE_CONFIG.ALLOWED_TYPES.includes(file.type)) {
-            return new Response(JSON.stringify({ 
-                error: '지원하지 않는 파일 형식입니다.' 
-            }), {
-                status: 415,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-        }
-
-        // 고유 파일 ID 생성
-        const fileId = crypto.randomUUID();
-        const now = Date.now();
-        const expiresAt = now + (FILE_CONFIG.RETENTION_HOURS * 60 * 60 * 1000);
-
-        // R2에 업로드
-        await env.FILE_BUCKET.put(fileId, file.stream(), {
-            httpMetadata: {
-                contentType: file.type,
-            },
-            customMetadata: {
-                originalName: file.name,
-                uploadedAt: now.toString(),
-                expiresAt: expiresAt.toString(),
-                uploaderIP: clientIP,
-                size: file.size.toString(),
-            }
-        });
-
-        // 업로드 카운트 증가
-        await env.FILE_BUCKET.put(uploadKey, ((parseInt(uploadCount) || 0) + 1).toString(), {
-            expiresIn: 86400 // 24시간
-        });
-
-        metrics.totalFiles++;
-
-        return new Response(JSON.stringify({
-            success: true,
-            fileId,
-            fileName: file.name,
-            fileSize: file.size,
-            downloadUrl: `/api/file/${fileId}`,
-            expiresAt,
-            expiresIn: `${FILE_CONFIG.RETENTION_HOURS}시간`,
-        }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-
-    } catch (error) {
-        console.error('File upload error:', error);
-        return new Response(JSON.stringify({ error: '파일 업로드 중 오류가 발생했습니다.' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-}
-
-// 파일 다운로드 핸들러
-async function handleFileDownload(request, env, corsHeaders) {
-    try {
-        const url = new URL(request.url);
-        const fileId = url.pathname.split('/').pop();
-
-        const object = await env.FILE_BUCKET.get(fileId);
-        
-        if (!object) {
-            return new Response('파일을 찾을 수 없습니다.', { 
-                status: 404,
-                headers: corsHeaders
-            });
-        }
-
-        // 만료 시간 체크
-        const expiresAt = parseInt(object.customMetadata?.expiresAt || '0');
-        if (Date.now() > expiresAt) {
-            // 만료된 파일 삭제
-            await env.FILE_BUCKET.delete(fileId);
-            return new Response('파일이 만료되었습니다. (12시간 보관)', { 
-                status: 410,
-                headers: corsHeaders
-            });
-        }
-
-        const headers = new Headers(corsHeaders);
-        headers.set('Content-Type', object.httpMetadata?.contentType || 'application/octet-stream');
-        headers.set('Content-Disposition', `attachment; filename="${object.customMetadata?.originalName || fileId}"`);
-        headers.set('Cache-Control', 'public, max-age=3600');
-        headers.set('X-File-Size', object.customMetadata?.size || '0');
-        headers.set('X-Expires-At', expiresAt.toString());
-
-        return new Response(object.body, { headers });
-
-    } catch (error) {
-        console.error('File download error:', error);
-        return new Response('파일 다운로드 중 오류가 발생했습니다.', {
-            status: 500,
-            headers: corsHeaders
-        });
-    }
-}
-
-// 파일 삭제 핸들러 (선택적)
-async function handleFileDelete(request, env, corsHeaders) {
-    try {
-        const url = new URL(request.url);
-        const fileId = url.pathname.split('/').pop();
-
-        await env.FILE_BUCKET.delete(fileId);
-
-        return new Response(JSON.stringify({ success: true, message: '파일이 삭제되었습니다.' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-
-    } catch (error) {
-        console.error('File delete error:', error);
-        return new Response(JSON.stringify({ error: '파일 삭제 중 오류가 발생했습니다.' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-}
-
-// Cron: 만료된 파일 자동 삭제 (12시간마다 실행)
-async function cleanupExpiredFiles(env) {
-    try {
-        const now = Date.now();
-        let deletedCount = 0;
-
-        // R2 버킷의 모든 파일 목록 가져오기
-        const listed = await env.FILE_BUCKET.list();
-        
-        for (const object of listed.objects) {
-            // 메타데이터가 없는 파일은 스킵 (업로드 카운트 등)
-            if (!object.customMetadata?.expiresAt) continue;
-
-            const expiresAt = parseInt(object.customMetadata.expiresAt);
-            
-            // 만료된 파일 삭제
-            if (now > expiresAt) {
-                await env.FILE_BUCKET.delete(object.key);
-                deletedCount++;
-                console.log(`Deleted expired file: ${object.key}`);
-            }
-        }
-
-        console.log(`Cleanup completed: ${deletedCount} files deleted`);
-        return deletedCount;
-
-    } catch (error) {
-        console.error('Cleanup error:', error);
-        return 0;
-    }
-}
-
 // HMAC signature generation for message integrity
 async function generateMessageSignature(message, secret) {
     const encoder = new TextEncoder();
