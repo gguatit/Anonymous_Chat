@@ -226,11 +226,7 @@ export class UIManager {
     }
 
     confirmDelete(messageId) {
-        // Show confirmation dialog
-        const confirmed = confirm('이 메시지를 삭제하시겠습니까?');
-        if (!confirmed) return;
-
-        // Emit delete event
+        // Directly delete without confirmation
         if (this.onDelete) {
             this.onDelete(messageId);
         }
