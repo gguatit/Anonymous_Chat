@@ -37,19 +37,27 @@ export class FileUploadManager {
     }
 
     showUploadSection(file) {
+        console.log('Showing upload section for file:', file.name, file.type);
+        
         this.fileName.textContent = file.name;
         this.fileSize.textContent = this.formatFileSize(file.size);
         
         // 이미지 파일인 경우 미리보기 표시
         if (file.type.startsWith('image/')) {
+            console.log('Image file detected, loading preview...');
             const reader = new FileReader();
             reader.onload = (e) => {
+                console.log('Image loaded, showing preview');
                 this.filePreview.src = e.target.result;
                 this.filePreview.classList.remove('hidden');
                 this.fileIcon.classList.add('hidden');
             };
+            reader.onerror = (error) => {
+                console.error('Failed to load image preview:', error);
+            };
             reader.readAsDataURL(file);
         } else {
+            console.log('Non-image file, showing icon');
             this.filePreview.classList.add('hidden');
             this.fileIcon.classList.remove('hidden');
         }
@@ -98,7 +106,12 @@ export class FileUploadManager {
 
         } catch (error) {
             console.error('Upload error:', error);
-            alert(error.message || '파일 업로드 중 오류가 발생했습니다.');
+            console.error('Upload error details:', error.message);
+            
+            // 더 상세한 에러 메시지 표시
+            const errorMessage = error.message || '파일 업로드 중 오류가 발생했습니다.';
+            alert(`파일 업로드 실패:\n${errorMessage}\n\n브라우저 콘솔(F12)에서 자세한 내용을 확인하세요.`);
+            
             this.cancelUpload();
             return null;
         }
