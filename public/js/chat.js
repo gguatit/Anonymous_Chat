@@ -111,8 +111,8 @@ class ChatClient {
         }
 
         // Validate message length
-        if (message.length > 500) {
-            this.ui.displayError('메시지는 최대 500자까지 가능합니다.');
+        if (message.length > 1000) {
+            this.ui.displayError('메시지는 최대 1000자까지 가능합니다.');
             return;
         }
 
@@ -175,8 +175,8 @@ class ChatClient {
             return;
         }
 
-        if (newContent.length > 500) {
-            this.ui.displayError('메시지는 최대 500자까지 가능합니다.');
+        if (newContent.length > 1000) {
+            this.ui.displayError('메시지는 최대 1000자까지 가능합니다.');
             return;
         }
 

@@ -61,8 +61,8 @@ describe('Message Edit Security Tests', () => {
             expect(validateContent('Valid content')).toBe(null);
         });
 
-        it('should reject content exceeding 500 characters', () => {
-            const MAX_LENGTH = 500;
+        it('should reject content exceeding 1000 characters', () => {
+            const MAX_LENGTH = 1000;
             const validateLength = (content) => {
                 if (content.length > MAX_LENGTH) {
                     return 'Too long';
@@ -70,8 +70,8 @@ describe('Message Edit Security Tests', () => {
                 return null;
             };
 
-            const validContent = 'a'.repeat(500);
-            const invalidContent = 'a'.repeat(501);
+            const validContent = 'a'.repeat(1000);
+            const invalidContent = 'a'.repeat(1001);
             
             expect(validateLength(validContent)).toBe(null);
             expect(validateLength(invalidContent)).toBe('Too long');

@@ -222,7 +222,7 @@ export class UIManager {
             <div class="flex flex-col gap-2">
                 <textarea class="edit-input bg-gray-800 text-gray-100 border border-gray-600 rounded px-2 py-1 text-sm w-full resize-none"
                           rows="2"
-                          maxlength="500">${this.sanitizeInput(originalContent)}</textarea>
+                          maxlength="1000">${this.sanitizeInput(originalContent)}</textarea>
                 <div class="flex gap-2 justify-end">
                     <button class="cancel-edit-btn text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded">취소</button>
                     <button class="save-edit-btn text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded">저장</button>
