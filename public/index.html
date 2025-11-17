@@ -168,7 +168,34 @@
     <div class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-20">
         <div class="max-w-5xl mx-auto p-3">
             <div class="bg-gray-800 rounded-lg shadow-lg p-3">
+                <!-- File Upload Section -->
+                <div id="file-upload-section" class="mb-3 hidden">
+                    <div class="flex items-center gap-2 p-2 bg-gray-700 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <div class="flex-1">
+                            <p id="file-name" class="text-sm text-gray-200"></p>
+                            <p id="file-size" class="text-xs text-gray-400"></p>
+                        </div>
+                        <button id="cancel-upload" class="text-gray-400 hover:text-red-400 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="mt-2 bg-gray-700 rounded-full h-2 overflow-hidden">
+                        <div id="upload-progress" class="bg-blue-500 h-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
                 <form id="message-form" class="flex gap-2">
+                    <label for="file-input" class="cursor-pointer bg-gray-700 hover:bg-gray-600 text-gray-200 p-2.5 rounded-lg transition-colors flex-shrink-0" title="파일 첨부 (최대 10MB)">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        <input type="file" id="file-input" class="hidden" accept="image/*,application/pdf,text/plain,text/csv,application/zip,video/mp4,video/webm" />
+                    </label>
                     <label for="message-input" class="sr-only">메시지 입력</label>
                     <input 
                         type="text" 

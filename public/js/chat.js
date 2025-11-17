@@ -2,12 +2,14 @@
 import { SessionManager } from './session.js';
 import { WebSocketManager } from './websocket.js';
 import { UIManager } from './ui.js';
+import { FileUploadManager } from './file-upload.js';
 
 class ChatClient {
     constructor() {
         // Initialize managers
         this.sessionManager = new SessionManager();
         this.ui = new UIManager();
+        this.fileManager = new FileUploadManager();
         
         // State
         this.typingTimeout = null;
@@ -97,9 +99,15 @@ class ChatClient {
         this.ui.updateConnectionStatus(status, statusText);
     }
 
-    handleSubmit(e) {
+    async handleSubmit(e) {
         e.preventDefault();
         
+        // 파일이 선택되어 있으면 파일 업로드 먼저 처리
+        if (this.fileManager.hasFile()) {
+            await this.handleFileUpload();
+            return;
+        }
+
         const message = this.ui.getInputValue();
         if (!message) return;
 
@@ -126,6 +134,46 @@ class ChatClient {
 
         // Send without signature - server will sign it
         this.wsManager.send(messageData);
+
+        this.lastMessageTime = now;
+        this.ui.clearInput();
+    }
+
+    async handleFileUpload() {
+        try {
+            this.ui.displaySystemMessage('파일 업로드 중...');
+            
+            const result = await this.fileManager.uploadFile();
+            
+            if (result && result.success) {
+                // 파일 업로드 성공 시 다운로드 링크를 채팅으로 전송
+                const fileMessage = `📎 파일: ${result.fileName} (${this.formatFileSize(result.fileSize)})\n` +
+                                  `다운로드: ${window.location.origin}${result.downloadUrl}\n` +
+                                  `만료: ${result.expiresIn} 후 자동 삭제`;
+                
+                const messageData = {
+                    type: 'message',
+                    content: fileMessage,
+                    sessionId: this.sessionManager.getSessionId(),
+                    timestamp: Date.now()
+                };
+
+                this.wsManager.send(messageData);
+                this.ui.displaySystemMessage('파일이 업로드되었습니다. (12시간 후 자동 삭제)');
+            }
+        } catch (error) {
+            console.error('File upload failed:', error);
+            this.ui.displayError('파일 업로드에 실패했습니다.');
+        }
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
 
         this.lastMessageTime = now;
         this.ui.clearInput();

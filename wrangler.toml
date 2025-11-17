@@ -16,11 +16,22 @@ new_classes = ["ChatRoom"]
 directory = "public"
 binding = "ASSETS"
 
+# R2 Storage for file sharing (무료 10GB)
+[[r2_buckets]]
+binding = "FILE_BUCKET"
+bucket_name = "anonymous-chat-files"
+preview_bucket_name = "anonymous-chat-files-dev"
+
 # Environment variables
 [vars]
 ENVIRONMENT = "production"
 # HMAC_SECRET should be set in production via: wrangler secret put HMAC_SECRET
 # For development, a random secret is auto-generated
+
+# File upload limits (무료 범위 최적화)
+MAX_FILE_SIZE_MB = 10
+FILE_RETENTION_HOURS = 12
+MAX_FILES_PER_IP_PER_DAY = 50
 
 # Observability configuration
 [observability]
@@ -36,3 +47,7 @@ persist = true
 [env.development]
 [env.development.vars]
 ENVIRONMENT = "development"
+
+# Cron Triggers (무료: 하루 3번 실행 가능)
+[triggers]
+crons = ["0 */12 * * *"]  # 12시간마다 실행 (만료 파일 삭제)
