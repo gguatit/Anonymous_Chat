@@ -115,16 +115,10 @@ export default {
                     // For SPA routing: if not found and not an API endpoint, serve index.html
                     if (assetResponse.status === 404 && !url.pathname.startsWith('/api')) {
                         const indexRequest = new Request(new URL('/index.html', request.url), request);
-            return new Response('Internal Server Error', { status: 500 });
-        }
-    },
-
-    // Cron Trigger: 12시간마다 만료된 파일 삭제 (무료)
-    async scheduled(event, env, ctx) {
-        console.log('Cron triggered: Cleaning up expired files');
-        await cleanupExpiredFiles(env);
-    }
-};                  return assetResponse;
+                        return await env.ASSETS.fetch(indexRequest);
+                    }
+                    
+                    return assetResponse;
                 } catch (e) {
                     console.log('Asset fetch error:', e);
                 }
@@ -138,6 +132,12 @@ export default {
             console.error('Worker error:', error);
             return new Response('Internal Server Error', { status: 500 });
         }
+    },
+
+    // Cron Trigger: 12시간마다 만료된 파일 삭제 (무료)
+    async scheduled(event, env, ctx) {
+        console.log('Cron triggered: Cleaning up expired files');
+        await cleanupExpiredFiles(env);
     }
 };
 
