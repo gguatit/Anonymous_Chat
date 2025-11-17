@@ -5,6 +5,8 @@ export class FileUploadManager {
         this.uploadSection = document.getElementById('file-upload-section');
         this.fileName = document.getElementById('file-name');
         this.fileSize = document.getElementById('file-size');
+        this.filePreview = document.getElementById('file-preview');
+        this.fileIcon = document.getElementById('file-icon');
         this.cancelButton = document.getElementById('cancel-upload');
         this.progressBar = document.getElementById('upload-progress');
         
@@ -37,6 +39,21 @@ export class FileUploadManager {
     showUploadSection(file) {
         this.fileName.textContent = file.name;
         this.fileSize.textContent = this.formatFileSize(file.size);
+        
+        // 이미지 파일인 경우 미리보기 표시
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.filePreview.src = e.target.result;
+                this.filePreview.classList.remove('hidden');
+                this.fileIcon.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            this.filePreview.classList.add('hidden');
+            this.fileIcon.classList.remove('hidden');
+        }
+        
         this.uploadSection.classList.remove('hidden');
     }
 
@@ -45,6 +62,9 @@ export class FileUploadManager {
         this.fileInput.value = '';
         this.uploadSection.classList.add('hidden');
         this.progressBar.style.width = '0%';
+        this.filePreview.src = '';
+        this.filePreview.classList.add('hidden');
+        this.fileIcon.classList.remove('hidden');
     }
 
     async uploadFile() {

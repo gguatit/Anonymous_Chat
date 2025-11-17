@@ -28,7 +28,7 @@ ENVIRONMENT = "production"
 # For development, a random secret is auto-generated
 
 # File upload limits (무료 범위 최적화)
-MAX_FILE_SIZE_MB = 10
+MAX_FILE_SIZE_MB = 20
 FILE_RETENTION_HOURS = 12
 MAX_FILES_PER_IP_PER_DAY = 50
 
