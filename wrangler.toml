@@ -19,8 +19,7 @@ binding = "ASSETS"
 # R2 Storage for file sharing (무료 10GB)
 [[r2_buckets]]
 binding = "FILE_BUCKET"
-bucket_name = "anonymous-chat-files"
-preview_bucket_name = "anonymous-chat-files-dev"
+bucket_name = "chat-file"
 
 # Environment variables
 [vars]

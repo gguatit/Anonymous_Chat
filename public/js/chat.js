@@ -146,10 +146,21 @@ class ChatClient {
             const result = await this.fileManager.uploadFile();
             
             if (result && result.success) {
-                // 파일 업로드 성공 시 다운로드 링크를 채팅으로 전송
-                const fileMessage = `📎 파일: ${result.fileName} (${this.formatFileSize(result.fileSize)})\n` +
-                                  `다운로드: ${window.location.origin}${result.downloadUrl}\n` +
+                const downloadUrl = window.location.origin + result.downloadUrl;
+                
+                // 이미지 파일 여부 확인
+                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(result.fileName);
+                
+                let fileMessage;
+                if (isImage) {
+                    // 이미지는 <img> 태그로 표시 (특수 마커 포함)
+                    fileMessage = `[IMAGE]${downloadUrl}[/IMAGE]\n📎 ${result.fileName} (${this.formatFileSize(result.fileSize)}) - ${result.expiresIn} 후 삭제`;
+                } else {
+                    // 일반 파일은 다운로드 링크
+                    fileMessage = `📎 파일: ${result.fileName} (${this.formatFileSize(result.fileSize)})\n` +
+                                  `다운로드: ${downloadUrl}\n` +
                                   `만료: ${result.expiresIn} 후 자동 삭제`;
+                }
                 
                 const messageData = {
                     type: 'message',
