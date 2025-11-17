@@ -110,14 +110,11 @@ export class UIManager {
         let longPressTimer;
         let isLongPress = false;
 
-        console.log('Adding edit interactions for messageId:', messageId);
-
         // Long press for mobile
         messageDiv.addEventListener('touchstart', (e) => {
             isLongPress = false;
             longPressTimer = setTimeout(() => {
                 isLongPress = true;
-                console.log('Long press detected');
                 this.showContextMenu(e, messageId);
             }, 500); // 500ms long press
         });
@@ -133,7 +130,6 @@ export class UIManager {
         // Right-click for desktop
         messageDiv.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            console.log('Right-click detected for messageId:', messageId);
             this.showContextMenu(e, messageId);
         });
 
@@ -143,8 +139,6 @@ export class UIManager {
     }
 
     showContextMenu(event, messageId) {
-        console.log('showContextMenu called with messageId:', messageId);
-        
         // Remove existing context menu if any
         const existingMenu = document.getElementById('message-context-menu');
         if (existingMenu) {
@@ -174,7 +168,6 @@ export class UIManager {
         menu.style.top = `${y}px`;
 
         document.body.appendChild(menu);
-        console.log('Context menu added to DOM');
 
         // Adjust position if menu goes off-screen
         const rect = menu.getBoundingClientRect();
@@ -190,7 +183,6 @@ export class UIManager {
         const deleteButton = menu.querySelector('.delete-message-btn');
         
         editButton.addEventListener('click', () => {
-            console.log('Edit button clicked for messageId:', messageId);
             menu.remove();
             // Get current content from DOM (최신 수정된 내용)
             const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
@@ -200,12 +192,10 @@ export class UIManager {
             }
             const contentDiv = messageDiv.querySelector('.message-content');
             const currentContent = contentDiv.textContent;
-            console.log('Current content:', currentContent);
             this.showEditMode(messageId, currentContent);
         });
 
         deleteButton.addEventListener('click', () => {
-            console.log('Delete button clicked for messageId:', messageId);
             menu.remove();
             this.confirmDelete(messageId);
         });
@@ -322,7 +312,6 @@ export class UIManager {
         const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
         if (messageDiv) {
             messageDiv.remove();
-            console.log('Message removed:', messageId);
         }
     }
 
