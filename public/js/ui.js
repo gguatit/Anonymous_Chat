@@ -87,6 +87,19 @@ export class UIManager {
         const canEdit = isOwnMessage && data.timestamp && (Date.now() - data.timestamp < 10 * 60 * 1000);
         const editedLabel = data.editedAt ? ' <span class="text-xs text-gray-500">(수정됨)</span>' : '';
 
+        // Build message content
+        let contentHtml = '';
+        
+        // Add text content if exists
+        if (data.content) {
+            contentHtml += `<div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>`;
+        }
+        
+        // Add file if exists
+        if (data.file) {
+            contentHtml += this.formatFileContent(data.file);
+        }
+
         messageDiv.innerHTML = `
             <div class="flex items-start justify-between gap-2 mb-1">
                 <span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">
@@ -94,7 +107,7 @@ export class UIManager {
                 </span>
                 <span class="text-xs text-gray-500">${timestamp}</span>
             </div>
-            <div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>
+            ${contentHtml}
         `;
 
         // Add long-press and right-click for editing own messages
@@ -452,5 +465,85 @@ export class UIManager {
         
         // 줄바꿈 처리
         return formatted.replace(/\n/g, '<br>');
+    }
+
+    formatFileContent(file) {
+        if (!file || !file.url) return '';
+
+        const fileType = file.filetype || '';
+        const fileName = file.filename || 'file';
+        const fileSize = this.formatFileSize(file.filesize || 0);
+
+        // 이미지 파일
+        if (fileType.startsWith('image/')) {
+            return `
+                <div class="mt-2">
+                    <a href="${file.url}" target="_blank" rel="noopener noreferrer">
+                        <img src="${file.url}" alt="${fileName}" 
+                             class="max-w-full max-h-96 rounded-lg border border-gray-600 object-contain cursor-pointer hover:opacity-90 transition-opacity" 
+                             loading="lazy">
+                    </a>
+                    <div class="mt-1 text-xs text-gray-400">
+                        <span>${fileName}</span> · <span>${fileSize}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 비디오 파일
+        if (fileType.startsWith('video/')) {
+            return `
+                <div class="mt-2">
+                    <video controls class="max-w-full max-h-96 rounded-lg border border-gray-600">
+                        <source src="${file.url}" type="${fileType}">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="mt-1 text-xs text-gray-400">
+                        <span>${fileName}</span> · <span>${fileSize}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 오디오 파일
+        if (fileType.startsWith('audio/')) {
+            return `
+                <div class="mt-2">
+                    <audio controls class="w-full max-w-md">
+                        <source src="${file.url}" type="${fileType}">
+                        Your browser does not support the audio tag.
+                    </audio>
+                    <div class="mt-1 text-xs text-gray-400">
+                        <span>${fileName}</span> · <span>${fileSize}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 기타 파일 (다운로드 링크)
+        return `
+            <div class="mt-2">
+                <a href="${file.url}" download="${fileName}" 
+                   class="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clip-rule="evenodd" />
+                    </svg>
+                    <div class="text-left">
+                        <div class="text-sm font-medium">${fileName}</div>
+                        <div class="text-xs text-gray-400">${fileSize}</div>
+                    </div>
+                </a>
+            </div>
+        `;
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
     }
 }

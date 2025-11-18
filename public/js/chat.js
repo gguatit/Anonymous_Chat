@@ -2,12 +2,14 @@
 import { SessionManager } from './session.js';
 import { WebSocketManager } from './websocket.js';
 import { UIManager } from './ui.js';
+import { FileUploadManager } from './file-upload.js';
 
 class ChatClient {
     constructor() {
         // Initialize managers
         this.sessionManager = new SessionManager();
         this.ui = new UIManager();
+        this.fileUpload = new FileUploadManager('https://file.kalpha.kr');
         
         // State
         this.typingTimeout = null;
@@ -106,7 +108,10 @@ class ChatClient {
         e.preventDefault();
 
         const message = this.ui.getInputValue();
-        if (!message) return;
+        const hasFile = this.fileUpload.hasFile();
+        
+        // 메시지나 파일 중 하나는 있어야 함
+        if (!message && !hasFile) return;
 
         // Rate limiting check
         const now = Date.now();
@@ -121,15 +126,36 @@ class ChatClient {
             return;
         }
 
-        // Prepare message data (서버에서 서명 생성)
+        // Prepare message data
         const messageData = {
             type: 'message',
-            content: this.ui.sanitizeInput(message),
+            content: this.ui.sanitizeInput(message) || '',
             sessionId: this.sessionManager.getSessionId(),
             timestamp: now
         };
 
-        // Send without signature - server will sign it
+        // Upload file if selected
+        if (hasFile) {
+            try {
+                this.ui.displaySystemMessage('파일 업로드 중...');
+                const fileData = await this.fileUpload.uploadFile();
+                
+                // Add file info to message
+                messageData.file = {
+                    url: fileData.url,
+                    filename: fileData.filename,
+                    filesize: fileData.filesize,
+                    filetype: fileData.filetype
+                };
+                
+                this.fileUpload.clearFile();
+            } catch (error) {
+                this.ui.displayError('파일 업로드 실패: ' + error.message);
+                return;
+            }
+        }
+
+        // Send message with or without file
         this.wsManager.send(messageData);
 
         this.lastMessageTime = now;
