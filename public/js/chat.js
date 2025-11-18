@@ -9,7 +9,7 @@ class ChatClient {
         // Initialize managers
         this.sessionManager = new SessionManager();
         this.ui = new UIManager();
-        this.fileUpload = new FileUploadManager('https://file.kalpha.kr');
+        this.fileUpload = new FileUploadManager('https://static.a85labs.net');
         
         // State
         this.typingTimeout = null;
