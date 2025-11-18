@@ -4,13 +4,10 @@
   "description": "Anonymous real-time chat application using Cloudflare Workers and Pages",
   "main": "src/worker.js",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "echo 'Deployment handled by Cloudflare Pages. Push to GitHub to deploy.'",
-    "deploy:pages": "wrangler pages deploy public",
+    "dev": "wrangler pages dev public --compatibility-date=2024-11-01",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src/**/*.js public/**/*.js",
-    "build": "echo 'No build step required - using static files'"
+    "lint": "eslint src/**/*.js public/**/*.js"
   },
   "keywords": [
     "cloudflare",
