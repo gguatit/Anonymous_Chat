@@ -5,6 +5,8 @@
   "main": "src/worker.js",
   "scripts": {
     "dev": "wrangler pages dev public --compatibility-date=2024-11-01",
+    "build": "echo 'No build step required - deploying public directory'",
+    "deploy": "wrangler pages deploy public",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/**/*.js public/**/*.js"
