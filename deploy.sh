@@ -22,16 +22,32 @@ fi
 
 # Deploy Workers
 echo ""
-echo "📦 Deploying Cloudflare Worker with Assets..."
-wrangler deploy
+echo "📦 Deploying to Cloudflare Pages..."
+echo "Note: For Cloudflare Pages, deployment is handled by the Pages dashboard."
+echo "This script will prepare and test the worker code."
+echo ""
+
+# Test the worker syntax
+echo "🔍 Testing worker syntax..."
+npx wrangler deploy --dry-run
 
 echo ""
-echo "✅ Deployment completed successfully!"
+echo "✅ Worker syntax validated successfully!"
 echo ""
-echo "📊 Next steps:"
-echo "1. Configure custom domain in Cloudflare dashboard (optional)"
-echo "2. Set up environment variables if needed"
-echo "3. Monitor logs: wrangler tail"
-echo "4. View metrics at: https://your-worker.workers.dev/metrics"
+echo "📊 Deployment Instructions:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "For Cloudflare Pages deployment:"
+echo "1. Push your code to GitHub"
+echo "2. Cloudflare Pages will automatically build and deploy"
+echo "3. Build command: npm install"
+echo "4. Build output directory: public"
+echo "5. Environment variables are configured in Pages dashboard"
 echo ""
-echo "💡 Note: Worker now serves static assets from the 'public' directory."
+echo "For direct Worker deployment (alternative):"
+echo "  wrangler deploy --env=\"\""
+echo ""
+echo "📈 Monitoring:"
+echo "  • Logs: wrangler tail"
+echo "  • Metrics: https://kalpha.mmv.kr/metrics"
+echo "  • Health: https://kalpha.mmv.kr/health"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

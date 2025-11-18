@@ -113,30 +113,13 @@ export default {
                 });
             }
 
-            // Serve static files from assets binding
-            if (env.ASSETS) {
-                try {
-                    // Try to fetch the requested asset
-                    const assetResponse = await env.ASSETS.fetch(request);
-                    
-                    // If asset found, return it
-                    if (assetResponse.status === 200) {
-                        return assetResponse;
-                    }
-                    
-                    // For SPA routing: if not found and not an API endpoint, serve index.html
-                    if (assetResponse.status === 404 && !url.pathname.startsWith('/api')) {
-                        const indexRequest = new Request(new URL('/index.html', request.url), request);
-                        return await env.ASSETS.fetch(indexRequest);
-                    }
-                    
-                    return assetResponse;
-                } catch (e) {
-                    console.log('Asset fetch error:', e);
-                }
+            // Fallback 404 for API routes
+            // Note: Static files are handled by Cloudflare Pages automatically
+            if (url.pathname.startsWith('/api') || url.pathname.startsWith('/ws')) {
+                return new Response('Not Found', { status: 404 });
             }
 
-            // Fallback 404
+            // For non-API routes, let Pages handle static files
             return new Response('Not Found', { status: 404 });
 
         } catch (error) {

@@ -1,11 +1,13 @@
-name = "anonymous-chat"
+name = "kalpha-mmv-kr"
 main = "src/worker.js"
 compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
 
 # 관리자 인증 시크릿 (필수 설정!)
-# npx wrangler secret put ADMIN_ID
-# npx wrangler secret put ADMIN_PASSWORD
-# npx wrangler secret put HMAC_SECRET
+# Pages Dashboard > Settings > Environment variables에서 설정
+# ADMIN_ID
+# ADMIN_PASSWORD  
+# HMAC_SECRET
 
 # 토큰 블랙리스트용 KV (세션 무효화)
 [[kv_namespaces]]
@@ -26,10 +28,11 @@ class_name = "ChatRoom"
 tag = "v1"
 new_classes = ["ChatRoom"]
 
-# Pages integration (for hybrid deployment)
-[assets]
-directory = "public"
-binding = "ASSETS"
+# Build configuration for Pages
+[build]
+command = ""
+cwd = ""
+watch_dirs = ["src", "public"]
 
 # Environment variables
 [vars]
