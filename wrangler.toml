@@ -3,8 +3,8 @@ main = "src/worker.js"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Worker type - API/WebSocket only (no assets)
-workers_dev = true
+# Pages configuration
+pages_build_output_dir = "public"
 
 # 관리자 인증 시크릿 (필수 설정!)
 # Pages Dashboard > Settings > Environment variables에서 설정
