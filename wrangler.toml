@@ -3,6 +3,9 @@ main = "src/worker.js"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Worker type - API/WebSocket only (no assets)
+workers_dev = true
+
 # 관리자 인증 시크릿 (필수 설정!)
 # Pages Dashboard > Settings > Environment variables에서 설정
 # ADMIN_ID
@@ -48,5 +51,6 @@ persist = true
 
 # Development environment
 [env.development]
+workers_dev = true
 [env.development.vars]
 ENVIRONMENT = "development"
