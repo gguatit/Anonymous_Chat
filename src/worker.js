@@ -1144,12 +1144,15 @@ export class ChatRoom {
     }
 
     validateMessage(data, metadata) {
-        // Check message length
-        if (!data.content || data.content.trim().length === 0) {
+        // Check message length - allow empty content if file is attached
+        const hasFile = data.file && data.file.url;
+        const hasContent = data.content && data.content.trim().length > 0;
+        
+        if (!hasContent && !hasFile) {
             return '메시지 내용이 비어있습니다.';
         }
 
-        if (data.content.length > SECURITY.MAX_MESSAGE_LENGTH) {
+        if (data.content && data.content.length > SECURITY.MAX_MESSAGE_LENGTH) {
             return `메시지는 최대 ${SECURITY.MAX_MESSAGE_LENGTH}자까지 입력할 수 있습니다.`;
         }
 
