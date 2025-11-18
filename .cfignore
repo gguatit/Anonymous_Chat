@@ -1,0 +1,8 @@
+# Cloudflare deployment ignore file
+node_modules/
+.git/
+.gitignore
+*.md
+test/
+.vscode/
+.devcontainer/

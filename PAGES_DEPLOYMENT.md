@@ -1,5 +1,38 @@
 # Cloudflare Pages 배포 가이드
 
+## ⚠️ 중요: Pages 대시보드 설정
+
+이 프로젝트는 **빌드가 필요 없는** Pages Functions 프로젝트입니다.
+
+### 필수 설정 단계
+
+1. **Cloudflare Dashboard** → **Pages** → **kalpha-mmv-kr** 프로젝트 선택
+
+2. **Settings** → **Builds & deployments** 클릭
+
+3. **Build configuration** 섹션에서 **Edit configuration** 클릭
+
+4. 다음과 같이 설정:
+   ```
+   Framework preset: None
+   Build command: (완전히 비워두기 - 아무것도 입력하지 말 것!)
+   Build output directory: public
+   Root directory: (기본값) /
+   ```
+
+5. **Save** 클릭
+
+6. **Retry deployment** 버튼 클릭하여 재배포
+
+### 왜 빌드 명령이 없어야 하나?
+
+- 이 프로젝트는 **순수 정적 파일 + Pages Functions** 조합입니다
+- `public/` 폴더의 HTML/CSS/JS는 그대로 사용됩니다
+- `functions/_middleware.js`가 서버 로직을 처리합니다
+- 빌드 과정이 전혀 필요하지 않습니다
+
+현재 오류(`wrangler deploy`가 실행됨)는 Pages 대시보드에 빌드 명령이 설정되어 있기 때문입니다.
+
 ## 배포 방법
 
 Cloudflare Pages는 GitHub와 연동되어 자동으로 배포됩니다.
