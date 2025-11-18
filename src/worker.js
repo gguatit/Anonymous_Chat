@@ -1,4 +1,5 @@
 // Cloudflare Worker with Durable Objects for Anonymous Chat
+import { getAssetFromKV } from '@cloudflare/kv-asset-handler';
 
 // Rate limiting configuration
 const RATE_LIMIT = {
@@ -113,14 +114,62 @@ export default {
                 });
             }
 
-            // Fallback 404 for API routes
-            // Note: Static files are handled by Cloudflare Pages automatically
-            if (url.pathname.startsWith('/api') || url.pathname.startsWith('/ws')) {
+            // Serve static files from Workers KV Site
+            try {
+                const response = await getAssetFromKV(
+                    {
+                        request,
+                        waitUntil(promise) {
+                            return ctx.waitUntil(promise);
+                        },
+                    },
+                    {
+                        ASSET_NAMESPACE: env.__STATIC_CONTENT,
+                        ASSET_MANIFEST: __STATIC_CONTENT_MANIFEST,
+                    }
+                );
+                
+                return new Response(response.body, {
+                    ...response,
+                    headers: {
+                        ...Object.fromEntries(response.headers),
+                        ...corsHeaders
+                    }
+                });
+            } catch (e) {
+                // If asset not found and not an API route, serve index.html (SPA)
+                if (!url.pathname.startsWith('/api') && !url.pathname.startsWith('/ws')) {
+                    try {
+                        const indexRequest = new Request(new URL('/index.html', request.url), request);
+                        const response = await getAssetFromKV(
+                            {
+                                request: indexRequest,
+                                waitUntil(promise) {
+                                    return ctx.waitUntil(promise);
+                                },
+                            },
+                            {
+                                ASSET_NAMESPACE: env.__STATIC_CONTENT,
+                                ASSET_MANIFEST: __STATIC_CONTENT_MANIFEST,
+                            }
+                        );
+                        
+                        return new Response(response.body, {
+                            ...response,
+                            headers: {
+                                ...Object.fromEntries(response.headers),
+                                ...corsHeaders
+                            }
+                        });
+                    } catch (e2) {
+                        // If index.html also not found, return 404
+                        return new Response('Not Found', { status: 404 });
+                    }
+                }
+                
+                // For API routes that don't match, return 404
                 return new Response('Not Found', { status: 404 });
             }
-
-            // For non-API routes, let Pages handle static files
-            return new Response('Not Found', { status: 404 });
 
         } catch (error) {
             metrics.errors++;

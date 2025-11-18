@@ -23,5 +23,8 @@
     "eslint": "^8.54.0",
     "vitest": "^4.0.8",
     "wrangler": "^4.48.0"
+  },
+  "dependencies": {
+    "@cloudflare/kv-asset-handler": "^0.4.0"
   }
 }
