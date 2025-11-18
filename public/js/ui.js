@@ -69,16 +69,8 @@ export class UIManager {
         }
 
         const messageDiv = document.createElement('div');
-        const isAdminMessage = data.isAdmin || data.sessionId === 'ADMIN';
-        
-        let className = 'message-enter p-2.5 rounded-lg ';
-        if (isAdminMessage) {
-            className += 'admin-message-style';
-        } else {
-            className += (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
-        }
-        
-        messageDiv.className = className;
+        messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
+            (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
         messageDiv.style.maxWidth = '75%';
         
         // 메시지 표식 추가 (MutationObserver가 감지)
@@ -94,13 +86,11 @@ export class UIManager {
         // Check if message can be edited (within 10 minutes and own message)
         const canEdit = isOwnMessage && data.timestamp && (Date.now() - data.timestamp < 10 * 60 * 1000);
         const editedLabel = data.editedAt ? ' <span class="text-xs text-gray-500">(수정됨)</span>' : '';
-        const isAdminMessage = data.isAdmin || data.sessionId === 'ADMIN';
-        const adminBadge = isAdminMessage ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-600 text-white mr-2">👑 관리자</span>' : '';
 
         messageDiv.innerHTML = `
             <div class="flex items-start justify-between gap-2 mb-1">
-                <span class="text-xs font-medium ${isAdminMessage ? 'text-purple-300' : (isOwnMessage ? 'text-blue-300' : 'text-gray-400')}">
-                    ${adminBadge}${isAdminMessage ? '관리자' : (isOwnMessage ? '나' : '익명')}${editedLabel}
+                <span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">
+                    ${isOwnMessage ? '나' : '익명'}${editedLabel}
                 </span>
                 <span class="text-xs text-gray-500">${timestamp}</span>
             </div>

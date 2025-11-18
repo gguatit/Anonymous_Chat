@@ -1,9 +1,0 @@
-# Cloudflare Pages Configuration
-# 
-# IMPORTANT: In Cloudflare Pages Dashboard, set:
-#   Build command: (leave empty)
-#   Build output directory: public
-#   Root directory: /
-#
-# This project uses Pages Functions (functions/_middleware.js) 
-# and does NOT require a build step.
