@@ -28,10 +28,6 @@ class_name = "ChatRoom"
 tag = "v1"
 new_classes = ["ChatRoom"]
 
-# Static assets configuration
-[site]
-bucket = "./public"
-
 # Environment variables
 [vars]
 ENVIRONMENT = "production"
