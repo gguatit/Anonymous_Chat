@@ -36,16 +36,54 @@ export default {
                 return Response.redirect(`https://${url.hostname}${url.pathname}${url.search}`, 301);
             }
 
-            // CORS headers for API requests
+            // CORS 보안 강화: 허용된 도메인만 접근 허용
+            const origin = request.headers.get('Origin');
+            const allowedOrigins = [
+                'https://kalpha.mmv.kr',
+                'http://localhost:8787',
+                'http://127.0.0.1:8787'
+            ];
+            const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+            
             const corsHeaders = {
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': corsOrigin,
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, DELETE',
-                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Allow-Credentials': 'true',
             };
 
             // Handle CORS preflight
             if (request.method === 'OPTIONS') {
                 return new Response(null, { headers: corsHeaders });
+            }
+
+            // Admin API endpoints
+            if (url.pathname === '/api/admin/login') {
+                return await handleAdminLogin(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/verify') {
+                return await handleAdminVerify(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/metrics') {
+                return await handleAdminMetrics(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/sessions') {
+                return await handleAdminSessions(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/messages') {
+                return await handleAdminMessages(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/logout') {
+                return await handleAdminLogout(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/logs') {
+                return await handleAdminLogs(request, env, corsHeaders);
             }
 
             // WebSocket upgrade request
@@ -160,7 +198,436 @@ function isAllowedOrigin(origin) {
     }
 }
 
-// 파일 업로드 핸들러 (무료 범위 최적화)
+// ========== 보안 유틸리티 함수 ==========
+
+// Sleep 함수 (타이밍 공격 방지용)
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 상수 시간 비교 (타이밍 공격 방지)
+async function constantTimeCompare(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') {
+        return false;
+    }
+    
+    const aBytes = new TextEncoder().encode(a);
+    const bBytes = new TextEncoder().encode(b);
+    
+    // 길이가 다르면 항상 false지만, 타이밍 공격 방지를 위해 전체 비교
+    const maxLen = Math.max(aBytes.length, bBytes.length);
+    let result = aBytes.length === bBytes.length ? 0 : 1;
+    
+    for (let i = 0; i < maxLen; i++) {
+        const aByte = i < aBytes.length ? aBytes[i] : 0;
+        const bByte = i < bBytes.length ? bBytes[i] : 0;
+        result |= aByte ^ bByte;
+    }
+    
+    return result === 0;
+}
+
+// Rate Limit 체크 (IP당 5회 실패 시 5분간 차단)
+async function checkRateLimit(env, key) {
+    if (!env?.ADMIN_TOKENS) return false;
+    
+    const data = await env.ADMIN_TOKENS.get(key);
+    if (!data) return false;
+    
+    try {
+        const attempts = JSON.parse(data);
+        const now = Date.now();
+        
+        // 5분 이내에 5회 이상 실패
+        const recentAttempts = attempts.filter(t => now - t < 5 * 60 * 1000);
+        return recentAttempts.length >= 5;
+    } catch {
+        return false;
+    }
+}
+
+// Rate Limit 증가
+async function incrementRateLimit(env, key) {
+    if (!env?.ADMIN_TOKENS) return;
+    
+    try {
+        const data = await env.ADMIN_TOKENS.get(key);
+        const attempts = data ? JSON.parse(data) : [];
+        const now = Date.now();
+        
+        // 5분 이내의 시도만 유지
+        const recentAttempts = attempts.filter(t => now - t < 5 * 60 * 1000);
+        recentAttempts.push(now);
+        
+        // 10분간 보관 (5분 차단 + 여유)
+        await env.ADMIN_TOKENS.put(key, JSON.stringify(recentAttempts), {
+            expirationTtl: 10 * 60
+        });
+    } catch (error) {
+        console.error('Rate limit error:', error);
+    }
+}
+
+// Admin Authentication Handlers
+async function handleAdminLogin(request, env, corsHeaders) {
+    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const timestamp = Date.now();
+    
+    try {
+        // Rate Limiting 체크 (브루트포스 방지)
+        const rateLimitKey = `ratelimit:${clientIP}`;
+        const isBlocked = await checkRateLimit(env, rateLimitKey);
+        
+        if (isBlocked) {
+            await logAdminActivity(env, {
+                type: 'login_blocked',
+                reason: 'rate_limit_exceeded',
+                ip: clientIP,
+                timestamp
+            });
+            
+            // 타이밍 공격 방지: 일정 시간 대기
+            await sleep(1000);
+            
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Too many login attempts. Please try again later.'
+            }), {
+                status: 429,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
+        const { id, password } = await request.json();
+        
+        // 환경변수 필수 체크 (하드코딩 완전 제거)
+        if (!env.ADMIN_ID || !env.ADMIN_PASSWORD) {
+            await logAdminActivity(env, {
+                type: 'login_failed',
+                reason: 'credentials_not_configured',
+                ip: clientIP,
+                timestamp
+            });
+            
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Admin credentials not configured'
+            }), {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
+        const ADMIN_ID = env.ADMIN_ID;
+        const ADMIN_PASSWORD = env.ADMIN_PASSWORD;
+        
+        // 타이밍 공격 방지: 상수 시간 비교
+        const idMatch = await constantTimeCompare(id, ADMIN_ID);
+        const passwordMatch = await constantTimeCompare(password, ADMIN_PASSWORD);
+        
+        if (idMatch && passwordMatch) {
+            // Rate limit 초기화
+            if (env?.ADMIN_TOKENS) {
+                await env.ADMIN_TOKENS.delete(rateLimitKey);
+            }
+            
+            // Generate JWT-like token
+            const token = await generateAdminToken(id + ':' + password, env.HMAC_SECRET || crypto.randomUUID());
+            
+            // 감사 로그: 성공한 로그인
+            await logAdminActivity(env, {
+                type: 'login_success',
+                admin: id,
+                ip: clientIP,
+                timestamp,
+                userAgent: request.headers.get('User-Agent')
+            });
+            
+            return new Response(JSON.stringify({
+                success: true,
+                token
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // Rate limit 증가
+        await incrementRateLimit(env, rateLimitKey);
+        
+        // 타이밍 공격 방지: 실패 시에도 동일한 시간 소요
+        await sleep(100);
+        
+        // 감사 로그: 실패한 로그인 시도
+        await logAdminActivity(env, {
+            type: 'login_failed',
+            reason: 'invalid_credentials',
+            attemptedId: id,
+            ip: clientIP,
+            timestamp,
+            userAgent: request.headers.get('User-Agent')
+        });
+        
+        return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid credentials'
+        }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        await logAdminActivity(env, {
+            type: 'login_error',
+            error: error.message,
+            ip: clientIP,
+            timestamp
+        });
+        
+        // 타이밍 공격 방지
+        await sleep(100);
+        
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+async function handleAdminVerify(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    
+    if (isValid) {
+        return new Response(JSON.stringify({ valid: true }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+    
+    return new Response(null, { status: 401, headers: corsHeaders });
+}
+
+async function handleAdminMetrics(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    // Get metrics from Durable Object
+    const roomId = env.CHAT_ROOM.idFromName('main-room');
+    const room = env.CHAT_ROOM.get(roomId);
+    const response = await room.fetch(new Request('https://dummy/admin/metrics'));
+    
+    return new Response(response.body, {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+async function handleAdminSessions(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    const roomId = env.CHAT_ROOM.idFromName('main-room');
+    const room = env.CHAT_ROOM.get(roomId);
+    const response = await room.fetch(new Request('https://dummy/admin/sessions'));
+    
+    return new Response(response.body, {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+async function handleAdminMessages(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    const roomId = env.CHAT_ROOM.idFromName('main-room');
+    const room = env.CHAT_ROOM.get(roomId);
+    const response = await room.fetch(new Request('https://dummy/admin/messages'));
+    
+    return new Response(response.body, {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+// 감사 로그 기록 함수
+async function logAdminActivity(env, activity) {
+    if (!env?.ADMIN_LOGS) return;
+    
+    const logKey = `log:${activity.timestamp}:${crypto.randomUUID()}`;
+    const logData = JSON.stringify(activity);
+    
+    // KV에 30일간 보관
+    await env.ADMIN_LOGS.put(logKey, logData, {
+        expirationTtl: 30 * 24 * 60 * 60
+    });
+}
+
+// 로그아웃 (토큰 무효화)
+async function handleAdminLogout(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    const token = authHeader.substring(7);
+    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+    
+    // 토큰을 블랙리스트에 추가 (24시간 만료)
+    if (env?.ADMIN_TOKENS) {
+        await env.ADMIN_TOKENS.put(`revoked:${token}`, 'true', {
+            expirationTtl: 24 * 60 * 60
+        });
+    }
+    
+    // 감사 로그
+    await logAdminActivity(env, {
+        type: 'logout',
+        ip: clientIP,
+        timestamp: Date.now()
+    });
+    
+    return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+// 감사 로그 조회
+async function handleAdminLogs(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+    
+    if (!env?.ADMIN_LOGS) {
+        return new Response(JSON.stringify({ logs: [] }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+    
+    // 최근 100개 로그 가져오기
+    const list = await env.ADMIN_LOGS.list({ prefix: 'log:', limit: 100 });
+    const logs = [];
+    
+    for (const key of list.keys) {
+        const logData = await env.ADMIN_LOGS.get(key.name);
+        if (logData) {
+            logs.push(JSON.parse(logData));
+        }
+    }
+    
+    // 시간 역순 정렬
+    logs.sort((a, b) => b.timestamp - a.timestamp);
+    
+    return new Response(JSON.stringify({ logs }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+async function generateAdminToken(password, secret) {
+    const data = `${password}:${Date.now()}`;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(data);
+    
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', key, messageData);
+    const base64Sig = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    
+    return `${btoa(data)}.${base64Sig}`;
+}
+
+async function verifyAdminToken(token, secret, env) {
+    try {
+        // 1. 블랙리스트 체크 (무효화된 토큰)
+        if (env?.ADMIN_TOKENS) {
+            const isRevoked = await env.ADMIN_TOKENS.get(`revoked:${token}`);
+            if (isRevoked) {
+                return false;
+            }
+        }
+        
+        // 2. 토큰 형식 검증
+        const [dataPart, sigPart] = token.split('.');
+        if (!dataPart || !sigPart) return false;
+        
+        const data = atob(dataPart);
+        const [password, timestamp] = data.split(':');
+        
+        // Token expires after 24 hours
+        if (Date.now() - parseInt(timestamp) > 24 * 60 * 60 * 1000) {
+            return false;
+        }
+        
+        // 3. HMAC 서명 검증
+        const encoder = new TextEncoder();
+        const keyData = encoder.encode(secret);
+        const messageData = encoder.encode(data);
+        
+        const key = await crypto.subtle.importKey(
+            'raw',
+            keyData,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+        
+        const signature = await crypto.subtle.sign('HMAC', key, messageData);
+        const expectedSig = btoa(String.fromCharCode(...new Uint8Array(signature)));
+        
+        return sigPart === expectedSig;
+    } catch {
+        return false;
+    }
+}
+
 // HMAC signature generation for message integrity
 async function generateMessageSignature(message, secret) {
     const encoder = new TextEncoder();
@@ -207,6 +674,7 @@ export class ChatRoom {
         this.typingUsers = new Set();
         this.messages = []; // In-memory cache
         this.initialized = false;
+        this.startTime = Date.now(); // Track uptime
         
         // Periodic cleanup of stale data (every 5 minutes)
         this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
@@ -234,6 +702,41 @@ export class ChatRoom {
     async fetch(request) {
         // Get HMAC_SECRET from request headers
         const HMAC_SECRET = request.headers.get('X-HMAC-Secret');
+        
+        const url = new URL(request.url);
+        
+        // Admin API endpoints
+        if (url.pathname === '/admin/metrics') {
+            return new Response(JSON.stringify({
+                activeConnections: this.sessions.size,
+                totalMessages: this.messages.length,
+                totalConnections: metrics.totalConnections,
+                errors: metrics.errors,
+                uptime: Date.now() - (this.startTime || Date.now())
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        if (url.pathname === '/admin/sessions') {
+            const sessions = Array.from(this.userMetadata.entries()).map(([sessionId, metadata]) => ({
+                sessionId,
+                ip: metadata.ip,
+                joinTime: metadata.joinTime,
+                messageCount: metadata.messageCount,
+                lastMessageTime: metadata.lastMessageTime
+            }));
+            
+            return new Response(JSON.stringify(sessions), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        if (url.pathname === '/admin/messages') {
+            return new Response(JSON.stringify(this.messages), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
         
         // Initialize messages from storage on first request
         await this.initializeMessages();

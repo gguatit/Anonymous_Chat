@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 | Anonymous Chat</title>
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/ico/favicon.ico">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {}
+            }
+        }
+    </script>
+    
+    <style>
+        .stat-card {
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="dark bg-gray-900 text-gray-100 min-h-screen">
+    <!-- Login Screen -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-8 max-w-md w-full border border-gray-700">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-100 mb-2">🔐 관리자 로그인</h1>
+                <p class="text-sm text-gray-400">Anonymous Chat Admin Panel</p>
+            </div>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="admin-id" class="block text-sm font-medium text-gray-300 mb-2">
+                        관리자 ID
+                    </label>
+                    <input 
+                        type="text" 
+                        id="admin-id" 
+                        class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="ID를 입력하세요"
+                        required
+                        autocomplete="username"
+                    />
+                </div>
+                
+                <div>
+                    <label for="admin-password" class="block text-sm font-medium text-gray-300 mb-2">
+                        관리자 비밀번호
+                    </label>
+                    <input 
+                        type="password" 
+                        id="admin-password" 
+                        class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="비밀번호를 입력하세요"
+                        required
+                        autocomplete="current-password"
+                    />
+                </div>
+                
+                <button 
+                    type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    로그인
+                </button>
+                
+                <div id="login-error" class="hidden bg-red-900/20 border border-red-700 text-red-400 px-4 py-3 rounded-lg text-sm">
+                    ID 또는 비밀번호가 올바르지 않습니다.
+                </div>
+            </form>
+            
+            <div class="mt-6 pt-6 border-t border-gray-700">
+                <a href="/" class="text-sm text-blue-400 hover:text-blue-300 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    채팅으로 돌아가기
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="hidden">
+        <!-- Header -->
+        <header class="bg-gray-800 border-b border-gray-700 py-4 px-6 shadow-lg sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h1 class="text-xl font-bold text-gray-100">관리자 대시보드</h1>
+                    <span class="bg-green-600 text-white text-xs px-2 py-1 rounded-full">ADMIN</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="last-updated" class="text-xs text-gray-400"></span>
+                    <button id="refresh-btn" class="text-gray-400 hover:text-gray-200 transition-colors" title="새로고침">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                    <button id="logout-btn" class="text-red-400 hover:text-red-300 transition-colors">
+                        로그아웃
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto p-6">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <!-- Active Connections -->
+                <div class="stat-card bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-medium text-blue-100">활성 연결</h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <p id="stat-active-connections" class="text-3xl font-bold text-white">-</p>
+                    <p class="text-xs text-blue-200 mt-1">현재 접속자</p>
+                </div>
+
+                <!-- Total Messages -->
+                <div class="stat-card bg-gradient-to-br from-green-600 to-green-700 rounded-lg shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-medium text-green-100">총 메시지</h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    </div>
+                    <p id="stat-total-messages" class="text-3xl font-bold text-white">-</p>
+                    <p class="text-xs text-green-200 mt-1">전송된 메시지</p>
+                </div>
+
+                <!-- Total Connections -->
+                <div class="stat-card bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-medium text-purple-100">총 접속</h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <p id="stat-total-connections" class="text-3xl font-bold text-white">-</p>
+                    <p class="text-xs text-purple-200 mt-1">누적 접속</p>
+                </div>
+
+                <!-- Error Rate -->
+                <div class="stat-card bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-medium text-red-100">오류</h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <p id="stat-errors" class="text-3xl font-bold text-white">-</p>
+                    <p class="text-xs text-red-200 mt-1">오류 발생 횟수</p>
+                </div>
+            </div>
+
+            <!-- Detailed Stats -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Active Sessions -->
+                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
+                    <div class="p-4 border-b border-gray-700">
+                        <h2 class="text-lg font-semibold text-gray-100">활성 세션</h2>
+                        <p class="text-sm text-gray-400">현재 연결된 사용자 목록</p>
+                    </div>
+                    <div class="p-4">
+                        <div id="active-sessions" class="space-y-2 max-h-96 overflow-y-auto">
+                            <p class="text-sm text-gray-500 text-center py-8">데이터를 불러오는 중...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Messages -->
+                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
+                    <div class="p-4 border-b border-gray-700">
+                        <h2 class="text-lg font-semibold text-gray-100">최근 메시지</h2>
+                        <p class="text-sm text-gray-400">최근 50개 메시지</p>
+                    </div>
+                    <div class="p-4">
+                        <div id="recent-messages" class="space-y-2 max-h-96 overflow-y-auto">
+                            <p class="text-sm text-gray-500 text-center py-8">데이터를 불러오는 중...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
+                <div class="p-4 border-b border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-100">시스템 정보</h2>
+                </div>
+                <div class="p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-400">서버 시간</p>
+                            <p id="server-time" class="text-gray-100 font-mono">-</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">가동 시간</p>
+                            <p id="uptime" class="text-gray-100 font-mono">-</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Worker 버전</p>
+                            <p class="text-gray-100 font-mono">v1.0.0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Admin JavaScript -->
+    <script type="module" src="/js/admin.js"></script>
+</body>
+</html>

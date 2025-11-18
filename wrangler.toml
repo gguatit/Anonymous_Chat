@@ -2,6 +2,21 @@ name = "anonymous-chat"
 main = "src/worker.js"
 compatibility_date = "2024-11-01"
 
+# 관리자 인증 시크릿 (필수 설정!)
+# npx wrangler secret put ADMIN_ID
+# npx wrangler secret put ADMIN_PASSWORD
+# npx wrangler secret put HMAC_SECRET
+
+# 토큰 블랙리스트용 KV (세션 무효화)
+[[kv_namespaces]]
+binding = "ADMIN_TOKENS"
+id = "YOUR_KV_ID_HERE"  # wrangler kv:namespace create ADMIN_TOKENS 실행 후 ID 입력
+
+# 감사 로그용 KV (관리자 활동 기록)
+[[kv_namespaces]]
+binding = "ADMIN_LOGS"
+id = "YOUR_KV_ID_HERE"  # wrangler kv:namespace create ADMIN_LOGS 실행 후 ID 입력
+
 # Durable Objects for WebSocket state management
 [[durable_objects.bindings]]
 name = "CHAT_ROOM"
@@ -20,7 +35,9 @@ binding = "ASSETS"
 [vars]
 ENVIRONMENT = "production"
 # HMAC_SECRET should be set in production via: wrangler secret put HMAC_SECRET
-# For development, a random secret is auto-generated
+# ADMIN_ID should be set in production via: wrangler secret put ADMIN_ID
+# ADMIN_PASSWORD should be set in production via: wrangler secret put ADMIN_PASSWORD
+# For development: ID=kalpha, Password=kalpha#admin!!
 
 # Observability configuration
 [observability]
