@@ -130,15 +130,15 @@ export class UIManager {
                 isLongPress = true;
                 this.showContextMenu(e, messageId);
             }, 500); // 500ms long press
-        });
+        }, { passive: true });
 
         messageDiv.addEventListener('touchend', () => {
             clearTimeout(longPressTimer);
-        });
+        }, { passive: true });
 
         messageDiv.addEventListener('touchmove', () => {
             clearTimeout(longPressTimer);
-        });
+        }, { passive: true });
 
         // Right-click for desktop
         messageDiv.addEventListener('contextmenu', (e) => {
