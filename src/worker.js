@@ -86,6 +86,10 @@ export default {
                 return await handleAdminLogs(request, env, corsHeaders);
             }
 
+            if (url.pathname === '/api/admin/send-message') {
+                return await handleAdminSendMessage(request, env, corsHeaders);
+            }
+
             // WebSocket upgrade request
             if (url.pathname === '/ws') {
                 return await handleWebSocket(request, env, HMAC_SECRET);
@@ -564,6 +568,82 @@ async function handleAdminLogs(request, env, corsHeaders) {
     });
 }
 
+async function handleAdminSendMessage(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+    
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    
+    if (!isValid) {
+        return new Response(JSON.stringify({ success: false, error: 'Invalid token' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+    
+    try {
+        const { content } = await request.json();
+        
+        if (!content || content.trim().length === 0) {
+            return new Response(JSON.stringify({ success: false, error: 'Empty message' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
+        if (content.length > SECURITY.MAX_MESSAGE_LENGTH) {
+            return new Response(JSON.stringify({ 
+                success: false, 
+                error: `Message too long (max ${SECURITY.MAX_MESSAGE_LENGTH} characters)` 
+            }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // Get the Durable Object for the chat room
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+        
+        // Forward message to the room
+        const roomResponse = await room.fetch(new Request('http://internal/admin/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+        }));
+        
+        if (!roomResponse.ok) {
+            throw new Error('Failed to broadcast message');
+        }
+        
+        // Log admin activity
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        await logAdminActivity(env, {
+            type: 'message_sent',
+            content: content.substring(0, 100), // Store first 100 chars for audit
+            ip: clientIP,
+            timestamp: Date.now()
+        });
+        
+        return new Response(JSON.stringify({ success: true }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Admin send message error:', error);
+        return new Response(JSON.stringify({ success: false, error: 'Internal error' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 async function generateAdminToken(password, secret) {
     const data = `${password}:${Date.now()}`;
     const encoder = new TextEncoder();
@@ -736,6 +816,53 @@ export class ChatRoom {
             return new Response(JSON.stringify(this.messages), {
                 headers: { 'Content-Type': 'application/json' }
             });
+        }
+        
+        // Admin broadcast message endpoint
+        if (url.pathname === '/admin/broadcast') {
+            try {
+                const { content } = await request.json();
+                
+                // Generate admin message
+                const messageId = `msg_admin_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+                const message = {
+                    type: 'message',
+                    messageId: messageId,
+                    content: this.sanitizeInput(content),
+                    sessionId: 'ADMIN',
+                    isAdmin: true,
+                    timestamp: Date.now(),
+                    editedAt: null
+                };
+                
+                // Generate signature
+                message.signature = await generateMessageSignature(message, HMAC_SECRET);
+                
+                // Add to messages array
+                this.messages.push(message);
+                
+                // Clean up old messages
+                const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+                this.messages = this.messages
+                    .filter(msg => msg.timestamp > twelveHoursAgo)
+                    .slice(-500);
+                
+                // Persist to storage
+                this.state.storage.put('messages', this.messages);
+                
+                // Broadcast to all connected users
+                this.broadcast(message);
+                
+                return new Response(JSON.stringify({ success: true }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('Admin broadcast error:', error);
+                return new Response(JSON.stringify({ success: false }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
         }
         
         // Initialize messages from storage on first request

@@ -12,3 +12,23 @@ body {
 #messages-container::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
 }
+
+/* Admin message style */
+.admin-message-style {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(167, 139, 250, 0.25) 100%);
+    border: 2px solid rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3), 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.admin-message-style::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%);
+    border-radius: inherit;
+    pointer-events: none;
+}

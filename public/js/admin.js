@@ -20,6 +20,12 @@ class AdminDashboard {
         this.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         this.logoutBtn?.addEventListener('click', () => this.handleLogout());
         this.refreshBtn?.addEventListener('click', () => this.refreshData());
+        
+        // Admin message form
+        const adminMessageForm = document.getElementById('admin-message-form');
+        if (adminMessageForm) {
+            adminMessageForm.addEventListener('submit', (e) => this.handleAdminMessage(e));
+        }
     }
 
     async checkAuthentication() {
@@ -213,16 +219,25 @@ class AdminDashboard {
             return;
         }
 
-        container.innerHTML = messages.slice(-50).reverse().map(msg => `
-            <div class="p-3 bg-gray-700 rounded-lg">
-                <div class="flex items-start justify-between mb-1">
-                    <span class="text-xs font-mono text-gray-400">${this.truncateId(msg.sessionId)}</span>
-                    <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</span>
+        container.innerHTML = messages.slice(-50).reverse().map(msg => {
+            const isAdminMessage = msg.isAdmin || msg.sessionId === 'ADMIN';
+            const bgColor = isAdminMessage ? 'bg-gradient-to-r from-purple-900 to-purple-800 border border-purple-500' : 'bg-gray-700';
+            const badge = isAdminMessage ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-600 text-white">관리자</span>' : '';
+            
+            return `
+                <div class="p-3 ${bgColor} rounded-lg">
+                    <div class="flex items-start justify-between mb-1">
+                        <div class="flex items-center gap-2">
+                            ${badge}
+                            <span class="text-xs font-mono text-gray-400">${this.truncateId(msg.sessionId)}</span>
+                        </div>
+                        <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</span>
+                    </div>
+                    <p class="text-sm text-gray-200 break-words">${this.escapeHtml(msg.content)}</p>
+                    ${msg.editedAt ? '<span class="text-xs text-yellow-500">(수정됨)</span>' : ''}
                 </div>
-                <p class="text-sm text-gray-200 break-words">${this.escapeHtml(msg.content)}</p>
-                ${msg.editedAt ? '<span class="text-xs text-yellow-500">(수정됨)</span>' : ''}
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     updateLastUpdated() {
@@ -271,6 +286,47 @@ class AdminDashboard {
     displayLogs(logs) {
         // 감사 로그 표시 (필요시 UI에 추가)
         console.log('Audit Logs:', logs);
+    }
+    
+    async handleAdminMessage(e) {
+        e.preventDefault();
+        
+        const input = document.getElementById('admin-message-input');
+        const content = input.value.trim();
+        
+        if (!content) return;
+        
+        try {
+            const response = await fetch('/api/admin/send-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.sessionToken}`
+                },
+                body: JSON.stringify({ content })
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    this.handleLogout();
+                    return;
+                }
+                throw new Error('Failed to send message');
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                input.value = '';
+                // Refresh messages to show the new admin message
+                this.refreshData();
+            } else {
+                alert('메시지 전송에 실패했습니다: ' + (result.error || '알 수 없는 오류'));
+            }
+        } catch (error) {
+            console.error('Admin message error:', error);
+            alert('메시지 전송 중 오류가 발생했습니다.');
+        }
     }
 }
 
