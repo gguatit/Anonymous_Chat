@@ -13,7 +13,7 @@ export class FileUploadManager {
         this.selectedFile = null;
         this.uploadedFileUrl = null;
         
-        this.maxFileSize = 50 * 1024 * 1024; // 50MB
+        this.maxFileSize = 100 * 1024 * 1024; // 100MB
         
         this.initializeEventListeners();
     }

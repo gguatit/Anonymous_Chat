@@ -56,6 +56,16 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - 자동 재연결 (지수적 백오프)
 - 타이핑 표시 실시간 동기화
 - 메시지 수정 및 삭제 (10분 제한)
+- **파일 공유** (이미지, 비디오, 오디오, 문서)
+
+### 파일 공유 시스템
+
+- 최대 100MB 파일 업로드
+- 지원 형식: 이미지, 비디오, 오디오, PDF, 문서
+- 실시간 업로드 진행 상태 표시
+- 이미지 인라인 미리보기
+- 비디오/오디오 스트리밍 재생
+- 외부 API 서버 연동 (static.a85labs.net)
 
 ### 완전 익명
 
@@ -115,20 +125,27 @@ graph TB
         E[In-Memory State<br/>Messages & Sessions]
     end
     
+    subgraph "External Services"
+        F[File Upload API<br/>static.a85labs.net]
+    end
+    
     A -->|HTTPS| C
     A -.->|WSS| B
+    A -.->|File Upload| F
     B -->|Routing| D
     D -->|State| E
     D -.->|Broadcast| A
+    F -.->|File URL| A
 ```
 
 ### 데이터 흐름
 
-```
+```plaintext
 1. 클라이언트 → HTTP(S) → Static Assets (HTML/CSS/JS)
 2. WebSocket → WSS → Worker → IP 검증 → Durable Object
 3. 메시지 → 클라이언트 검증 → 서버 검증 → 브로드캐스트
 4. 타이핑 → 2초 디바운싱 → 다른 클라이언트에게 전파
+5. 파일 업로드 → static.a85labs.net → 파일 URL 반환 → 메시지에 첨부
 ```
 
 ### 핵심 컴포넌트
@@ -139,6 +156,8 @@ graph TB
 | Durable Object | 채팅방 상태 관리, 메시지 브로드캐스트 | `src/worker.js` (ChatRoom) |
 | Static Assets | HTML, CSS, JavaScript 정적 파일 | `public/` |
 | Client App | WebSocket 클라이언트, UI 렌더링 | `public/js/` |
+| File Upload Manager | 파일 업로드 및 미리보기 처리 | `public/js/file-upload.js` |
+| External File API | 파일 저장 및 제공 | `static.a85labs.net` |
 
 ---
 
@@ -454,7 +473,7 @@ vars = { ENVIRONMENT = "development" }
 
 ### 프로젝트 구조
 
-```
+```plaintext
 Anonymous_Chat/
 ├── public/                # 정적 파일 (Cloudflare Assets)
 │   ├── index.html        # 메인 HTML
@@ -462,7 +481,8 @@ Anonymous_Chat/
 │   │   ├── chat.js       # 메인 진입점
 │   │   ├── websocket.js  # WebSocket 클라이언트
 │   │   ├── session.js    # 세션 관리
-│   │   └── ui.js         # UI 렌더링
+│   │   ├── ui.js         # UI 렌더링
+│   │   └── file-upload.js # 파일 업로드 관리
 │   ├── css/              # 스타일시트
 │   │   ├── base.css      # 기본 스타일
 │   │   └── animations.css # 애니메이션
@@ -489,6 +509,14 @@ Anonymous_Chat/
 | `/metrics` | GET | 익명 메트릭 (연결 수, 메시지 수) |
 | `/` | GET | 정적 파일 (HTML) |
 
+#### 파일 업로드 API (static.a85labs.net)
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/upload` | POST | 파일 업로드 (multipart/form-data) |
+| `/{id}/{name}` | GET | 업로드된 파일 다운로드 |
+| `/{id}/{name}` | HEAD | 파일 메타데이터 조회 |
+
 #### 메트릭 API 응답 예시
 
 ```json
@@ -497,6 +525,16 @@ Anonymous_Chat/
   "activeConnections": 42,
   "totalMessages": 1337,
   "uptime": 86400
+}
+```
+
+#### 파일 업로드 응답 예시
+
+```json
+{
+  "id": "abc123xyz",
+  "name": "image.jpg",
+  "url": "https://static.a85labs.net/abc123xyz/image.jpg"
 }
 ```
 
