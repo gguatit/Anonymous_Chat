@@ -1,0 +1,14 @@
+# Cloudflare Pages Configuration
+
+# No build command needed - static files are in public/, functions in functions/
+[build]
+command = ""
+
+# Build output directory (where static files are located)
+[build.output]
+directory = "public"
+
+# Environment-specific settings
+[env.production]
+
+[env.preview]

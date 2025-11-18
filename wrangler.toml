@@ -28,12 +28,6 @@ class_name = "ChatRoom"
 tag = "v1"
 new_classes = ["ChatRoom"]
 
-# Build configuration for Pages
-[build]
-command = ""
-cwd = ""
-watch_dirs = ["src", "public"]
-
 # Environment variables
 [vars]
 ENVIRONMENT = "production"
