@@ -110,9 +110,14 @@ export class FileUploadManager {
             console.log('Upload result:', result);
             
             // API 응답에서 파일 URL 추출
-            // 예상 응답 형식: { "id": "abc123", "name": "filename.jpg", "url": "https://file.kalpha.kr/abc123/filename.jpg" }
-            if (result.url) {
+            // full_url 우선 사용, 없으면 url, 그것도 없으면 id와 name으로 구성
+            if (result.full_url) {
+                this.uploadedFileUrl = result.full_url;
+            } else if (result.url && result.url.startsWith('http')) {
                 this.uploadedFileUrl = result.url;
+            } else if (result.url) {
+                // 상대 경로인 경우 전체 URL로 변환
+                this.uploadedFileUrl = `${this.apiBaseUrl}${result.url}`;
             } else if (result.id && result.name) {
                 // URL이 없으면 id와 name으로 구성
                 this.uploadedFileUrl = `${this.apiBaseUrl}/${result.id}/${result.name}`;
