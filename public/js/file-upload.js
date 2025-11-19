@@ -86,19 +86,28 @@ export class FileUploadManager {
         }
 
         try {
+            console.log('Starting file upload:', this.selectedFile.name, this.selectedFile.type, this.selectedFile.size);
+            
             const formData = new FormData();
             formData.append('file', this.selectedFile);
 
+            console.log('Uploading to:', `${this.apiBaseUrl}/upload`);
+            
             const response = await fetch(`${this.apiBaseUrl}/upload`, {
                 method: 'POST',
                 body: formData
             });
 
+            console.log('Upload response status:', response.status, response.statusText);
+
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Upload error response:', errorText);
                 throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
             }
 
             const result = await response.json();
+            console.log('Upload result:', result);
             
             // API 응답에서 파일 URL 추출
             // 예상 응답 형식: { "id": "abc123", "name": "filename.jpg", "url": "https://file.kalpha.kr/abc123/filename.jpg" }

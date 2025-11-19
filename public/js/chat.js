@@ -140,6 +140,8 @@ class ChatClient {
                 this.ui.displaySystemMessage('파일 업로드 중...');
                 const fileData = await this.fileUpload.uploadFile();
                 
+                console.log('File uploaded successfully:', fileData);
+                
                 // Add file info to message
                 messageData.file = {
                     url: fileData.url,
@@ -150,6 +152,7 @@ class ChatClient {
                 
                 this.fileUpload.clearFile();
             } catch (error) {
+                console.error('File upload failed:', error);
                 this.ui.displayError('파일 업로드 실패: ' + error.message);
                 return;
             }
