@@ -105,6 +105,16 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - 익명 메트릭 API
 - Wrangler tail 로그 지원
 
+### 관리자 대시보드
+
+- 보안 인증 기반 접근 (`/administrator`)
+- 실시간 통계 및 모니터링
+- 활성 세션 관리 및 강제 종료
+- 메시지 기록 조회 및 삭제
+- 시스템 정보 및 감사 로그
+- JWT 기반 세션 관리
+- IP 주소 추적 및 차단
+
 ---
 
 ## 아키텍처
@@ -185,11 +195,24 @@ npm install
 # 3. Cloudflare 로그인
 wrangler login
 
-# 4. 로컬 개발 서버 시작
+# 4. 필수 시크릿 설정 (관리자 기능 사용 시)
+npx wrangler secret put ADMIN_ID
+# 프롬프트에서 관리자 ID 입력 (예: admin)
+
+npx wrangler secret put ADMIN_PASSWORD
+# 프롬프트에서 관리자 비밀번호 입력
+
+npx wrangler secret put HMAC_SECRET
+# 프롬프트에서 HMAC 시크릿 키 입력 (32자 이상 권장)
+
+# 5. 로컬 개발 서버 시작
 npm run dev
 
 # 브라우저에서 http://localhost:8787 접속
+# 관리자 페이지: http://localhost:8787/administrator
 ```
+
+**참고:** 로컬 개발 시 시크릿이 설정되지 않으면 기본값이 사용됩니다 (개발용, ID: kalpha, Password: kalpha#admin!!). 프로덕션 환경에서는 반드시 시크릿을 설정해야 합니다.
 
 ### 커스터마이징
 
@@ -459,7 +482,7 @@ Windows, Linux, Android에서 최상의 경험을 제공합니다.
 
 ## 고급 설정
 
-### 환경 변수
+### 환경 변수 및 시크릿
 
 `wrangler.toml` 설정:
 
@@ -471,18 +494,47 @@ vars = { ENVIRONMENT = "production" }
 vars = { ENVIRONMENT = "development" }
 ```
 
+### 필수 시크릿 설정
+
+프로덕션 환경에서 반드시 설정해야 하는 시크릿:
+
+```bash
+# 관리자 ID 설정
+npx wrangler secret put ADMIN_ID
+# 예시: admin, kalpha 등
+
+# 관리자 비밀번호 설정
+npx wrangler secret put ADMIN_PASSWORD
+# 강력한 비밀번호 사용 권장 (12자 이상, 특수문자 포함)
+
+# HMAC 시크릿 키 설정
+npx wrangler secret put HMAC_SECRET
+# 32자 이상의 랜덤 문자열 사용
+# 생성 예시: openssl rand -base64 32
+```
+
+**보안 주의사항:**
+- 시크릿은 절대 코드에 하드코딩하지 마세요
+- 시크릿은 Cloudflare에 암호화되어 저장됩니다
+- 정기적으로 비밀번호를 변경하세요
+- `wrangler.toml` 파일에 시크릿을 포함하지 마세요
+
+자세한 내용은 [SECURITY_SETUP.md](SECURITY_SETUP.md)를 참조하세요.
+
 ### 프로젝트 구조
 
 ```plaintext
 Anonymous_Chat/
 ├── public/                # 정적 파일 (Cloudflare Assets)
 │   ├── index.html        # 메인 HTML
+│   ├── administrator.html # 관리자 대시보드
 │   ├── js/               # 클라이언트 JavaScript
 │   │   ├── chat.js       # 메인 진입점
 │   │   ├── websocket.js  # WebSocket 클라이언트
 │   │   ├── session.js    # 세션 관리
 │   │   ├── ui.js         # UI 렌더링
-│   │   └── file-upload.js # 파일 업로드 관리
+│   │   ├── file-upload.js # 파일 업로드 관리
+│   │   └── admin.js      # 관리자 페이지 로직
 │   ├── css/              # 스타일시트
 │   │   ├── base.css      # 기본 스타일
 │   │   └── animations.css # 애니메이션
@@ -490,17 +542,29 @@ Anonymous_Chat/
 │   ├── manifest.json     # PWA Manifest
 │   ├── _headers          # Cloudflare 보안 헤더
 │   └── _redirects        # 리다이렉트 규칙
+├── functions/            # Cloudflare Pages Functions
+│   └── _middleware.js    # 미들웨어 (보안 헤더)
 ├── src/                  # Worker 소스
-│   └── worker.js         # Worker + Durable Object
+│   └── worker.js         # Worker + Durable Object + Admin API
 ├── test/                 # 테스트 파일
-│   └── worker.test.js    # Worker 테스트
+│   ├── worker.test.js    # Worker 테스트
+│   ├── security.test.js  # 보안 테스트
+│   ├── message-edit.test.js # 메시지 수정 테스트
+│   ├── message-delete.test.js # 메시지 삭제 테스트
+│   └── link-preview.test.js # 링크 프리뷰 테스트
 ├── package.json          # 프로젝트 설정
 ├── wrangler.toml         # Cloudflare 설정
 ├── vitest.config.js      # 테스트 설정
-└── deploy.sh             # 배포 스크립트
+├── deploy.sh             # 배포 스크립트
+├── ADMIN_GUIDE.md        # 관리자 가이드
+├── SECURITY_SETUP.md     # 보안 설정 가이드
+├── SECURITY_VERIFICATION.md # 보안 검증 가이드
+└── FEATURE_IDEAS.md      # 기능 아이디어
 ```
 
 ### API 엔드포인트
+
+#### 공개 API
 
 | 엔드포인트 | 메서드 | 설명 |
 |-----------|--------|------|
@@ -508,6 +572,19 @@ Anonymous_Chat/
 | `/health` | GET | 헬스 체크 |
 | `/metrics` | GET | 익명 메트릭 (연결 수, 메시지 수) |
 | `/` | GET | 정적 파일 (HTML) |
+| `/administrator` | GET | 관리자 대시보드 |
+
+#### 관리자 API (인증 필요)
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/api/admin/login` | POST | 관리자 로그인 (JWT 발급) |
+| `/api/admin/verify` | POST | JWT 토큰 검증 |
+| `/api/admin/metrics` | GET | 상세 통계 조회 |
+| `/api/admin/sessions` | GET, DELETE | 활성 세션 관리 |
+| `/api/admin/messages` | GET, DELETE | 메시지 조회 및 삭제 |
+| `/api/admin/logs` | GET | 감사 로그 조회 |
+| `/api/admin/logout` | POST | 로그아웃 (토큰 무효화) |
 
 #### 파일 업로드 API (static.a85labs.net)
 
