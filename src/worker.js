@@ -882,6 +882,16 @@ export class ChatRoom {
                             editedAt: null
                         };
                         
+                        // Add file info if present
+                        if (data.file && data.file.url) {
+                            message.file = {
+                                url: data.file.url,
+                                filename: data.file.filename,
+                                filesize: data.file.filesize,
+                                filetype: data.file.filetype
+                            };
+                        }
+                        
                         // Generate server signature
                         message.signature = await generateMessageSignature(message, HMAC_SECRET);
 

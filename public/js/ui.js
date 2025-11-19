@@ -91,13 +91,18 @@ export class UIManager {
         let contentHtml = '';
         
         // Add text content if exists
-        if (data.content) {
+        if (data.content && data.content.trim()) {
             contentHtml += `<div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>`;
         }
         
         // Add file if exists
-        if (data.file) {
+        if (data.file && data.file.url) {
             contentHtml += this.formatFileContent(data.file);
+        }
+        
+        // If neither content nor file exists, show a placeholder
+        if (!contentHtml) {
+            contentHtml = '<div class="text-sm text-gray-500 italic">내용 없음</div>';
         }
 
         messageDiv.innerHTML = `
@@ -204,6 +209,11 @@ export class UIManager {
                 return;
             }
             const contentDiv = messageDiv.querySelector('.message-content');
+            if (!contentDiv) {
+                // 파일만 있고 텍스트가 없는 경우 - 빈 내용으로 편집 모드 시작
+                this.showEditMode(messageId, '');
+                return;
+            }
             const currentContent = contentDiv.textContent;
             this.showEditMode(messageId, currentContent);
         });
@@ -239,7 +249,16 @@ export class UIManager {
         const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
         if (!messageDiv) return;
 
-        const contentDiv = messageDiv.querySelector('.message-content');
+        let contentDiv = messageDiv.querySelector('.message-content');
+        
+        // If no content div exists (file-only message), create one
+        if (!contentDiv) {
+            const headerDiv = messageDiv.querySelector('.flex.items-start.justify-between');
+            contentDiv = document.createElement('div');
+            contentDiv.className = 'text-sm break-words leading-relaxed message-content';
+            headerDiv.insertAdjacentElement('afterend', contentDiv);
+        }
+        
         const originalContent = currentContent;
 
         // Create edit input
@@ -265,7 +284,12 @@ export class UIManager {
 
         // Cancel edit
         cancelBtn.addEventListener('click', () => {
-            contentDiv.innerHTML = this.sanitizeInput(originalContent);
+            if (originalContent) {
+                contentDiv.innerHTML = this.sanitizeInput(originalContent);
+            } else {
+                // If there was no original content, remove the content div
+                contentDiv.remove();
+            }
         });
 
         // Save edit
@@ -302,7 +326,16 @@ export class UIManager {
         const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
         if (!messageDiv) return;
 
-        const contentDiv = messageDiv.querySelector('.message-content');
+        let contentDiv = messageDiv.querySelector('.message-content');
+        
+        // If no content div exists (file-only message), create one
+        if (!contentDiv) {
+            const headerDiv = messageDiv.querySelector('.flex.items-start.justify-between');
+            contentDiv = document.createElement('div');
+            contentDiv.className = 'text-sm break-words leading-relaxed message-content';
+            headerDiv.insertAdjacentElement('afterend', contentDiv);
+        }
+        
         contentDiv.innerHTML = this.sanitizeInput(newContent);
 
         // Update edited label
