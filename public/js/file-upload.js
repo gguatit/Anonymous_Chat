@@ -67,6 +67,21 @@ export class FileUploadManager {
         }
 
         this.filePreview.classList.remove('hidden');
+        
+        // Adjust messages container padding to prevent preview from covering messages
+        this.adjustMessagesContainerPadding();
+    }
+    
+    adjustMessagesContainerPadding() {
+        // Wait for the preview to render and get its actual height
+        requestAnimationFrame(() => {
+            const messagesContainer = document.querySelector('main');
+            const previewHeight = this.filePreview.offsetHeight;
+            
+            // Add extra padding to accommodate the file preview
+            // Base padding is 8rem (128px), add preview height
+            messagesContainer.style.paddingBottom = `calc(8rem + ${previewHeight}px)`;
+        });
     }
 
     clearFile() {
@@ -78,6 +93,10 @@ export class FileUploadManager {
         this.previewImage.classList.add('hidden');
         this.fileName.textContent = '';
         this.fileSize.textContent = '';
+        
+        // Reset messages container padding when file preview is hidden
+        const messagesContainer = document.querySelector('main');
+        messagesContainer.style.paddingBottom = '8rem';
     }
 
     async uploadFile() {
