@@ -386,7 +386,14 @@ class AdminDashboard {
             })() : '';
 
             const isAdminMsg = msg.sessionId && String(msg.sessionId).startsWith('admin_');
-            const adminBadge = isAdminMsg ? `<span class="inline-block text-xs font-semibold text-yellow-300 bg-yellow-900/20 px-2 py-0.5 rounded">관리자</span>` : '';
+            const adminBadge = isAdminMsg ? `
+                <span class="inline-flex items-center gap-2 text-xs font-semibold text-yellow-300 bg-yellow-900/20 px-2 py-0.5 rounded">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-yellow-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M10 2a1 1 0 01.894.553l3 6A1 1 0 0114 10h-4v6a1 1 0 11-2 0v-6H6a1 1 0 01-.894-1.447l3-6A1 1 0 0110 2z" />
+                    </svg>
+                    <span>관리자</span>
+                </span>
+            ` : '';
 
             return `
                 <div class="p-3 ${isAdminMsg ? 'bg-yellow-900/5 border border-yellow-800' : 'bg-gray-700'} rounded-lg">

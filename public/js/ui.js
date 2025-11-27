@@ -73,9 +73,13 @@ export class UIManager {
         const messageDiv = document.createElement('div');
         // Admin messages use a distinct accent and left alignment; own messages stay on the right
         if (isAdmin) {
-            messageDiv.className = 'message-enter p-3 rounded-lg border-l-4 border-yellow-400 bg-yellow-900/20';
+            messageDiv.className = 'message-enter p-3 rounded-lg border-l-4 border-yellow-400 bg-yellow-900/20 shadow-lg ring-1 ring-yellow-400/20';
             messageDiv.style.marginLeft = '0';
             messageDiv.style.marginRight = 'auto';
+            // Accessibility hints for admin messages
+            messageDiv.setAttribute('role', 'region');
+            messageDiv.setAttribute('aria-live', 'polite');
+            messageDiv.setAttribute('aria-label', '관리자 메시지');
         } else {
             messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
                 (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
@@ -115,7 +119,13 @@ export class UIManager {
         }
 
         // Name/label section: show 관리자 for admin messages
-        const nameLabel = isAdmin ? `<span class="text-xs font-semibold text-yellow-300">관리자</span>`
+        const nameLabel = isAdmin ? `
+            <span class="inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M10 2a1 1 0 01.894.553l3 6A1 1 0 0114 10h-4v6a1 1 0 11-2 0v-6H6a1 1 0 01-.894-1.447l3-6A1 1 0 0110 2z" />
+                </svg>
+                <span class="text-xs font-semibold text-yellow-300">관리자</span>
+            </span>`
             : `<span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">${isOwnMessage ? '나' : '익명'}</span>`;
 
         messageDiv.innerHTML = `
