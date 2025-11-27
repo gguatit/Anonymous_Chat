@@ -44,13 +44,13 @@ global.WebSocketPair = class {
 
 describe('Chat Worker Tests', () => {
     describe('Security Tests', () => {
-        it('should limit message length to 1000 characters', () => {
-            const longMessage = 'a'.repeat(1001);
-            expect(longMessage.length).toBeGreaterThan(1000);
+        it('should limit message length to 5000 characters', () => {
+            const longMessage = 'a'.repeat(5001);
+            expect(longMessage.length).toBeGreaterThan(5000);
 
             // The worker should truncate or reject
-            const maxLength = 1000;
-            expect(longMessage.slice(0, maxLength).length).toBe(1000);
+            const maxLength = 5000;
+            expect(longMessage.slice(0, maxLength).length).toBe(5000);
         });        it('should sanitize input to remove control characters', () => {
             const sanitize = (input) => input.replace(/[\x00-\x1F\x7F]/g, '').trim();
             
@@ -125,7 +125,7 @@ describe('Chat Worker Tests', () => {
         });
 
         it('should reject messages exceeding max length', () => {
-            const MAX_LENGTH = 1000;
+            const MAX_LENGTH = 5000;
             const validateLength = (content) => {
                 if (content.length > MAX_LENGTH) {
                     return `Message exceeds ${MAX_LENGTH} characters`;
@@ -133,8 +133,8 @@ describe('Chat Worker Tests', () => {
                 return null;
             };
 
-            const validMessage = 'a'.repeat(1000);
-            const invalidMessage = 'a'.repeat(1001);
+            const validMessage = 'a'.repeat(MAX_LENGTH);
+            const invalidMessage = 'a'.repeat(MAX_LENGTH + 1);
             
             expect(validateLength(validMessage)).toBe(null);
             expect(validateLength(invalidMessage)).toContain('exceeds');

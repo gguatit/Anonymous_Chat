@@ -258,7 +258,7 @@ const RATE_LIMIT = {
 
 ```javascript
 const SECURITY = {
-    MAX_MESSAGE_LENGTH: 1000,
+    MAX_MESSAGE_LENGTH: 5000,
     BANNED_IPS: new Set([
         '192.168.1.1',
         '10.0.0.1'

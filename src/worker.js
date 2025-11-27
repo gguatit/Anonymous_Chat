@@ -9,7 +9,7 @@ const RATE_LIMIT = {
 
 // Security configuration
 const SECURITY = {
-    MAX_MESSAGE_LENGTH: 1000,
+    MAX_MESSAGE_LENGTH: 5000,
     BANNED_IPS: new Set(), // Can be populated from KV or environment
     IP_WHITELIST: null, // null means all IPs allowed
     ALLOWED_ORIGINS: ['https://kalpha.mmv.kr'], // Production domain
