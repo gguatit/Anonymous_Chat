@@ -206,6 +206,36 @@
                 </div>
             </div>
 
+            <!-- IP Management -->
+            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-4 mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-semibold text-gray-100">IP 관리</h2>
+                    <div class="text-sm text-gray-400">관리자는 IP 차단/해제할 수 있습니다.</div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-400 mb-2">활성 세션 (차단하려면 IP 우측 버튼 클릭)</p>
+                        <div id="ip-active-sessions" class="space-y-2 max-h-64 overflow-y-auto bg-gray-900 p-3 rounded border border-gray-700">
+                            <p class="text-sm text-gray-500 text-center py-8">데이터 불러오는 중...</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-sm text-gray-400 mb-2">차단된 IP</p>
+                        <div id="banned-ips-list" class="space-y-2 max-h-64 overflow-y-auto bg-gray-900 p-3 rounded border border-gray-700">
+                            <p class="text-sm text-gray-500 text-center py-8">데이터 불러오는 중...</p>
+                        </div>
+
+                        <div class="mt-3 flex gap-2">
+                            <input id="ban-ip-input" type="text" placeholder="차단할 IP 입력" class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded px-3 py-2 text-sm" />
+                            <button id="ban-ip-btn" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">차단</button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">수동으로 IP를 추가하면 즉시 차단됩니다.</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- System Info -->
             <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
                 <div class="p-4 border-b border-gray-700">

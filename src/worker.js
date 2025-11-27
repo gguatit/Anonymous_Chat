@@ -86,6 +86,17 @@ export default {
                 return await handleAdminLogs(request, env, corsHeaders);
             }
             
+            if (url.pathname === '/api/admin/banned-ips') {
+                return await handleAdminBannedIps(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/block-ip') {
+                return await handleAdminBlockIp(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/unblock-ip') {
+                return await handleAdminUnblockIp(request, env, corsHeaders);
+            }
             if (url.pathname === '/api/admin/broadcast') {
                 return await handleAdminBroadcast(request, env, corsHeaders);
             }
@@ -165,8 +176,22 @@ async function handleWebSocket(request, env, HMAC_SECRET) {
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
     
     // IP-based access control
+    // Check in-memory banned IPs
     if (SECURITY.BANNED_IPS.has(clientIP)) {
         return new Response('Access Denied', { status: 403 });
+    }
+
+    // If KV BANNED_IPS binding exists, check there as well
+    try {
+        if (env?.BANNED_IPS) {
+            const isBanned = await env.BANNED_IPS.get(`banned:${clientIP}`);
+            if (isBanned) {
+                return new Response('Access Denied', { status: 403 });
+            }
+        }
+    } catch (e) {
+        // Log and continue with in-memory only if KV check fails
+        console.warn('BANNED_IPS KV check failed:', e);
     }
 
     if (SECURITY.IP_WHITELIST && !SECURITY.IP_WHITELIST.has(clientIP)) {
@@ -607,6 +632,85 @@ async function handleAdminBroadcast(request, env, corsHeaders) {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
+    }
+}
+
+// Admin banned IPs list
+async function handleAdminBannedIps(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return new Response(null, { status: 401, headers: corsHeaders });
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) return new Response(null, { status: 401, headers: corsHeaders });
+
+    try {
+        // If KV binding available, list keys
+        if (env?.BANNED_IPS) {
+            const list = await env.BANNED_IPS.list({ prefix: 'banned:' });
+            const ips = list.keys.map(k => k.name.replace('banned:', ''));
+            return new Response(JSON.stringify({ banned: ips }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        // Fallback to in-memory set
+        const ips = Array.from(SECURITY.BANNED_IPS.values());
+        return new Response(JSON.stringify({ banned: ips }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('handleAdminBannedIps error:', error);
+        return new Response(JSON.stringify({ banned: [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+}
+
+async function handleAdminBlockIp(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return new Response(null, { status: 401, headers: corsHeaders });
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) return new Response(null, { status: 401, headers: corsHeaders });
+
+    try {
+        const body = await request.json();
+        const ip = body.ip;
+        if (!ip) return new Response(JSON.stringify({ error: 'Missing ip' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+        if (env?.BANNED_IPS) {
+            await env.BANNED_IPS.put(`banned:${ip}`, 'true');
+        } else {
+            SECURITY.BANNED_IPS.add(ip);
+        }
+
+        await logAdminActivity(env, { type: 'ban_ip', ip, admin: 'admin', timestamp: Date.now() });
+
+        return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('handleAdminBlockIp error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to block ip' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+}
+
+async function handleAdminUnblockIp(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return new Response(null, { status: 401, headers: corsHeaders });
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) return new Response(null, { status: 401, headers: corsHeaders });
+
+    try {
+        const body = await request.json();
+        const ip = body.ip;
+        if (!ip) return new Response(JSON.stringify({ error: 'Missing ip' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+        if (env?.BANNED_IPS) {
+            await env.BANNED_IPS.delete(`banned:${ip}`);
+        } else {
+            SECURITY.BANNED_IPS.delete(ip);
+        }
+
+        await logAdminActivity(env, { type: 'unban_ip', ip, admin: 'admin', timestamp: Date.now() });
+
+        return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('handleAdminUnblockIp error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to unblock ip' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 }
 
