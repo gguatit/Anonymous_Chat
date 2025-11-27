@@ -313,16 +313,56 @@ class AdminDashboard {
             return;
         }
 
-        container.innerHTML = messages.slice(-50).reverse().map(msg => `
-            <div class="p-3 bg-gray-700 rounded-lg">
-                <div class="flex items-start justify-between mb-1">
-                    <span class="text-xs font-mono text-gray-400">${this.truncateId(msg.sessionId)}</span>
-                    <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</span>
+        container.innerHTML = messages.slice(-50).reverse().map(msg => {
+            const fileHtml = msg.file ? (() => {
+                const filename = this.escapeHtml(msg.file.filename || '파일');
+                const filesize = msg.file.filesize != null ? this.formatFileSize(msg.file.filesize) : '';
+                const filetype = msg.file.filetype || '';
+                const url = msg.file.url || '#';
+
+                // If image, show thumbnail
+                if (filetype.startsWith('image/')) {
+                    return `
+                        <div class="mt-2">
+                            <a href="${url}" target="_blank" rel="noopener noreferrer">
+                                <img src="${url}" alt="${filename}" class="w-full max-h-48 object-contain rounded border border-gray-600" />
+                            </a>
+                            <div class="mt-1 text-xs text-gray-400">${filename} ${filesize ? '· ' + filesize : ''}</div>
+                        </div>
+                    `;
+                }
+
+                // Non-image file: show link with metadata
+                return `
+                    <div class="mt-2 text-xs text-gray-300">
+                        <a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">${filename}</a>
+                        ${filesize ? `<span class="text-gray-400"> · ${filesize}</span>` : ''}
+                        ${filetype ? `<span class="text-gray-400"> · ${this.escapeHtml(filetype)}</span>` : ''}
+                    </div>
+                `;
+            })() : '';
+
+            return `
+                <div class="p-3 bg-gray-700 rounded-lg">
+                    <div class="flex items-start justify-between mb-1">
+                        <span class="text-xs font-mono text-gray-400">${this.truncateId(msg.sessionId)}</span>
+                        <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</span>
+                    </div>
+                    <p class="text-sm text-gray-200 break-words">${this.escapeHtml(msg.content || '')}</p>
+                    ${msg.editedAt ? '<span class="text-xs text-yellow-500">(수정됨)</span>' : ''}
+                    ${fileHtml}
                 </div>
-                <p class="text-sm text-gray-200 break-words">${this.escapeHtml(msg.content)}</p>
-                ${msg.editedAt ? '<span class="text-xs text-yellow-500">(수정됨)</span>' : ''}
-            </div>
-        `).join('');
+            `;
+        }).join('');
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        if (!bytes) return '';
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        const size = (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2);
+        return `${size} ${units[i]}`;
     }
 
     updateLastUpdated() {
