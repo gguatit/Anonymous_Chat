@@ -20,6 +20,8 @@ class AdminDashboard {
         this.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         this.logoutBtn?.addEventListener('click', () => this.handleLogout());
         this.refreshBtn?.addEventListener('click', () => this.refreshData());
+        this.exportCsvBtn = document.getElementById('export-csv-btn');
+        this.exportCsvBtn?.addEventListener('click', () => this.exportCsv());
     }
 
     async checkAuthentication() {
@@ -32,6 +34,104 @@ class AdminDashboard {
             }
         } else {
             this.showLogin();
+        }
+    }
+
+    async exportCsv() {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
+        try {
+            const [sessionsResp, messagesResp] = await Promise.all([
+                fetch('/api/admin/sessions', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } }),
+                fetch('/api/admin/messages', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } })
+            ]);
+
+            if (!sessionsResp.ok || !messagesResp.ok) {
+                alert('데이터를 불러오는 중 오류가 발생했습니다. 권한을 확인하세요.');
+                return;
+            }
+
+            const sessions = await sessionsResp.json();
+            const messages = await messagesResp.json();
+
+            // Map users by sessionId for quick lookup
+            const usersMap = new Map();
+            for (const s of sessions) {
+                usersMap.set(s.sessionId, s);
+            }
+
+            // Build CSV rows: include user info per message; also include users with no messages
+            const rows = [];
+            const headers = [
+                'user_session_id', 'user_ip', 'user_join_time', 'user_message_count', 'user_last_message_time',
+                'message_id', 'message_timestamp', 'message_content', 'message_edited_at', 'file_url', 'file_name', 'file_size', 'file_type'
+            ];
+
+            for (const msg of messages) {
+                const user = usersMap.get(msg.sessionId) || {};
+                rows.push([
+                    user.sessionId || msg.sessionId || '',
+                    user.ip || '',
+                    user.joinTime ? new Date(user.joinTime).toISOString() : '',
+                    user.messageCount != null ? user.messageCount : '',
+                    user.lastMessageTime ? new Date(user.lastMessageTime).toISOString() : '',
+                    msg.messageId || '',
+                    msg.timestamp ? new Date(msg.timestamp).toISOString() : '',
+                    msg.content || '',
+                    msg.editedAt ? new Date(msg.editedAt).toISOString() : '',
+                    msg.file?.url || '',
+                    msg.file?.filename || '',
+                    msg.file?.filesize != null ? String(msg.file.filesize) : '',
+                    msg.file?.filetype || ''
+                ]);
+            }
+
+            // Add users who have no messages as rows with empty message fields
+            for (const [sessionId, user] of usersMap.entries()) {
+                const hasMessage = messages.some(m => m.sessionId === sessionId);
+                if (!hasMessage) {
+                    rows.push([
+                        user.sessionId || sessionId,
+                        user.ip || '',
+                        user.joinTime ? new Date(user.joinTime).toISOString() : '',
+                        user.messageCount != null ? user.messageCount : '',
+                        user.lastMessageTime ? new Date(user.lastMessageTime).toISOString() : '',
+                        '', '', '', '', '', '', '', ''
+                    ]);
+                }
+            }
+
+            // CSV escape helper
+            const escape = (value) => {
+                if (value == null) return '';
+                const str = String(value);
+                // Replace double quotes with two double quotes, wrap in quotes
+                return '"' + str.replace(/"/g, '""') + '"';
+            };
+
+            const csvContent = [headers.map(h => escape(h)).join(',')]
+                .concat(rows.map(r => r.map(cell => escape(cell)).join(',')))
+                .join('\n');
+
+            // Add BOM for Excel compatibility
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `anonymous_chat_export_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('Export CSV error:', error);
+            alert('CSV 내보내기 중 오류가 발생했습니다. 콘솔을 확인하세요.');
         }
     }
 
