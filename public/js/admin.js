@@ -26,13 +26,6 @@ class AdminDashboard {
         this.adminSendBtn = document.getElementById('admin-send-btn');
         this.adminMessageInput = document.getElementById('admin-message-input');
         this.adminSendBtn?.addEventListener('click', () => this.sendAdminMessage());
-        
-        // IP management elements
-        this.ipActiveSessions = document.getElementById('ip-active-sessions');
-        this.bannedIpsList = document.getElementById('banned-ips-list');
-        this.banIpInput = document.getElementById('ban-ip-input');
-        this.banIpBtn = document.getElementById('ban-ip-btn');
-        this.banIpBtn?.addEventListener('click', () => this.handleBanIp());
     }
 
     async checkAuthentication() {
@@ -301,11 +294,6 @@ class AdminDashboard {
                 this.updateRecentMessages(messages);
             }
 
-            // Load banned IPs and active sessions for IP management panel
-            this.loadIpManagementData();
-            // Load banned IPs and active sessions for IP management panel
-            this.loadIpManagementData();
-
             this.updateLastUpdated();
 
         } catch (error) {
@@ -474,124 +462,6 @@ class AdminDashboard {
     displayLogs(logs) {
         // 감사 로그 표시 (필요시 UI에 추가)
         console.log('Audit Logs:', logs);
-    }
-
-    // ------------------ IP Management ------------------
-    async loadIpManagementData() {
-        try {
-            // Active sessions (reuse existing endpoint)
-            const sessionsResp = await fetch('/api/admin/sessions', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } });
-            const bannedResp = await fetch('/api/admin/banned-ips', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } });
-
-            if (sessionsResp.ok) {
-                const sessions = await sessionsResp.json();
-                this.renderActiveSessionsForIp(sessions || []);
-            } else {
-                if (this.ipActiveSessions) this.ipActiveSessions.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">활성 세션을 불러올 수 없습니다.</p>';
-            }
-
-            if (bannedResp.ok) {
-                const data = await bannedResp.json();
-                this.renderBannedIps(data.banned || []);
-            } else {
-                if (this.bannedIpsList) this.bannedIpsList.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">차단된 IP를 불러올 수 없습니다.</p>';
-            }
-        } catch (error) {
-            console.error('IP management load error:', error);
-            if (this.ipActiveSessions) this.ipActiveSessions.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">오류 발생</p>';
-            if (this.bannedIpsList) this.bannedIpsList.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">오류 발생</p>';
-        }
-    }
-
-    renderActiveSessionsForIp(sessions) {
-        if (!this.ipActiveSessions) return;
-        if (!sessions || sessions.length === 0) {
-            this.ipActiveSessions.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">활성 세션이 없습니다.</p>';
-            return;
-        }
-
-        this.ipActiveSessions.innerHTML = sessions.map(s => `
-            <div class="flex items-center justify-between bg-gray-800 p-2 rounded">
-                <div class="text-xs text-gray-300">
-                    <div class="font-mono">${this.escapeHtml(s.sessionId)}</div>
-                    <div class="text-gray-400">${this.escapeHtml(s.ip || '')}</div>
-                </div>
-                <div>
-                    <button data-ip="${this.escapeHtml(s.ip || '')}" class="block-ip-btn bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded">차단</button>
-                </div>
-            </div>
-        `).join('');
-
-        // Attach listeners
-        this.ipActiveSessions.querySelectorAll('.block-ip-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const ip = e.currentTarget.getAttribute('data-ip');
-                if (ip) this.blockIp(ip);
-            });
-        });
-    }
-
-    renderBannedIps(banned) {
-        if (!this.bannedIpsList) return;
-        if (!banned || banned.length === 0) {
-            this.bannedIpsList.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">차단된 IP가 없습니다.</p>';
-            return;
-        }
-
-        this.bannedIpsList.innerHTML = banned.map(ip => `
-            <div class="flex items-center justify-between bg-gray-800 p-2 rounded">
-                <div class="text-xs text-gray-300">${this.escapeHtml(ip)}</div>
-                <div>
-                    <button data-ip="${this.escapeHtml(ip)}" class="unblock-ip-btn bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded">해제</button>
-                </div>
-            </div>
-        `).join('');
-
-        this.bannedIpsList.querySelectorAll('.unblock-ip-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const ip = e.currentTarget.getAttribute('data-ip');
-                if (ip) this.unblockIp(ip);
-            });
-        });
-    }
-
-    async handleBanIp() {
-        const ip = (this.banIpInput?.value || '').trim();
-        if (!ip) return alert('차단할 IP를 입력하세요.');
-        await this.blockIp(ip);
-    }
-
-    async blockIp(ip) {
-        if (!this.sessionToken) return alert('관리자 인증이 필요합니다.');
-        try {
-            const resp = await fetch('/api/admin/block-ip', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.sessionToken}` },
-                body: JSON.stringify({ ip })
-            });
-            if (!resp.ok) throw new Error('Failed to block');
-            // refresh lists
-            this.loadIpManagementData();
-        } catch (error) {
-            console.error('blockIp error:', error);
-            alert('IP 차단 중 오류가 발생했습니다.');
-        }
-    }
-
-    async unblockIp(ip) {
-        if (!this.sessionToken) return alert('관리자 인증이 필요합니다.');
-        try {
-            const resp = await fetch('/api/admin/unblock-ip', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.sessionToken}` },
-                body: JSON.stringify({ ip })
-            });
-            if (!resp.ok) throw new Error('Failed to unblock');
-            this.loadIpManagementData();
-        } catch (error) {
-            console.error('unblockIp error:', error);
-            alert('IP 차단 해제 중 오류가 발생했습니다.');
-        }
     }
 }
 
