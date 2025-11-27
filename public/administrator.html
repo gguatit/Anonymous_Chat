@@ -194,7 +194,7 @@
                         <div class="mb-3">
                             <label for="admin-message-input" class="block text-sm font-medium text-gray-300 mb-2">관리자 메시지 전송</label>
                             <div class="flex gap-2">
-                                <textarea id="admin-message-input" rows="2" class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none" placeholder="관리자 메시지를 입력하세요"></textarea>
+                                <textarea id="admin-message-input" rows="3" maxlength="5000" class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" placeholder="관리자 메시지 입력 (Shift+Enter: 줄바꿈, Enter: 전송, 최대 5000자)"></textarea>
                                 <button id="admin-send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">전송</button>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">전송된 메시지는 채팅룸의 다른 사용자에게 방송됩니다.</p>

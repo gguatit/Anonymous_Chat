@@ -26,6 +26,16 @@ class AdminDashboard {
         this.adminSendBtn = document.getElementById('admin-send-btn');
         this.adminMessageInput = document.getElementById('admin-message-input');
         this.adminSendBtn?.addEventListener('click', () => this.sendAdminMessage());
+
+        // Enter = send, Shift+Enter = newline for textarea
+        if (this.adminMessageInput) {
+            this.adminMessageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendAdminMessage();
+                }
+            });
+        }
     }
 
     async checkAuthentication() {
@@ -145,9 +155,15 @@ class AdminDashboard {
             return;
         }
 
-        const content = (this.adminMessageInput?.value || '').trim();
+        const raw = (this.adminMessageInput?.value || '');
+        const content = raw.trim();
         if (!content) {
             alert('메시지를 입력하세요.');
+            return;
+        }
+
+        if (raw.length > 5000) {
+            alert('메시지는 최대 5000자까지 가능합니다.');
             return;
         }
 
@@ -158,7 +174,7 @@ class AdminDashboard {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.sessionToken}`
                 },
-                body: JSON.stringify({ content })
+                body: JSON.stringify({ content: raw })
             });
 
             if (!response.ok) {
@@ -399,7 +415,7 @@ class AdminDashboard {
                         </div>
                         <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</span>
                     </div>
-                    <p class="text-sm text-gray-200 break-words">${this.escapeHtml(msg.content || '')}</p>
+                    <p class="text-sm text-gray-200 break-words whitespace-pre-wrap">${this.escapeHtml(msg.content || '')}</p>
                     ${msg.editedAt ? '<span class="text-xs text-yellow-500">(수정됨)</span>' : ''}
                     ${fileHtml}
                 </div>
