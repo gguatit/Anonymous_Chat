@@ -680,6 +680,23 @@ async function handleAdminBlockIp(request, env, corsHeaders) {
 
         await logAdminActivity(env, { type: 'ban_ip', ip, admin: 'admin', timestamp: Date.now() });
 
+        // Attempt to notify the Durable Object to force-disconnect active sessions for this IP
+        try {
+            if (env?.CHAT_ROOM) {
+                const roomId = env.CHAT_ROOM.idFromName('main-room');
+                const room = env.CHAT_ROOM.get(roomId);
+                const forward = new Request('https://dummy/admin/force-disconnect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID() },
+                    body: JSON.stringify({ ip })
+                });
+                // Fire-and-forget
+                room.fetch(forward).catch(err => console.warn('force-disconnect failed:', err));
+            }
+        } catch (e) {
+            console.warn('notify DO for force-disconnect failed:', e);
+        }
+
         return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (error) {
         console.error('handleAdminBlockIp error:', error);
@@ -948,6 +965,47 @@ export class ChatRoom {
             } catch (error) {
                 console.error('admin broadcast error:', error);
                 return new Response(JSON.stringify({ error: 'Failed to broadcast' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            }
+        }
+
+        if (url.pathname === '/admin/force-disconnect' && request.method === 'POST') {
+            try {
+                const data = await request.json();
+                const ip = data.ip;
+                if (!ip) return new Response(JSON.stringify({ error: 'Missing ip' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+
+                // Close websockets for sessions matching this IP
+                for (const [sessionId, metadata] of this.userMetadata) {
+                    if (metadata.ip === ip) {
+                        const ws = this.sessions.get(sessionId);
+                        if (ws) {
+                            try {
+                                ws.close(4001, 'Banned IP');
+                            } catch (e) {
+                                console.error('Error closing ws for', sessionId, e);
+                            }
+                        }
+                        this.sessions.delete(sessionId);
+                        this.userMetadata.delete(sessionId);
+                    }
+                }
+
+                // Update ipConnections map
+                if (this.ipConnections.has(ip)) {
+                    this.ipConnections.delete(ip);
+                }
+
+                // Update metrics and broadcast user count
+                metrics.activeConnections = this.sessions.size;
+                this.broadcastUserCount();
+
+                // Persist current messages/state if needed
+                await this.state.storage.put('messages', this.messages);
+
+                return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
+            } catch (e) {
+                console.error('force-disconnect handler error:', e);
+                return new Response(JSON.stringify({ error: 'failed' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
             }
         }
         
