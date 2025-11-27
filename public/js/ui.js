@@ -119,13 +119,9 @@ export class UIManager {
         }
 
         // Name/label section: show 관리자 for admin messages
-        const nameLabel = isAdmin ? `
-            <span class="inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path d="M10 2a1 1 0 01.894.553l3 6A1 1 0 0114 10h-4v6a1 1 0 11-2 0v-6H6a1 1 0 01-.894-1.447l3-6A1 1 0 0110 2z" />
-                </svg>
-                <span class="text-xs font-semibold text-yellow-300">관리자</span>
-            </span>`
+        // 관리자 메시지는 아이콘 없이 텍스트로만 강조
+        const nameLabel = isAdmin
+            ? `<span class="text-xs font-semibold text-yellow-300">관리자</span>`
             : `<span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">${isOwnMessage ? '나' : '익명'}</span>`;
 
         messageDiv.innerHTML = `
