@@ -68,9 +68,18 @@ export class UIManager {
             return; // 이미 표시된 메시지는 스킵
         }
 
+        const isAdmin = !!(data.sessionId && String(data.sessionId).startsWith('admin_'));
+
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
-            (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
+        // Admin messages use a distinct accent and left alignment; own messages stay on the right
+        if (isAdmin) {
+            messageDiv.className = 'message-enter p-3 rounded-lg border-l-4 border-yellow-400 bg-yellow-900/20';
+            messageDiv.style.marginLeft = '0';
+            messageDiv.style.marginRight = 'auto';
+        } else {
+            messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
+                (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
+        }
         messageDiv.style.maxWidth = '75%';
         
         // 메시지 표식 추가 (MutationObserver가 감지)
@@ -105,11 +114,13 @@ export class UIManager {
             contentHtml = '<div class="text-sm text-gray-500 italic">내용 없음</div>';
         }
 
+        // Name/label section: show 관리자 for admin messages
+        const nameLabel = isAdmin ? `<span class="text-xs font-semibold text-yellow-300">관리자</span>`
+            : `<span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">${isOwnMessage ? '나' : '익명'}</span>`;
+
         messageDiv.innerHTML = `
             <div class="flex items-start justify-between gap-2 mb-1">
-                <span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">
-                    ${isOwnMessage ? '나' : '익명'}${editedLabel}
-                </span>
+                <div class="flex items-center gap-2">${nameLabel}${editedLabel}</div>
                 <span class="text-xs text-gray-500">${timestamp}</span>
             </div>
             ${contentHtml}

@@ -22,6 +22,10 @@ class AdminDashboard {
         this.refreshBtn?.addEventListener('click', () => this.refreshData());
         this.exportCsvBtn = document.getElementById('export-csv-btn');
         this.exportCsvBtn?.addEventListener('click', () => this.exportCsv());
+
+        this.adminSendBtn = document.getElementById('admin-send-btn');
+        this.adminMessageInput = document.getElementById('admin-message-input');
+        this.adminSendBtn?.addEventListener('click', () => this.sendAdminMessage());
     }
 
     async checkAuthentication() {
@@ -132,6 +136,45 @@ class AdminDashboard {
         } catch (error) {
             console.error('Export CSV error:', error);
             alert('CSV 내보내기 중 오류가 발생했습니다. 콘솔을 확인하세요.');
+        }
+    }
+
+    async sendAdminMessage() {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
+        const content = (this.adminMessageInput?.value || '').trim();
+        if (!content) {
+            alert('메시지를 입력하세요.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/broadcast', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.sessionToken}`
+                },
+                body: JSON.stringify({ content })
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => null);
+                console.error('Broadcast failed', err);
+                alert('메시지 전송에 실패했습니다. 콘솔을 확인하세요.');
+                return;
+            }
+
+            // Clear input and refresh recent messages
+            if (this.adminMessageInput) this.adminMessageInput.value = '';
+            this.refreshData();
+
+        } catch (error) {
+            console.error('sendAdminMessage error:', error);
+            alert('메시지 전송 중 오류가 발생했습니다.');
         }
     }
 
@@ -342,10 +385,16 @@ class AdminDashboard {
                 `;
             })() : '';
 
+            const isAdminMsg = msg.sessionId && String(msg.sessionId).startsWith('admin_');
+            const adminBadge = isAdminMsg ? `<span class="inline-block text-xs font-semibold text-yellow-300 bg-yellow-900/20 px-2 py-0.5 rounded">관리자</span>` : '';
+
             return `
-                <div class="p-3 bg-gray-700 rounded-lg">
+                <div class="p-3 ${isAdminMsg ? 'bg-yellow-900/5 border border-yellow-800' : 'bg-gray-700'} rounded-lg">
                     <div class="flex items-start justify-between mb-1">
-                        <span class="text-xs font-mono text-gray-400">${this.truncateId(msg.sessionId)}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-mono text-gray-400">${this.truncateId(msg.sessionId)}</span>
+                            ${adminBadge}
+                        </div>
                         <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</span>
                     </div>
                     <p class="text-sm text-gray-200 break-words">${this.escapeHtml(msg.content || '')}</p>

@@ -85,6 +85,10 @@ export default {
             if (url.pathname === '/api/admin/logs') {
                 return await handleAdminLogs(request, env, corsHeaders);
             }
+            
+            if (url.pathname === '/api/admin/broadcast') {
+                return await handleAdminBroadcast(request, env, corsHeaders);
+            }
 
             // WebSocket upgrade request
             if (url.pathname === '/ws') {
@@ -564,6 +568,48 @@ async function handleAdminLogs(request, env, corsHeaders) {
     });
 }
 
+async function handleAdminBroadcast(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const body = await request.json();
+        const content = typeof body.content === 'string' ? body.content : '';
+        const file = body.file || null;
+
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/broadcast', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
+            },
+            body: JSON.stringify({ content, file, adminId: 'admin' })
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminBroadcast error:', error);
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 async function generateAdminToken(password, secret) {
     const data = `${password}:${Date.now()}`;
     const encoder = new TextEncoder();
@@ -736,6 +782,69 @@ export class ChatRoom {
             return new Response(JSON.stringify(this.messages), {
                 headers: { 'Content-Type': 'application/json' }
             });
+        }
+
+        if (url.pathname === '/admin/broadcast' && request.method === 'POST') {
+            try {
+                const data = await request.json();
+                const content = typeof data.content === 'string' ? data.content : '';
+                const file = data.file || null;
+                const adminId = data.adminId || 'admin';
+
+                if (!content && !file) {
+                    return new Response(JSON.stringify({ error: 'Empty message' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+                }
+
+                // Generate unique message ID
+                const messageId = `msg_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+
+                const message = {
+                    type: 'message',
+                    messageId: messageId,
+                    content: this.sanitizeInput(content || ''),
+                    sessionId: `admin_${adminId}`,
+                    timestamp: Date.now(),
+                    editedAt: null
+                };
+
+                if (file && file.url) {
+                    message.file = {
+                        url: file.url,
+                        filename: file.filename || '',
+                        filesize: file.filesize || null,
+                        filetype: file.filetype || ''
+                    };
+                }
+
+                // Get HMAC secret if provided
+                const HMAC_SECRET = request.headers.get('X-HMAC-Secret');
+                if (HMAC_SECRET) {
+                    message.signature = await generateMessageSignature(message, HMAC_SECRET);
+                } else {
+                    message.signature = '';
+                }
+
+                this.messages.push(message);
+
+                // Clean up messages older than 12 hours and limit to 500 messages
+                const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+                this.messages = this.messages
+                    .filter(msg => msg.timestamp > twelveHoursAgo)
+                    .slice(-500);
+
+                // Persist to Durable Object storage
+                this.state.storage.put('messages', this.messages);
+
+                // Broadcast message to all users
+                this.broadcast(message);
+
+                return new Response(JSON.stringify({ success: true, message }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('admin broadcast error:', error);
+                return new Response(JSON.stringify({ error: 'Failed to broadcast' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            }
         }
         
         // Initialize messages from storage on first request
