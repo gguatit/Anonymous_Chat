@@ -108,10 +108,11 @@ class ChatClient {
         e.preventDefault();
 
         const message = this.ui.getInputValue();
+        const trimmedMessage = message.trim();
         const hasFile = this.fileUpload.hasFile();
         
         // 메시지나 파일 중 하나는 있어야 함
-        if (!message && !hasFile) return;
+        if (!trimmedMessage && !hasFile) return;
 
         // Rate limiting check
         const now = Date.now();
@@ -120,7 +121,7 @@ class ChatClient {
             return;
         }
 
-        // Validate message length
+        // Validate message length (count raw characters, including newlines)
         if (message.length > 1000) {
             this.ui.displayError('메시지는 최대 1000자까지 가능합니다.');
             return;
@@ -129,6 +130,7 @@ class ChatClient {
         // Prepare message data
         const messageData = {
             type: 'message',
+            // Preserve newlines; sanitizeInput will escape HTML but keep the text as-is
             content: this.ui.sanitizeInput(message) || '',
             sessionId: this.sessionManager.getSessionId(),
             timestamp: now

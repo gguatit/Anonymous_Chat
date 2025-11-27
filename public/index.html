@@ -237,15 +237,15 @@
 
                 <form id="message-form" class="flex gap-2">
                     <label for="message-input" class="sr-only">메시지 입력</label>
-                    <input 
-                        type="text" 
-                        id="message-input" 
-                        class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
-                        placeholder="메시지 입력 (최대 1000자)"
+                    <textarea
+                        id="message-input"
+                        rows="2"
+                        class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 resize-none"
+                        placeholder="메시지 입력 (Shift+Enter: 줄바꿈, Enter: 전송, 최대 1000자)"
                         maxlength="1000"
                         autocomplete="off"
                         aria-label="메시지 입력"
-                    />
+                    ></textarea>
                     <input type="file" id="file-input" accept="*/*" class="hidden">
                     <button 
                         type="button" 

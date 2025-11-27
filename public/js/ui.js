@@ -48,6 +48,20 @@ export class UIManager {
         // Input handling
         this.messageInput.addEventListener('input', callbacks.onInput);
         this.messageInput.addEventListener('keydown', callbacks.onTyping);
+
+        // Enter to send, Shift+Enter to insert newline (works for textarea)
+        this.messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                // Submit the form programmatically
+                if (typeof this.messageForm.requestSubmit === 'function') {
+                    this.messageForm.requestSubmit();
+                } else {
+                    // Fallback for older browsers
+                    callbacks.onSubmit(new Event('submit', { bubbles: true, cancelable: true }));
+                }
+            }
+        });
         
         // Character count
         this.messageInput.addEventListener('input', () => {
@@ -445,7 +459,8 @@ export class UIManager {
     }
 
     getInputValue() {
-        return this.messageInput.value.trim();
+        // Return raw value so we preserve intentional leading/trailing newlines.
+        return this.messageInput.value;
     }
 
     getInputLength() {
