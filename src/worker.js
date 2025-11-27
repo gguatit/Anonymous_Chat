@@ -1294,7 +1294,15 @@ export class ChatRoom {
     sanitizeInput(input) {
         // Basic sanitization - remove control characters
         // eslint-disable-next-line no-control-regex
-        return input.replace(/[\x00-\x1F\x7F]/g, '').trim();
+        // Preserve common whitespace characters (LF, CR, TAB) so clients can send
+        // and render multiline messages. Remove other control characters while
+        // normalizing CRLF -> LF. Do NOT trim here to preserve intentional
+        // leading/trailing newlines entered by the user.
+        if (typeof input !== 'string') return '';
+        // Remove control characters except \t (0x09), \n (0x0A), \r (0x0D)
+        const cleaned = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+        // Normalize CRLF to LF for consistency
+        return cleaned.replace(/\r\n?/g, '\n');
     }
 
     generateSessionId() {
