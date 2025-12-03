@@ -245,7 +245,8 @@ export class UIManager {
                 this.showEditMode(messageId, '');
                 return;
             }
-            const currentContent = contentDiv.textContent;
+            // Convert <br> tags to newlines before editing
+            const currentContent = this.htmlToPlainText(contentDiv.innerHTML);
             this.showEditMode(messageId, currentContent);
         });
 
@@ -610,5 +611,15 @@ export class UIManager {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
 
         return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    htmlToPlainText(html) {
+        // Convert HTML to plain text while preserving line breaks
+        // Replace <br> and <br/> tags with newlines
+        let text = html.replace(/<br\s*\/?>/gi, '\n');
+        // Create a temporary div to decode HTML entities and strip other tags
+        const div = document.createElement('div');
+        div.innerHTML = text;
+        return div.textContent || div.innerText || '';
     }
 }
