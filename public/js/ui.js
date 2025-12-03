@@ -368,7 +368,8 @@ export class UIManager {
             headerDiv.insertAdjacentElement('afterend', contentDiv);
         }
         
-        contentDiv.innerHTML = this.sanitizeInput(newContent);
+        // Use formatMessageContent to preserve line breaks and format URLs
+        contentDiv.innerHTML = this.formatMessageContent(newContent);
 
         // Update edited label
         const nameSpan = messageDiv.querySelector('.text-xs.font-medium');
