@@ -70,6 +70,9 @@ export class FileUploadManager {
         
         // Adjust messages container padding to prevent preview from covering messages
         this.adjustMessagesContainerPadding();
+        
+        // Adjust bug report button position to prevent overlap with preview
+        this.adjustBugReportButtonPosition();
     }
     
     adjustMessagesContainerPadding() {
@@ -82,6 +85,32 @@ export class FileUploadManager {
             // Base padding is 8rem (128px), add preview height
             messagesContainer.style.paddingBottom = `calc(8rem + ${previewHeight}px)`;
         });
+    }
+    
+    adjustBugReportButtonPosition() {
+        // Wait for the preview to render and get its actual height
+        requestAnimationFrame(() => {
+            const bugReportBtn = document.getElementById('bug-report-btn');
+            if (!bugReportBtn) return;
+            
+            const inputArea = document.querySelector('.fixed.bottom-0');
+            const previewHeight = this.filePreview.offsetHeight;
+            
+            // Calculate total height: input area + preview
+            // Input area base is about 144px (9rem), add preview height
+            const totalOffset = 144 + previewHeight;
+            
+            // Update button position
+            bugReportBtn.style.bottom = `${totalOffset}px`;
+        });
+    }
+    
+    resetBugReportButtonPosition() {
+        const bugReportBtn = document.getElementById('bug-report-btn');
+        if (!bugReportBtn) return;
+        
+        // Reset to default position (bottom-36 = 9rem = 144px)
+        bugReportBtn.style.bottom = '144px';
     }
 
     clearFile() {
@@ -97,6 +126,9 @@ export class FileUploadManager {
         // Reset messages container padding when file preview is hidden
         const messagesContainer = document.querySelector('main');
         messagesContainer.style.paddingBottom = '8rem';
+        
+        // Reset bug report button position
+        this.resetBugReportButtonPosition();
     }
 
     async uploadFile() {
