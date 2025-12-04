@@ -7,6 +7,11 @@ export class WebSocketManager {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 10;
         this.baseReconnectDelay = 1000;
+        this.heartbeatInterval = null;
+        this.heartbeatTimeout = null;
+        this.isReconnecting = false;
+        this.hasConnectedBefore = false;
+        this.manualClose = false;
     }
 
     connect() {
@@ -32,19 +37,34 @@ export class WebSocketManager {
         console.log('WebSocket connected');
         this.reconnectAttempts = 0;
         
-        // Send join message
+        // Send join message with reconnection flag
         this.send({
             type: 'join',
             sessionId: this.sessionId,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            isReconnect: this.hasConnectedBefore
         });
         
+        // Mark as connected
+        this.hasConnectedBefore = true;
+        this.isReconnecting = false;
+        
         this.messageHandler.onConnectionChange('connected');
+        
+        // Start heartbeat to keep connection alive
+        this.startHeartbeat();
     }
 
     handleMessage(event) {
         try {
             const data = JSON.parse(event.data);
+            
+            // Handle pong response
+            if (data.type === 'pong') {
+                this.handlePong();
+                return;
+            }
+            
             this.messageHandler.onMessage(data);
         } catch (error) {
             console.error('Error parsing message:', error);
@@ -53,11 +73,19 @@ export class WebSocketManager {
 
     handleClose(event) {
         console.log('WebSocket closed:', event.code, event.reason);
+        
+        // Stop heartbeat
+        this.stopHeartbeat();
+        
         this.messageHandler.onConnectionChange('disconnected');
         
-        if (!event.wasClean) {
+        // Don't reconnect if manually closed
+        if (!this.manualClose && !event.wasClean) {
+            this.isReconnecting = true;
             this.scheduleReconnect();
         }
+        
+        this.manualClose = false;
     }
 
     handleError(error) {
@@ -94,5 +122,53 @@ export class WebSocketManager {
 
     isConnected() {
         return this.ws && this.ws.readyState === WebSocket.OPEN;
+    }
+    
+    startHeartbeat() {
+        // Stop existing heartbeat
+        this.stopHeartbeat();
+        
+        // Send ping every 30 seconds
+        this.heartbeatInterval = setInterval(() => {
+            if (this.isConnected()) {
+                this.send({ type: 'ping', timestamp: Date.now() });
+                
+                // Set timeout to detect connection loss
+                this.heartbeatTimeout = setTimeout(() => {
+                    console.warn('Heartbeat timeout - connection may be lost');
+                    // Close and reconnect if no pong received
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                }, 10000); // 10 second timeout
+            }
+        }, 30000); // 30 second interval
+    }
+    
+    stopHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+        if (this.heartbeatTimeout) {
+            clearTimeout(this.heartbeatTimeout);
+            this.heartbeatTimeout = null;
+        }
+    }
+    
+    handlePong() {
+        // Clear timeout when pong received
+        if (this.heartbeatTimeout) {
+            clearTimeout(this.heartbeatTimeout);
+            this.heartbeatTimeout = null;
+        }
+    }
+    
+    disconnect() {
+        this.manualClose = true;
+        this.stopHeartbeat();
+        if (this.ws) {
+            this.ws.close();
+        }
     }
 }

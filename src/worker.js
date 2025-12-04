@@ -883,40 +883,81 @@ export class ChatRoom {
 
                 // Handle different message types
                 switch (data.type) {
+                    case 'ping': {
+                        // Respond to heartbeat ping
+                        this.sendToSession(sessionId || 'temp', {
+                            type: 'pong',
+                            timestamp: Date.now()
+                        });
+                        break;
+                    }
+                    
                     case 'join': {
+                        const isReconnect = data.isReconnect || false;
                         sessionId = data.sessionId || this.generateSessionId();
                         
-                        // Initialize user metadata
-                        metadata = {
-                            ip: clientIP,
-                            joinTime: Date.now(),
-                            messageCount: 0,
-                            lastMessageTime: 0,
-                        };
-
-                        this.sessions.set(sessionId, websocket);
-                        this.userMetadata.set(sessionId, metadata);
+                        // Check if this is an existing session reconnecting
+                        const existingMetadata = this.userMetadata.get(sessionId);
+                        const wasAlreadyConnected = this.sessions.has(sessionId);
                         
-                        // Track IP connections
-                        this.ipConnections.set(clientIP, (this.ipConnections.get(clientIP) || 0) + 1);
-                        
-                        // Update metrics
-                        metrics.totalConnections++;
-                        metrics.activeConnections++;
+                        if (wasAlreadyConnected || existingMetadata) {
+                            // Existing session reconnecting - just update the websocket
+                            console.log('Session reconnecting:', sessionId);
+                            this.sessions.set(sessionId, websocket);
+                            
+                            // Keep existing metadata
+                            metadata = existingMetadata || {
+                                ip: clientIP,
+                                joinTime: Date.now(),
+                                messageCount: 0,
+                                lastMessageTime: 0,
+                            };
+                            this.userMetadata.set(sessionId, metadata);
+                            
+                            // Send recent messages only (no welcome message for reconnect)
+                            const recentMessages = this.messages.slice(-50);
+                            for (const msg of recentMessages) {
+                                this.sendToSession(sessionId, msg);
+                            }
+                            
+                            // Update user count
+                            this.broadcastUserCount();
+                        } else {
+                            // New session joining
+                            console.log('New session joining:', sessionId);
+                            
+                            // Initialize user metadata
+                            metadata = {
+                                ip: clientIP,
+                                joinTime: Date.now(),
+                                messageCount: 0,
+                                lastMessageTime: 0,
+                            };
 
-                        // Broadcast user count
-                        this.broadcastUserCount();
+                            this.sessions.set(sessionId, websocket);
+                            this.userMetadata.set(sessionId, metadata);
+                            
+                            // Track IP connections
+                            this.ipConnections.set(clientIP, (this.ipConnections.get(clientIP) || 0) + 1);
+                            
+                            // Update metrics
+                            metrics.totalConnections++;
+                            metrics.activeConnections++;
 
-                        // Send welcome message and recent messages
-                        this.sendToSession(sessionId, {
-                            type: 'system',
-                            content: '채팅방에 입장했습니다.'
-                        });
-                        
-                        // Send last 50 messages to new user
-                        const recentMessages = this.messages.slice(-50);
-                        for (const msg of recentMessages) {
-                            this.sendToSession(sessionId, msg);
+                            // Broadcast user count
+                            this.broadcastUserCount();
+
+                            // Send welcome message only for new users
+                            this.sendToSession(sessionId, {
+                                type: 'system',
+                                content: '채팅방에 입장했습니다.'
+                            });
+                            
+                            // Send last 50 messages to new user
+                            const recentMessages = this.messages.slice(-50);
+                            for (const msg of recentMessages) {
+                                this.sendToSession(sessionId, msg);
+                            }
                         }
 
                         break;
