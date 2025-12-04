@@ -249,12 +249,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.chatClient = new ChatClient();
 });
 
-// Handle page visibility changes
+// Handle page visibility changes - don't disconnect, just let heartbeat handle it
 document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && window.chatClient) {
-        // Reconnect if disconnected when page becomes visible
-        if (!window.chatClient.wsManager.isConnected()) {
-            window.chatClient.wsManager.connect();
-        }
+    // The heartbeat mechanism will keep the connection alive
+    // No need to manually reconnect
+});
+
+// Clean disconnect when page is unloaded
+window.addEventListener('beforeunload', () => {
+    if (window.chatClient && window.chatClient.wsManager) {
+        window.chatClient.wsManager.disconnect();
     }
 });
