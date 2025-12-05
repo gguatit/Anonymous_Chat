@@ -109,11 +109,26 @@ Cloudflare Workers 기반 서버리스 아키텍처
 
 - 보안 인증 기반 접근 (`/administrator`)
 - 실시간 통계 및 모니터링
-- 활성 세션 관리 및 강제 종료
-- 메시지 기록 조회 및 삭제
-- 시스템 정보 및 감사 로그
+- **활성 세션 관리 및 IP 기반 차단**
+  - 사용자 강제 퇴장 (즉시 퇴장, 30초, 5분, 10분 차단)
+  - 외부 IP 기반 차단으로 네트워크 공유 사용자 보호
+  - 클릭 한 번으로 차단 시간 선택
+- **메시지 관리**
+  - 관리자 메시지 시간 제한 없이 수정/삭제 가능
+  - 줄바꿈 지원 (Shift+Enter)
+- **실시간 활동 모니터링**
+  - 사용자별 마지막 활동 시간 추적
+  - 온라인 상태 실시간 표시
+- **시스템 공지사항**
+  - 일반 메시지와 강조 공지사항 전송
+  - 공지는 12시간 후에도 유지 (새 공지로 대체될 때까지)
+  - 신규 접속자도 현재 공지 자동 수신
+- **데이터 내보내기**
+  - CSV 내보내기 (전체, 활성 세션, 오늘, 1시간, 24시간 필터)
+  - 사용자 세션 및 메시지 기록 포함
 - JWT 기반 세션 관리
 - IP 주소 추적 및 차단
+- 감사 로그 및 시스템 정보
 
 ---
 
@@ -583,6 +598,18 @@ Anonymous_Chat/
 | `/api/admin/metrics` | GET | 상세 통계 조회 |
 | `/api/admin/sessions` | GET, DELETE | 활성 세션 관리 |
 | `/api/admin/messages` | GET, DELETE | 메시지 조회 및 삭제 |
+| `/api/admin/edit-message` | POST | 관리자 메시지 수정 (시간 제한 없음) |
+| `/api/admin/delete-message` | POST | 관리자 메시지 삭제 (시간 제한 없음) |
+| `/api/admin/kick-user` | POST | 사용자 강제 퇴장 및 IP 차단 |
+| `/api/admin/announce` | POST | 시스템 공지사항 전송 |
+| `/api/admin/broadcast` | POST | 관리자 메시지 브로드캐스트 |
+| `/api/admin/logs` | GET | 감사 로그 조회 |
+
+#### 보안 API
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/api/check-ban` | GET | IP 차단 상태 확인 |
 | `/api/admin/logs` | GET | 감사 로그 조회 |
 | `/api/admin/logout` | POST | 로그아웃 (토큰 무효화) |
 
