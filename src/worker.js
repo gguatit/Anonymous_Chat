@@ -930,6 +930,7 @@ export class ChatRoom {
         this.messages = []; // In-memory cache
         this.initialized = false;
         this.startTime = Date.now(); // Track uptime
+        this.bannedIPs = new Map(); // IP -> { bannedUntil: timestamp, reason: string }
         
         // Periodic cleanup of stale data (every 5 minutes)
         this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
@@ -949,6 +950,12 @@ export class ChatRoom {
             if (this.messages.length !== stored.length) {
                 await this.state.storage.put('messages', this.messages);
             }
+        }
+
+        // Load banned IPs from storage
+        const bannedIPs = await this.state.storage.get('bannedIPs');
+        if (bannedIPs) {
+            this.bannedIPs = new Map(bannedIPs);
         }
         
         this.initialized = true;
@@ -1191,6 +1198,7 @@ export class ChatRoom {
             try {
                 const data = await request.json();
                 const sessionId = data.sessionId;
+                const banDuration = data.banDuration || 0; // 0, 30, 300, 600 (seconds)
 
                 if (!sessionId) {
                     return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
@@ -1201,50 +1209,88 @@ export class ChatRoom {
 
                 // Find the session
                 const websocket = this.sessions.get(sessionId);
+                const metadata = this.userMetadata.get(sessionId);
                 
-                if (!websocket) {
+                if (!websocket && !metadata) {
                     return new Response(JSON.stringify({ error: 'Session not found' }), {
                         status: 404,
                         headers: { 'Content-Type': 'application/json' }
                     });
                 }
 
-                // Send kick notification to the user
-                try {
-                    websocket.send(JSON.stringify({
-                        type: 'kicked',
-                        content: '관리자에 의해 강제퇴장되었습니다.'
-                    }));
-                } catch (e) {
-                    console.error('Failed to send kick notification:', e);
-                }
+                const clientIP = metadata?.ip;
 
-                // Close the WebSocket connection
-                try {
-                    websocket.close(1008, 'Kicked by admin');
-                } catch (e) {
-                    console.error('Failed to close websocket:', e);
-                }
+                // Ban IP if duration is specified
+                if (banDuration > 0 && clientIP) {
+                    const bannedUntil = Date.now() + (banDuration * 1000);
+                    this.bannedIPs.set(clientIP, {
+                        bannedUntil,
+                        reason: 'Admin kick',
+                        sessionId
+                    });
+                    
+                    // Persist banned IPs
+                    await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
 
-                // Clean up session data
-                this.sessions.delete(sessionId);
-                const metadata = this.userMetadata.get(sessionId);
-                if (metadata) {
-                    const clientIP = metadata.ip;
-                    const currentCount = this.ipConnections.get(clientIP) || 0;
-                    if (currentCount > 1) {
-                        this.ipConnections.set(clientIP, currentCount - 1);
-                    } else {
-                        this.ipConnections.delete(clientIP);
+                    // Kick all sessions from this IP
+                    for (const [sid, ws] of this.sessions.entries()) {
+                        const meta = this.userMetadata.get(sid);
+                        if (meta && meta.ip === clientIP) {
+                            try {
+                                ws.send(JSON.stringify({
+                                    type: 'kicked',
+                                    content: `관리자에 의해 ${banDuration}초간 차단되었습니다.`,
+                                    banDuration
+                                }));
+                                ws.close(1008, 'Kicked by admin');
+                            } catch (e) {
+                                console.error('Failed to kick session:', e);
+                            }
+                            this.sessions.delete(sid);
+                            this.userMetadata.delete(sid);
+                            this.typingUsers.delete(sid);
+                        }
                     }
-                }
-                this.userMetadata.delete(sessionId);
-                this.typingUsers.delete(sessionId);
 
-                metrics.activeConnections--;
+                    // Update IP connection count
+                    this.ipConnections.delete(clientIP);
+                } else {
+                    // Just kick without ban
+                    if (websocket) {
+                        try {
+                            websocket.send(JSON.stringify({
+                                type: 'kicked',
+                                content: '관리자에 의해 강제퇴장되었습니다.'
+                            }));
+                            websocket.close(1008, 'Kicked by admin');
+                        } catch (e) {
+                            console.error('Failed to send kick notification:', e);
+                        }
+                    }
+
+                    // Clean up session data
+                    this.sessions.delete(sessionId);
+                    if (metadata && clientIP) {
+                        const currentCount = this.ipConnections.get(clientIP) || 0;
+                        if (currentCount > 1) {
+                            this.ipConnections.set(clientIP, currentCount - 1);
+                        } else {
+                            this.ipConnections.delete(clientIP);
+                        }
+                    }
+                    this.userMetadata.delete(sessionId);
+                    this.typingUsers.delete(sessionId);
+                }
+
+                metrics.activeConnections = this.sessions.size;
                 this.broadcastUserCount();
 
-                return new Response(JSON.stringify({ success: true }), {
+                return new Response(JSON.stringify({ 
+                    success: true,
+                    banned: banDuration > 0,
+                    banDuration,
+                    ip: clientIP
+                }), {
                     headers: { 'Content-Type': 'application/json' }
                 });
             } catch (error) {
@@ -1291,6 +1337,27 @@ export class ChatRoom {
         await this.initializeMessages();
         
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        
+        // Check if IP is banned
+        const banInfo = this.bannedIPs.get(clientIP);
+        if (banInfo) {
+            const now = Date.now();
+            if (now < banInfo.bannedUntil) {
+                const remainingSeconds = Math.ceil((banInfo.bannedUntil - now) / 1000);
+                return new Response(JSON.stringify({
+                    error: 'banned',
+                    message: `이 IP는 ${remainingSeconds}초 동안 차단되었습니다.`,
+                    remainingSeconds
+                }), { 
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } else {
+                // Ban expired, remove it
+                this.bannedIPs.delete(clientIP);
+                await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+            }
+        }
         
         // Check IP-based connection limit
         const currentConnections = this.ipConnections.get(clientIP) || 0;
@@ -1828,6 +1895,18 @@ export class ChatRoom {
         const now = Date.now();
         const sessionTimeout = 300000; // 5 minutes
         const messageRetention = 12 * 60 * 60 * 1000; // 12 hours
+
+        // Clean up expired IP bans
+        let bansChanged = false;
+        for (const [ip, banInfo] of this.bannedIPs.entries()) {
+            if (now >= banInfo.bannedUntil) {
+                this.bannedIPs.delete(ip);
+                bansChanged = true;
+            }
+        }
+        if (bansChanged) {
+            this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+        }
 
         // Clean up inactive sessions
         for (const [sessionId, metadata] of this.userMetadata) {

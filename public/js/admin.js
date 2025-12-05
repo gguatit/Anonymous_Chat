@@ -377,6 +377,7 @@ class AdminDashboard {
                         </div>
                         <button class="kick-user-btn bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded" 
                                 data-session-id="${session.sessionId}"
+                                data-user-ip="${session.ip || 'Unknown'}"
                                 title="사용자 강제퇴장">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
@@ -388,13 +389,32 @@ class AdminDashboard {
             `;
         }).join('');
 
-        // 강제퇴장 버튼 이벤트 리스너
+        // 강제퇴장 버튼 이벤트
         document.querySelectorAll('.kick-user-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const sessionId = e.currentTarget.dataset.sessionId;
-                if (confirm(`사용자 ${this.truncateId(sessionId)}를 강제퇴장시키겠습니까?`)) {
-                    await this.kickUser(sessionId);
+                const userIp = e.currentTarget.dataset.userIp;
+                
+                // 차단 시간 선택
+                const banOption = prompt(
+                    `사용자 ${this.truncateId(sessionId)} (IP: ${userIp}) 강제퇴장\n\n` +
+                    '차단 시간을 선택하세요:\n' +
+                    '0: 즉시 퇴장만 (재접속 가능)\n' +
+                    '30: 30초 차단\n' +
+                    '300: 5분 차단\n' +
+                    '600: 10분 차단',
+                    '0'
+                );
+                
+                if (banOption === null) return; // 취소
+                
+                const banDuration = parseInt(banOption);
+                if (![0, 30, 300, 600].includes(banDuration)) {
+                    alert('올바른 옵션을 선택하세요 (0, 30, 300, 600)');
+                    return;
                 }
+                
+                await this.kickUser(sessionId, banDuration);
             });
         });
     }
@@ -601,7 +621,7 @@ class AdminDashboard {
         }
     }
 
-    async kickUser(sessionId) {
+    async kickUser(sessionId, banDuration = 0) {
         if (!this.sessionToken) {
             alert('관리자 인증이 필요합니다.');
             return;
@@ -614,7 +634,7 @@ class AdminDashboard {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.sessionToken}`
                 },
-                body: JSON.stringify({ sessionId })
+                body: JSON.stringify({ sessionId, banDuration })
             });
 
             if (!response.ok) {
@@ -624,7 +644,17 @@ class AdminDashboard {
                 return;
             }
 
-            alert('사용자가 강제퇴장되었습니다.');
+            const result = await response.json();
+            
+            if (result.banned) {
+                const minutes = Math.floor(banDuration / 60);
+                const seconds = banDuration % 60;
+                const timeStr = minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
+                alert(`사용자가 강제퇴장되었습니다.\nIP ${result.ip}가 ${timeStr}간 차단되었습니다.`);
+            } else {
+                alert('사용자가 강제퇴장되었습니다.');
+            }
+            
             this.refreshData();
         } catch (error) {
             console.error('kickUser error:', error);
