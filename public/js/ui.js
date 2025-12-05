@@ -405,6 +405,29 @@ export class UIManager {
         this.messagesContainer.appendChild(messageDiv);
     }
 
+    displayAnnouncement(content) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'mx-4 my-2 p-4 rounded-lg border-2 border-yellow-500 bg-yellow-900/30 shadow-lg message-enter';
+        messageDiv.setAttribute('data-message', 'true');
+        messageDiv.setAttribute('role', 'alert');
+        messageDiv.setAttribute('aria-live', 'assertive');
+        
+        messageDiv.innerHTML = `
+            <div class="flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                </svg>
+                <div class="flex-1">
+                    <div class="text-sm font-semibold text-yellow-300 mb-1">📢 시스템 공지사항</div>
+                    <div class="text-sm text-gray-200 whitespace-pre-wrap break-words">${this.escapeHtml(content)}</div>
+                    <div class="text-xs text-gray-400 mt-2">${new Date().toLocaleTimeString('ko-KR')}</div>
+                </div>
+            </div>
+        `;
+        
+        this.messagesContainer.appendChild(messageDiv);
+    }
+
     displayError(content) {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'text-center text-xs text-red-400 py-2 bg-red-900/20 rounded-lg mx-4';

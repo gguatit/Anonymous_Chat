@@ -24,18 +24,23 @@ class AdminDashboard {
         this.exportCsvBtn?.addEventListener('click', () => this.exportCsv());
 
         this.adminSendBtn = document.getElementById('admin-send-btn');
+        this.adminAnnounceBtn = document.getElementById('admin-announce-btn');
         this.adminMessageInput = document.getElementById('admin-message-input');
-        this.adminSendBtn?.addEventListener('click', () => this.sendAdminMessage());
+        this.adminSendBtn?.addEventListener('click', () => this.sendAdminMessage(false));
+        this.adminAnnounceBtn?.addEventListener('click', () => this.sendAdminMessage(true));
 
         // Enter = send, Shift+Enter = newline for textarea
         if (this.adminMessageInput) {
             this.adminMessageInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    this.sendAdminMessage();
+                    this.sendAdminMessage(false);
                 }
             });
         }
+
+        this.exportFilteredCsvBtn = document.getElementById('export-filtered-csv-btn');
+        this.exportFilteredCsvBtn?.addEventListener('click', () => this.exportFilteredCsv());
     }
 
     async checkAuthentication() {
@@ -149,7 +154,7 @@ class AdminDashboard {
         }
     }
 
-    async sendAdminMessage() {
+    async sendAdminMessage(isAnnouncement = false) {
         if (!this.sessionToken) {
             alert('관리자 인증이 필요합니다.');
             return;
@@ -168,7 +173,8 @@ class AdminDashboard {
         }
 
         try {
-            const response = await fetch('/api/admin/broadcast', {
+            const endpoint = isAnnouncement ? '/api/admin/announce' : '/api/admin/broadcast';
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -179,7 +185,7 @@ class AdminDashboard {
 
             if (!response.ok) {
                 const err = await response.json().catch(() => null);
-                console.error('Broadcast failed', err);
+                console.error('Message send failed', err);
                 alert('메시지 전송에 실패했습니다. 콘솔을 확인하세요.');
                 return;
             }
@@ -347,21 +353,50 @@ class AdminDashboard {
             return;
         }
 
-        container.innerHTML = sessions.map(session => `
-            <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                <div class="flex items-center gap-3">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <div>
-                        <p class="text-sm font-mono text-gray-300">${this.truncateId(session.sessionId)}</p>
-                        <p class="text-xs text-gray-500">${session.ip || 'Unknown IP'}</p>
+        container.innerHTML = sessions.map(session => {
+            const isOnline = session.lastMessageTime > 0 || (Date.now() - session.joinTime) < 60000;
+            const statusColor = isOnline ? 'bg-green-500' : 'bg-gray-500';
+            const lastActiveText = session.lastMessageTime > 0 
+                ? this.formatDuration(Date.now() - session.lastMessageTime) + ' 전 활동'
+                : '활동 없음';
+            
+            return `
+                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                    <div class="flex items-center gap-3 flex-1">
+                        <div class="w-2 h-2 ${statusColor} rounded-full ${isOnline ? 'animate-pulse' : ''}"></div>
+                        <div class="flex-1">
+                            <p class="text-sm font-mono text-gray-300">${this.truncateId(session.sessionId)}</p>
+                            <p class="text-xs text-gray-500">${session.ip || 'Unknown IP'}</p>
+                            <p class="text-xs text-gray-400">${lastActiveText}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="text-right">
+                            <p class="text-xs text-gray-400">${session.messageCount || 0} 메시지</p>
+                            <p class="text-xs text-gray-500">접속: ${this.formatDuration(Date.now() - session.joinTime)}</p>
+                        </div>
+                        <button class="kick-user-btn bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded" 
+                                data-session-id="${session.sessionId}"
+                                title="사용자 강제퇴장">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                            퇴장
+                        </button>
                     </div>
                 </div>
-                <div class="text-right">
-                    <p class="text-xs text-gray-400">${session.messageCount || 0} 메시지</p>
-                    <p class="text-xs text-gray-500">${this.formatDuration(Date.now() - session.joinTime)}</p>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+
+        // 강제퇴장 버튼 이벤트 리스너
+        document.querySelectorAll('.kick-user-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const sessionId = e.currentTarget.dataset.sessionId;
+                if (confirm(`사용자 ${this.truncateId(sessionId)}를 강제퇴장시키겠습니까?`)) {
+                    await this.kickUser(sessionId);
+                }
+            });
+        });
     }
 
     updateRecentMessages(messages) {
@@ -565,25 +600,173 @@ class AdminDashboard {
             alert('메시지 삭제 중 오류가 발생했습니다.');
         }
     }
-    
-    async loadAuditLogs() {
+
+    async kickUser(sessionId) {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
         try {
-            const response = await fetch('/api/admin/logs', {
+            const response = await fetch('/api/admin/kick-user', {
+                method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.sessionToken}`
-                }
+                },
+                body: JSON.stringify({ sessionId })
             });
-            
-            if (!response.ok) throw new Error('Failed to fetch logs');
-            
-            const data = await response.json();
-            this.displayLogs(data.logs || []);
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => null);
+                console.error('Kick user failed', err);
+                alert('사용자 강제퇴장에 실패했습니다.');
+                return;
+            }
+
+            alert('사용자가 강제퇴장되었습니다.');
+            this.refreshData();
         } catch (error) {
-            console.error('Error loading logs:', error);
+            console.error('kickUser error:', error);
+            alert('사용자 강제퇴장 중 오류가 발생했습니다.');
         }
     }
-    
-    displayLogs(logs) {
+
+    async exportFilteredCsv() {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
+        // 필터 옵션 프롬프트
+        const filterOptions = prompt(
+            '내보내기 옵션을 선택하세요:\n' +
+            '1: 전체 데이터\n' +
+            '2: 활성 세션만\n' +
+            '3: 오늘 메시지만\n' +
+            '4: 최근 1시간\n' +
+            '5: 최근 24시간',
+            '1'
+        );
+
+        if (!filterOptions) return;
+
+        try {
+            const [sessionsResp, messagesResp] = await Promise.all([
+                fetch('/api/admin/sessions', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } }),
+                fetch('/api/admin/messages', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } })
+            ]);
+
+            if (!sessionsResp.ok || !messagesResp.ok) {
+                alert('데이터를 불러오는 중 오류가 발생했습니다.');
+                return;
+            }
+
+            let sessions = await sessionsResp.json();
+            let messages = await messagesResp.json();
+
+            // 필터 적용
+            const now = Date.now();
+            const oneHour = 60 * 60 * 1000;
+            const oneDay = 24 * oneHour;
+            const todayStart = new Date().setHours(0, 0, 0, 0);
+
+            switch(filterOptions) {
+                case '2': // 활성 세션만
+                    const activeSessions = new Set(sessions.map(s => s.sessionId));
+                    messages = messages.filter(m => activeSessions.has(m.sessionId));
+                    break;
+                case '3': // 오늘 메시지
+                    messages = messages.filter(m => m.timestamp >= todayStart);
+                    break;
+                case '4': // 최근 1시간
+                    messages = messages.filter(m => now - m.timestamp < oneHour);
+                    sessions = sessions.filter(s => now - s.joinTime < oneHour);
+                    break;
+                case '5': // 최근 24시간
+                    messages = messages.filter(m => now - m.timestamp < oneDay);
+                    sessions = sessions.filter(s => now - s.joinTime < oneDay);
+                    break;
+                default: // 전체
+                    break;
+            }
+
+            // CSV 생성
+            const usersMap = new Map();
+            for (const s of sessions) {
+                usersMap.set(s.sessionId, s);
+            }
+
+            const rows = [];
+            const headers = [
+                'user_session_id', 'user_ip', 'user_join_time', 'user_message_count', 'user_last_message_time',
+                'message_id', 'message_timestamp', 'message_content', 'message_edited_at', 'file_url', 'file_name', 'file_size', 'file_type'
+            ];
+
+            for (const msg of messages) {
+                const user = usersMap.get(msg.sessionId) || {};
+                rows.push([
+                    user.sessionId || msg.sessionId || '',
+                    user.ip || '',
+                    user.joinTime ? new Date(user.joinTime).toISOString() : '',
+                    user.messageCount != null ? user.messageCount : '',
+                    user.lastMessageTime ? new Date(user.lastMessageTime).toISOString() : '',
+                    msg.messageId || '',
+                    msg.timestamp ? new Date(msg.timestamp).toISOString() : '',
+                    msg.content || '',
+                    msg.editedAt ? new Date(msg.editedAt).toISOString() : '',
+                    msg.file?.url || '',
+                    msg.file?.filename || '',
+                    msg.file?.filesize != null ? String(msg.file.filesize) : '',
+                    msg.file?.filetype || ''
+                ]);
+            }
+
+            // 메시지 없는 세션 추가
+            for (const [sessionId, user] of usersMap.entries()) {
+                const hasMessage = messages.some(m => m.sessionId === sessionId);
+                if (!hasMessage) {
+                    rows.push([
+                        user.sessionId || sessionId,
+                        user.ip || '',
+                        user.joinTime ? new Date(user.joinTime).toISOString() : '',
+                        user.messageCount != null ? user.messageCount : '',
+                        user.lastMessageTime ? new Date(user.lastMessageTime).toISOString() : '',
+                        '', '', '', '', '', '', '', ''
+                    ]);
+                }
+            }
+
+            const escape = (value) => {
+                if (value == null) return '';
+                const str = String(value);
+                return '"' + str.replace(/"/g, '""') + '"';
+            };
+
+            const csvContent = [headers.map(h => escape(h)).join(',')]
+                .concat(rows.map(r => r.map(cell => escape(cell)).join(',')))
+                .join('\n');
+
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const filterName = ['all', 'active', 'today', '1hour', '24hours'][parseInt(filterOptions) - 1] || 'filtered';
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `anonymous_chat_${filterName}_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('Export filtered CSV error:', error);
+            alert('CSV 내보내기 중 오류가 발생했습니다.');
+        }
+    }
+
+    async loadAuditLogs() {
         // 감사 로그 표시 (필요시 UI에 추가)
         console.log('Audit Logs:', logs);
     }

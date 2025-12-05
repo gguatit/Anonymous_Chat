@@ -70,6 +70,18 @@ class ChatClient {
             case 'system':
                 this.ui.displaySystemMessage(data.content);
                 break;
+            case 'announcement':
+                // Display system announcement with special styling
+                this.ui.displayAnnouncement(data.content);
+                break;
+            case 'kicked':
+                // User was kicked by admin
+                this.ui.displayError(data.content);
+                alert('관리자에 의해 강제퇴장되었습니다. 페이지가 새로고침됩니다.');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                break;
             case 'error':
                 this.ui.displayError(data.content);
                 break;

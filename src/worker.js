@@ -98,6 +98,14 @@ export default {
                 return await handleAdminDeleteMessage(request, env, corsHeaders);
             }
 
+            if (url.pathname === '/api/admin/kick-user') {
+                return await handleAdminKickUser(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/announce') {
+                return await handleAdminAnnounce(request, env, corsHeaders);
+            }
+
             // WebSocket upgrade request
             if (url.pathname === '/ws') {
                 return await handleWebSocket(request, env, HMAC_SECRET);
@@ -715,6 +723,102 @@ async function handleAdminDeleteMessage(request, env, corsHeaders) {
     }
 }
 
+async function handleAdminKickUser(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const body = await request.json();
+        const sessionId = body.sessionId;
+
+        if (!sessionId) {
+            return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/kick-user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
+            },
+            body: JSON.stringify({ sessionId })
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminKickUser error:', error);
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+async function handleAdminAnnounce(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const body = await request.json();
+        const content = typeof body.content === 'string' ? body.content : '';
+
+        if (!content) {
+            return new Response(JSON.stringify({ error: 'Missing content' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/announce', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
+            },
+            body: JSON.stringify({ content })
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminAnnounce error:', error);
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 async function generateAdminToken(password, secret) {
     const data = `${password}:${Date.now()}`;
     const encoder = new TextEncoder();
@@ -1077,6 +1181,106 @@ export class ChatRoom {
             } catch (error) {
                 console.error('admin delete message error:', error);
                 return new Response(JSON.stringify({ error: 'Failed to delete message' }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+        }
+
+        if (url.pathname === '/admin/kick-user' && request.method === 'POST') {
+            try {
+                const data = await request.json();
+                const sessionId = data.sessionId;
+
+                if (!sessionId) {
+                    return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
+                        status: 400,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // Find the session
+                const websocket = this.sessions.get(sessionId);
+                
+                if (!websocket) {
+                    return new Response(JSON.stringify({ error: 'Session not found' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // Send kick notification to the user
+                try {
+                    websocket.send(JSON.stringify({
+                        type: 'kicked',
+                        content: '관리자에 의해 강제퇴장되었습니다.'
+                    }));
+                } catch (e) {
+                    console.error('Failed to send kick notification:', e);
+                }
+
+                // Close the WebSocket connection
+                try {
+                    websocket.close(1008, 'Kicked by admin');
+                } catch (e) {
+                    console.error('Failed to close websocket:', e);
+                }
+
+                // Clean up session data
+                this.sessions.delete(sessionId);
+                const metadata = this.userMetadata.get(sessionId);
+                if (metadata) {
+                    const clientIP = metadata.ip;
+                    const currentCount = this.ipConnections.get(clientIP) || 0;
+                    if (currentCount > 1) {
+                        this.ipConnections.set(clientIP, currentCount - 1);
+                    } else {
+                        this.ipConnections.delete(clientIP);
+                    }
+                }
+                this.userMetadata.delete(sessionId);
+                this.typingUsers.delete(sessionId);
+
+                metrics.activeConnections--;
+                this.broadcastUserCount();
+
+                return new Response(JSON.stringify({ success: true }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('admin kick user error:', error);
+                return new Response(JSON.stringify({ error: 'Failed to kick user' }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+        }
+
+        if (url.pathname === '/admin/announce' && request.method === 'POST') {
+            try {
+                const data = await request.json();
+                const content = typeof data.content === 'string' ? data.content : '';
+
+                if (!content) {
+                    return new Response(JSON.stringify({ error: 'Empty content' }), {
+                        status: 400,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // Broadcast system announcement to all users
+                this.broadcast({
+                    type: 'announcement',
+                    content: this.sanitizeInput(content),
+                    timestamp: Date.now()
+                });
+
+                return new Response(JSON.stringify({ success: true }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('admin announce error:', error);
+                return new Response(JSON.stringify({ error: 'Failed to send announcement' }), {
                     status: 500,
                     headers: { 'Content-Type': 'application/json' }
                 });

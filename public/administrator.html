@@ -174,8 +174,20 @@
                 <!-- Active Sessions -->
                 <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
                     <div class="p-4 border-b border-gray-700">
-                        <h2 class="text-lg font-semibold text-gray-100">활성 세션</h2>
-                        <p class="text-sm text-gray-400">현재 연결된 사용자 목록</p>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-lg font-semibold text-gray-100">활성 세션</h2>
+                                <p class="text-sm text-gray-400">현재 연결된 사용자 목록</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="export-filtered-csv-btn" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg" title="필터링된 데이터 내보내기">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M3 3v14a1 1 0 001 1h12a1 1 0 001-1V8.414A2 2 0 0016.586 7L12 2.414A2 2 0 0010.586 2H4a1 1 0 00-1 1z" />
+                                    </svg>
+                                    필터 내보내기
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="p-4">
                         <div id="active-sessions" class="space-y-2 max-h-96 overflow-y-auto">
@@ -195,9 +207,12 @@
                             <label for="admin-message-input" class="block text-sm font-medium text-gray-300 mb-2">관리자 메시지 전송</label>
                             <div class="flex gap-2">
                                 <textarea id="admin-message-input" rows="3" maxlength="5000" class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" placeholder="관리자 메시지 입력 (Shift+Enter: 줄바꿈, Enter: 전송, 최대 5000자)"></textarea>
-                                <button id="admin-send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">전송</button>
+                                <div class="flex flex-col gap-2">
+                                    <button id="admin-send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">일반 전송</button>
+                                    <button id="admin-announce-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">공지 전송</button>
+                                </div>
                             </div>
-                            <p class="text-xs text-gray-400 mt-1">전송된 메시지는 채팅룸의 다른 사용자에게 방송됩니다.</p>
+                            <p class="text-xs text-gray-400 mt-1">일반: 관리자 메시지로 전송 / 공지: 시스템 공지사항으로 전송</p>
                         </div>
                         <div id="recent-messages" class="space-y-2 max-h-96 overflow-y-auto">
                             <p class="text-sm text-gray-500 text-center py-8">데이터 불러오는 중...</p>
