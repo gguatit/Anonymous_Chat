@@ -406,9 +406,14 @@ export class UIManager {
     }
 
     displayAnnouncement(content) {
+        // 기존 공지사항 제거 (새 공지로 대체)
+        const existingAnnouncements = this.messagesContainer.querySelectorAll('[data-announcement="true"]');
+        existingAnnouncements.forEach(ann => ann.remove());
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = 'mx-4 my-2 p-4 rounded-lg border-2 border-yellow-500 bg-yellow-900/30 shadow-lg message-enter';
         messageDiv.setAttribute('data-message', 'true');
+        messageDiv.setAttribute('data-announcement', 'true');
         messageDiv.setAttribute('role', 'alert');
         messageDiv.setAttribute('aria-live', 'assertive');
         

@@ -14,8 +14,23 @@ export class WebSocketManager {
         this.manualClose = false;
     }
 
-    connect() {
+    async connect() {
         try {
+            // Check if IP is banned before attempting WebSocket connection
+            const banCheckResponse = await fetch('/api/check-ban');
+            const banStatus = await banCheckResponse.json();
+            
+            if (banStatus.banned) {
+                this.messageHandler.onError(`접속이 차단되었습니다. ${banStatus.remainingSeconds}초 후에 다시 시도해주세요.`);
+                this.messageHandler.onConnectionChange('banned');
+                
+                // Schedule reconnection after ban expires
+                setTimeout(() => {
+                    this.connect();
+                }, (banStatus.remainingSeconds + 1) * 1000);
+                return;
+            }
+            
             // Force WSS in production for security (encrypted WebSocket)
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;

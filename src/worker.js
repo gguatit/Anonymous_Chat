@@ -106,6 +106,11 @@ export default {
                 return await handleAdminAnnounce(request, env, corsHeaders);
             }
 
+            // Check IP ban status
+            if (url.pathname === '/api/check-ban') {
+                return await handleCheckBan(request, env, corsHeaders);
+            }
+
             // WebSocket upgrade request
             if (url.pathname === '/ws') {
                 return await handleWebSocket(request, env, HMAC_SECRET);
@@ -162,6 +167,31 @@ export default {
         }
     }
 };
+
+async function handleCheckBan(request, env, corsHeaders) {
+    try {
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        
+        // Get the Durable Object
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+        
+        // Check ban status
+        const checkRequest = new Request(`http://internal/check-ban?ip=${encodeURIComponent(clientIP)}`);
+        const response = await room.fetch(checkRequest);
+        const result = await response.json();
+        
+        return new Response(JSON.stringify(result), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Error checking ban:', error);
+        return new Response(JSON.stringify({ banned: false }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+        });
+    }
+}
 
 async function handleWebSocket(request, env, HMAC_SECRET) {
     // Check for WebSocket upgrade
@@ -819,6 +849,36 @@ async function handleAdminAnnounce(request, env, corsHeaders) {
     }
 }
 
+async function handleCheckBan(request, env, corsHeaders) {
+    try {
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        
+        // Get the Durable Object
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+        
+        // Check ban status
+        const checkRequest = new Request(`https://dummy/check-ban?ip=${encodeURIComponent(clientIP)}`, {
+            headers: {
+                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID(),
+                'CF-Connecting-IP': clientIP
+            }
+        });
+        const response = await room.fetch(checkRequest);
+        const result = await response.json();
+        
+        return new Response(JSON.stringify(result), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Error checking ban:', error);
+        return new Response(JSON.stringify({ banned: false }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+        });
+    }
+}
+
 async function generateAdminToken(password, secret) {
     const data = `${password}:${Date.now()}`;
     const encoder = new TextEncoder();
@@ -931,6 +991,7 @@ export class ChatRoom {
         this.initialized = false;
         this.startTime = Date.now(); // Track uptime
         this.bannedIPs = new Map(); // IP -> { bannedUntil: timestamp, reason: string }
+        this.currentAnnouncement = null; // Current active announcement
         
         // Periodic cleanup of stale data (every 5 minutes)
         this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
@@ -956,6 +1017,12 @@ export class ChatRoom {
         const bannedIPs = await this.state.storage.get('bannedIPs');
         if (bannedIPs) {
             this.bannedIPs = new Map(bannedIPs);
+        }
+
+        // Load current announcement from storage
+        const announcement = await this.state.storage.get('currentAnnouncement');
+        if (announcement) {
+            this.currentAnnouncement = announcement;
         }
         
         this.initialized = true;
@@ -1314,11 +1381,18 @@ export class ChatRoom {
                     });
                 }
 
+                // Save new announcement (replaces old one)
+                this.currentAnnouncement = {
+                    content: this.sanitizeInput(content),
+                    timestamp: Date.now()
+                };
+                await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+
                 // Broadcast system announcement to all users
                 this.broadcast({
                     type: 'announcement',
-                    content: this.sanitizeInput(content),
-                    timestamp: Date.now()
+                    content: this.currentAnnouncement.content,
+                    timestamp: this.currentAnnouncement.timestamp
                 });
 
                 return new Response(JSON.stringify({ success: true }), {
@@ -1331,6 +1405,34 @@ export class ChatRoom {
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
+        }
+        
+        // Handle ban check endpoint
+        if (url.pathname === '/check-ban') {
+            const ip = url.searchParams.get('ip') || request.headers.get('CF-Connecting-IP') || 'unknown';
+            const banInfo = this.bannedIPs.get(ip);
+            
+            if (banInfo) {
+                const now = Date.now();
+                if (now < banInfo.bannedUntil) {
+                    const remainingSeconds = Math.ceil((banInfo.bannedUntil - now) / 1000);
+                    return new Response(JSON.stringify({
+                        banned: true,
+                        remainingSeconds,
+                        message: `이 IP는 ${remainingSeconds}초 동안 차단되었습니다.`
+                    }), {
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                } else {
+                    // Ban expired, remove it
+                    this.bannedIPs.delete(ip);
+                    await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+                }
+            }
+            
+            return new Response(JSON.stringify({ banned: false }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
         
         // Initialize messages from storage on first request
@@ -1427,6 +1529,15 @@ export class ChatRoom {
                                 this.sendToSession(sessionId, msg);
                             }
                             
+                            // Send current announcement if exists
+                            if (this.currentAnnouncement) {
+                                this.sendToSession(sessionId, {
+                                    type: 'announcement',
+                                    content: this.currentAnnouncement.content,
+                                    timestamp: this.currentAnnouncement.timestamp
+                                });
+                            }
+                            
                             // Update user count
                             this.broadcastUserCount();
                         } else {
@@ -1464,6 +1575,15 @@ export class ChatRoom {
                             const recentMessages = this.messages.slice(-50);
                             for (const msg of recentMessages) {
                                 this.sendToSession(sessionId, msg);
+                            }
+                            
+                            // Send current announcement if exists
+                            if (this.currentAnnouncement) {
+                                this.sendToSession(sessionId, {
+                                    type: 'announcement',
+                                    content: this.currentAnnouncement.content,
+                                    timestamp: this.currentAnnouncement.timestamp
+                                });
                             }
                         }
 
@@ -1925,6 +2045,7 @@ export class ChatRoom {
         }
         
         // Clean up old messages (older than 12 hours)
+        // Note: Announcements are kept separately and not cleaned up by time
         const twelveHoursAgo = now - messageRetention;
         const initialLength = this.messages.length;
         this.messages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);

@@ -116,6 +116,10 @@ class ChatClient {
                 statusText = `재연결 중 (${attempt}/${max})`;
                 this.ui.setInputEnabled(false);
                 break;
+            case 'banned':
+                statusText = '접속 차단됨';
+                this.ui.setInputEnabled(false);
+                break;
             case 'error':
                 statusText = '오류 발생';
                 this.ui.setInputEnabled(false);

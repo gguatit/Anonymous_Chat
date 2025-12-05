@@ -395,28 +395,70 @@ class AdminDashboard {
                 const sessionId = e.currentTarget.dataset.sessionId;
                 const userIp = e.currentTarget.dataset.userIp;
                 
-                // 차단 시간 선택
-                const banOption = prompt(
-                    `사용자 ${this.truncateId(sessionId)} (IP: ${userIp}) 강제퇴장\n\n` +
-                    '차단 시간을 선택하세요:\n' +
-                    '0: 즉시 퇴장만 (재접속 가능)\n' +
-                    '30: 30초 차단\n' +
-                    '300: 5분 차단\n' +
-                    '600: 10분 차단',
-                    '0'
-                );
-                
-                if (banOption === null) return; // 취소
-                
-                const banDuration = parseInt(banOption);
-                if (![0, 30, 300, 600].includes(banDuration)) {
-                    alert('올바른 옵션을 선택하세요 (0, 30, 300, 600)');
-                    return;
-                }
-                
+                // 차단 시간 선택 모달 생성
+                const modal = this.createBanModal(sessionId, userIp);
+                document.body.appendChild(modal);
+            });
+        });
+    }
+
+    createBanModal(sessionId, userIp) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
+                <h3 class="text-xl font-bold text-gray-100 mb-4">사용자 강제퇴장</h3>
+                <div class="mb-4 text-sm text-gray-400">
+                    <p>세션 ID: <span class="text-gray-200">${this.truncateId(sessionId)}</span></p>
+                    <p>IP 주소: <span class="text-gray-200">${userIp}</span></p>
+                </div>
+                <p class="text-sm text-gray-300 mb-4">차단 시간을 선택하세요:</p>
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <button class="ban-option-btn bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="0">
+                        즉시 퇴장
+                        <span class="block text-xs opacity-80">재접속 가능</span>
+                    </button>
+                    <button class="ban-option-btn bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="30">
+                        30초 차단
+                        <span class="block text-xs opacity-80">임시 차단</span>
+                    </button>
+                    <button class="ban-option-btn bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="300">
+                        5분 차단
+                        <span class="block text-xs opacity-80">단기 차단</span>
+                    </button>
+                    <button class="ban-option-btn bg-red-700 hover:bg-red-800 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="600">
+                        10분 차단
+                        <span class="block text-xs opacity-80">장기 차단</span>
+                    </button>
+                </div>
+                <button class="cancel-btn w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 rounded-lg transition-colors">
+                    취소
+                </button>
+            </div>
+        `;
+
+        // 차단 옵션 버튼 이벤트
+        modal.querySelectorAll('.ban-option-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const banDuration = parseInt(btn.dataset.duration);
+                modal.remove();
                 await this.kickUser(sessionId, banDuration);
             });
         });
+
+        // 취소 버튼 이벤트
+        modal.querySelector('.cancel-btn').addEventListener('click', () => {
+            modal.remove();
+        });
+
+        // 모달 배경 클릭시 닫기
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+
+        return modal;
     }
 
     updateRecentMessages(messages) {
