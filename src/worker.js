@@ -1082,59 +1082,6 @@ export class ChatRoom {
                 });
             }
         }
-                }
-
-                // Generate unique message ID
-                const messageId = `msg_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
-
-                const message = {
-                    type: 'message',
-                    messageId: messageId,
-                    content: this.sanitizeInput(content || ''),
-                    sessionId: `admin_${adminId}`,
-                    timestamp: Date.now(),
-                    editedAt: null
-                };
-
-                if (file && file.url) {
-                    message.file = {
-                        url: file.url,
-                        filename: file.filename || '',
-                        filesize: file.filesize || null,
-                        filetype: file.filetype || ''
-                    };
-                }
-
-                // Get HMAC secret if provided
-                const HMAC_SECRET = request.headers.get('X-HMAC-Secret');
-                if (HMAC_SECRET) {
-                    message.signature = await generateMessageSignature(message, HMAC_SECRET);
-                } else {
-                    message.signature = '';
-                }
-
-                this.messages.push(message);
-
-                // Clean up messages older than 12 hours and limit to 500 messages
-                const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
-                this.messages = this.messages
-                    .filter(msg => msg.timestamp > twelveHoursAgo)
-                    .slice(-500);
-
-                // Persist to Durable Object storage
-                this.state.storage.put('messages', this.messages);
-
-                // Broadcast message to all users
-                this.broadcast(message);
-
-                return new Response(JSON.stringify({ success: true, message }), {
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            } catch (error) {
-                console.error('admin broadcast error:', error);
-                return new Response(JSON.stringify({ error: 'Failed to broadcast' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
-            }
-        }
         
         // Initialize messages from storage on first request
         await this.initializeMessages();
