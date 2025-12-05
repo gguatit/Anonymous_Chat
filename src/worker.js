@@ -168,31 +168,6 @@ export default {
     }
 };
 
-async function handleCheckBan(request, env, corsHeaders) {
-    try {
-        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
-        
-        // Get the Durable Object
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
-        
-        // Check ban status
-        const checkRequest = new Request(`http://internal/check-ban?ip=${encodeURIComponent(clientIP)}`);
-        const response = await room.fetch(checkRequest);
-        const result = await response.json();
-        
-        return new Response(JSON.stringify(result), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('Error checking ban:', error);
-        return new Response(JSON.stringify({ banned: false }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500
-        });
-    }
-}
-
 async function handleWebSocket(request, env, HMAC_SECRET) {
     // Check for WebSocket upgrade
     const upgradeHeader = request.headers.get('Upgrade');
