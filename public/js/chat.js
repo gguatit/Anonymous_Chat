@@ -72,6 +72,7 @@ class ChatClient {
                 break;
             case 'announcement':
                 // Display system announcement with special styling
+                console.log('Received announcement:', data.content);
                 this.ui.displayAnnouncement(data.content);
                 break;
             case 'kicked':

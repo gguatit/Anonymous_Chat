@@ -174,6 +174,8 @@ class AdminDashboard {
 
         try {
             const endpoint = isAnnouncement ? '/api/admin/announce' : '/api/admin/broadcast';
+            console.log('Sending to endpoint:', endpoint, 'Content:', content);
+            
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
@@ -183,11 +185,24 @@ class AdminDashboard {
                 body: JSON.stringify({ content: raw })
             });
 
+            console.log('Response status:', response.status);
+            
             if (!response.ok) {
                 const err = await response.json().catch(() => null);
                 console.error('Message send failed', err);
                 alert('메시지 전송에 실패했습니다. 콘솔을 확인하세요.');
                 return;
+            }
+
+            const result = await response.json();
+            console.log('Message sent successfully:', result);
+            
+            if (isAnnouncement) {
+                if (result.sessionsNotified !== undefined) {
+                    alert(`공지가 ${result.sessionsNotified}명의 사용자에게 전송되었습니다.`);
+                } else {
+                    alert('공지가 전송되었습니다.');
+                }
             }
 
             // Clear input and refresh recent messages

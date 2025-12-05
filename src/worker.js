@@ -1356,6 +1356,8 @@ export class ChatRoom {
                     });
                 }
 
+                console.log('Broadcasting announcement:', content.substring(0, 50));
+
                 // Save new announcement (replaces old one)
                 this.currentAnnouncement = {
                     content: this.sanitizeInput(content),
@@ -1364,13 +1366,19 @@ export class ChatRoom {
                 await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
 
                 // Broadcast system announcement to all users
-                this.broadcast({
+                const announcementMessage = {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
                     timestamp: this.currentAnnouncement.timestamp
-                });
+                };
+                
+                console.log('Active sessions:', this.sessions.size);
+                this.broadcast(announcementMessage);
 
-                return new Response(JSON.stringify({ success: true }), {
+                return new Response(JSON.stringify({ 
+                    success: true, 
+                    sessionsNotified: this.sessions.size 
+                }), {
                     headers: { 'Content-Type': 'application/json' }
                 });
             } catch (error) {

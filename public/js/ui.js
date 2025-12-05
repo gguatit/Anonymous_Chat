@@ -406,8 +406,12 @@ export class UIManager {
     }
 
     displayAnnouncement(content) {
+        console.log('[UI] displayAnnouncement called with:', content);
+        console.log('[UI] messagesContainer:', this.messagesContainer);
+        
         // 기존 공지사항 제거 (새 공지로 대체)
         const existingAnnouncements = this.messagesContainer.querySelectorAll('[data-announcement="true"]');
+        console.log('[UI] Removing existing announcements:', existingAnnouncements.length);
         existingAnnouncements.forEach(ann => ann.remove());
         
         const messageDiv = document.createElement('div');
@@ -431,6 +435,8 @@ export class UIManager {
         `;
         
         this.messagesContainer.appendChild(messageDiv);
+        console.log('[UI] Announcement element appended');
+        console.log('[UI] Total children in container:', this.messagesContainer.children.length);
     }
 
     displayError(content) {
