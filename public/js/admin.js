@@ -406,8 +406,21 @@ class AdminDashboard {
                 <span class="inline-block text-xs font-semibold text-yellow-300 bg-yellow-900/20 px-2 py-0.5 rounded">관리자</span>
             ` : '';
 
+            // 관리자 메시지는 시간 제한 없이 수정/삭제 가능
+            const canEdit = isAdminMsg;
+            const editButtons = canEdit ? `
+                <div class="mt-2 flex gap-2">
+                    <button class="admin-edit-msg-btn text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded" data-message-id="${msg.messageId}" data-content="${this.escapeHtml(msg.content || '')}">
+                        수정
+                    </button>
+                    <button class="admin-delete-msg-btn text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded" data-message-id="${msg.messageId}">
+                        삭제
+                    </button>
+                </div>
+            ` : '';
+
             return `
-                <div class="p-3 ${isAdminMsg ? 'bg-yellow-900/5 border border-yellow-800' : 'bg-gray-700'} rounded-lg">
+                <div class="p-3 ${isAdminMsg ? 'bg-yellow-900/5 border border-yellow-800' : 'bg-gray-700'} rounded-lg" data-message-id="${msg.messageId}">
                     <div class="flex items-start justify-between mb-1">
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-mono text-gray-400">${this.truncateId(msg.sessionId)}</span>
@@ -415,12 +428,16 @@ class AdminDashboard {
                         </div>
                         <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</span>
                     </div>
-                    <p class="text-sm text-gray-200 break-words whitespace-pre-wrap">${this.escapeHtml(msg.content || '')}</p>
+                    <p class="message-content text-sm text-gray-200 break-words whitespace-pre-wrap">${this.escapeHtml(msg.content || '')}</p>
                     ${msg.editedAt ? '<span class="text-xs text-yellow-500">(수정됨)</span>' : ''}
                     ${fileHtml}
+                    ${editButtons}
                 </div>
             `;
         }).join('');
+
+        // 수정/삭제 버튼 이벤트 리스너 추가
+        this.attachMessageEventListeners();
     }
 
     formatFileSize(bytes) {
@@ -456,6 +473,97 @@ class AdminDashboard {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    attachMessageEventListeners() {
+        // 수정 버튼 이벤트
+        document.querySelectorAll('.admin-edit-msg-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const messageId = e.target.dataset.messageId;
+                const currentContent = e.target.dataset.content;
+                const newContent = prompt('메시지를 수정하세요:', currentContent);
+                
+                if (newContent !== null && newContent.trim() !== currentContent.trim()) {
+                    await this.editAdminMessage(messageId, newContent.trim());
+                }
+            });
+        });
+
+        // 삭제 버튼 이벤트
+        document.querySelectorAll('.admin-delete-msg-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const messageId = e.target.dataset.messageId;
+                
+                if (confirm('이 메시지를 삭제하시겠습니까?')) {
+                    await this.deleteAdminMessage(messageId);
+                }
+            });
+        });
+    }
+
+    async editAdminMessage(messageId, newContent) {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
+        if (!newContent) {
+            alert('메시지 내용이 비어있습니다.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/edit-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.sessionToken}`
+                },
+                body: JSON.stringify({ messageId, newContent })
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => null);
+                console.error('Edit failed', err);
+                alert('메시지 수정에 실패했습니다.');
+                return;
+            }
+
+            this.refreshData();
+        } catch (error) {
+            console.error('editAdminMessage error:', error);
+            alert('메시지 수정 중 오류가 발생했습니다.');
+        }
+    }
+
+    async deleteAdminMessage(messageId) {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/delete-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.sessionToken}`
+                },
+                body: JSON.stringify({ messageId })
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => null);
+                console.error('Delete failed', err);
+                alert('메시지 삭제에 실패했습니다.');
+                return;
+            }
+
+            this.refreshData();
+        } catch (error) {
+            console.error('deleteAdminMessage error:', error);
+            alert('메시지 삭제 중 오류가 발생했습니다.');
+        }
     }
     
     async loadAuditLogs() {

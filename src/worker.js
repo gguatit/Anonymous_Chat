@@ -90,6 +90,14 @@ export default {
                 return await handleAdminBroadcast(request, env, corsHeaders);
             }
 
+            if (url.pathname === '/api/admin/edit-message') {
+                return await handleAdminEditMessage(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/delete-message') {
+                return await handleAdminDeleteMessage(request, env, corsHeaders);
+            }
+
             // WebSocket upgrade request
             if (url.pathname === '/ws') {
                 return await handleWebSocket(request, env, HMAC_SECRET);
@@ -610,6 +618,103 @@ async function handleAdminBroadcast(request, env, corsHeaders) {
     }
 }
 
+async function handleAdminEditMessage(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const body = await request.json();
+        const messageId = body.messageId;
+        const newContent = body.newContent;
+
+        if (!messageId || !newContent) {
+            return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/edit-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
+            },
+            body: JSON.stringify({ messageId, newContent })
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminEditMessage error:', error);
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+async function handleAdminDeleteMessage(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const body = await request.json();
+        const messageId = body.messageId;
+
+        if (!messageId) {
+            return new Response(JSON.stringify({ error: 'Missing messageId' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/delete-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
+            },
+            body: JSON.stringify({ messageId })
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminDeleteMessage error:', error);
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 async function generateAdminToken(password, secret) {
     const data = `${password}:${Date.now()}`;
     const encoder = new TextEncoder();
@@ -793,6 +898,190 @@ export class ChatRoom {
 
                 if (!content && !file) {
                     return new Response(JSON.stringify({ error: 'Empty message' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+                }
+
+                // Generate unique message ID
+                const messageId = `msg_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+
+                const message = {
+                    type: 'message',
+                    messageId: messageId,
+                    content: this.sanitizeInput(content || ''),
+                    sessionId: `admin_${adminId}`,
+                    timestamp: Date.now(),
+                    editedAt: null
+                };
+
+                if (file && file.url) {
+                    message.file = {
+                        url: file.url,
+                        filename: file.filename || '',
+                        filesize: file.filesize || null,
+                        filetype: file.filetype || ''
+                    };
+                }
+
+                // Get HMAC secret if provided
+                const HMAC_SECRET = request.headers.get('X-HMAC-Secret');
+                if (HMAC_SECRET) {
+                    message.signature = await generateMessageSignature(message, HMAC_SECRET);
+                } else {
+                    message.signature = '';
+                }
+
+                this.messages.push(message);
+
+                // Clean up messages older than 12 hours and limit to 500 messages
+                const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+                this.messages = this.messages
+                    .filter(msg => msg.timestamp > twelveHoursAgo)
+                    .slice(-500);
+
+                // Persist to Durable Object storage
+                this.state.storage.put('messages', this.messages);
+
+                // Broadcast message to all users
+                this.broadcast(message);
+
+                return new Response(JSON.stringify({ success: true, message }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('admin broadcast error:', error);
+                return new Response(JSON.stringify({ error: 'Failed to broadcast' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            }
+        }
+
+        if (url.pathname === '/admin/edit-message' && request.method === 'POST') {
+            try {
+                const data = await request.json();
+                const messageId = data.messageId;
+                const newContent = data.newContent;
+
+                if (!messageId || !newContent) {
+                    return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+                        status: 400,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // Find the message
+                const messageIndex = this.messages.findIndex(msg => msg.messageId === messageId);
+                
+                if (messageIndex === -1) {
+                    return new Response(JSON.stringify({ error: 'Message not found' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                const originalMessage = this.messages[messageIndex];
+
+                // Verify it's an admin message
+                if (!originalMessage.sessionId || !String(originalMessage.sessionId).startsWith('admin_')) {
+                    return new Response(JSON.stringify({ error: 'Not an admin message' }), {
+                        status: 403,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // 관리자 메시지는 시간 제한 없음
+                const now = Date.now();
+
+                // Update message
+                const editedMessage = {
+                    ...originalMessage,
+                    content: this.sanitizeInput(newContent),
+                    editedAt: now
+                };
+
+                // Generate new signature
+                const HMAC_SECRET = request.headers.get('X-HMAC-Secret');
+                if (HMAC_SECRET) {
+                    editedMessage.signature = await generateMessageSignature(editedMessage, HMAC_SECRET);
+                }
+
+                // Update in messages array
+                this.messages[messageIndex] = editedMessage;
+
+                // Persist to storage
+                this.state.storage.put('messages', this.messages);
+
+                // Broadcast edited message to all users
+                this.broadcast({
+                    type: 'message_edited',
+                    message: editedMessage
+                });
+
+                return new Response(JSON.stringify({ success: true, message: editedMessage }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('admin edit message error:', error);
+                return new Response(JSON.stringify({ error: 'Failed to edit message' }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+        }
+
+        if (url.pathname === '/admin/delete-message' && request.method === 'POST') {
+            try {
+                const data = await request.json();
+                const messageId = data.messageId;
+
+                if (!messageId) {
+                    return new Response(JSON.stringify({ error: 'Missing messageId' }), {
+                        status: 400,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // Find the message
+                const messageIndex = this.messages.findIndex(msg => msg.messageId === messageId);
+                
+                if (messageIndex === -1) {
+                    return new Response(JSON.stringify({ error: 'Message not found' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                const messageToDelete = this.messages[messageIndex];
+
+                // Verify it's an admin message
+                if (!messageToDelete.sessionId || !String(messageToDelete.sessionId).startsWith('admin_')) {
+                    return new Response(JSON.stringify({ error: 'Not an admin message' }), {
+                        status: 403,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // 관리자 메시지는 시간 제한 없음
+
+                // Remove message from array
+                this.messages.splice(messageIndex, 1);
+
+                // Persist to storage
+                this.state.storage.put('messages', this.messages);
+
+                // Broadcast deletion to all users
+                this.broadcast({
+                    type: 'message_deleted',
+                    messageId: messageId
+                });
+
+                return new Response(JSON.stringify({ success: true }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('admin delete message error:', error);
+                return new Response(JSON.stringify({ error: 'Failed to delete message' }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+        }
                 }
 
                 // Generate unique message ID
