@@ -106,6 +106,22 @@ export default {
                 return await handleAdminAnnounce(request, env, corsHeaders);
             }
 
+            if (url.pathname === '/api/admin/banned-ips') {
+                return await handleAdminBannedIPs(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/unban-ip') {
+                return await handleAdminUnbanIP(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/user-details') {
+                return await handleAdminUserDetails(request, env, corsHeaders);
+            }
+
+            if (url.pathname === '/api/admin/audit-logs') {
+                return await handleAdminAuditLogs(request, env, corsHeaders);
+            }
+
             // Check IP ban status
             if (url.pathname === '/api/check-ban') {
                 return await handleCheckBan(request, env, corsHeaders);
@@ -854,6 +870,163 @@ async function handleCheckBan(request, env, corsHeaders) {
     }
 }
 
+async function handleAdminBannedIPs(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/banned-ips', {
+            headers: { 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID() }
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminBannedIPs error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch banned IPs' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+async function handleAdminUnbanIP(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const body = await request.json();
+        const ip = body.ip;
+
+        if (!ip) {
+            return new Response(JSON.stringify({ error: 'Missing IP address' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/unban-ip', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
+            },
+            body: JSON.stringify({ ip })
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminUnbanIP error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to unban IP' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+async function handleAdminUserDetails(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const url = new URL(request.url);
+        const sessionId = url.searchParams.get('sessionId');
+
+        if (!sessionId) {
+            return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request(`https://dummy/admin/user-details?sessionId=${encodeURIComponent(sessionId)}`, {
+            headers: { 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID() }
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminUserDetails error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch user details' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+async function handleAdminAuditLogs(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/audit-logs', {
+            headers: { 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID() }
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminAuditLogs error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch audit logs' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 async function generateAdminToken(password, secret) {
     const data = `${password}:${Date.now()}`;
     const encoder = new TextEncoder();
@@ -967,6 +1140,7 @@ export class ChatRoom {
         this.startTime = Date.now(); // Track uptime
         this.bannedIPs = new Map(); // IP -> { bannedUntil: timestamp, reason: string }
         this.currentAnnouncement = null; // Current active announcement
+        this.auditLogs = []; // Audit logs for admin actions
         
         // Periodic cleanup of stale data (every 5 minutes)
         this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
@@ -992,6 +1166,12 @@ export class ChatRoom {
         const bannedIPs = await this.state.storage.get('bannedIPs');
         if (bannedIPs) {
             this.bannedIPs = new Map(bannedIPs);
+        }
+
+        // Load audit logs from storage
+        const auditLogs = await this.state.storage.get('auditLogs');
+        if (auditLogs) {
+            this.auditLogs = auditLogs;
         }
 
         // Load current announcement from storage
@@ -1166,6 +1346,13 @@ export class ChatRoom {
                     message: editedMessage
                 });
 
+                // Add audit log
+                await this.addAuditLog('edit_message', `Edited message ${messageId}`, {
+                    messageId,
+                    originalContent: originalMessage.content.substring(0, 50),
+                    newContent: newContent.substring(0, 50)
+                });
+
                 return new Response(JSON.stringify({ success: true, message: editedMessage }), {
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -1222,6 +1409,12 @@ export class ChatRoom {
                 this.broadcast({
                     type: 'message_deleted',
                     messageId: messageId
+                });
+
+                // Add audit log
+                await this.addAuditLog('delete_message', `Deleted message ${messageId}`, {
+                    messageId,
+                    content: messageToDelete.content.substring(0, 50)
                 });
 
                 return new Response(JSON.stringify({ success: true }), {
@@ -1327,6 +1520,14 @@ export class ChatRoom {
                 metrics.activeConnections = this.sessions.size;
                 this.broadcastUserCount();
 
+                // Add audit log
+                await this.addAuditLog('kick_user', `Kicked session ${sessionId}`, {
+                    sessionId,
+                    ip: clientIP,
+                    banDuration,
+                    banned: banDuration > 0
+                });
+
                 return new Response(JSON.stringify({ 
                     success: true,
                     banned: banDuration > 0,
@@ -1375,6 +1576,12 @@ export class ChatRoom {
                 console.log('Active sessions:', this.sessions.size);
                 this.broadcast(announcementMessage);
 
+                // Add audit log
+                await this.addAuditLog('send_announcement', `Sent announcement: ${content.substring(0, 50)}...`, {
+                    contentLength: content.length,
+                    sessionsNotified: this.sessions.size
+                });
+
                 return new Response(JSON.stringify({ 
                     success: true, 
                     sessionsNotified: this.sessions.size 
@@ -1388,6 +1595,97 @@ export class ChatRoom {
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
+        }
+        
+        // Get banned IPs list
+        if (url.pathname === '/admin/banned-ips') {
+            const now = Date.now();
+            const bannedList = [];
+            
+            for (const [ip, banInfo] of this.bannedIPs.entries()) {
+                if (now < banInfo.bannedUntil) {
+                    bannedList.push({
+                        ip,
+                        bannedUntil: banInfo.bannedUntil,
+                        remainingSeconds: Math.ceil((banInfo.bannedUntil - now) / 1000),
+                        reason: banInfo.reason || 'No reason provided',
+                        bannedAt: banInfo.bannedAt || (banInfo.bannedUntil - (banInfo.duration || 0) * 1000)
+                    });
+                }
+            }
+            
+            return new Response(JSON.stringify(bannedList), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // Unban IP
+        if (url.pathname === '/admin/unban-ip' && request.method === 'POST') {
+            try {
+                const data = await request.json();
+                const ip = data.ip;
+                
+                if (!ip) {
+                    return new Response(JSON.stringify({ error: 'Missing IP' }), {
+                        status: 400,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+                
+                this.bannedIPs.delete(ip);
+                await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+                
+                // Add audit log
+                await this.addAuditLog('UNBAN_IP', `Unbanned IP: ${ip}`);
+                
+                return new Response(JSON.stringify({ success: true }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('unban ip error:', error);
+                return new Response(JSON.stringify({ error: 'Failed to unban IP' }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+        }
+        
+        // Get user details
+        if (url.pathname === '/admin/user-details') {
+            const sessionId = url.searchParams.get('sessionId');
+            
+            if (!sessionId) {
+                return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            const metadata = this.userMetadata.get(sessionId);
+            const userMessages = this.messages.filter(m => m.sessionId === sessionId);
+            const isOnline = this.sessions.has(sessionId);
+            
+            return new Response(JSON.stringify({
+                sessionId,
+                metadata: metadata || null,
+                messages: userMessages,
+                messageCount: userMessages.length,
+                isOnline,
+                firstMessage: userMessages.length > 0 ? userMessages[0].timestamp : null,
+                lastMessage: userMessages.length > 0 ? userMessages[userMessages.length - 1].timestamp : null
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // Get audit logs
+        if (url.pathname === '/admin/audit-logs') {
+            // Return last 100 audit logs
+            const logs = this.auditLogs.slice(-100).reverse();
+            
+            return new Response(JSON.stringify(logs), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
         
         // Handle ban check endpoint
@@ -1961,6 +2259,27 @@ export class ChatRoom {
         const randomPart = crypto.randomUUID().replace(/-/g, '');
         const timestampPart = Date.now().toString(36);
         return `user_${randomPart.substring(0, 16)}_${timestampPart}`;
+    }
+
+    async addAuditLog(action, details, metadata = {}) {
+        const log = {
+            timestamp: Date.now(),
+            action,
+            details,
+            metadata
+        };
+        
+        this.auditLogs.push(log);
+        
+        // Keep only last 500 logs
+        if (this.auditLogs.length > 500) {
+            this.auditLogs = this.auditLogs.slice(-500);
+        }
+        
+        // Save to storage
+        await this.state.storage.put('auditLogs', this.auditLogs);
+        
+        return log;
     }
 
     broadcast(message, excludeSessionId = null) {

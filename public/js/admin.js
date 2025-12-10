@@ -11,6 +11,7 @@ class AdminDashboard {
         
         this.sessionToken = localStorage.getItem('admin_token');
         this.refreshInterval = null;
+        this.autoRefreshInterval = null;
         
         this.initializeEventListeners();
         this.checkAuthentication();
@@ -41,6 +42,55 @@ class AdminDashboard {
 
         this.exportFilteredCsvBtn = document.getElementById('export-filtered-csv-btn');
         this.exportFilteredCsvBtn?.addEventListener('click', () => this.exportFilteredCsv());
+        
+        // Auto-refresh toggle
+        const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
+        const autoRefreshIntervalSelect = document.getElementById('auto-refresh-interval');
+        
+        if (autoRefreshToggle) {
+            autoRefreshToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    const interval = parseInt(autoRefreshIntervalSelect.value) * 1000;
+                    this.startAutoRefresh(interval);
+                } else {
+                    this.stopAutoRefresh();
+                }
+            });
+        }
+        
+        if (autoRefreshIntervalSelect) {
+            autoRefreshIntervalSelect.addEventListener('change', (e) => {
+                if (autoRefreshToggle && autoRefreshToggle.checked) {
+                    this.stopAutoRefresh();
+                    const interval = parseInt(e.target.value) * 1000;
+                    this.startAutoRefresh(interval);
+                }
+            });
+        }
+        
+        // Audit log filter
+        const auditLogFilter = document.getElementById('audit-log-filter');
+        if (auditLogFilter) {
+            auditLogFilter.addEventListener('change', () => this.loadAuditLogs());
+        }
+        
+        // User details modal close
+        const closeUserModal = document.getElementById('close-user-modal');
+        const userDetailsModal = document.getElementById('user-details-modal');
+        if (closeUserModal) {
+            closeUserModal.addEventListener('click', () => {
+                if (userDetailsModal) userDetailsModal.classList.add('hidden');
+            });
+        }
+        
+        // Close modal on background click
+        if (userDetailsModal) {
+            userDetailsModal.addEventListener('click', (e) => {
+                if (e.target === userDetailsModal) {
+                    userDetailsModal.classList.add('hidden');
+                }
+            });
+        }
     }
 
     async checkAuthentication() {
@@ -330,6 +380,12 @@ class AdminDashboard {
                 const messages = await messagesResponse.json();
                 this.updateRecentMessages(messages);
             }
+            
+            // Fetch banned IPs list
+            await this.loadBannedIPs();
+            
+            // Fetch audit logs
+            await this.loadAuditLogs();
 
             this.updateLastUpdated();
 
@@ -376,7 +432,7 @@ class AdminDashboard {
                 : '활동 없음';
             
             return `
-                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer session-row" data-session-id="${session.sessionId}">
                     <div class="flex items-center gap-3 flex-1">
                         <div class="w-2 h-2 ${statusColor} rounded-full ${isOnline ? 'animate-pulse' : ''}"></div>
                         <div class="flex-1">
@@ -393,7 +449,8 @@ class AdminDashboard {
                         <button class="kick-user-btn bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded" 
                                 data-session-id="${session.sessionId}"
                                 data-user-ip="${session.ip || 'Unknown'}"
-                                title="사용자 강제퇴장">
+                                title="사용자 강제퇴장"
+                                onclick="event.stopPropagation()">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                             </svg>
@@ -403,6 +460,14 @@ class AdminDashboard {
                 </div>
             `;
         }).join('');
+
+        // 세션 행 클릭 이벤트 - 사용자 상세 정보 표시
+        document.querySelectorAll('.session-row').forEach(row => {
+            row.addEventListener('click', async (e) => {
+                const sessionId = e.currentTarget.dataset.sessionId;
+                await this.showUserDetails(sessionId);
+            });
+        });
 
         // 강제퇴장 버튼 이벤트
         document.querySelectorAll('.kick-user-btn').forEach(btn => {
@@ -852,10 +917,239 @@ class AdminDashboard {
             alert('CSV 내보내기 중 오류가 발생했습니다.');
         }
     }
-
+    
+    startAutoRefresh(interval) {
+        if (this.autoRefreshInterval) {
+            clearInterval(this.autoRefreshInterval);
+        }
+        this.autoRefreshInterval = setInterval(() => this.refreshData(), interval);
+        console.log(`Auto-refresh started with ${interval}ms interval`);
+    }
+    
+    stopAutoRefresh() {
+        if (this.autoRefreshInterval) {
+            clearInterval(this.autoRefreshInterval);
+            this.autoRefreshInterval = null;
+            console.log('Auto-refresh stopped');
+        }
+    }
+    
+    async loadBannedIPs() {
+        try {
+            const response = await fetch('/api/admin/banned-ips', {
+                headers: { 'Authorization': `Bearer ${this.sessionToken}` }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load banned IPs');
+            }
+            
+            const bannedList = await response.json();
+            const tbody = document.getElementById('banned-ips-body');
+            
+            if (!tbody) return;
+            
+            if (!bannedList || bannedList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">차단된 IP가 없습니다.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = bannedList.map(ban => `
+                <tr class="border-t border-gray-700">
+                    <td class="px-4 py-3 font-mono text-sm">${ban.ip}</td>
+                    <td class="px-4 py-3 text-sm">${this.formatDuration(ban.remainingSeconds * 1000)}</td>
+                    <td class="px-4 py-3 text-sm">${ban.reason || 'No reason'}</td>
+                    <td class="px-4 py-3 text-sm">${new Date(ban.bannedAt).toLocaleString('ko-KR')}</td>
+                    <td class="px-4 py-3 text-center">
+                        <button class="unban-ip-btn bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded" data-ip="${ban.ip}">
+                            차단 해제
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            // Unban button event
+            document.querySelectorAll('.unban-ip-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const ip = e.currentTarget.dataset.ip;
+                    await this.unbanIP(ip);
+                });
+            });
+            
+        } catch (error) {
+            console.error('Load banned IPs error:', error);
+        }
+    }
+    
+    async unbanIP(ip) {
+        if (!confirm(`IP ${ip}의 차단을 해제하시겠습니까?`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/admin/unban-ip', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.sessionToken}`
+                },
+                body: JSON.stringify({ ip })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to unban IP');
+            }
+            
+            alert(`IP ${ip}의 차단이 해제되었습니다.`);
+            await this.loadBannedIPs();
+            
+        } catch (error) {
+            console.error('Unban IP error:', error);
+            alert('IP 차단 해제 중 오류가 발생했습니다.');
+        }
+    }
+    
+    async showUserDetails(sessionId) {
+        try {
+            const response = await fetch(`/api/admin/user-details?sessionId=${encodeURIComponent(sessionId)}`, {
+                headers: { 'Authorization': `Bearer ${this.sessionToken}` }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load user details');
+            }
+            
+            const userDetails = await response.json();
+            const modal = document.getElementById('user-details-modal');
+            const content = document.getElementById('user-details-content');
+            
+            if (!modal || !content) return;
+            
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-gray-700 rounded-lg p-4">
+                        <h3 class="text-sm font-semibold text-gray-400 mb-2">기본 정보</h3>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <p class="text-gray-500">세션 ID</p>
+                                <p class="text-gray-200 font-mono">${userDetails.sessionId || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">IP 주소</p>
+                                <p class="text-gray-200 font-mono">${userDetails.metadata?.ip || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">접속 시각</p>
+                                <p class="text-gray-200">${userDetails.metadata?.joinTime ? new Date(userDetails.metadata.joinTime).toLocaleString('ko-KR') : 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">상태</p>
+                                <p class="text-gray-200">${userDetails.isOnline ? '<span class="text-green-400">온라인</span>' : '<span class="text-gray-400">오프라인</span>'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">메시지 수</p>
+                                <p class="text-gray-200">${userDetails.messageCount || 0}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">마지막 활동</p>
+                                <p class="text-gray-200">${userDetails.lastMessage ? new Date(userDetails.lastMessage.timestamp).toLocaleString('ko-KR') : 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-700 rounded-lg p-4">
+                        <h3 class="text-sm font-semibold text-gray-400 mb-2">메시지 기록 (최근 ${Math.min(userDetails.messages?.length || 0, 50)}개)</h3>
+                        <div class="space-y-2 max-h-96 overflow-y-auto">
+                            ${userDetails.messages && userDetails.messages.length > 0 
+                                ? userDetails.messages.slice(0, 50).map(msg => `
+                                    <div class="bg-gray-800 rounded p-3 text-sm">
+                                        <div class="flex justify-between items-start mb-1">
+                                            <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleString('ko-KR')}</span>
+                                            ${msg.editedAt ? '<span class="text-xs text-yellow-400">(수정됨)</span>' : ''}
+                                        </div>
+                                        <p class="text-gray-200">${this.escapeHtml(msg.content)}</p>
+                                        ${msg.file ? `<p class="text-xs text-blue-400 mt-1">파일: ${msg.file.filename}</p>` : ''}
+                                    </div>
+                                `).join('')
+                                : '<p class="text-gray-500 text-center py-4">메시지가 없습니다.</p>'
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+            
+        } catch (error) {
+            console.error('Show user details error:', error);
+            alert('사용자 정보를 불러오는 중 오류가 발생했습니다.');
+        }
+    }
+    
     async loadAuditLogs() {
-        // 감사 로그 표시 (필요시 UI에 추가)
-        console.log('Audit Logs:', logs);
+        try {
+            const response = await fetch('/api/admin/audit-logs', {
+                headers: { 'Authorization': `Bearer ${this.sessionToken}` }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load audit logs');
+            }
+            
+            const logs = await response.json();
+            const container = document.getElementById('audit-logs-list');
+            const filterSelect = document.getElementById('audit-log-filter');
+            
+            if (!container) return;
+            
+            const selectedFilter = filterSelect?.value || 'all';
+            const filteredLogs = selectedFilter === 'all' 
+                ? logs 
+                : logs.filter(log => log.action === selectedFilter);
+            
+            if (!filteredLogs || filteredLogs.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">감사 로그가 없습니다.</p>';
+                return;
+            }
+            
+            container.innerHTML = filteredLogs.map(log => {
+                const actionText = {
+                    'kick_user': '유저 강퇴',
+                    'edit_message': '메시지 수정',
+                    'delete_message': '메시지 삭제',
+                    'send_announcement': '공지 전송',
+                    'UNBAN_IP': 'IP 차단 해제'
+                }[log.action] || log.action;
+                
+                const actionColor = {
+                    'kick_user': 'text-red-400',
+                    'edit_message': 'text-yellow-400',
+                    'delete_message': 'text-orange-400',
+                    'send_announcement': 'text-blue-400',
+                    'UNBAN_IP': 'text-green-400'
+                }[log.action] || 'text-gray-400';
+                
+                return `
+                    <div class="bg-gray-700 rounded-lg p-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-sm font-medium ${actionColor}">${actionText}</span>
+                            <span class="text-xs text-gray-500">${new Date(log.timestamp).toLocaleString('ko-KR')}</span>
+                        </div>
+                        <p class="text-sm text-gray-300">${log.details}</p>
+                        ${log.metadata ? `<p class="text-xs text-gray-500 mt-1">${JSON.stringify(log.metadata)}</p>` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+        } catch (error) {
+            console.error('Load audit logs error:', error);
+        }
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 
