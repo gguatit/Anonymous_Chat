@@ -1,4 +1,4 @@
-name = "kalpha-mmv-kr"
+name = "anonymous-chat"
 main = "src/worker.js"
 compatibility_date = "2024-11-01"
 
