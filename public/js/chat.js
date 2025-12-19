@@ -78,19 +78,63 @@ class ChatClient {
             case 'kicked':
                 // User was kicked by admin
                 const banDuration = data.banDuration || 0;
-                if (banDuration > 0) {
+                const isPermanent = data.permanent === true;
+                
+                if (isPermanent && banDuration > 0) {
+                    // 영구 차단 - localStorage 세션 삭제하고 재접속 금지
+                    const minutes = Math.floor(banDuration / 60);
+                    const seconds = banDuration % 60;
+                    const timeStr = minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
+                    
+                    this.ui.displayError(`${data.content}\n재접속은 ${timeStr} 후 가능합니다.`);
+                    this.ui.setInputEnabled(false);
+                    
+                    // 세션 ID 삭제하여 재접속 시 새 ID 부여
+                    localStorage.removeItem('chatSessionId');
+                    
+                    // WebSocket 연결 종료
+                    if (this.wsManager) {
+                        this.wsManager.disconnect();
+                    }
+                    
+                    alert(`관리자에 의해 ${timeStr}간 차단되었습니다.\n차단 시간이 지난 후 페이지를 새로고침하여 재접속할 수 있습니다.`);
+                } else if (banDuration > 0) {
                     const minutes = Math.floor(banDuration / 60);
                     const seconds = banDuration % 60;
                     const timeStr = minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
                     this.ui.displayError(`${data.content}\n재접속은 ${timeStr} 후 가능합니다.`);
                     alert(`관리자에 의해 ${timeStr}간 차단되었습니다.\n페이지가 새로고침됩니다.`);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
                 } else {
                     this.ui.displayError(data.content);
                     alert('관리자에 의해 강제퇴장되었습니다. 페이지가 새로고침됩니다.');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
                 }
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
+                break;
+            case 'banned':
+                // Session or IP is banned
+                this.ui.displayError(data.content);
+                this.ui.setInputEnabled(false);
+                
+                // 세션 ID 삭제
+                localStorage.removeItem('chatSessionId');
+                
+                // WebSocket 연결 종료
+                if (this.wsManager) {
+                    this.wsManager.disconnect();
+                }
+                
+                const remainingTime = data.remainingSeconds || 0;
+                if (remainingTime > 0) {
+                    const mins = Math.floor(remainingTime / 60);
+                    const secs = remainingTime % 60;
+                    const timeText = mins > 0 ? `${mins}분 ${secs}초` : `${secs}초`;
+                    alert(`접속이 차단되었습니다.\n차단 해제까지 ${timeText} 남았습니다.\n\n차단 시간이 지난 후 페이지를 새로고침하여 재접속할 수 있습니다.`);
+                }
                 break;
             case 'error':
                 this.ui.displayError(data.content);

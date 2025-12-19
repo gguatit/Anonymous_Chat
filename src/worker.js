@@ -1139,6 +1139,7 @@ export class ChatRoom {
         this.initialized = false;
         this.startTime = Date.now(); // Track uptime
         this.bannedIPs = new Map(); // IP -> { bannedUntil: timestamp, reason: string }
+        this.bannedSessions = new Map(); // sessionId -> { bannedUntil: timestamp, reason: string }
         this.currentAnnouncement = null; // Current active announcement
         this.auditLogs = []; // Audit logs for admin actions
         
@@ -1166,6 +1167,12 @@ export class ChatRoom {
         const bannedIPs = await this.state.storage.get('bannedIPs');
         if (bannedIPs) {
             this.bannedIPs = new Map(bannedIPs);
+        }
+
+        // Load banned sessions from storage
+        const bannedSessions = await this.state.storage.get('bannedSessions');
+        if (bannedSessions) {
+            this.bannedSessions = new Map(bannedSessions);
         }
 
         // Load audit logs from storage
@@ -1448,27 +1455,40 @@ export class ChatRoom {
 
                 const clientIP = metadata?.ip;
 
-                // Ban IP if duration is specified
-                if (banDuration > 0 && clientIP) {
+                // Ban IP and Session if duration is specified
+                if (banDuration > 0) {
                     const bannedUntil = Date.now() + (banDuration * 1000);
-                    this.bannedIPs.set(clientIP, {
+                    
+                    // Ban the specific session
+                    this.bannedSessions.set(sessionId, {
                         bannedUntil,
                         reason: 'Admin kick',
-                        sessionId
+                        ip: clientIP
                     });
+                    await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
                     
-                    // Persist banned IPs
-                    await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+                    // Ban the IP if available
+                    if (clientIP) {
+                        this.bannedIPs.set(clientIP, {
+                            bannedUntil,
+                            reason: 'Admin kick',
+                            sessionId
+                        });
+                        await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+                    }
 
-                    // Kick all sessions from this IP
+                    // Kick all sessions from this IP or with this sessionId
                     for (const [sid, ws] of this.sessions.entries()) {
                         const meta = this.userMetadata.get(sid);
-                        if (meta && meta.ip === clientIP) {
+                        const shouldKick = sid === sessionId || (meta && meta.ip === clientIP);
+                        
+                        if (shouldKick) {
                             try {
                                 ws.send(JSON.stringify({
                                     type: 'kicked',
                                     content: `관리자에 의해 ${banDuration}초간 차단되었습니다.`,
-                                    banDuration
+                                    banDuration,
+                                    permanent: true // 클라이언트에게 재접속 금지 알림
                                 }));
                                 ws.close(1008, 'Kicked by admin');
                             } catch (e) {
@@ -1779,6 +1799,26 @@ export class ChatRoom {
                         const isReconnect = data.isReconnect || false;
                         sessionId = data.sessionId || this.generateSessionId();
                         
+                        // Check if session is banned
+                        const sessionBanInfo = this.bannedSessions.get(sessionId);
+                        if (sessionBanInfo) {
+                            const now = Date.now();
+                            if (now < sessionBanInfo.bannedUntil) {
+                                const remainingSeconds = Math.ceil((sessionBanInfo.bannedUntil - now) / 1000);
+                                websocket.send(JSON.stringify({
+                                    type: 'banned',
+                                    content: `이 세션은 ${remainingSeconds}초 동안 차단되었습니다.`,
+                                    remainingSeconds
+                                }));
+                                websocket.close(1008, 'Session banned');
+                                return;
+                            } else {
+                                // Ban expired, remove it
+                                this.bannedSessions.delete(sessionId);
+                                await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
+                            }
+                        }
+                        
                         // Check if IP is still banned (even for reconnecting sessions)
                         const banInfo = this.bannedIPs.get(clientIP);
                         if (banInfo) {
@@ -1786,8 +1826,9 @@ export class ChatRoom {
                             if (now < banInfo.bannedUntil) {
                                 const remainingSeconds = Math.ceil((banInfo.bannedUntil - now) / 1000);
                                 websocket.send(JSON.stringify({
-                                    type: 'error',
-                                    content: `이 IP는 ${remainingSeconds}초 동안 차단되었습니다.`
+                                    type: 'banned',
+                                    content: `이 IP는 ${remainingSeconds}초 동안 차단되었습니다.`,
+                                    remainingSeconds
                                 }));
                                 websocket.close(1008, 'IP banned');
                                 return;
@@ -2340,6 +2381,18 @@ export class ChatRoom {
         }
         if (bansChanged) {
             this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+        }
+
+        // Clean up expired session bans
+        let sessionBansChanged = false;
+        for (const [sessionId, banInfo] of this.bannedSessions.entries()) {
+            if (now >= banInfo.bannedUntil) {
+                this.bannedSessions.delete(sessionId);
+                sessionBansChanged = true;
+            }
+        }
+        if (sessionBansChanged) {
+            this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
         }
 
         // Clean up inactive sessions
