@@ -1389,16 +1389,7 @@ export class ChatRoom {
 
                 const messageToDelete = this.messages[messageIndex];
 
-                // Verify it's an admin message
-                if (!messageToDelete.sessionId || !String(messageToDelete.sessionId).startsWith('admin_')) {
-                    return new Response(JSON.stringify({ error: 'Not an admin message' }), {
-                        status: 403,
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                }
-
-                // 관리자 메시지는 시간 제한 없음
-
+                // 관리자는 모든 메시지 삭제 가능 (시간 제한 없음)
                 // Remove message from array
                 this.messages.splice(messageIndex, 1);
 
@@ -1411,10 +1402,12 @@ export class ChatRoom {
                     messageId: messageId
                 });
 
-                // Add audit log
-                await this.addAuditLog('delete_message', `Deleted message ${messageId}`, {
+                // Add audit log with more details
+                await this.addAuditLog('admin_delete_message', `Admin deleted message ${messageId} from user ${messageToDelete.sessionId}`, {
                     messageId,
-                    content: messageToDelete.content.substring(0, 50)
+                    originalSessionId: messageToDelete.sessionId,
+                    content: messageToDelete.content ? messageToDelete.content.substring(0, 50) : '(file only)',
+                    hasFile: !!messageToDelete.file
                 });
 
                 return new Response(JSON.stringify({ success: true }), {

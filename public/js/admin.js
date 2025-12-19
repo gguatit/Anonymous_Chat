@@ -583,18 +583,24 @@ class AdminDashboard {
                 <span class="inline-block text-xs font-semibold text-yellow-300 bg-yellow-900/20 px-2 py-0.5 rounded">관리자</span>
             ` : '';
 
-            // 관리자 메시지는 시간 제한 없이 수정/삭제 가능
+            // 관리자는 모든 메시지를 삭제 가능, 자신의 메시지만 수정 가능
             const canEdit = isAdminMsg;
-            const editButtons = canEdit ? `
+            const canDelete = true; // 관리자는 모든 메시지 삭제 가능
+            
+            const editButtons = `
                 <div class="mt-2 flex gap-2">
-                    <button class="admin-edit-msg-btn text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded" data-message-id="${msg.messageId}" data-content="${this.escapeHtml(msg.content || '')}">
-                        수정
-                    </button>
-                    <button class="admin-delete-msg-btn text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded" data-message-id="${msg.messageId}">
-                        삭제
-                    </button>
+                    ${canEdit ? `
+                        <button class="admin-edit-msg-btn text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded" data-message-id="${msg.messageId}" data-content="${this.escapeHtml(msg.content || '')}">
+                            수정
+                        </button>
+                    ` : ''}
+                    ${canDelete ? `
+                        <button class="admin-delete-msg-btn text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded" data-message-id="${msg.messageId}">
+                            삭제
+                        </button>
+                    ` : ''}
                 </div>
-            ` : '';
+            `;
 
             return `
                 <div class="p-3 ${isAdminMsg ? 'bg-yellow-900/5 border border-yellow-800' : 'bg-gray-700'} rounded-lg" data-message-id="${msg.messageId}">
@@ -671,8 +677,8 @@ class AdminDashboard {
             btn.addEventListener('click', async (e) => {
                 const messageId = e.target.dataset.messageId;
                 
-                if (confirm('이 메시지를 삭제하시겠습니까?')) {
-                    await this.deleteAdminMessage(messageId);
+                if (confirm('이 메시지를 삭제하시겠습니까?\n\n삭제된 메시지는 복구할 수 없습니다.\n첨부된 파일도 함께 삭제됩니다.')) {
+                    await this.deleteMessage(messageId);
                 }
             });
         });
@@ -713,7 +719,7 @@ class AdminDashboard {
         }
     }
 
-    async deleteAdminMessage(messageId) {
+    async deleteMessage(messageId) {
         if (!this.sessionToken) {
             alert('관리자 인증이 필요합니다.');
             return;
@@ -736,9 +742,11 @@ class AdminDashboard {
                 return;
             }
 
+            const result = await response.json();
+            console.log('Message deleted successfully:', result);
             this.refreshData();
         } catch (error) {
-            console.error('deleteAdminMessage error:', error);
+            console.error('deleteMessage error:', error);
             alert('메시지 삭제 중 오류가 발생했습니다.');
         }
     }
