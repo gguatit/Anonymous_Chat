@@ -16,18 +16,18 @@ export class WebSocketManager {
 
     async connect() {
         try {
-            // Check if IP is banned before attempting WebSocket connection
-            const banCheckResponse = await fetch('/api/check-ban');
+            // Check if IP or session is banned before attempting WebSocket connection
+            const banCheckResponse = await fetch(`/api/check-ban?sessionId=${encodeURIComponent(this.sessionId)}`);
             const banStatus = await banCheckResponse.json();
             
             if (banStatus.banned) {
                 this.messageHandler.onError(`접속이 차단되었습니다. ${banStatus.remainingSeconds}초 후에 다시 시도해주세요.`);
                 this.messageHandler.onConnectionChange('banned');
                 
-                // Schedule reconnection after ban expires
-                setTimeout(() => {
-                    this.connect();
-                }, (banStatus.remainingSeconds + 1) * 1000);
+                // localStorage에서 세션 ID 삭제
+                localStorage.removeItem('chatSessionId');
+                
+                // 차단 시간 동안 재접속 시도하지 않음
                 return;
             }
             

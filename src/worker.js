@@ -842,14 +842,22 @@ async function handleAdminAnnounce(request, env, corsHeaders) {
 
 async function handleCheckBan(request, env, corsHeaders) {
     try {
+        const url = new URL(request.url);
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const sessionId = url.searchParams.get('sessionId');
         
         // Get the Durable Object
         const roomId = env.CHAT_ROOM.idFromName('main-room');
         const room = env.CHAT_ROOM.get(roomId);
         
+        // Build check URL with both IP and sessionId
+        let checkUrl = `https://dummy/check-ban?ip=${encodeURIComponent(clientIP)}`;
+        if (sessionId) {
+            checkUrl += `&sessionId=${encodeURIComponent(sessionId)}`;
+        }
+        
         // Check ban status
-        const checkRequest = new Request(`https://dummy/check-ban?ip=${encodeURIComponent(clientIP)}`, {
+        const checkRequest = new Request(checkUrl, {
             headers: {
                 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID(),
                 'CF-Connecting-IP': clientIP
@@ -1704,10 +1712,31 @@ export class ChatRoom {
         // Handle ban check endpoint
         if (url.pathname === '/check-ban') {
             const ip = url.searchParams.get('ip') || request.headers.get('CF-Connecting-IP') || 'unknown';
-            const banInfo = this.bannedIPs.get(ip);
+            const sessionId = url.searchParams.get('sessionId');
+            const now = Date.now();
             
+            // Check session ban first
+            if (sessionId) {
+                const sessionBanInfo = this.bannedSessions.get(sessionId);
+                if (sessionBanInfo && now < sessionBanInfo.bannedUntil) {
+                    const remainingSeconds = Math.ceil((sessionBanInfo.bannedUntil - now) / 1000);
+                    return new Response(JSON.stringify({
+                        banned: true,
+                        remainingSeconds,
+                        message: `이 세션은 ${remainingSeconds}초 동안 차단되었습니다.`
+                    }), {
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                } else if (sessionBanInfo) {
+                    // Session ban expired, remove it
+                    this.bannedSessions.delete(sessionId);
+                    await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
+                }
+            }
+            
+            // Check IP ban
+            const banInfo = this.bannedIPs.get(ip);
             if (banInfo) {
-                const now = Date.now();
                 if (now < banInfo.bannedUntil) {
                     const remainingSeconds = Math.ceil((banInfo.bannedUntil - now) / 1000);
                     return new Response(JSON.stringify({

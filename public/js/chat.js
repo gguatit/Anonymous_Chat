@@ -92,12 +92,13 @@ class ChatClient {
                     // 세션 ID 삭제하여 재접속 시 새 ID 부여
                     localStorage.removeItem('chatSessionId');
                     
-                    // WebSocket 연결 종료
+                    // WebSocket 연결 완전 종료
                     if (this.wsManager) {
+                        this.wsManager.manualClose = true;
                         this.wsManager.disconnect();
                     }
                     
-                    alert(`관리자에 의해 ${timeStr}간 차단되었습니다.\n차단 시간이 지난 후 페이지를 새로고침하여 재접속할 수 있습니다.`);
+                    alert(`관리자에 의해 ${timeStr}간 차단되었습니다.\n\n차단이 해제될 때까지 접속이 불가능합니다.\n차단 시간이 지난 후 페이지를 새로고침하여 재접속할 수 있습니다.`);
                 } else if (banDuration > 0) {
                     const minutes = Math.floor(banDuration / 60);
                     const seconds = banDuration % 60;
