@@ -1779,6 +1779,25 @@ export class ChatRoom {
                         const isReconnect = data.isReconnect || false;
                         sessionId = data.sessionId || this.generateSessionId();
                         
+                        // Check if IP is still banned (even for reconnecting sessions)
+                        const banInfo = this.bannedIPs.get(clientIP);
+                        if (banInfo) {
+                            const now = Date.now();
+                            if (now < banInfo.bannedUntil) {
+                                const remainingSeconds = Math.ceil((banInfo.bannedUntil - now) / 1000);
+                                websocket.send(JSON.stringify({
+                                    type: 'error',
+                                    content: `이 IP는 ${remainingSeconds}초 동안 차단되었습니다.`
+                                }));
+                                websocket.close(1008, 'IP banned');
+                                return;
+                            } else {
+                                // Ban expired, remove it
+                                this.bannedIPs.delete(clientIP);
+                                await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+                            }
+                        }
+                        
                         // Check if this is an existing session reconnecting
                         const existingMetadata = this.userMetadata.get(sessionId);
                         const wasAlreadyConnected = this.sessions.has(sessionId);
