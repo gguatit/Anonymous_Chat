@@ -210,6 +210,46 @@ async function handleWebSocket(request, env, HMAC_SECRET) {
         return new Response('Access Denied', { status: 403 });
     }
 
+    // Extract sessionId from URL query parameters
+    const url = new URL(request.url);
+    const sessionId = url.searchParams.get('sessionId');
+
+    // Check ban status BEFORE allowing WebSocket connection
+    if (sessionId || clientIP !== 'unknown') {
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+        
+        // Build check URL
+        let checkUrl = `https://dummy/check-ban?ip=${encodeURIComponent(clientIP)}`;
+        if (sessionId) {
+            checkUrl += `&sessionId=${encodeURIComponent(sessionId)}`;
+        }
+        
+        // Check ban status synchronously
+        const checkRequest = new Request(checkUrl, {
+            headers: {
+                'X-HMAC-Secret': HMAC_SECRET,
+                'CF-Connecting-IP': clientIP
+            }
+        });
+        
+        try {
+            const banCheckResponse = await room.fetch(checkRequest);
+            const banStatus = await banCheckResponse.json();
+            
+            if (banStatus.banned) {
+                console.log(`Blocked WebSocket connection - banned: IP=${clientIP}, SessionID=${sessionId}`);
+                return new Response('Access Denied - You are banned', { 
+                    status: 403,
+                    statusText: `Banned for ${banStatus.remainingSeconds} seconds`
+                });
+            }
+        } catch (error) {
+            console.error('Error checking ban status:', error);
+            // Continue with connection on error to avoid blocking legitimate users
+        }
+    }
+
     // Get or create the Durable Object for the chat room
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);

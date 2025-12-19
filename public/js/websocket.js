@@ -33,7 +33,7 @@ export class WebSocketManager {
             
             // Force WSS in production for security (encrypted WebSocket)
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            const wsUrl = `${protocol}//${window.location.host}/ws?sessionId=${encodeURIComponent(this.sessionId)}`;
             
             this.ws = new WebSocket(wsUrl);
             
