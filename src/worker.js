@@ -1856,11 +1856,16 @@ export class ChatRoom {
                 // Handle different message types
                 switch (data.type) {
                     case 'ping': {
-                        // Respond to heartbeat ping
-                        this.sendToSession(sessionId || 'temp', {
-                            type: 'pong',
-                            timestamp: Date.now()
-                        });
+                        // Respond to heartbeat ping directly to this websocket
+                        // Don't use sendToSession as sessionId might not be set yet
+                        try {
+                            websocket.send(JSON.stringify({
+                                type: 'pong',
+                                timestamp: Date.now()
+                            }));
+                        } catch (error) {
+                            console.error('Error sending pong:', error);
+                        }
                         break;
                     }
                     
