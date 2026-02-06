@@ -61,7 +61,6 @@
                 <button id="info-toggle" 
                         class="text-gray-400 hover:text-gray-200 transition-colors cursor-pointer z-50 p-2"
                         type="button"
-                        onclick="document.getElementById('platform-info').classList.toggle('-translate-x-full'); console.log('Button clicked!');"
                         aria-label="플랫폼 정보 토글">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
@@ -311,25 +310,27 @@
     </div>
 
     <!-- Footer -->
-        <!-- Footer -->
     <footer class="bg-gray-800 border-t border-gray-700 py-2 px-4 text-center text-xs text-gray-500">
         <p>Cloudflare Workers 기반 익명 채팅</p>
     </footer>
 
     <!-- JavaScript Modules -->
     <script type="module" src="/js/chat.js"></script>
-
-        // Close on ESC key
+    <script>
+        // Platform info toggle
+        const infoToggle = document.getElementById('info-toggle');
+        const platformInfo = document.getElementById('platform-info');
+        
+        infoToggle.addEventListener('click', () => {
+            platformInfo.classList.toggle('-translate-x-full');
+        });
+        
+        // Close platform info on ESC key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !bugReportModal.classList.contains('hidden')) {
-                bugReportModal.classList.add('hidden');
+            if (e.key === 'Escape' && !platformInfo.classList.contains('-translate-x-full')) {
+                platformInfo.classList.add('-translate-x-full');
             }
         });
     </script>
-</body>
-</html>
-
-    <!-- JavaScript Modules -->
-    <script type="module" src="/js/chat.js"></script>
 </body>
 </html>

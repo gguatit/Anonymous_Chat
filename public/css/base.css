@@ -13,32 +13,42 @@ body {
     display: none; /* Chrome, Safari, Opera */
 }
 
-/* Bug report button mobile optimization */
-#bug-report-btn {
-    transition: bottom 0.3s ease, right 0.3s ease, transform 0.3s ease;
+/* Scroll to bottom button mobile optimization */
+#scroll-to-bottom {
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* Mobile: Adjust bug report button for better UX */
+/* Mobile: Better touch targets */
 @media (max-width: 640px) {
-    #bug-report-btn {
-        right: 0.75rem; /* Reduce right margin on mobile */
-        padding: 0.625rem; /* Slightly smaller padding */
+    #scroll-to-bottom {
+        right: 0.75rem;
+        bottom: 5.5rem; /* Adjust for mobile keyboard */
+        padding: 0.625rem;
     }
     
-    #bug-report-btn svg {
-        width: 1.125rem; /* Slightly smaller icon */
+    #scroll-to-bottom svg {
+        width: 1.125rem;
         height: 1.125rem;
     }
+}
+
+/* Mobile: Adjust input area for keyboard */
+@media (max-width: 640px) {
+    /* Prevent zoom on input focus (iOS) */
+    #message-input {
+        font-size: 16px;
+    }
     
-    /* Hide tooltip on mobile to reduce clutter */
-    #bug-report-btn span {
-        display: none;
+    /* Better mobile spacing */
+    .fixed.bottom-0 {
+        padding-bottom: env(safe-area-inset-bottom);
     }
 }
 
-/* Ensure smooth transition when file preview appears/disappears */
+/* Smooth animations for users who prefer them */
 @media (prefers-reduced-motion: no-preference) {
-    #bug-report-btn {
-        transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    #scroll-to-bottom {
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 }
