@@ -210,7 +210,6 @@ class ChatClient {
         // Upload file if selected
         if (hasFile) {
             try {
-                this.ui.displaySystemMessage('파일 업로드 중...');
                 const fileData = await this.fileUpload.uploadFile();
                 
                 console.log('File uploaded successfully:', fileData);

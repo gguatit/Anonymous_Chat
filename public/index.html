@@ -262,6 +262,16 @@
                             <div class="flex-1 min-w-0">
                                 <p id="file-name" class="text-sm text-gray-200 font-medium truncate"></p>
                                 <p id="file-size" class="text-xs text-gray-400"></p>
+                                <!-- Upload Progress -->
+                                <div id="upload-progress" class="hidden mt-2">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-xs text-blue-400">업로드 중...</span>
+                                        <span id="upload-percent" class="text-xs text-blue-400 font-medium">0%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-600 rounded-full h-1.5">
+                                        <div id="upload-progress-bar" class="bg-blue-500 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <button type="button" id="remove-file" class="ml-2 text-gray-400 hover:text-red-400 transition-colors" aria-label="파일 제거">

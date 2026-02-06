@@ -9,9 +9,15 @@ export class FileUploadManager {
         this.fileName = document.getElementById('file-name');
         this.fileSize = document.getElementById('file-size');
         this.removeFileBtn = document.getElementById('remove-file');
+        this.uploadProgress = document.getElementById('upload-progress');
+        this.uploadPercent = document.getElementById('upload-percent');
+        this.uploadProgressBar = document.getElementById('upload-progress-bar');
+        this.sendButton = document.getElementById('send-button');
         
         this.selectedFile = null;
         this.uploadedFileUrl = null;
+        this.uploadXhr = null;
+        this.isUploading = false;
         
         this.maxFileSize = 100 * 1024 * 1024; // 100MB
         
@@ -34,7 +40,9 @@ export class FileUploadManager {
 
         // Remove file
         this.removeFileBtn.addEventListener('click', () => {
-            this.clearFile();
+            if (!this.isUploading) {
+                this.clearFile();
+            }
         });
     }
 
@@ -114,14 +122,22 @@ export class FileUploadManager {
     }
 
     clearFile() {
+        // Cancel ongoing upload if any
+        if (this.uploadXhr) {
+            this.uploadXhr.abort();
+            this.uploadXhr = null;
+        }
+        
         this.selectedFile = null;
         this.uploadedFileUrl = null;
+        this.isUploading = false;
         this.fileInput.value = '';
         this.filePreview.classList.add('hidden');
         this.previewImage.src = '';
         this.previewImage.classList.add('hidden');
         this.fileName.textContent = '';
         this.fileSize.textContent = '';
+        this.hideUploadProgress();
         
         // Reset messages container padding when file preview is hidden
         const messagesContainer = document.querySelector('main');
@@ -130,62 +146,137 @@ export class FileUploadManager {
         // Reset bug report button position
         this.resetBugReportButtonPosition();
     }
+    
+    showUploadProgress() {
+        this.isUploading = true;
+        this.uploadProgress.classList.remove('hidden');
+        this.removeFileBtn.disabled = true;
+        this.removeFileBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        if (this.sendButton) {
+            this.sendButton.disabled = true;
+            this.sendButton.classList.add('opacity-50');
+        }
+        this.updateUploadProgress(0);
+    }
+    
+    hideUploadProgress() {
+        this.isUploading = false;
+        this.uploadProgress.classList.add('hidden');
+        this.removeFileBtn.disabled = false;
+        this.removeFileBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        if (this.sendButton) {
+            this.sendButton.disabled = false;
+            this.sendButton.classList.remove('opacity-50');
+        }
+        this.updateUploadProgress(0);
+    }
+    
+    updateUploadProgress(percent) {
+        const roundedPercent = Math.round(percent);
+        this.uploadPercent.textContent = `${roundedPercent}%`;
+        this.uploadProgressBar.style.width = `${roundedPercent}%`;
+    }
 
     async uploadFile() {
         if (!this.selectedFile) {
             return null;
         }
 
-        try {
-            console.log('Starting file upload:', this.selectedFile.name, this.selectedFile.type, this.selectedFile.size);
-            
-            const formData = new FormData();
-            formData.append('file', this.selectedFile);
-
-            console.log('Uploading to:', `${this.apiBaseUrl}/upload`);
-            
-            const response = await fetch(`${this.apiBaseUrl}/upload`, {
-                method: 'POST',
-                body: formData
-            });
-
-            console.log('Upload response status:', response.status, response.statusText);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Upload error response:', errorText);
-                throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            console.log('Upload result:', result);
-            
-            // API 응답에서 파일 URL 추출
-            // full_url 우선 사용, 없으면 url, 그것도 없으면 id와 name으로 구성
-            if (result.full_url) {
-                this.uploadedFileUrl = result.full_url;
-            } else if (result.url && result.url.startsWith('http')) {
-                this.uploadedFileUrl = result.url;
-            } else if (result.url) {
-                // 상대 경로인 경우 전체 URL로 변환
-                this.uploadedFileUrl = `${this.apiBaseUrl}${result.url}`;
-            } else if (result.id && result.name) {
-                // URL이 없으면 id와 name으로 구성
-                this.uploadedFileUrl = `${this.apiBaseUrl}/${result.id}/${result.name}`;
-            } else {
-                throw new Error('Invalid upload response');
-            }
-
-            return {
-                url: this.uploadedFileUrl,
-                filename: this.selectedFile.name,
-                filesize: this.selectedFile.size,
-                filetype: this.selectedFile.type
-            };
-        } catch (error) {
-            console.error('File upload error:', error);
-            throw error;
+        if (this.isUploading) {
+            throw new Error('Upload already in progress');
         }
+
+        return new Promise((resolve, reject) => {
+            try {
+                console.log('Starting file upload:', this.selectedFile.name, this.selectedFile.type, this.selectedFile.size);
+                
+                this.showUploadProgress();
+                
+                const formData = new FormData();
+                formData.append('file', this.selectedFile);
+
+                console.log('Uploading to:', `${this.apiBaseUrl}/upload`);
+                
+                this.uploadXhr = new XMLHttpRequest();
+                
+                // Upload progress tracking
+                this.uploadXhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        this.updateUploadProgress(percentComplete);
+                        console.log(`Upload progress: ${percentComplete.toFixed(1)}%`);
+                    }
+                });
+                
+                // Upload complete
+                this.uploadXhr.addEventListener('load', () => {
+                    console.log('Upload response status:', this.uploadXhr.status, this.uploadXhr.statusText);
+                    
+                    this.hideUploadProgress();
+                    
+                    if (this.uploadXhr.status >= 200 && this.uploadXhr.status < 300) {
+                        try {
+                            const result = JSON.parse(this.uploadXhr.responseText);
+                            console.log('Upload result:', result);
+            
+                            // API 응답에서 파일 URL 추출
+                            // full_url 우선 사용, 없으면 url, 그것도 없으면 id와 name으로 구성
+                            if (result.full_url) {
+                                this.uploadedFileUrl = result.full_url;
+                            } else if (result.url && result.url.startsWith('http')) {
+                                this.uploadedFileUrl = result.url;
+                            } else if (result.url) {
+                                // 상대 경로인 경우 전체 URL로 변환
+                                this.uploadedFileUrl = `${this.apiBaseUrl}${result.url}`;
+                            } else if (result.id && result.name) {
+                                // URL이 없으면 id와 name으로 구성
+                                this.uploadedFileUrl = `${this.apiBaseUrl}/${result.id}/${result.name}`;
+                            } else {
+                                reject(new Error('Invalid upload response'));
+                                return;
+                            }
+
+                            resolve({
+                                url: this.uploadedFileUrl,
+                                filename: this.selectedFile.name,
+                                filesize: this.selectedFile.size,
+                                filetype: this.selectedFile.type
+                            });
+                        } catch (parseError) {
+                            console.error('Upload response parse error:', parseError);
+                            reject(new Error('Invalid upload response'));
+                        }
+                    } else {
+                        const errorText = this.uploadXhr.responseText;
+                        console.error('Upload error response:', errorText);
+                        reject(new Error(`Upload failed: ${this.uploadXhr.status} ${this.uploadXhr.statusText}`));
+                    }
+                });
+                
+                // Upload error
+                this.uploadXhr.addEventListener('error', () => {
+                    console.error('Upload network error');
+                    this.hideUploadProgress();
+                    reject(new Error('Network error during upload'));
+                });
+                
+                // Upload aborted
+                this.uploadXhr.addEventListener('abort', () => {
+                    console.log('Upload aborted');
+                    this.hideUploadProgress();
+                    reject(new Error('Upload cancelled'));
+                });
+                
+                // Send request
+                this.uploadXhr.open('POST', `${this.apiBaseUrl}/upload`);
+                this.uploadXhr.send(formData);
+                
+            } catch (error) {
+                console.error('File upload error:', error);
+                this.hideUploadProgress();
+                reject(error);
+            }
+        });
     }
 
     hasFile() {
