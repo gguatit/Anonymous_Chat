@@ -24,6 +24,59 @@ class AdminDashboard {
         this.exportCsvBtn = document.getElementById('export-csv-btn');
         this.exportCsvBtn?.addEventListener('click', () => this.exportCsv());
 
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const closeMobileMenu = document.getElementById('close-mobile-menu');
+        const mobileMenuPanel = mobileMenu?.querySelector('.mobile-menu');
+        
+        mobileMenuBtn?.addEventListener('click', () => {
+            mobileMenu?.classList.remove('hidden');
+            setTimeout(() => mobileMenuPanel?.classList.add('active'), 10);
+        });
+        
+        closeMobileMenu?.addEventListener('click', () => {
+            mobileMenuPanel?.classList.remove('active');
+            setTimeout(() => mobileMenu?.classList.add('hidden'), 300);
+        });
+        
+        mobileMenu?.addEventListener('click', (e) => {
+            if (e.target === mobileMenu) {
+                mobileMenuPanel?.classList.remove('active');
+                setTimeout(() => mobileMenu?.classList.add('hidden'), 300);
+            }
+        });
+        
+        // Mobile menu controls sync
+        const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
+        const mobileAutoRefresh = document.getElementById('mobile-auto-refresh');
+        const autoRefreshInterval = document.getElementById('auto-refresh-interval');
+        const mobileRefreshInterval = document.getElementById('mobile-refresh-interval');
+        
+        mobileAutoRefresh?.addEventListener('change', (e) => {
+            if (autoRefreshToggle) autoRefreshToggle.checked = e.target.checked;
+            if (e.target.checked) {
+                this.startAutoRefresh();
+            } else {
+                this.stopAutoRefresh();
+            }
+        });
+        
+        mobileRefreshInterval?.addEventListener('change', (e) => {
+            if (autoRefreshInterval) autoRefreshInterval.value = e.target.value;
+            if (this.autoRefreshInterval) {
+                this.stopAutoRefresh();
+                this.startAutoRefresh();
+            }
+        });
+        
+        const mobileExportCsv = document.getElementById('mobile-export-csv');
+        mobileExportCsv?.addEventListener('click', () => {
+            this.exportCsv();
+            mobileMenuPanel?.classList.remove('active');
+            setTimeout(() => mobileMenu?.classList.add('hidden'), 300);
+        });
+
         this.adminSendBtn = document.getElementById('admin-send-btn');
         this.adminAnnounceBtn = document.getElementById('admin-announce-btn');
         this.adminMessageInput = document.getElementById('admin-message-input');
@@ -639,8 +692,12 @@ class AdminDashboard {
     }
 
     updateLastUpdated() {
-        document.getElementById('last-updated').textContent = 
-            `마지막 업데이트: ${new Date().toLocaleTimeString('ko-KR')}`;
+        const timeStr = `마지막 업데이트: ${new Date().toLocaleTimeString('ko-KR')}`;
+        document.getElementById('last-updated').textContent = timeStr;
+        const mobileLastUpdated = document.getElementById('mobile-last-updated');
+        if (mobileLastUpdated) {
+            mobileLastUpdated.textContent = timeStr;
+        }
     }
 
     truncateId(id) {
@@ -980,18 +1037,18 @@ class AdminDashboard {
             if (!tbody) return;
             
             if (!bannedList || bannedList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">차단된 IP가 없습니다.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="px-3 md:px-4 py-8 text-center text-gray-500">차단된 IP가 없습니다.</td></tr>';
                 return;
             }
             
             tbody.innerHTML = bannedList.map(ban => `
-                <tr class="border-t border-gray-700">
-                    <td class="px-4 py-3 font-mono text-sm">${ban.ip}</td>
-                    <td class="px-4 py-3 text-sm">${this.formatDuration(ban.remainingSeconds * 1000)}</td>
-                    <td class="px-4 py-3 text-sm">${ban.reason || 'No reason'}</td>
-                    <td class="px-4 py-3 text-sm">${new Date(ban.bannedAt).toLocaleString('ko-KR')}</td>
-                    <td class="px-4 py-3 text-center">
-                        <button class="unban-ip-btn bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded" data-ip="${ban.ip}">
+                <tr class="border-t border-gray-700 md:border-0">
+                    <td data-label="IP 주소" class="px-3 md:px-4 py-3 font-mono text-sm">${ban.ip}</td>
+                    <td data-label="남은 시간" class="px-3 md:px-4 py-3 text-sm">${this.formatDuration(ban.remainingSeconds * 1000)}</td>
+                    <td data-label="사유" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${ban.reason || 'No reason'}</td>
+                    <td data-label="차단 시각" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${new Date(ban.bannedAt).toLocaleString('ko-KR')}</td>
+                    <td data-label="작업" class="px-3 md:px-4 py-3 text-center">
+                        <button class="unban-ip-btn bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded" data-ip="${ban.ip}">
                             차단 해제
                         </button>
                     </td>

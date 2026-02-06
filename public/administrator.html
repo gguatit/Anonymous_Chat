@@ -26,6 +26,73 @@
         .stat-card:hover {
             transform: translateY(-2px);
         }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            /* Prevent zoom on input focus (iOS) */
+            input, textarea, select {
+                font-size: 16px !important;
+            }
+            
+            /* Smaller stat cards on mobile */
+            .stat-card {
+                padding: 1rem !important;
+            }
+            .stat-card h3 {
+                font-size: 0.75rem;
+            }
+            .stat-card p:first-of-type {
+                font-size: 1.5rem !important;
+            }
+            .stat-card svg {
+                width: 1.5rem;
+                height: 1.5rem;
+            }
+            
+            /* Hide secondary controls on mobile */
+            .mobile-hidden {
+                display: none !important;
+            }
+            
+            /* Table to card layout on mobile */
+            .table-card-mobile table {
+                display: block;
+            }
+            .table-card-mobile thead {
+                display: none;
+            }
+            .table-card-mobile tbody {
+                display: block;
+            }
+            .table-card-mobile tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid #374151;
+                border-radius: 0.5rem;
+                padding: 0.75rem;
+                background: #1f2937;
+            }
+            .table-card-mobile td {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.5rem 0;
+                border: none;
+            }
+            .table-card-mobile td:before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #9ca3af;
+            }
+        }
+        
+        /* Mobile menu */
+        .mobile-menu {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
     </style>
 </head>
 <body class="dark bg-gray-900 text-gray-100 min-h-screen">
@@ -91,48 +158,101 @@
     <!-- Admin Dashboard -->
     <div id="admin-dashboard" class="hidden">
         <!-- Header -->
-        <header class="bg-gray-800 border-b border-gray-700 py-4 px-6 shadow-lg sticky top-0 z-50">
+        <header class="bg-gray-800 border-b border-gray-700 py-3 px-4 shadow-lg sticky top-0 z-50">
             <div class="max-w-7xl mx-auto flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <h1 class="text-xl font-bold text-gray-100">관리자 대시보드</h1>
-                    <span class="bg-green-600 text-white text-xs px-2 py-1 rounded-full">ADMIN</span>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-lg md:text-xl font-bold text-gray-100">관리자</h1>
+                    <span class="bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">ADMIN</span>
                 </div>
-                <div class="flex items-center gap-4">
-                    <span id="last-updated" class="text-xs text-gray-400"></span>
+                <div class="flex items-center gap-2">
+                    <!-- Mobile: Essential buttons only -->
+                    <button id="refresh-btn" class="text-gray-400 hover:text-gray-200 transition-colors p-2" title="새로고침">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
                     
-                    <!-- Auto-refresh toggle -->
-                    <div class="flex items-center gap-2">
-                        <label for="auto-refresh-toggle" class="text-xs text-gray-400">자동 새로고침</label>
-                        <input type="checkbox" id="auto-refresh-toggle" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
-                        <select id="auto-refresh-interval" class="bg-gray-700 text-gray-300 text-xs border border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <!-- Desktop: All controls -->
+                    <div class="mobile-hidden flex items-center gap-3">
+                        <span id="last-updated" class="text-xs text-gray-400"></span>
+                        
+                        <div class="flex items-center gap-2">
+                            <label for="auto-refresh-toggle" class="text-xs text-gray-400">자동 새로고침</label>
+                            <input type="checkbox" id="auto-refresh-toggle" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                            <select id="auto-refresh-interval" class="bg-gray-700 text-gray-300 text-xs border border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="10">10초</option>
+                                <option value="30" selected>30초</option>
+                                <option value="60">1분</option>
+                                <option value="300">5분</option>
+                            </select>
+                        </div>
+                        
+                        <button id="export-csv-btn" class="text-gray-400 hover:text-gray-200 transition-colors" title="CSV 내보내기">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M3 3v14a1 1 0 001 1h12a1 1 0 001-1V8.414A2 2 0 0016.586 7L12 2.414A2 2 0 0010.586 2H4a1 1 0 00-1 1z" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Mobile menu button -->
+                    <button id="mobile-menu-btn" class="md:hidden text-gray-400 hover:text-gray-200 transition-colors p-2" title="메뉴">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    
+                    <button id="logout-btn" class="text-red-400 hover:text-red-300 transition-colors text-sm">
+                        로그아웃
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-menu" class="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40 hidden">
+            <div class="mobile-menu fixed right-0 top-0 bottom-0 w-80 bg-gray-800 shadow-2xl overflow-y-auto">
+                <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-100">설정</h2>
+                    <button id="close-mobile-menu" class="text-gray-400 hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">마지막 업데이트</label>
+                        <p id="mobile-last-updated" class="text-sm text-gray-400">-</p>
+                    </div>
+                    <div>
+                        <label for="mobile-auto-refresh" class="flex items-center gap-2 text-sm text-gray-300">
+                            <input type="checkbox" id="mobile-auto-refresh" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                            자동 새로고침
+                        </label>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">새로고침 간격</label>
+                        <select id="mobile-refresh-interval" class="w-full bg-gray-700 text-gray-300 text-sm border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="10">10초</option>
                             <option value="30" selected>30초</option>
                             <option value="60">1분</option>
                             <option value="300">5분</option>
                         </select>
                     </div>
-                    
-                    <button id="refresh-btn" class="text-gray-400 hover:text-gray-200 transition-colors" title="새로고침">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                    </button>
-                    <button id="export-csv-btn" class="text-gray-400 hover:text-gray-200 transition-colors" title="CSV 내보내기">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <button id="mobile-export-csv" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-sm font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M3 3v14a1 1 0 001 1h12a1 1 0 001-1V8.414A2 2 0 0016.586 7L12 2.414A2 2 0 0010.586 2H4a1 1 0 00-1 1z" />
                         </svg>
-                    </button>
-                    <button id="logout-btn" class="text-red-400 hover:text-red-300 transition-colors">
-                        로그아웃
+                        CSV 내보내기
                     </button>
                 </div>
             </div>
-        </header>
+        </div>
 
         <!-- Main Content -->
-        <main class="max-w-7xl mx-auto p-6">
+        <main class="max-w-7xl mx-auto p-3 md:p-6">
             <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-6">
                 <!-- Active Connections -->
                 <div class="stat-card bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-lg p-6">
                     <div class="flex items-center justify-between mb-2">
@@ -183,26 +303,26 @@
             </div>
 
             <!-- Detailed Stats -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
                 <!-- Active Sessions -->
                 <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
-                    <div class="p-4 border-b border-gray-700">
-                        <div class="flex items-center justify-between">
+                    <div class="p-3 md:p-4 border-b border-gray-700">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
                             <div>
-                                <h2 class="text-lg font-semibold text-gray-100">활성 세션</h2>
-                                <p class="text-sm text-gray-400">현재 연결된 사용자 목록</p>
+                                <h2 class="text-base md:text-lg font-semibold text-gray-100">활성 세션</h2>
+                                <p class="text-xs md:text-sm text-gray-400">현재 연결된 사용자 목록</p>
                             </div>
                             <div class="flex gap-2">
-                                <button id="export-filtered-csv-btn" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg" title="필터링된 데이터 내보내기">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <button id="export-filtered-csv-btn" class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 md:px-3 py-2 rounded-lg whitespace-nowrap" title="필터링된 데이터 내보내기">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline md:mr-1" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M3 3v14a1 1 0 001 1h12a1 1 0 001-1V8.414A2 2 0 0016.586 7L12 2.414A2 2 0 0010.586 2H4a1 1 0 00-1 1z" />
                                     </svg>
-                                    필터 내보내기
+                                    <span class="hidden md:inline">필터 내보내기</span>
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <div class="p-4">
+                    <div class="p-3 md:p-4">
                         <div id="active-sessions" class="space-y-2 max-h-96 overflow-y-auto">
                             <p class="text-sm text-gray-500 text-center py-8">데이터를 불러오는 중...</p>
                         </div>
@@ -211,14 +331,14 @@
 
                 <!-- Recent Messages -->
                 <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
-                    <div class="p-4 border-b border-gray-700">
-                        <h2 class="text-lg font-semibold text-gray-100">최근 메시지</h2>
-                        <p class="text-sm text-gray-400">최근 50개 메시지</p>
+                    <div class="p-3 md:p-4 border-b border-gray-700">
+                        <h2 class="text-base md:text-lg font-semibold text-gray-100">최근 메시지</h2>
+                        <p class="text-xs md:text-sm text-gray-400">최근 50개 메시지</p>
                     </div>
-                    <div class="p-4">
+                    <div class="p-3 md:p-4">
                         <div class="mb-3">
                             <label for="admin-message-input" class="block text-sm font-medium text-gray-300 mb-2">관리자 메시지 전송</label>
-                            <div class="flex gap-2">
+                            <div class="flex flex-col md:flex-row gap-2">
                                 <textarea id="admin-message-input" rows="3" maxlength="5000" class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" placeholder="관리자 메시지 입력 (Shift+Enter: 줄바꿈, Enter: 전송, 최대 5000자)"></textarea>
                                 <div class="flex flex-col gap-2">
                                     <button id="admin-send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">일반 전송</button>
@@ -235,12 +355,12 @@
             </div>
 
             <!-- System Info -->
-            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-6">
-                <div class="p-4 border-b border-gray-700">
-                    <h2 class="text-lg font-semibold text-gray-100">시스템 정보</h2>
+            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
+                <div class="p-3 md:p-4 border-b border-gray-700">
+                    <h2 class="text-base md:text-lg font-semibold text-gray-100">시스템 정보</h2>
                 </div>
-                <div class="p-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div class="p-3 md:p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 text-sm">
                         <div>
                             <p class="text-gray-400">서버 시간</p>
                             <p id="server-time" class="text-gray-100 font-mono">-</p>
@@ -258,26 +378,26 @@
             </div>
 
             <!-- IP Ban List -->
-            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-6">
-                <div class="p-4 border-b border-gray-700">
-                    <h2 class="text-lg font-semibold text-gray-100">IP 차단 목록</h2>
-                    <p class="text-sm text-gray-400">현재 차단된 IP 주소 목록</p>
+            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
+                <div class="p-3 md:p-4 border-b border-gray-700">
+                    <h2 class="text-base md:text-lg font-semibold text-gray-100">IP 차단 목록</h2>
+                    <p class="text-xs md:text-sm text-gray-400">현재 차단된 IP 주소 목록</p>
                 </div>
-                <div class="p-4">
-                    <div id="banned-ips-list" class="overflow-x-auto">
+                <div class="p-3 md:p-4">
+                    <div id="banned-ips-list" class="overflow-x-auto table-card-mobile">
                         <table class="w-full text-sm">
                             <thead class="bg-gray-700 text-gray-300">
                                 <tr>
-                                    <th class="px-4 py-2 text-left">IP 주소</th>
-                                    <th class="px-4 py-2 text-left">남은 시간</th>
-                                    <th class="px-4 py-2 text-left">사유</th>
-                                    <th class="px-4 py-2 text-left">차단 시각</th>
-                                    <th class="px-4 py-2 text-center">작업</th>
+                                    <th class="px-3 md:px-4 py-2 text-left">IP 주소</th>
+                                    <th class="px-3 md:px-4 py-2 text-left">남은 시간</th>
+                                    <th class="px-3 md:px-4 py-2 text-left hidden md:table-cell">사유</th>
+                                    <th class="px-3 md:px-4 py-2 text-left hidden md:table-cell">차단 시각</th>
+                                    <th class="px-3 md:px-4 py-2 text-center">작업</th>
                                 </tr>
                             </thead>
                             <tbody id="banned-ips-body" class="text-gray-300">
                                 <tr>
-                                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">데이터 불러오는 중...</td>
+                                    <td colspan="5" class="px-3 md:px-4 py-8 text-center text-gray-500">데이터 불러오는 중...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -287,12 +407,12 @@
 
             <!-- Audit Logs -->
             <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
-                <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                <div class="p-3 md:p-4 border-b border-gray-700 flex flex-col md:flex-row justify-between md:items-center gap-3">
                     <div>
-                        <h2 class="text-lg font-semibold text-gray-100">감사 로그</h2>
-                        <p class="text-sm text-gray-400">최근 관리자 활동 기록</p>
+                        <h2 class="text-base md:text-lg font-semibold text-gray-100">감사 로그</h2>
+                        <p class="text-xs md:text-sm text-gray-400">최근 관리자 활동 기록</p>
                     </div>
-                    <select id="audit-log-filter" class="bg-gray-700 text-gray-300 text-sm border border-gray-600 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select id="audit-log-filter" class="bg-gray-700 text-gray-300 text-sm border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="all">전체 활동</option>
                         <option value="kick_user">유저 강퇴</option>
                         <option value="edit_message">메시지 수정</option>
@@ -301,7 +421,7 @@
                         <option value="UNBAN_IP">IP 차단 해제</option>
                     </select>
                 </div>
-                <div class="p-4">
+                <div class="p-3 md:p-4">
                     <div id="audit-logs-list" class="space-y-2 max-h-96 overflow-y-auto">
                         <p class="text-sm text-gray-500 text-center py-8">데이터 불러오는 중...</p>
                     </div>
