@@ -30,13 +30,21 @@ export async function incrementRateLimit(env, key) {
         const recentAttempts = attempts.filter(t => now - t < 5 * 60 * 1000);
         recentAttempts.push(now);
         
-        // 10분간 보관 (5분 차단 + 여유)
+        // 10분간 보관 (5분 차단 + 여유), 토큰 유효기간도 2시간으로 단축
         await env.ADMIN_TOKENS.put(key, JSON.stringify(recentAttempts), {
             expirationTtl: 10 * 60
         });
     } catch (error) {
         console.error('Rate limit error:', error);
     }
+}
+
+// Revoke token with 2-hour TTL to match token expiration
+export async function revokeToken(env, token) {
+    if (!env?.ADMIN_TOKENS) return;
+    await env.ADMIN_TOKENS.put(`revoked:${token}`, 'true', {
+        expirationTtl: 2 * 60 * 60
+    });
 }
 
 // Generate admin token
@@ -78,8 +86,8 @@ export async function verifyAdminToken(token, secret, env) {
         const data = atob(dataPart);
         const [password, timestamp] = data.split(':');
         
-        // Token expires after 24 hours
-        if (Date.now() - parseInt(timestamp) > 24 * 60 * 60 * 1000) {
+        // Token expires after 2 hours
+        if (Date.now() - parseInt(timestamp) > 2 * 60 * 60 * 1000) {
             return false;
         }
         

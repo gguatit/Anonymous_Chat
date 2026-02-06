@@ -29,6 +29,30 @@ export class UIManager {
     }
     
     /**
+     * Validate URL to prevent XSS attacks
+     */
+    isValidUrl(url) {
+        try {
+            const parsed = new URL(url);
+            // Only allow http and https protocols
+            return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+        } catch {
+            return false;
+        }
+    }
+    
+    /**
+     * Sanitize and encode URL for HTML attributes
+     */
+    sanitizeUrl(url) {
+        if (!this.isValidUrl(url)) {
+            return '#';
+        }
+        // Encode special characters
+        return url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    
+    /**
      * MutationObserver를 사용하여 새 메시지 추가 시 자동 스크롤
      */
     initAutoScroll() {
@@ -555,16 +579,33 @@ export class UIManager {
         
         // URL을 링크로 변환하고 프리뷰 생성
         const formatted = sanitized.replace(urlPattern, (url) => {
+            // Validate URL to prevent XSS
+            if (!this.isValidUrl(url)) {
+                return this.sanitizeInput(url);
+            }
+            
+            const safeUrl = this.sanitizeUrl(url);
+            
             // URL이 이미지인지 확인
             const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i;
             if (imageExtensions.test(url)) {
-                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline block">${url}</a>
-                    <img src="${url}" alt="Image preview" class="mt-2 max-w-full max-h-64 rounded-lg border border-gray-600 object-contain" 
-                         onerror="this.style.display='none'" loading="lazy">`;
+                const imgId = 'img_' + Math.random().toString(36).substring(2, 9);
+                // Use DOM API instead of inline handlers
+                setTimeout(() => {
+                    const img = document.getElementById(imgId);
+                    if (img) {
+                        img.addEventListener('error', function() {
+                            this.style.display = 'none';
+                        });
+                    }
+                }, 0);
+                
+                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline block">${this.sanitizeInput(url)}</a>
+                    <img id="${imgId}" src="${safeUrl}" alt="Image preview" class="mt-2 max-w-full max-h-64 rounded-lg border border-gray-600 object-contain" loading="lazy">`;
             }
             
             // 일반 링크
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${url}</a>`;
+            return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${this.sanitizeInput(url)}</a>`;
         });
         
         // 줄바꿈 처리
@@ -573,17 +614,34 @@ export class UIManager {
 
     formatFileContent(file) {
         if (!file || !file.url) return '';
+        
+        // Validate file URL
+        if (!this.isValidUrl(file.url)) {
+            return '<div class="text-red-400 text-sm">Invalid file URL</div>';
+        }
 
         const fileType = file.filetype || '';
-        const fileName = file.filename || 'file';
+        const fileName = this.sanitizeInput(file.filename || 'file');
         const fileSize = this.formatFileSize(file.filesize || 0);
+        const safeUrl = this.sanitizeUrl(file.url);
 
         // 이미지 파일
         if (fileType.startsWith('image/')) {
+            const imgId = 'file_img_' + Math.random().toString(36).substring(2, 9);
+            // Use DOM API instead of inline handlers
+            setTimeout(() => {
+                const img = document.getElementById(imgId);
+                if (img) {
+                    img.addEventListener('error', function() {
+                        this.style.display = 'none';
+                    });
+                }
+            }, 0);
+            
             return `
                 <div class="mt-2">
-                    <a href="${file.url}" target="_blank" rel="noopener noreferrer">
-                        <img src="${file.url}" alt="${fileName}" 
+                    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
+                        <img id="${imgId}" src="${safeUrl}" alt="${fileName}" 
                              class="max-w-full max-h-96 rounded-lg border border-gray-600 object-contain cursor-pointer hover:opacity-90 transition-opacity" 
                              loading="lazy">
                     </a>
@@ -599,7 +657,7 @@ export class UIManager {
             return `
                 <div class="mt-2">
                     <video controls class="max-w-full max-h-96 rounded-lg border border-gray-600">
-                        <source src="${file.url}" type="${fileType}">
+                        <source src="${safeUrl}" type="${this.sanitizeInput(fileType)}">
                         Your browser does not support the video tag.
                     </video>
                     <div class="mt-1 text-xs text-gray-400">
@@ -614,7 +672,7 @@ export class UIManager {
             return `
                 <div class="mt-2">
                     <audio controls class="w-full max-w-md">
-                        <source src="${file.url}" type="${fileType}">
+                        <source src="${safeUrl}" type="${this.sanitizeInput(fileType)}">
                         Your browser does not support the audio tag.
                     </audio>
                     <div class="mt-1 text-xs text-gray-400">
@@ -627,7 +685,7 @@ export class UIManager {
         // 기타 파일 (다운로드 링크)
         return `
             <div class="mt-2">
-                <a href="${file.url}" download="${fileName}" 
+                <a href="${safeUrl}" download="${fileName}" 
                    class="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clip-rule="evenodd" />

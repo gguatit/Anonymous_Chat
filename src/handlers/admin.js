@@ -45,9 +45,9 @@ export async function handleAdminLogin(request, env, corsHeaders) {
             
             return new Response(JSON.stringify({
                 success: false,
-                error: 'Admin credentials not configured'
+                error: 'Service temporarily unavailable'
             }), {
-                status: 500,
+                status: 503,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
@@ -226,10 +226,10 @@ export async function handleAdminLogout(request, env, corsHeaders) {
     const token = authHeader.substring(7);
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
     
-    // 토큰을 블랙리스트에 추가 (24시간 만료)
+    // 토큰을 블랙리스트에 추가 (2시간 만료)
     if (env?.ADMIN_TOKENS) {
         await env.ADMIN_TOKENS.put(`revoked:${token}`, 'true', {
-            expirationTtl: 24 * 60 * 60
+            expirationTtl: 2 * 60 * 60
         });
     }
     

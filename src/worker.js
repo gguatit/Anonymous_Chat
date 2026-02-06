@@ -35,8 +35,12 @@ export { ChatRoom };
 export default {
     async fetch(request, env, ctx) {
         try {
-            // Get HMAC secret from environment variable or generate random for development
-            const HMAC_SECRET = env.HMAC_SECRET || crypto.randomUUID();
+            // HMAC secret is required for message integrity
+            if (!env.HMAC_SECRET) {
+                console.error('HMAC_SECRET environment variable is not set');
+                return new Response('Service configuration error', { status: 500 });
+            }
+            const HMAC_SECRET = env.HMAC_SECRET;
             
             const url = new URL(request.url);
 

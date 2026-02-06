@@ -16,7 +16,11 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
     }
 
     // Get client IP for rate limiting and access control
-    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const clientIP = request.headers.get('CF-Connecting-IP');
+    if (!clientIP) {
+        console.warn('CF-Connecting-IP header missing');
+        return new Response('Invalid request', { status: 400 });
+    }
     
     // IP-based access control
     if (SECURITY.BANNED_IPS.has(clientIP)) {

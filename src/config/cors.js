@@ -1,11 +1,8 @@
+import { SECURITY } from './constants.js';
+
 // Get CORS headers based on request origin
 export function getCorsHeaders(origin) {
-    const allowedOrigins = [
-        'https://kalpha.mmv.kr',
-        'http://localhost:8787',
-        'http://127.0.0.1:8787'
-    ];
-    const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+    const corsOrigin = SECURITY.ALLOWED_ORIGINS.includes(origin) ? origin : SECURITY.ALLOWED_ORIGINS[0];
     
     return {
         'Access-Control-Allow-Origin': corsOrigin,

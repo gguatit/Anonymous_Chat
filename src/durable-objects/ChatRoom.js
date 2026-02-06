@@ -147,7 +147,13 @@ export class ChatRoom {
         // Initialize messages from storage on first request
         await this.initializeMessages();
         
-        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const clientIP = request.headers.get('CF-Connecting-IP');
+        if (!clientIP) {
+            return new Response(JSON.stringify({ error: 'Invalid request' }), { 
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
         
         // Check if IP is banned
         const banInfo = this.bannedIPs.get(clientIP);
@@ -1193,14 +1199,19 @@ export class ChatRoom {
 
     sanitizeInput(input) {
         if (typeof input !== 'string') return '';
-        const cleaned = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+        // Remove control characters
+        let cleaned = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+        // Remove HTML tags for security
+        cleaned = cleaned.replace(/<[^>]*>/g, '');
+        // Normalize line breaks
         return cleaned.replace(/\r\n?/g, '\n');
     }
 
     generateSessionId() {
-        const randomPart = crypto.randomUUID().replace(/-/g, '');
-        const timestampPart = Date.now().toString(36);
-        return `user_${randomPart.substring(0, 16)}_${timestampPart}`;
+        // Use only cryptographically secure random values
+        const randomPart1 = crypto.randomUUID().replace(/-/g, '');
+        const randomPart2 = crypto.randomUUID().replace(/-/g, '').substring(0, 8);
+        return `user_${randomPart1.substring(0, 16)}${randomPart2}`;
     }
 
     async addAuditLog(action, details, metadata = {}) {

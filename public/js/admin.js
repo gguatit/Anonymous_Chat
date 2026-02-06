@@ -555,13 +555,19 @@ class AdminDashboard {
                 const filesize = msg.file.filesize != null ? this.formatFileSize(msg.file.filesize) : '';
                 const filetype = msg.file.filetype || '';
                 const url = msg.file.url || '#';
+                
+                // Validate URL for security
+                if (!this.isValidUrl(url)) {
+                    return '<div class="text-red-400 text-xs mt-2">Invalid file URL</div>';
+                }
+                const safeUrl = this.sanitizeUrl(url);
 
                 // If image, show thumbnail
                 if (filetype.startsWith('image/')) {
                     return `
                         <div class="mt-2">
-                            <a href="${url}" target="_blank" rel="noopener noreferrer">
-                                <img src="${url}" alt="${filename}" class="w-full max-h-48 object-contain rounded border border-gray-600" />
+                            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
+                                <img src="${safeUrl}" alt="${filename}" class="w-full max-h-48 object-contain rounded border border-gray-600" />
                             </a>
                             <div class="mt-1 text-xs text-gray-400">${filename} ${filesize ? '· ' + filesize : ''}</div>
                         </div>
@@ -571,7 +577,7 @@ class AdminDashboard {
                 // Non-image file: show link with metadata
                 return `
                     <div class="mt-2 text-xs text-gray-300">
-                        <a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">${filename}</a>
+                        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">${filename}</a>
                         ${filesize ? `<span class="text-gray-400"> · ${filesize}</span>` : ''}
                         ${filetype ? `<span class="text-gray-400"> · ${this.escapeHtml(filetype)}</span>` : ''}
                     </div>
@@ -656,6 +662,22 @@ class AdminDashboard {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    
+    isValidUrl(url) {
+        try {
+            const parsed = new URL(url);
+            return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+        } catch {
+            return false;
+        }
+    }
+    
+    sanitizeUrl(url) {
+        if (!this.isValidUrl(url)) {
+            return '#';
+        }
+        return url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     attachMessageEventListeners() {

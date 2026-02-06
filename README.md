@@ -217,24 +217,34 @@ npm install
 # 3. Cloudflare 로그인
 wrangler login
 
-# 4. 필수 시크릿 설정 (관리자 기능 사용 시)
+# 4. 필수 환경변수 설정 (프로덕션)
+# 프로덕션 환경에서는 3개 환경변수 필수
+npx wrangler secret put HMAC_SECRET
+# 프롬프트에서 HMAC 시크릿 키 입력 (32자 이상 랜덤 문자열)
+# 생성 방법: openssl rand -base64 32
+
 npx wrangler secret put ADMIN_ID
 # 프롬프트에서 관리자 ID 입력 (예: admin)
 
 npx wrangler secret put ADMIN_PASSWORD
-# 프롬프트에서 관리자 비밀번호 입력
+# 프롬프트에서 관리자 비밀번호 입력 (강력한 비밀번호 권장)
 
-npx wrangler secret put HMAC_SECRET
-# 프롬프트에서 HMAC 시크릿 키 입력 (32자 이상 권장)
+# 5. 로컬 개발 환경 설정 (선택)
+# .dev.vars 파일 생성 (로컬 개발용)
+cat > .dev.vars << EOF
+HMAC_SECRET=your-dev-secret-key-here
+ADMIN_ID=admin
+ADMIN_PASSWORD=admin123
+EOF
 
-# 5. 로컬 개발 서버 시작
+# 6. 로컬 개발 서버 시작
 npm run dev
 
 # 브라우저에서 http://localhost:8787 접속
-# 관리자 페이지: http://localhost:8787/administrator
+# 관리자 페이지: http://localhost:8787/administrator.html
 ```
 
-**참고:** 로컬 개발 시 시크릿이 설정되지 않으면 기본값이 사용됩니다 (개발용, ID: 비공개, Password: 비공개). 프로덕션 환경에서는 반드시 시크릿을 설정해야 합니다.
+**중요:** HMAC_SECRET이 설정되지 않으면 서비스가 시작되지 않습니다. 로컬 개발 시 .dev.vars 파일을 사용하거나 개발 환경에서도 secret을 설정해야 합니다.
 
 ### 커스터마이징
 
