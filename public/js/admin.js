@@ -2,19 +2,12 @@
 
 class AdminDashboard {
     constructor() {
-        console.log('AdminDashboard initializing...');
         this.loginScreen = document.getElementById('login-screen');
         this.adminDashboard = document.getElementById('admin-dashboard');
         this.loginForm = document.getElementById('login-form');
         this.loginError = document.getElementById('login-error');
         this.logoutBtn = document.getElementById('logout-btn');
         this.refreshBtn = document.getElementById('refresh-btn');
-        
-        console.log('Elements found:', {
-            loginScreen: !!this.loginScreen,
-            adminDashboard: !!this.adminDashboard,
-            loginForm: !!this.loginForm
-        });
         
         this.sessionToken = localStorage.getItem('admin_token');
         this.refreshInterval = null;
@@ -337,24 +330,19 @@ class AdminDashboard {
         this.loginError.classList.add('hidden');
 
         try {
-            console.log('Attempting login...');
             const response = await fetch('/api/admin/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, password })
             });
 
-            console.log('Login response status:', response.status);
             const data = await response.json();
-            console.log('Login response data:', data);
 
             if (response.ok && data.success) {
-                console.log('Login successful, setting token and showing dashboard');
                 this.sessionToken = data.token;
                 localStorage.setItem('admin_token', data.token);
                 this.showDashboard();
             } else {
-                console.log('Login failed:', data.message || 'Invalid credentials');
                 this.loginError.classList.remove('hidden');
                 document.getElementById('admin-id').value = '';
                 document.getElementById('admin-password').value = '';
@@ -362,7 +350,6 @@ class AdminDashboard {
         } catch (error) {
             console.error('Login error:', error);
             this.loginError.classList.remove('hidden');
-            alert('로그인 중 오류가 발생했습니다: ' + error.message);
         }
     }
 
@@ -405,20 +392,8 @@ class AdminDashboard {
     }
 
     showDashboard() {
-        console.log('showDashboard called');
-        console.log('loginScreen:', this.loginScreen);
-        console.log('adminDashboard:', this.adminDashboard);
-        
-        if (!this.loginScreen || !this.adminDashboard) {
-            console.error('Required elements not found!');
-            alert('페이지 요소를 찾을 수 없습니다. 페이지를 새로고침해주세요.');
-            return;
-        }
-        
         this.loginScreen.classList.add('hidden');
         this.adminDashboard.classList.remove('hidden');
-        console.log('Dashboard should now be visible');
-        
         this.refreshData();
         
         // Auto-refresh every 5 seconds
