@@ -202,17 +202,32 @@ export class FileUploadManager {
                 // Upload progress tracking
                 this.uploadXhr.upload.addEventListener('progress', (e) => {
                     if (e.lengthComputable) {
-                        const percentComplete = (e.loaded / e.total) * 100;
+                        // 전송은 95%까지만 표시 (100%는 서버 응답 수신 시)
+                        const percentComplete = Math.min((e.loaded / e.total) * 95, 95);
                         this.updateUploadProgress(percentComplete);
                         console.log(`Upload progress: ${percentComplete.toFixed(1)}%`);
                     }
                 });
                 
-                // Upload complete
+                // Upload transmission complete (data sent to server)
+                this.uploadXhr.upload.addEventListener('load', () => {
+                    // 데이터 전송 완료, 서버 처리 대기 중
+                    console.log('Upload transmission complete, waiting for server response...');
+                    this.uploadPercent.textContent = '서버 처리 중...';
+                    this.uploadProgressBar.style.width = '100%';
+                });
+                
+                // Server response received
                 this.uploadXhr.addEventListener('load', () => {
-                    console.log('Upload response status:', this.uploadXhr.status, this.uploadXhr.statusText);
+                    console.log('Server response received:', this.uploadXhr.status, this.uploadXhr.statusText);
                     
-                    this.hideUploadProgress();
+                    // 서버 응답 수신 완료
+                    this.updateUploadProgress(100);
+                    
+                    // 짧은 지연 후 숨김 (사용자가 100% 볼 수 있도록)
+                    setTimeout(() => {
+                        this.hideUploadProgress();
+                    }, 300);
                     
                     if (this.uploadXhr.status >= 200 && this.uploadXhr.status < 300) {
                         try {
