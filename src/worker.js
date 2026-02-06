@@ -36,7 +36,7 @@ export default {
                 return Response.redirect(`https://${url.hostname}${url.pathname}${url.search}`, 301);
             }
 
-            // CORS 보안 강화: 허용된 도메인만 접근 허용
+            // CORS 보안 강화: 허용된 도메인만 접근 허용.
             const origin = request.headers.get('Origin');
             const allowedOrigins = [
                 'https://kalpha.mmv.kr',
