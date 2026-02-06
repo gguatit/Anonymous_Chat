@@ -497,18 +497,19 @@ if (messagesThisMinute >= MAX_MESSAGES_PER_MINUTE) {
 | Ubuntu | 20.04+ | ✅ | 모든 기능 정상 작동 |
 | Garuda Linux | Latest | ✅ | 모든 기능 정상 작동 |
 | Android | 16 | ✅ | 모든 기능 정상 작동 |
+| iOS | Latest | ✅ | 모든 기능 정상 작동 |
+| macOS | Latest | ✅ | 모든 기능 정상 작동 |
 
-### 미지원 (테스트 안 됨)
+### 최적화 안 됨
 
-| 플랫폼 | 상태 | 비고 |
-|--------|------|------|
-| iOS | ❌ | 테스트되지 않음 |
-| macOS | ❌ | 테스트되지 않음 |
+다른 플랫폼에서도 대부분 작동하지만, 최적화가 완료되지 않았을 수 있습니다.
+
+문제가 발생하면 [버그 제보](https://github.com/gguatit/Anonymous_Chat/issues)를 통해 전달해주세요.
 
 ### 권장 환경
 
 데스크톱 및 모바일 모두 완벽하게 지원됩니다.  
-Windows, Linux, Android에서 최상의 경험을 제공합니다.
+Windows, Linux, Android, iOS, macOS에서 최상의 경험을 제공합니다.
 
 ---
 
