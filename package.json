@@ -7,8 +7,6 @@
     "dev": "wrangler pages dev public --compatibility-date=2024-11-01",
     "build": "echo 'No build step required - deploying public directory'",
     "deploy": "wrangler pages deploy public",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "lint": "eslint src/**/*.js public/**/*.js"
   },
   "keywords": [
@@ -23,7 +21,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231025.0",
     "eslint": "^8.54.0",
-    "vitest": "^4.0.8",
     "wrangler": "^4.48.0"
   },
   "dependencies": {
