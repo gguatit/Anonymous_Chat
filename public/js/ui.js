@@ -793,7 +793,7 @@ export class UIManager {
     }
     
     setReplyingTo(messageId, content, isOwnMessage) {
-        this.replyingTo = { messageId, content, isOwnMessage };
+        this.replyingTo = { messageId, content, isOwnMessage, isSecret: false };
         this.showReplyPreview();
         this.messageInput.focus();
     }
