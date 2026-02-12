@@ -67,6 +67,15 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - 비디오/오디오 스트리밍 재생
 - 외부 API 서버 연동 (static.a85labs.net)
 
+### 답장 및 비밀 메시지
+
+- **메시지 답장**: 컨텍스트 메뉴(우클릭/길게 누르기)로 특정 메시지에 답장
+- **비밀 메시지**: Dead Drop API 통합으로 일회성 비밀 메시지 전송
+- **엄격한 접근 제어**: 비밀 메시지는 답장 보낸 사람과 받는 사람(targetSessionId)만 열람 가능
+- **일회성 읽기**: 한 번 읽으면 영구 삭제 (1시간 TTL, 2000자 제한)
+- **3자 보호**: 다른 사용자는 비밀 메시지 존재만 알 수 있고 내용은 볼 수 없음
+- Dead Drop 제공: [kalpha.kr](https://api.kalpha.kr)
+
 ### 완전 익명
 
 - 회원가입 및 로그인 불필요
@@ -159,15 +168,18 @@ graph TB
     
     subgraph "External Services"
         F[File Upload API<br/>static.a85labs.net]
+        G[Dead Drop API<br/>api.kalpha.kr]
     end
     
     A -->|HTTPS| C
     A -.->|WSS| B
     A -.->|File Upload| F
+    A -.->|Secret Message<br/>Store/Read| G
     B -->|Routing| D
     D -->|State| E
-    D -.->|Broadcast| A
+    D -.->|Broadcast<br/>+targetSessionId| A
     F -.->|File URL| A
+    G -.->|One-time Secret<br/>1hr TTL| A
 ```
 
 ### 데이터 흐름
@@ -178,6 +190,49 @@ graph TB
 3. 메시지 → 클라이언트 검증 → 서버 검증 → 브로드캐스트
 4. 타이핑 → 2초 디바운싱 → 다른 클라이언트에게 전파
 5. 파일 업로드 → static.a85labs.net → 파일 URL 반환 → 메시지에 첨부
+6. 비밀 메시지 저장 → Dead Drop API → secretId 반환 → targetSessionId와 함께 브로드캐스트
+7. 비밀 메시지 읽기 → targetSessionId 검증 → Dead Drop API에서 일회성 조회 및 삭제
+```
+
+### 비밀 메시지 보안 흐름
+
+```mermaid
+sequenceDiagram
+    participant A as 사용자 A
+    participant B as 사용자 B
+    participant C as 사용자 C (제3자)
+    participant Chat as ChatRoom
+    participant DD as Dead Drop API
+
+    Note over A,DD: 1. 답장 대상 선택 및 비밀 메시지 작성
+    A->>A: 사용자 B의 메시지 우클릭
+    A->>A: "비밀 메시지로 보내기" 체크
+    
+    Note over A,DD: 2. Dead Drop에 암호화 저장
+    A->>DD: POST /store (메시지 내용)
+    DD-->>A: secretId 반환
+    
+    Note over A,DD: 3. 메시지 브로드캐스트 (targetSessionId 포함)
+    A->>Chat: 전송 { secretId, targetSessionId: B.sessionId }
+    Chat->>A: 브로드캐스트 (isSecret: true)
+    Chat->>B: 브로드캐스트 (isSecret: true)
+    Chat->>C: 브로드캐스트 (isSecret: true)
+    
+    Note over A,C: 4. 각 사용자의 UI 표시
+    A->>A: "비밀 메시지를 보냈습니다"
+    B->>B: "비밀 메시지 읽기" 버튼 표시
+    C->>C: "비밀 메시지 (답장)" (읽기 불가)
+    
+    Note over B,DD: 5. 사용자 B가 비밀 메시지 읽기
+    B->>B: sessionId == targetSessionId 확인 ✓
+    B->>DD: GET /read/{secretId}
+    DD->>DD: 메시지 반환 후 즉시 삭제
+    DD-->>B: 메시지 내용 (일회성)
+    B->>B: 화면에 표시
+    
+    Note over C,DD: 6. 사용자 C가 읽으려 시도 (실패)
+    C->>C: sessionId != targetSessionId ✗
+    C->>C: 읽기 버튼 없음 (UI 차단)
 ```
 
 ### 핵심 컴포넌트
@@ -189,7 +244,9 @@ graph TB
 | Static Assets | HTML, CSS, JavaScript 정적 파일 | `public/` |
 | Client App | WebSocket 클라이언트, UI 렌더링 | `public/js/` |
 | File Upload Manager | 파일 업로드 및 미리보기 처리 | `public/js/file-upload.js` |
+| Dead Drop Client | 일회성 비밀 메시지 API 클라이언트 | `public/js/dead-drop.js` |
 | External File API | 파일 저장 및 제공 | `static.a85labs.net` |
+| Dead Drop API | 일회성 비밀 메시지 저장소 (1hr TTL) | `api.kalpha.kr` |
 
 ---
 
@@ -483,6 +540,68 @@ if (messagesThisMinute >= MAX_MESSAGES_PER_MINUTE) {
 - [x] IP 기반 접근 제어
 - [x] 메시지 크기 제한
 - [x] 연결 수 제한
+- [x] **비밀 메시지 targetSessionId 검증**
+- [x] **Dead Drop API 일회성 읽기**
+
+<details>
+<summary><b>7. 비밀 메시지 보안</b></summary>
+
+#### targetSessionId 기반 접근 제어
+
+비밀 메시지는 **답장 보낸 사람**과 **받는 사람(targetSessionId)**만 접근 가능합니다:
+
+```javascript
+// 답장 대상의 sessionId를 targetSessionId로 저장
+const targetSessionId = messageDiv.dataset.sessionId;
+this.setReplyingTo(messageId, content, isOwnMessage, targetSessionId);
+
+// 비밀 메시지 전송 시 targetSessionId 포함
+messageData.replyTo = {
+    messageId: replyingTo.messageId,
+    isSecret: true,
+    secretId: deadDropResult.id,
+    targetSessionId: replyingTo.targetSessionId
+};
+
+// UI에서 targetSessionId 검증
+const isRecipient = data.replyTo.targetSessionId === sessionId;
+if (isRecipient) {
+    // "비밀 메시지 읽기" 버튼 표시
+} else {
+    // 읽기 불가 (제3자)
+}
+```
+
+#### Dead Drop API 통합
+
+- **일회성 읽기**: 메시지를 한 번 읽으면 영구 삭제
+- **1시간 TTL**: 읽지 않아도 1시간 후 자동 삭제
+- **2000자 제한**: 메시지 크기 제한
+- **API 엔드포인트**: `https://api.kalpha.kr`
+
+```javascript
+// 비밀 메시지 저장
+const result = await deadDrop.store(message);
+// → { id: "abc123" }
+
+// 비밀 메시지 읽기 (일회성)
+const data = await deadDrop.read(secretId);
+// → { message: "내용" } + 서버에서 즉시 삭제
+```
+
+#### 3중 보안 계층
+
+1. **UI 레벨**: targetSessionId 불일치 시 읽기 버튼 미표시
+2. **클라이언트 레벨**: sessionId 검증 후에만 API 호출
+3. **서버 레벨**: Dead Drop API의 일회성 읽기로 재사용 방지
+
+#### 프라이버시 보호
+
+- 제3자는 비밀 메시지 **존재 여부만** 확인 가능
+- 메시지 내용, secretId 모두 숨김 처리
+- 브로드캐스트되지만 UI에서 "비밀 메시지 (답장)" 텍스트만 표시
+
+</details>
 
 ---
 
@@ -1002,6 +1121,41 @@ SOFTWARE.
 ---
 
 ## 변경 이력 (Changelog)
+
+### 2026-02-12
+
+#### 🔒 보안 강화
+- **비밀 메시지 접근 제어 개선**: targetSessionId 기반 엄격한 접근 제어
+  - 답장 대상의 sessionId를 targetSessionId로 저장
+  - 비밀 메시지는 보낸 사람과 받는 사람(targetSessionId)만 열람 가능
+  - 제3자는 비밀 메시지 존재만 확인 가능, 내용 접근 불가
+  - UI 레벨, 클라이언트 레벨, 서버 레벨 3중 보안 검증
+
+#### 🆕 새로운 기능
+- **Dead Drop API 통합**: 일회성 비밀 메시지 시스템
+  - 메시지를 한 번 읽으면 영구 삭제
+  - 1시간 TTL (Time To Live)
+  - 2000자 메시지 제한
+  - API 제공: [kalpha.kr](https://api.kalpha.kr)
+
+- **답장 기능 추가**: 특정 메시지에 답장 가능
+  - 컨텍스트 메뉴 (우클릭/길게 누르기)
+  - 답장 프리뷰 UI
+  - 비밀 메시지로 보내기 옵션
+
+#### 📝 아키텍처 개선
+- Dead Drop API 외부 서비스 통합
+- targetSessionId 필드 추가로 메시지 수신자 명확화
+- 메시지 브로드캐스트에 접근 제어 메타데이터 포함
+- CSP에 Dead Drop API 도메인 추가
+
+#### 📚 문서 업데이트
+- README에 비밀 메시지 기능 상세 설명 추가
+- 비밀 메시지 보안 흐름 시퀀스 다이어그램 추가
+- 아키텍처 다이어그램에 Dead Drop API 반영
+- 보안 체크리스트 업데이트
+
+---
 
 ### 2025-12-19
 
