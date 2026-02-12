@@ -352,53 +352,35 @@ class ChatClient {
     async revealSecretMessage(secretId, container) {
         const btn = container.querySelector('.reveal-secret-btn');
         const contentDiv = container.querySelector('.secret-message-content');
-        const warningText = container.querySelector('.text-purple-300\\/60');
         
         if (!btn || !contentDiv) return;
         
         // 버튼 비활성화 및 로딩 상태 표시
         btn.disabled = true;
-        btn.innerHTML = `
-            <span class="inline-flex items-center gap-2">
-                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>읽는 중...</span>
-            </span>
-        `;
+        btn.textContent = '읽는 중...';
         
         try {
             // Dead Drop에서 메시지 읽기 (한 번만 가능)
             const result = await this.deadDrop.read(secretId);
             
-            // 버튼과 경고 텍스트 숨기고 메시지 표시
+            // 버튼 숨기고 메시지 표시
             btn.remove();
-            if (warningText) warningText.remove();
             contentDiv.classList.remove('hidden');
             contentDiv.innerHTML = `
-                <div class="flex items-start gap-2 mb-3 pb-3 border-b border-purple-400/20">
-                    <svg class="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                    </svg>
-                    <div class="text-xs text-green-400/90 leading-relaxed">메시지가 공개되었습니다. 원본은 영구적으로 삭제되었습니다.</div>
-                </div>
-                <div class="text-gray-100 leading-relaxed">${this.ui.sanitizeInput(result.message)}</div>
+                <div class="text-green-400 text-xs mb-2">✓ 비밀 메시지가 공개되었습니다 (이 메시지는 삭제되었습니다)</div>
+                <div class="text-gray-100">${this.ui.sanitizeInput(result.message)}</div>
             `;
         } catch (error) {
             console.error('Failed to reveal secret:', error);
-            btn.disabled = false;
-            btn.className = 'reveal-secret-btn group relative w-full bg-gradient-to-r from-red-600 to-red-700 text-white py-3 px-4 rounded-lg transition-all duration-300 text-sm font-semibold shadow-lg';
-            btn.innerHTML = `<span>읽기 실패 - 다시 시도</span>`;
+            btn.textContent = '읽기 실패';
+            btn.classList.add('bg-red-600', 'hover:bg-red-500');
+            btn.classList.remove('bg-purple-600', 'hover:bg-purple-500');
             
             // 에러 메시지 표시
             contentDiv.classList.remove('hidden');
             contentDiv.innerHTML = `
-                <div class="flex items-start gap-2">
-                    <svg class="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                    </svg>
-                    <div class="text-sm text-red-400/90 leading-relaxed">${error.message}</div>
+                <div class="text-red-400 text-sm">
+                    ❌ ${error.message}
                 </div>
             `;
         }
