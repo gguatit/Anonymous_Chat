@@ -3,6 +3,7 @@ import { SessionManager } from './session.js';
 import { WebSocketManager } from './websocket.js';
 import { UIManager } from './ui.js';
 import { FileUploadManager } from './file-upload.js';
+import { DeadDropClient } from './dead-drop.js';
 
 class ChatClient {
     constructor() {
@@ -10,6 +11,7 @@ class ChatClient {
         this.sessionManager = new SessionManager();
         this.ui = new UIManager();
         this.fileUpload = new FileUploadManager('https://static.a85labs.net');
+        this.deadDrop = new DeadDropClient('https://api.kalpha.kr');
         
         // State
         this.typingTimeout = null;
@@ -38,7 +40,8 @@ class ChatClient {
             onTyping: () => this.handleTyping(),
             onScrollClick: () => this.ui.scrollToBottom(true),
             onScroll: () => this.ui.updateScrollButton(),
-            onDelete: (messageId) => this.deleteMessage(messageId)
+            onDelete: (messageId) => this.deleteMessage(messageId),
+            onRevealSecret: (secretId, container) => this.revealSecretMessage(secretId, container)
         });
     }
 
@@ -207,14 +210,35 @@ class ChatClient {
             timestamp: now
         };
         
-        // \ub2f5\uc7a5 \uc815\ubcf4 \ucd94\uac00
+        // 답장 정보 추가
         const replyingTo = this.ui.getReplyingTo();
         if (replyingTo) {
-            messageData.replyTo = {
-                messageId: replyingTo.messageId,
-                content: replyingTo.content,
-                isOwnMessage: replyingTo.isOwnMessage
-            };
+            if (replyingTo.isSecret) {
+                // 비밀 메시지로 보내기 - Dead Drop에 저장
+                try {
+                    const deadDropResult = await this.deadDrop.store(trimmedMessage || '[파일]');
+                    messageData.replyTo = {
+                        messageId: replyingTo.messageId,
+                        content: replyingTo.content,
+                        isOwnMessage: replyingTo.isOwnMessage,
+                        isSecret: true,
+                        secretId: deadDropResult.id
+                    };
+                    // 메시지 내용은 Dead Drop ID로 대체
+                    messageData.content = `[비밀 메시지]`;
+                } catch (error) {
+                    console.error('Dead Drop store error:', error);
+                    this.ui.displayError('비밀 메시지 저장 실패: ' + error.message);
+                    return;
+                }
+            } else {
+                // 일반 답장
+                messageData.replyTo = {
+                    messageId: replyingTo.messageId,
+                    content: replyingTo.content,
+                    isOwnMessage: replyingTo.isOwnMessage
+                };
+            }
         }
 
         // Upload file if selected
@@ -322,6 +346,43 @@ class ChatClient {
 
         // Send delete request to server
         this.wsManager.send(deleteData);
+    }
+    
+    async revealSecretMessage(secretId, container) {
+        const btn = container.querySelector('.reveal-secret-btn');
+        const contentDiv = container.querySelector('.secret-message-content');
+        
+        if (!btn || !contentDiv) return;
+        
+        // 버튼 비활성화 및 로딩 상태 표시
+        btn.disabled = true;
+        btn.textContent = '읽는 중...';
+        
+        try {
+            // Dead Drop에서 메시지 읽기 (한 번만 가능)
+            const result = await this.deadDrop.read(secretId);
+            
+            // 버튼 숨기고 메시지 표시
+            btn.remove();
+            contentDiv.classList.remove('hidden');
+            contentDiv.innerHTML = `
+                <div class="text-green-400 text-xs mb-2">✓ 비밀 메시지가 공개되었습니다 (이 메시지는 삭제되었습니다)</div>
+                <div class="text-gray-100">${this.ui.sanitizeInput(result.message)}</div>
+            `;
+        } catch (error) {
+            console.error('Failed to reveal secret:', error);
+            btn.textContent = '읽기 실패';
+            btn.classList.add('bg-red-600', 'hover:bg-red-500');
+            btn.classList.remove('bg-purple-600', 'hover:bg-purple-500');
+            
+            // 에러 메시지 표시
+            contentDiv.classList.remove('hidden');
+            contentDiv.innerHTML = `
+                <div class="text-red-400 text-sm">
+                    ❌ ${error.message}
+                </div>
+            `;
+        }
     }
 }
 

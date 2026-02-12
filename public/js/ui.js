@@ -12,7 +12,7 @@ export class UIManager {
         this.scrollButton = document.getElementById('scroll-to-bottom');
         
         // 답장 상태
-        this.replyingTo = null; // { messageId, content, isOwnMessage }
+        this.replyingTo = null; // { messageId, content, isOwnMessage, isSecret }
         
         // Announcement banner elements
         this.announcementBanner = document.getElementById('announcement-banner');
@@ -112,8 +112,9 @@ export class UIManager {
         this.scrollButton.addEventListener('click', callbacks.onScrollClick);
         this.messagesContainer.addEventListener('scroll', callbacks.onScroll);
         
-        // Store delete callback
+        // Store callbacks
         this.onDelete = callbacks.onDelete;
+        this.onRevealSecret = callbacks.onRevealSecret;
     }
 
     displayMessage(data, isOwnMessage, sessionId) {
@@ -175,7 +176,28 @@ export class UIManager {
         
         // Add text content if exists
         if (data.content && data.content.trim()) {
-            contentHtml += `<div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>`;
+            // 비밀 메시지인 경우 읽기 버튼 추가
+            if (data.replyTo && data.replyTo.isSecret && data.replyTo.secretId) {
+                const isRecipient = !isOwnMessage; // 받은 사람만 읽을 수 있음
+                if (isRecipient) {
+                    contentHtml += `
+                        <div class="secret-message-container bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/50 rounded-lg p-3 mt-2">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-purple-300 text-sm">🔒 비밀 메시지</span>
+                            </div>
+                            <button class="reveal-secret-btn w-full bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded transition-colors text-sm font-medium"
+                                    data-secret-id="${this.sanitizeInput(data.replyTo.secretId)}">
+                                비밀 메시지 읽기 (한 번만 볼 수 있음)
+                            </button>
+                            <div class="secret-message-content hidden mt-3 p-3 bg-gray-800/50 rounded text-sm break-words"></div>
+                        </div>
+                    `;
+                } else {
+                    contentHtml += `<div class="text-sm text-purple-400 italic">🔒 비밀 메시지를 보냈습니다</div>`;
+                }
+            } else {
+                contentHtml += `<div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>`;
+            }
         }
         
         // Add file if exists
@@ -207,6 +229,18 @@ export class UIManager {
 
         // 메시지를 DOM에 추가 (MutationObserver가 자동으로 스크롤 처리)
         this.messagesContainer.appendChild(messageDiv);
+        
+        // 비밀 메시지 읽기 버튼 이벤트 리스너 추가
+        const revealBtn = messageDiv.querySelector('.reveal-secret-btn');
+        if (revealBtn && this.onRevealSecret) {
+            revealBtn.addEventListener('click', async () => {
+                const secretId = revealBtn.dataset.secretId;
+                const container = revealBtn.closest('.secret-message-container');
+                if (container) {
+                    await this.onRevealSecret(secretId, container);
+                }
+            });
+        }
     }
 
     addMessageInteractions(messageDiv, messageId, canEdit) {
@@ -775,27 +809,38 @@ export class UIManager {
         
         const preview = document.createElement('div');
         preview.id = 'reply-preview';
-        preview.className = 'bg-gray-700/50 border-l-4 border-blue-500 p-2 mb-2 text-sm flex items-start justify-between gap-2';
+        preview.className = 'bg-gray-700/50 border-l-4 border-blue-500 p-2 mb-2 text-sm flex flex-col gap-2';
         
         const truncatedContent = this.replyingTo.content.length > 50 
             ? this.replyingTo.content.substring(0, 50) + '...' 
             : this.replyingTo.content;
         
         preview.innerHTML = `
-            <div class="flex-1">
-                <div class="text-xs text-blue-400 mb-1">${this.replyingTo.isOwnMessage ? '내 메시지' : '익명'}에게 답장</div>
-                <div class="text-gray-300">${this.sanitizeInput(truncatedContent)}</div>
+            <div class="flex items-start justify-between gap-2">
+                <div class="flex-1">
+                    <div class="text-xs text-blue-400 mb-1">${this.replyingTo.isOwnMessage ? '내 메시지' : '익명'}에게 답장</div>
+                    <div class="text-gray-300">${this.sanitizeInput(truncatedContent)}</div>
+                </div>
+                <button class="cancel-reply-btn text-gray-400 hover:text-white flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
             </div>
-            <button class="cancel-reply-btn text-gray-400 hover:text-white">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
+            <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-200 transition-colors">
+                <input type="checkbox" id="secret-reply-checkbox" class="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0">
+                <span>🔒 비밀 메시지로 보내기 (받는 사람만 한 번 볼 수 있음)</span>
+            </label>
         `;
         
         const cancelBtn = preview.querySelector('.cancel-reply-btn');
         cancelBtn.addEventListener('click', () => {
             this.cancelReply();
+        });
+        
+        const secretCheckbox = preview.querySelector('#secret-reply-checkbox');
+        secretCheckbox.addEventListener('change', (e) => {
+            this.replyingTo.isSecret = e.target.checked;
         });
         
         // 메시지 입력 폼 앞에 삽입
