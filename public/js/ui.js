@@ -157,9 +157,21 @@ export class UIManager {
         // Build message content
         let contentHtml = '';
         
-        // \ub2f5\uc7a5\ub41c \uba54\uc2dc\uc9c0 \ud45c\uc2dc
+        // 답장된 메시지 표시
         if (data.replyTo) {
-            const replyContent = data.replyTo.content || '[\ud30c\uc77c]';\n            const truncatedReply = replyContent.length > 50 \n                ? replyContent.substring(0, 50) + '...' \n                : replyContent;\n            const replyLabel = data.replyTo.isOwnMessage ? '\ub0b4 \uba54\uc2dc\uc9c0' : '\uc775\uba85';\n            \n            contentHtml += `\n                <div class=\"reply-reference bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs\">\n                    <div class=\"text-gray-400\">${replyLabel}\uc5d0\uac8c \ub2f5\uc7a5:</div>\n                    <div class=\"text-gray-300 italic\">${this.sanitizeInput(truncatedReply)}</div>\n                </div>\n            `;\n        }
+            const replyContent = data.replyTo.content || '[파일]';
+            const truncatedReply = replyContent.length > 50 
+                ? replyContent.substring(0, 50) + '...' 
+                : replyContent;
+            const replyLabel = data.replyTo.isOwnMessage ? '내 메시지' : '익명';
+            
+            contentHtml += `
+                <div class="reply-reference bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs">
+                    <div class="text-gray-400">${replyLabel}에게 답장:</div>
+                    <div class="text-gray-300 italic">${this.sanitizeInput(truncatedReply)}</div>
+                </div>
+            `;
+        }
         
         // Add text content if exists
         if (data.content && data.content.trim()) {
