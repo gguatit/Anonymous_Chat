@@ -975,6 +975,15 @@ export class ChatRoom {
             editedAt: null
         };
         
+        // \ub2f5\uc7a5 \uc815\ubcf4 \ucd94\uac00
+        if (data.replyTo) {
+            message.replyTo = {
+                messageId: data.replyTo.messageId,
+                content: this.sanitizeInput(data.replyTo.content),
+                isOwnMessage: data.replyTo.isOwnMessage
+            };
+        }
+        
         if (data.file && data.file.url) {
             message.file = {
                 url: data.file.url,

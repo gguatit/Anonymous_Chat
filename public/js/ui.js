@@ -11,6 +11,9 @@ export class UIManager {
         this.charCount = document.getElementById('char-count');
         this.scrollButton = document.getElementById('scroll-to-bottom');
         
+        // 답장 상태
+        this.replyingTo = null; // { messageId, content, isOwnMessage }
+        
         // Announcement banner elements
         this.announcementBanner = document.getElementById('announcement-banner');
         this.announcementContent = document.getElementById('announcement-content');
@@ -154,6 +157,10 @@ export class UIManager {
         // Build message content
         let contentHtml = '';
         
+        // \ub2f5\uc7a5\ub41c \uba54\uc2dc\uc9c0 \ud45c\uc2dc
+        if (data.replyTo) {
+            const replyContent = data.replyTo.content || '[\ud30c\uc77c]';\n            const truncatedReply = replyContent.length > 50 \n                ? replyContent.substring(0, 50) + '...' \n                : replyContent;\n            const replyLabel = data.replyTo.isOwnMessage ? '\ub0b4 \uba54\uc2dc\uc9c0' : '\uc775\uba85';\n            \n            contentHtml += `\n                <div class=\"reply-reference bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs\">\n                    <div class=\"text-gray-400\">${replyLabel}\uc5d0\uac8c \ub2f5\uc7a5:</div>\n                    <div class=\"text-gray-300 italic\">${this.sanitizeInput(truncatedReply)}</div>\n                </div>\n            `;\n        }
+        
         // Add text content if exists
         if (data.content && data.content.trim()) {
             contentHtml += `<div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>`;
@@ -183,16 +190,14 @@ export class UIManager {
             ${contentHtml}
         `;
 
-        // Add long-press and right-click for editing own messages
-        if (canEdit) {
-            this.addEditInteractions(messageDiv, data.messageId);
-        }
+        // 모든 메시지에 컨텍스트 메뉴 추가 (답장 기능을 위해)
+        this.addMessageInteractions(messageDiv, data.messageId, canEdit);
 
         // 메시지를 DOM에 추가 (MutationObserver가 자동으로 스크롤 처리)
         this.messagesContainer.appendChild(messageDiv);
     }
 
-    addEditInteractions(messageDiv, messageId) {
+    addMessageInteractions(messageDiv, messageId, canEdit) {
         let longPressTimer;
         let isLongPress = false;
 
@@ -201,7 +206,7 @@ export class UIManager {
             isLongPress = false;
             longPressTimer = setTimeout(() => {
                 isLongPress = true;
-                this.showContextMenu(e, messageId);
+                this.showContextMenu(e, messageId, canEdit);
             }, 500); // 500ms long press
         }, { passive: true });
 
@@ -216,7 +221,7 @@ export class UIManager {
         // Right-click for desktop
         messageDiv.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            this.showContextMenu(e, messageId);
+            this.showContextMenu(e, messageId, canEdit);
         });
 
         // Add visual feedback
@@ -224,7 +229,7 @@ export class UIManager {
         messageDiv.style.userSelect = 'none';
     }
 
-    showContextMenu(event, messageId) {
+    showContextMenu(event, messageId, canEdit = false) {
         // Remove existing context menu if any
         const existingMenu = document.getElementById('message-context-menu');
         if (existingMenu) {
@@ -238,12 +243,17 @@ export class UIManager {
         menu.style.minWidth = '120px';
 
         menu.innerHTML = `
+            <button class="reply-message-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
+                답장하기
+            </button>
+            ${canEdit ? `
             <button class="edit-message-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
                 메시지 수정
             </button>
             <button class="delete-message-btn w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-colors">
                 메시지 삭제
             </button>
+            ` : ''}
         `;
 
         // Position the menu
@@ -265,32 +275,49 @@ export class UIManager {
         }
 
         // Add click handlers
+        const replyButton = menu.querySelector('.reply-message-btn');
         const editButton = menu.querySelector('.edit-message-btn');
         const deleteButton = menu.querySelector('.delete-message-btn');
         
-        editButton.addEventListener('click', () => {
+        replyButton.addEventListener('click', () => {
             menu.remove();
-            // Get current content from DOM (최신 수정된 내용)
             const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
-            if (!messageDiv) {
-                console.error('Message div not found for messageId:', messageId);
-                return;
-            }
+            if (!messageDiv) return;
+            
             const contentDiv = messageDiv.querySelector('.message-content');
-            if (!contentDiv) {
-                // 파일만 있고 텍스트가 없는 경우 - 빈 내용으로 편집 모드 시작
-                this.showEditMode(messageId, '');
-                return;
-            }
-            // Convert <br> tags to newlines before editing
-            const currentContent = this.htmlToPlainText(contentDiv.innerHTML);
-            this.showEditMode(messageId, currentContent);
+            const content = contentDiv ? this.htmlToPlainText(contentDiv.innerHTML) : '[파일]';
+            const isOwnMessage = messageDiv.classList.contains('ml-auto');
+            
+            this.setReplyingTo(messageId, content, isOwnMessage);
         });
+        
+        if (canEdit && editButton) {
+            editButton.addEventListener('click', () => {
+                menu.remove();
+                // Get current content from DOM (최신 수정된 내용)
+                const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+                if (!messageDiv) {
+                    console.error('Message div not found for messageId:', messageId);
+                    return;
+                }
+                const contentDiv = messageDiv.querySelector('.message-content');
+                if (!contentDiv) {
+                    // 파일만 있고 텍스트가 없는 경우 - 빈 내용으로 편집 모드 시작
+                    this.showEditMode(messageId, '');
+                    return;
+                }
+                // Convert <br> tags to newlines before editing
+                const currentContent = this.htmlToPlainText(contentDiv.innerHTML);
+                this.showEditMode(messageId, currentContent);
+            });
+        }
 
-        deleteButton.addEventListener('click', () => {
-            menu.remove();
-            this.confirmDelete(messageId);
-        });
+        if (canEdit && deleteButton) {
+            deleteButton.addEventListener('click', () => {
+                menu.remove();
+                this.confirmDelete(messageId);
+            });
+        }
 
         // Close menu when clicking outside
         const closeMenu = (e) => {
@@ -717,5 +744,61 @@ export class UIManager {
         const div = document.createElement('div');
         div.innerHTML = text;
         return div.textContent || div.innerText || '';
+    }
+    
+    setReplyingTo(messageId, content, isOwnMessage) {
+        this.replyingTo = { messageId, content, isOwnMessage };
+        this.showReplyPreview();
+        this.messageInput.focus();
+    }
+    
+    showReplyPreview() {
+        // 기존 답장 프리뷰 제거
+        const existingPreview = document.getElementById('reply-preview');
+        if (existingPreview) {
+            existingPreview.remove();
+        }
+        
+        if (!this.replyingTo) return;
+        
+        const preview = document.createElement('div');
+        preview.id = 'reply-preview';
+        preview.className = 'bg-gray-700/50 border-l-4 border-blue-500 p-2 mb-2 text-sm flex items-start justify-between gap-2';
+        
+        const truncatedContent = this.replyingTo.content.length > 50 
+            ? this.replyingTo.content.substring(0, 50) + '...' 
+            : this.replyingTo.content;
+        
+        preview.innerHTML = `
+            <div class="flex-1">
+                <div class="text-xs text-blue-400 mb-1">${this.replyingTo.isOwnMessage ? '내 메시지' : '익명'}에게 답장</div>
+                <div class="text-gray-300">${this.sanitizeInput(truncatedContent)}</div>
+            </div>
+            <button class="cancel-reply-btn text-gray-400 hover:text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        `;
+        
+        const cancelBtn = preview.querySelector('.cancel-reply-btn');
+        cancelBtn.addEventListener('click', () => {
+            this.cancelReply();
+        });
+        
+        // 메시지 입력 폼 앞에 삽입
+        this.messageForm.parentElement.insertBefore(preview, this.messageForm);
+    }
+    
+    cancelReply() {
+        this.replyingTo = null;
+        const preview = document.getElementById('reply-preview');
+        if (preview) {
+            preview.remove();
+        }
+    }
+    
+    getReplyingTo() {
+        return this.replyingTo;
     }
 }

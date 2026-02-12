@@ -206,6 +206,16 @@ class ChatClient {
             sessionId: this.sessionManager.getSessionId(),
             timestamp: now
         };
+        
+        // \ub2f5\uc7a5 \uc815\ubcf4 \ucd94\uac00
+        const replyingTo = this.ui.getReplyingTo();
+        if (replyingTo) {
+            messageData.replyTo = {
+                messageId: replyingTo.messageId,
+                content: replyingTo.content,
+                isOwnMessage: replyingTo.isOwnMessage
+            };
+        }
 
         // Upload file if selected
         if (hasFile) {
@@ -235,6 +245,7 @@ class ChatClient {
 
         this.lastMessageTime = now;
         this.ui.clearInput();
+        this.ui.cancelReply(); // \ub2f5\uc7a5 \uc0c1\ud0dc \ucd08\uae30\ud654
     }
 
     // Note: 서명 생성은 서버에서만 수행됨 (보안 강화)
