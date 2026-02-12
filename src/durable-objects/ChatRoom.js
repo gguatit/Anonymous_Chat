@@ -975,13 +975,19 @@ export class ChatRoom {
             editedAt: null
         };
         
-        // \ub2f5\uc7a5 \uc815\ubcf4 \ucd94\uac00
+        // 답장 정보 추가
         if (data.replyTo) {
             message.replyTo = {
                 messageId: data.replyTo.messageId,
                 content: this.sanitizeInput(data.replyTo.content),
                 isOwnMessage: data.replyTo.isOwnMessage
             };
+            
+            // 비밀 메시지 정보 추가
+            if (data.replyTo.isSecret) {
+                message.replyTo.isSecret = true;
+                message.replyTo.secretId = data.replyTo.secretId;
+            }
         }
         
         if (data.file && data.file.url) {
