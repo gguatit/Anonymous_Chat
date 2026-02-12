@@ -183,15 +183,18 @@ export class UIManager {
                 const isRecipient = data.replyTo.targetSessionId === sessionId;
                 if (isRecipient) {
                     contentHtml += `
-                        <div class="secret-message-container bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/50 rounded-lg p-3 mt-2">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="text-purple-300 text-sm">비밀 메시지</span>
+                        <div class="secret-message-container relative bg-gray-900/40 backdrop-blur-sm border-2 border-purple-500/80 shadow-[0_0_15px_rgba(168,85,247,0.4)] rounded-xl p-4 mt-2">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></div>
+                                <span class="text-purple-200 text-xs font-medium tracking-wide uppercase">Secret Message</span>
                             </div>
-                            <button class="reveal-secret-btn w-full bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded transition-colors text-sm font-medium"
+                            <button class="reveal-secret-btn group relative w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white py-3 px-4 rounded-lg transition-all duration-300 text-sm font-semibold shadow-lg hover:shadow-purple-500/50 hover:scale-[1.02] active:scale-[0.98]"
                                     data-secret-id="${this.sanitizeInput(data.replyTo.secretId)}">
-                                비밀 메시지 읽기 (한 번만 볼 수 있음)
+                                <span class="relative z-10">비밀 메시지 읽기</span>
+                                <div class="absolute inset-0 rounded-lg bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             </button>
-                            <div class="secret-message-content hidden mt-3 p-3 bg-gray-800/50 rounded text-sm break-words"></div>
+                            <div class="text-xs text-purple-300/60 text-center mt-2">한 번만 볼 수 있습니다</div>
+                            <div class="secret-message-content hidden mt-4 p-4 bg-white/5 backdrop-blur-sm border border-purple-400/30 rounded-lg text-sm leading-relaxed break-words text-gray-100"></div>
                         </div>
                     `;
                 } else if (isOwnMessage) {
