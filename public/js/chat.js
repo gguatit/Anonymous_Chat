@@ -222,7 +222,8 @@ class ChatClient {
                         content: replyingTo.content,
                         isOwnMessage: replyingTo.isOwnMessage,
                         isSecret: true,
-                        secretId: deadDropResult.id
+                        secretId: deadDropResult.id,
+                        targetSessionId: replyingTo.targetSessionId // 답장 받는 사람의 sessionId
                     };
                     // 메시지 내용은 Dead Drop ID로 대체
                     messageData.content = `[비밀 메시지]`;

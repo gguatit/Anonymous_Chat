@@ -144,6 +144,7 @@ export class UIManager {
         // 메시지 표식 추가 (MutationObserver가 감지)
         messageDiv.setAttribute('data-message', 'true');
         messageDiv.setAttribute('data-message-id', data.messageId);
+        messageDiv.setAttribute('data-session-id', data.sessionId);
         messageDiv.setAttribute('data-timestamp', data.timestamp);
         
         const timestamp = new Date(data.timestamp).toLocaleTimeString('ko-KR', {
@@ -178,12 +179,13 @@ export class UIManager {
         if (data.content && data.content.trim()) {
             // 비밀 메시지인 경우 읽기 버튼 추가
             if (data.replyTo && data.replyTo.isSecret && data.replyTo.secretId) {
-                const isRecipient = !isOwnMessage; // 받은 사람만 읽을 수 있음
+                // 받는 사람(targetSessionId)과 현재 사용자(sessionId)가 일치하는 경우에만 읽기 가능
+                const isRecipient = data.replyTo.targetSessionId === sessionId;
                 if (isRecipient) {
                     contentHtml += `
                         <div class="secret-message-container bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/50 rounded-lg p-3 mt-2">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="text-purple-300 text-sm">🔒 비밀 메시지</span>
+                                <span class="text-purple-300 text-sm">비밀 메시지</span>
                             </div>
                             <button class="reveal-secret-btn w-full bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded transition-colors text-sm font-medium"
                                     data-secret-id="${this.sanitizeInput(data.replyTo.secretId)}">
@@ -192,8 +194,10 @@ export class UIManager {
                             <div class="secret-message-content hidden mt-3 p-3 bg-gray-800/50 rounded text-sm break-words"></div>
                         </div>
                     `;
+                } else if (isOwnMessage) {
+                    contentHtml += `<div class="text-sm text-purple-400 italic">비밀 메시지를 보냈습니다</div>`;
                 } else {
-                    contentHtml += `<div class="text-sm text-purple-400 italic">🔒 비밀 메시지를 보냈습니다</div>`;
+                    contentHtml += `<div class="text-sm text-gray-500 italic">비밀 메시지 (답장)</div>`;
                 }
             } else {
                 contentHtml += `<div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>`;
@@ -333,8 +337,9 @@ export class UIManager {
             const contentDiv = messageDiv.querySelector('.message-content');
             const content = contentDiv ? this.htmlToPlainText(contentDiv.innerHTML) : '[파일]';
             const isOwnMessage = messageDiv.classList.contains('ml-auto');
+            const targetSessionId = messageDiv.dataset.sessionId; // 원본 메시지 작성자의 sessionId
             
-            this.setReplyingTo(messageId, content, isOwnMessage);
+            this.setReplyingTo(messageId, content, isOwnMessage, targetSessionId);
         });
         
         if (canEdit && editButton) {
@@ -792,8 +797,8 @@ export class UIManager {
         return div.textContent || div.innerText || '';
     }
     
-    setReplyingTo(messageId, content, isOwnMessage) {
-        this.replyingTo = { messageId, content, isOwnMessage, isSecret: false };
+    setReplyingTo(messageId, content, isOwnMessage, targetSessionId) {
+        this.replyingTo = { messageId, content, isOwnMessage, targetSessionId, isSecret: false };
         this.showReplyPreview();
         this.messageInput.focus();
     }
@@ -829,7 +834,7 @@ export class UIManager {
             </div>
             <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-200 transition-colors">
                 <input type="checkbox" id="secret-reply-checkbox" class="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0">
-                <span>🔒 비밀 메시지로 보내기 (받는 사람만 한 번 볼 수 있음)</span>
+                <span>비밀 메시지로 보내기 (받는 사람만 한 번 볼 수 있음)</span>
             </label>
         `;
         

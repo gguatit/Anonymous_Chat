@@ -987,6 +987,7 @@ export class ChatRoom {
             if (data.replyTo.isSecret) {
                 message.replyTo.isSecret = true;
                 message.replyTo.secretId = data.replyTo.secretId;
+                message.replyTo.targetSessionId = data.replyTo.targetSessionId;
             }
         }
         
