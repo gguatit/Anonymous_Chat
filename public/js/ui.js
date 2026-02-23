@@ -247,6 +247,153 @@ export class UIManager {
         }
     }
 
+    /**
+     * Display multiple messages at once using DocumentFragment for better performance
+     * @param {Array} messages - Array of message objects
+     * @param {string} sessionId - Current user's session ID
+     */
+    displayBatchMessages(messages, sessionId) {
+        if (!messages || messages.length === 0) return;
+
+        console.log(`[UI] Rendering ${messages.length} messages in batch`);
+
+        // Create a DocumentFragment to batch DOM operations
+        const fragment = document.createDocumentFragment();
+        
+        // Temporarily disconnect the MutationObserver to prevent it from firing multiple times
+        const tempContainer = document.createElement('div');
+        
+        for (const data of messages) {
+            // Skip duplicates
+            if (data.messageId && this.messagesContainer.querySelector(`[data-message-id="${data.messageId}"]`)) {
+                continue;
+            }
+
+            const isOwnMessage = data.sessionId === sessionId;
+            const isAdmin = !!(data.sessionId && String(data.sessionId).startsWith('admin_'));
+
+            const messageDiv = document.createElement('div');
+            
+            if (isAdmin) {
+                messageDiv.className = 'message-enter p-3 rounded-lg border-l-4 border-yellow-400 bg-yellow-900/20 shadow-lg ring-1 ring-yellow-400/20';
+                messageDiv.style.marginLeft = '0';
+                messageDiv.style.marginRight = 'auto';
+                messageDiv.setAttribute('role', 'region');
+                messageDiv.setAttribute('aria-live', 'polite');
+                messageDiv.setAttribute('aria-label', '관리자 메시지');
+            } else {
+                messageDiv.className = 'message-enter p-2.5 rounded-lg ' +
+                    (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
+            }
+            messageDiv.style.maxWidth = '75%';
+
+            messageDiv.setAttribute('data-message', 'true');
+            messageDiv.setAttribute('data-message-id', data.messageId);
+            messageDiv.setAttribute('data-session-id', data.sessionId);
+            messageDiv.setAttribute('data-timestamp', data.timestamp);
+
+            const timestamp = new Date(data.timestamp).toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const canEdit = isOwnMessage && data.timestamp && (Date.now() - data.timestamp < 10 * 60 * 1000);
+            const editedLabel = data.editedAt ? ' <span class="text-xs text-gray-500">(수정됨)</span>' : '';
+
+            let contentHtml = '';
+
+            if (data.replyTo) {
+                const replyContent = data.replyTo.content || '[파일]';
+                const truncatedReply = replyContent.length > 50
+                    ? replyContent.substring(0, 50) + '...'
+                    : replyContent;
+                const replyLabel = data.replyTo.isOwnMessage ? '내 메시지' : '익명';
+
+                contentHtml += `
+                    <div class="reply-reference bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs">
+                        <div class="text-gray-400">${replyLabel}에게 답장:</div>
+                        <div class="text-gray-300 italic">${this.sanitizeInput(truncatedReply)}</div>
+                    </div>
+                `;
+            }
+
+            if (data.content && data.content.trim()) {
+                if (data.replyTo && data.replyTo.isSecret && data.replyTo.secretId) {
+                    const isRecipient = data.replyTo.targetSessionId === sessionId;
+                    if (isRecipient) {
+                        contentHtml += `
+                            <div class="secret-message-container bg-gray-800/60 border border-gray-600/50 rounded-lg p-3 mt-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-gray-300 text-sm">비밀 메시지</span>
+                                </div>
+                                <button class="reveal-secret-btn w-full bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded transition-colors text-sm font-medium"
+                                        data-secret-id="${this.sanitizeInput(data.replyTo.secretId)}">
+                                    비밀 메시지 읽기 (한 번만 볼 수 있음)
+                                </button>
+                                <div class="secret-message-content hidden mt-3 p-3 bg-gray-800/50 rounded text-sm break-words"></div>
+                            </div>
+                        `;
+                    } else if (isOwnMessage) {
+                        contentHtml += `<div class="text-sm text-gray-400 italic">비밀 메시지를 보냈습니다</div>`;
+                    } else {
+                        contentHtml += `<div class="text-sm text-gray-500 italic">비밀 메시지 (답장)</div>`;
+                    }
+                } else {
+                    contentHtml += `<div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>`;
+                }
+            }
+
+            if (data.file && data.file.url) {
+                contentHtml += this.formatFileContent(data.file);
+            }
+
+            if (!contentHtml) {
+                contentHtml = '<div class="text-sm text-gray-500 italic">내용 없음</div>';
+            }
+
+            const nameLabel = isAdmin
+                ? `<span class="text-xs font-semibold text-yellow-300">관리자</span>`
+                : `<span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">${isOwnMessage ? '나' : '익명'}</span>`;
+
+            messageDiv.innerHTML = `
+                <div class="flex items-start justify-between gap-2 mb-1">
+                    <div class="flex items-center gap-2">${nameLabel}${editedLabel}</div>
+                    <span class="text-xs text-gray-500">${timestamp}</span>
+                </div>
+                ${contentHtml}
+            `;
+
+            this.addMessageInteractions(messageDiv, data.messageId, canEdit);
+            fragment.appendChild(messageDiv);
+        }
+
+        // Add all messages to DOM at once
+        this.messagesContainer.appendChild(fragment);
+        
+        // Scroll to bottom after batch insert
+        this.scrollToBottom();
+        
+        console.log(`[UI] Batch rendering complete`);
+
+        // Re-attach event listeners for secret message buttons
+        const revealBtns = this.messagesContainer.querySelectorAll('.reveal-secret-btn');
+        revealBtns.forEach(btn => {
+            // Remove existing listeners to prevent duplicates
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            if (this.onRevealSecret) {
+                newBtn.addEventListener('click', async () => {
+                    const secretId = newBtn.dataset.secretId;
+                    const container = newBtn.closest('.secret-message-container');
+                    if (container) {
+                        await this.onRevealSecret(secretId, container);
+                    }
+                });
+            }
+        });
+    }
+
     addMessageInteractions(messageDiv, messageId, canEdit) {
         let longPressTimer;
         let isLongPress = false;

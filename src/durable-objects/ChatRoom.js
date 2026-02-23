@@ -896,9 +896,13 @@ export class ChatRoom {
             };
             this.userMetadata.set(sessionId, metadata);
 
+            // Send recent messages as a batch for better performance
             const recentMessages = this.messages.slice(-50);
-            for (const msg of recentMessages) {
-                this.sendToSession(sessionId, msg);
+            if (recentMessages.length > 0) {
+                this.sendToSession(sessionId, {
+                    type: 'history',
+                    messages: recentMessages
+                });
             }
 
             if (this.currentAnnouncement) {
@@ -935,9 +939,13 @@ export class ChatRoom {
                 content: '채팅방에 입장했습니다.'
             });
 
+            // Send recent messages as a batch for better performance
             const recentMessages = this.messages.slice(-50);
-            for (const msg of recentMessages) {
-                this.sendToSession(sessionId, msg);
+            if (recentMessages.length > 0) {
+                this.sendToSession(sessionId, {
+                    type: 'history',
+                    messages: recentMessages
+                });
             }
 
             if (this.currentAnnouncement) {

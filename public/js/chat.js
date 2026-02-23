@@ -92,6 +92,13 @@ class ChatClient {
 
     handleMessage(data) {
         switch (data.type) {
+            case 'history':
+                // Batch render historical messages for better performance
+                console.log('[Chat] Received message history:', data.messages?.length || 0, 'messages');
+                if (data.messages && data.messages.length > 0) {
+                    this.ui.displayBatchMessages(data.messages, this.sessionManager.getSessionId());
+                }
+                break;
             case 'message':
                 this.ui.displayMessage(
                     data,
