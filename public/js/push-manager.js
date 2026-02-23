@@ -10,13 +10,13 @@ export class PushNotificationManager {
 
     /**
      * Initialize push notifications
-     * @returns {Promise<boolean>} true if push is supported and SW registered
+     * @returns {Promise<Object>} { supported: boolean, subscribed: boolean, error?: string }
      */
     async initialize() {
         // Check browser support
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             console.log('[Push] Push notifications not supported');
-            return false;
+            return { supported: false, subscribed: false };
         }
 
         try {
@@ -29,17 +29,25 @@ export class PushNotificationManager {
 
             // Fetch VAPID public key from server
             const response = await fetch('/api/push/vapid-key');
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.warn('[Push] VAPID key not available:', errorData.error);
+                return { supported: false, subscribed: false, error: 'Push notifications not configured' };
+            }
+            
             const data = await response.json();
             this.vapidPublicKey = data.publicKey;
 
             // Check existing subscription
             const subscription = await this.swRegistration.pushManager.getSubscription();
             this.isSubscribed = !!subscription;
+            
+            console.log('[Push] Initialization complete, subscribed:', this.isSubscribed);
 
-            return true;
+            return { supported: true, subscribed: this.isSubscribed };
         } catch (error) {
             console.error('[Push] Initialization failed:', error);
-            return false;
+            return { supported: false, subscribed: false, error: error.message };
         }
     }
 
@@ -125,15 +133,28 @@ export class PushNotificationManager {
     /**
      * Toggle subscription state
      * @param {string} sessionId
-     * @returns {Promise<boolean>} new subscription state
+     * @returns {Promise<boolean|undefined>} new subscription state, or undefined on error
      */
     async toggle(sessionId) {
-        if (this.isSubscribed) {
-            await this.unsubscribe(sessionId);
-        } else {
-            await this.subscribe(sessionId);
+        try {
+            if (this.isSubscribed) {
+                const success = await this.unsubscribe(sessionId);
+                if (!success) {
+                    console.error('[Push] Failed to unsubscribe');
+                    return undefined;
+                }
+            } else {
+                const success = await this.subscribe(sessionId);
+                if (!success) {
+                    console.error('[Push] Failed to subscribe');
+                    return undefined;
+                }
+            }
+            return this.isSubscribed;
+        } catch (error) {
+            console.error('[Push] Toggle error:', error);
+            return undefined;
         }
-        return this.isSubscribed;
     }
 
     /**

@@ -39,16 +39,28 @@ class ChatClient {
     }
 
     async initializePush() {
-        const supported = await this.pushManager.initialize();
+        const result = await this.pushManager.initialize();
         const bellBtn = document.getElementById('notification-toggle');
-        if (!supported || !bellBtn) return;
+        
+        if (!result.supported || !bellBtn) {
+            if (result.error) {
+                console.log('[Push] Notifications unavailable:', result.error);
+            }
+            return;
+        }
 
         bellBtn.classList.remove('hidden');
+        // Update UI to reflect current subscription state
         this.updateBellIcon(bellBtn);
 
         bellBtn.addEventListener('click', async () => {
-            await this.pushManager.toggle(this.sessionManager.getSessionId());
-            this.updateBellIcon(bellBtn);
+            const success = await this.pushManager.toggle(this.sessionManager.getSessionId());
+            if (success !== undefined) {
+                this.updateBellIcon(bellBtn);
+            } else {
+                // Toggle failed, show error
+                this.ui.displayError('알림 설정을 변경할 수 없습니다.');
+            }
         });
     }
 

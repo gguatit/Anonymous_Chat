@@ -104,16 +104,13 @@ export async function handlePushUnsubscribe(request, env, corsHeaders) {
 export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData) {
     console.log('[Push] sendPushToOfflineUsers called');
 
+    // Validate environment configuration
     if (!env.PUSH_SUBSCRIPTIONS) {
-        console.log('[Push] ABORT: no PUSH_SUBSCRIPTIONS KV');
+        console.warn('[Push] PUSH_SUBSCRIPTIONS KV not configured');
         return;
     }
-    if (!env.VAPID_PUBLIC_KEY) {
-        console.log('[Push] ABORT: no VAPID_PUBLIC_KEY');
-        return;
-    }
-    if (!env.VAPID_PRIVATE_KEY) {
-        console.log('[Push] ABORT: no VAPID_PRIVATE_KEY');
+    if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) {
+        console.warn('[Push] VAPID keys not configured - push notifications disabled');
         return;
     }
 
@@ -133,11 +130,9 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
         for (const key of list.keys) {
             const sessionId = key.name.replace('sub:', '');
 
-            // Skip if it's the sender's own message
-            if (sessionId === messageData.sessionId) {
-                console.log(`[Push] Skipping sender: ${sessionId}`);
-                continue;
-            }
+            // Note: We send to ALL subscribers, including the sender
+            // This enables multi-device support (e.g., PC + mobile)
+            // The Service Worker will filter out notifications if the user is actively viewing the chat
 
             try {
                 const subData = await env.PUSH_SUBSCRIPTIONS.get(key.name);
@@ -164,15 +159,23 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
                     sendPushNotification(subscription, payload, vapidKeys)
                         .then(async (response) => {
                             const body = await response.text();
-                            console.log(`[Push] Response for ${sessionId}: ${response.status} ${response.statusText} - ${body}`);
+                            
+                            if (response.ok) {
+                                console.log(`[Push] ✓ Sent to ${sessionId}: ${response.status}`);
+                            } else {
+                                console.warn(`[Push] ✗ Failed for ${sessionId}: ${response.status} ${response.statusText} - ${body}`);
+                            }
+                            
                             // If push service returns 404 or 410, subscription is invalid
                             if (response.status === 404 || response.status === 410) {
                                 await env.PUSH_SUBSCRIPTIONS.delete(key.name);
                                 console.log(`[Push] Removed invalid subscription: ${sessionId}`);
+                            } else if (response.status === 400 || response.status === 401) {
+                                console.error(`[Push] Invalid VAPID configuration or expired subscription for ${sessionId}`);
                             }
                         })
                         .catch((err) => {
-                            console.error(`[Push] Failed to send to ${sessionId}:`, err.message, err.stack);
+                            console.error(`[Push] Network error sending to ${sessionId}:`, err.message);
                         })
                 );
             } catch (e) {

@@ -43,13 +43,19 @@ self.addEventListener('push', (event) => {
     };
 
     event.waitUntil(
-        // Check if any client (tab) is focused - don't show notification if user is actively using the chat
+        // Only skip notification if user is actively viewing the chat (visible AND focused)
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-            const isFocused = clients.some(client => client.visibilityState === 'visible');
-            if (isFocused) {
-                console.log('[SW] Page is visible, skipping notification');
+            // Check if any client is both visible and focused
+            const isActivelyUsing = clients.some(client => {
+                return client.visibilityState === 'visible' && client.focused;
+            });
+            
+            if (isActivelyUsing) {
+                console.log('[SW] User is actively using the chat, skipping notification');
                 return;
             }
+            
+            console.log('[SW] Showing notification - user not actively using chat');
             return self.registration.showNotification(data.title || '익명 채팅', options);
         })
     );
