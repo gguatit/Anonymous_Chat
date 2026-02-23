@@ -121,9 +121,6 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
         for (const key of list.keys) {
             const sessionId = key.name.replace('sub:', '');
 
-            // Skip if user is currently online (they'll see the message in real-time)
-            if (onlineSessionIds.has(sessionId)) continue;
-
             // Skip if it's the sender's own message
             if (sessionId === messageData.sessionId) continue;
 
