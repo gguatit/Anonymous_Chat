@@ -6,12 +6,12 @@ import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToke
 export async function handleAdminLogin(request, env, corsHeaders) {
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
     const timestamp = Date.now();
-    
+
     try {
         // Rate Limiting 체크 (브루트포스 방지)
         const rateLimitKey = `ratelimit:${clientIP}`;
         const isBlocked = await checkRateLimit(env, rateLimitKey);
-        
+
         if (isBlocked) {
             await logAdminActivity(env, {
                 type: 'login_blocked',
@@ -19,10 +19,10 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 ip: clientIP,
                 timestamp
             });
-            
+
             // 타이밍 공격 방지: 일정 시간 대기
             await sleep(1000);
-            
+
             return new Response(JSON.stringify({
                 success: false,
                 error: 'Too many login attempts. Please try again later.'
@@ -31,9 +31,9 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
-        
+
         const { id, password } = await request.json();
-        
+
         // 환경변수 필수 체크 (하드코딩 완전 제거)
         if (!env.ADMIN_ID || !env.ADMIN_PASSWORD) {
             await logAdminActivity(env, {
@@ -42,7 +42,7 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 ip: clientIP,
                 timestamp
             });
-            
+
             return new Response(JSON.stringify({
                 success: false,
                 error: 'Service temporarily unavailable'
@@ -51,23 +51,23 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
-        
+
         const ADMIN_ID = env.ADMIN_ID;
         const ADMIN_PASSWORD = env.ADMIN_PASSWORD;
-        
+
         // 타이밍 공격 방지: 상수 시간 비교
         const idMatch = await constantTimeCompare(id, ADMIN_ID);
         const passwordMatch = await constantTimeCompare(password, ADMIN_PASSWORD);
-        
+
         if (idMatch && passwordMatch) {
             // Rate limit 초기화
             if (env?.ADMIN_TOKENS) {
                 await env.ADMIN_TOKENS.delete(rateLimitKey);
             }
-            
+
             // Generate JWT-like token
             const token = await generateAdminToken(id + ':' + password, env.HMAC_SECRET || crypto.randomUUID());
-            
+
             // 감사 로그: 성공한 로그인
             await logAdminActivity(env, {
                 type: 'login_success',
@@ -76,7 +76,7 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 timestamp,
                 userAgent: request.headers.get('User-Agent')
             });
-            
+
             return new Response(JSON.stringify({
                 success: true,
                 token
@@ -84,13 +84,13 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
-        
+
         // Rate limit 증가
         await incrementRateLimit(env, rateLimitKey);
-        
+
         // 타이밍 공격 방지: 실패 시에도 동일한 시간 소요
         await sleep(100);
-        
+
         // 감사 로그: 실패한 로그인 시도
         await logAdminActivity(env, {
             type: 'login_failed',
@@ -100,7 +100,7 @@ export async function handleAdminLogin(request, env, corsHeaders) {
             timestamp,
             userAgent: request.headers.get('User-Agent')
         });
-        
+
         return new Response(JSON.stringify({
             success: false,
             error: 'Invalid credentials'
@@ -115,10 +115,10 @@ export async function handleAdminLogin(request, env, corsHeaders) {
             ip: clientIP,
             timestamp
         });
-        
+
         // 타이밍 공격 방지
         await sleep(100);
-        
+
         return new Response(JSON.stringify({ error: 'Invalid request' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -128,42 +128,42 @@ export async function handleAdminLogin(request, env, corsHeaders) {
 
 export async function handleAdminVerify(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     const token = authHeader.substring(7);
     const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    
+
     if (isValid) {
         return new Response(JSON.stringify({ valid: true }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
-    
+
     return new Response(null, { status: 401, headers: corsHeaders });
 }
 
 export async function handleAdminMetrics(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     const token = authHeader.substring(7);
     const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    
+
     if (!isValid) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     // Get metrics from Durable Object
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
     const response = await room.fetch(new Request('https://dummy/admin/metrics'));
-    
+
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -171,22 +171,22 @@ export async function handleAdminMetrics(request, env, corsHeaders) {
 
 export async function handleAdminSessions(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     const token = authHeader.substring(7);
     const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    
+
     if (!isValid) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
     const response = await room.fetch(new Request('https://dummy/admin/sessions'));
-    
+
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -194,22 +194,22 @@ export async function handleAdminSessions(request, env, corsHeaders) {
 
 export async function handleAdminMessages(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     const token = authHeader.substring(7);
     const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    
+
     if (!isValid) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
     const response = await room.fetch(new Request('https://dummy/admin/messages'));
-    
+
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -218,28 +218,28 @@ export async function handleAdminMessages(request, env, corsHeaders) {
 // 로그아웃 (토큰 무효화)
 export async function handleAdminLogout(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     const token = authHeader.substring(7);
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
-    
+
     // 토큰을 블랙리스트에 추가 (2시간 만료)
     if (env?.ADMIN_TOKENS) {
         await env.ADMIN_TOKENS.put(`revoked:${token}`, 'true', {
             expirationTtl: 2 * 60 * 60
         });
     }
-    
+
     // 감사 로그
     await logAdminActivity(env, {
         type: 'logout',
         ip: clientIP,
         timestamp: Date.now()
     });
-    
+
     return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -248,38 +248,38 @@ export async function handleAdminLogout(request, env, corsHeaders) {
 // 감사 로그 조회
 export async function handleAdminLogs(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     const token = authHeader.substring(7);
     const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    
+
     if (!isValid) {
         return new Response(null, { status: 401, headers: corsHeaders });
     }
-    
+
     if (!env?.ADMIN_LOGS) {
         return new Response(JSON.stringify({ logs: [] }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
-    
+
     // 최근 100개 로그 가져오기
     const list = await env.ADMIN_LOGS.list({ prefix: 'log:', limit: 100 });
     const logs = [];
-    
+
     for (const key of list.keys) {
         const logData = await env.ADMIN_LOGS.get(key.name);
         if (logData) {
             logs.push(JSON.parse(logData));
         }
     }
-    
+
     // 시간 역순 정렬
     logs.sort((a, b) => b.timestamp - a.timestamp);
-    
+
     return new Response(JSON.stringify({ logs }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -439,6 +439,7 @@ export async function handleAdminKickUser(request, env, corsHeaders) {
     try {
         const body = await request.json();
         const sessionId = body.sessionId;
+        const banDuration = body.banDuration || 0;
 
         if (!sessionId) {
             return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
@@ -456,7 +457,7 @@ export async function handleAdminKickUser(request, env, corsHeaders) {
                 'Content-Type': 'application/json',
                 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
             },
-            body: JSON.stringify({ sessionId })
+            body: JSON.stringify({ sessionId, banDuration })
         });
 
         const response = await room.fetch(forward);
