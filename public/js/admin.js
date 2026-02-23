@@ -8,11 +8,11 @@ class AdminDashboard {
         this.loginError = document.getElementById('login-error');
         this.logoutBtn = document.getElementById('logout-btn');
         this.refreshBtn = document.getElementById('refresh-btn');
-        
+
         this.sessionToken = localStorage.getItem('admin_token');
         this.refreshInterval = null;
         this.autoRefreshInterval = null;
-        
+
         this.initializeEventListeners();
         this.checkAuthentication();
     }
@@ -30,30 +30,30 @@ class AdminDashboard {
             const mobileMenu = document.getElementById('mobile-menu');
             const closeMobileMenu = document.getElementById('close-mobile-menu');
             const mobileMenuPanel = mobileMenu?.querySelector('.mobile-menu');
-            
+
             mobileMenuBtn?.addEventListener('click', () => {
                 mobileMenu?.classList.remove('hidden');
                 setTimeout(() => mobileMenuPanel?.classList.add('active'), 10);
             });
-            
+
             closeMobileMenu?.addEventListener('click', () => {
                 mobileMenuPanel?.classList.remove('active');
                 setTimeout(() => mobileMenu?.classList.add('hidden'), 300);
             });
-            
+
             mobileMenu?.addEventListener('click', (e) => {
                 if (e.target === mobileMenu) {
                     mobileMenuPanel?.classList.remove('active');
                     setTimeout(() => mobileMenu?.classList.add('hidden'), 300);
                 }
             });
-            
+
             // Mobile menu controls sync
             const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
             const mobileAutoRefresh = document.getElementById('mobile-auto-refresh');
             const autoRefreshInterval = document.getElementById('auto-refresh-interval');
             const mobileRefreshInterval = document.getElementById('mobile-refresh-interval');
-            
+
             mobileAutoRefresh?.addEventListener('change', (e) => {
                 if (autoRefreshToggle) autoRefreshToggle.checked = e.target.checked;
                 if (e.target.checked) {
@@ -62,7 +62,7 @@ class AdminDashboard {
                     this.stopAutoRefresh();
                 }
             });
-            
+
             mobileRefreshInterval?.addEventListener('change', (e) => {
                 if (autoRefreshInterval) autoRefreshInterval.value = e.target.value;
                 if (this.autoRefreshInterval) {
@@ -70,7 +70,7 @@ class AdminDashboard {
                     this.startAutoRefresh();
                 }
             });
-            
+
             const mobileExportCsv = document.getElementById('mobile-export-csv');
             mobileExportCsv?.addEventListener('click', () => {
                 this.exportCsv();
@@ -99,11 +99,11 @@ class AdminDashboard {
 
         this.exportFilteredCsvBtn = document.getElementById('export-filtered-csv-btn');
         this.exportFilteredCsvBtn?.addEventListener('click', () => this.exportFilteredCsv());
-        
+
         // Auto-refresh toggle
         const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
         const autoRefreshIntervalSelect = document.getElementById('auto-refresh-interval');
-        
+
         if (autoRefreshToggle) {
             autoRefreshToggle.addEventListener('change', (e) => {
                 if (e.target.checked) {
@@ -114,7 +114,7 @@ class AdminDashboard {
                 }
             });
         }
-        
+
         if (autoRefreshIntervalSelect) {
             autoRefreshIntervalSelect.addEventListener('change', (e) => {
                 if (autoRefreshToggle && autoRefreshToggle.checked) {
@@ -124,13 +124,13 @@ class AdminDashboard {
                 }
             });
         }
-        
+
         // Audit log filter
         const auditLogFilter = document.getElementById('audit-log-filter');
         if (auditLogFilter) {
             auditLogFilter.addEventListener('change', () => this.loadAuditLogs());
         }
-        
+
         // User details modal close
         const closeUserModal = document.getElementById('close-user-modal');
         const userDetailsModal = document.getElementById('user-details-modal');
@@ -139,7 +139,7 @@ class AdminDashboard {
                 if (userDetailsModal) userDetailsModal.classList.add('hidden');
             });
         }
-        
+
         // Close modal on background click
         if (userDetailsModal) {
             userDetailsModal.addEventListener('click', (e) => {
@@ -282,7 +282,7 @@ class AdminDashboard {
         try {
             const endpoint = isAnnouncement ? '/api/admin/announce' : '/api/admin/broadcast';
             console.log('Sending to endpoint:', endpoint, 'Content:', content);
-            
+
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
@@ -293,7 +293,7 @@ class AdminDashboard {
             });
 
             console.log('Response status:', response.status);
-            
+
             if (!response.ok) {
                 const err = await response.json().catch(() => null);
                 console.error('Message send failed', err);
@@ -303,7 +303,7 @@ class AdminDashboard {
 
             const result = await response.json();
             console.log('Message sent successfully:', result);
-            
+
             if (isAnnouncement) {
                 if (result.sessionsNotified !== undefined) {
                     alert(`공지가 ${result.sessionsNotified}명의 사용자에게 전송되었습니다.`);
@@ -324,7 +324,7 @@ class AdminDashboard {
 
     async handleLogin(e) {
         e.preventDefault();
-        
+
         const id = document.getElementById('admin-id').value;
         const password = document.getElementById('admin-password').value;
         this.loginError.classList.add('hidden');
@@ -366,7 +366,7 @@ class AdminDashboard {
 
     handleLogout() {
         const token = localStorage.getItem('admin_token');
-        
+
         // 서버에 로그아웃 요청 (토큰 무효화)
         if (token) {
             fetch('/api/admin/logout', {
@@ -376,7 +376,7 @@ class AdminDashboard {
                 }
             }).catch(err => console.error('Logout error:', err));
         }
-        
+
         // 로컬 토큰 삭제
         localStorage.removeItem('admin_token');
         this.sessionToken = null;
@@ -395,7 +395,7 @@ class AdminDashboard {
         this.loginScreen.classList.add('hidden');
         this.adminDashboard.classList.remove('hidden');
         this.refreshData();
-        
+
         // Auto-refresh every 5 seconds
         this.refreshInterval = setInterval(() => this.refreshData(), 5000);
     }
@@ -437,10 +437,10 @@ class AdminDashboard {
                 const messages = await messagesResponse.json();
                 this.updateRecentMessages(messages);
             }
-            
+
             // Fetch banned IPs list
             await this.loadBannedIPs();
-            
+
             // Fetch audit logs
             await this.loadAuditLogs();
 
@@ -452,30 +452,30 @@ class AdminDashboard {
     }
 
     updateMetrics(metrics) {
-        document.getElementById('stat-active-connections').textContent = 
+        document.getElementById('stat-active-connections').textContent =
             metrics.activeConnections?.toLocaleString() || '0';
-        document.getElementById('stat-total-messages').textContent = 
+        document.getElementById('stat-total-messages').textContent =
             metrics.totalMessages?.toLocaleString() || '0';
-        document.getElementById('stat-total-connections').textContent = 
+        document.getElementById('stat-total-connections').textContent =
             metrics.totalConnections?.toLocaleString() || '0';
-        document.getElementById('stat-errors').textContent = 
+        document.getElementById('stat-errors').textContent =
             metrics.errors?.toLocaleString() || '0';
-        
+
         // Update system info
-        document.getElementById('server-time').textContent = 
+        document.getElementById('server-time').textContent =
             new Date().toLocaleString('ko-KR');
-        
+
         if (metrics.uptime) {
             const hours = Math.floor(metrics.uptime / 3600000);
             const minutes = Math.floor((metrics.uptime % 3600000) / 60000);
-            document.getElementById('uptime').textContent = 
+            document.getElementById('uptime').textContent =
                 `${hours}시간 ${minutes}분`;
         }
     }
 
     updateActiveSessions(sessions) {
         const container = document.getElementById('active-sessions');
-        
+
         if (!sessions || sessions.length === 0) {
             container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">활성 세션이 없습니다.</p>';
             return;
@@ -484,10 +484,10 @@ class AdminDashboard {
         container.innerHTML = sessions.map(session => {
             const isOnline = session.lastMessageTime > 0 || (Date.now() - session.joinTime) < 60000;
             const statusColor = isOnline ? 'bg-green-500' : 'bg-gray-500';
-            const lastActiveText = session.lastMessageTime > 0 
+            const lastActiveText = session.lastMessageTime > 0
                 ? this.formatDuration(Date.now() - session.lastMessageTime) + ' 전 활동'
                 : '활동 없음';
-            
+
             return `
                 <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer session-row" data-session-id="${session.sessionId}">
                     <div class="flex items-center gap-3 flex-1">
@@ -531,7 +531,7 @@ class AdminDashboard {
             btn.addEventListener('click', async (e) => {
                 const sessionId = e.currentTarget.dataset.sessionId;
                 const userIp = e.currentTarget.dataset.userIp;
-                
+
                 // 차단 시간 선택 모달 생성
                 const modal = this.createBanModal(sessionId, userIp);
                 document.body.appendChild(modal);
@@ -540,6 +540,24 @@ class AdminDashboard {
     }
 
     createBanModal(sessionId, userIp) {
+        // Detect shared IP: count how many active sessions share this IP
+        const sessionRows = document.querySelectorAll('.session-row');
+        let sameIpCount = 0;
+        sessionRows.forEach(row => {
+            const btn = row.querySelector('.kick-user-btn');
+            if (btn && btn.dataset.userIp === userIp) {
+                sameIpCount++;
+            }
+        });
+        const isSharedIP = sameIpCount > 1;
+
+        const sharedIpWarning = isSharedIP ? `
+            <div class="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg">
+                <p class="text-yellow-400 text-sm font-semibold">⚠️ 공유 IP 감지 (${sameIpCount}명 접속 중)</p>
+                <p class="text-yellow-500 text-xs mt-1">같은 IP를 사용하는 다른 사용자가 있습니다. 차단 시 해당 세션만 차단되며, 같은 IP의 다른 사용자는 영향을 받지 않습니다.</p>
+            </div>
+        ` : '';
+
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
         modal.innerHTML = `
@@ -549,6 +567,7 @@ class AdminDashboard {
                     <p>세션 ID: <span class="text-gray-200">${this.truncateId(sessionId)}</span></p>
                     <p>IP 주소: <span class="text-gray-200">${userIp}</span></p>
                 </div>
+                ${sharedIpWarning}
                 <p class="text-sm text-gray-300 mb-4">차단 시간을 선택하세요:</p>
                 <div class="grid grid-cols-2 gap-3 mb-6">
                     <button class="ban-option-btn bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="0">
@@ -557,15 +576,15 @@ class AdminDashboard {
                     </button>
                     <button class="ban-option-btn bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="30">
                         30초 차단
-                        <span class="block text-xs opacity-80">임시 차단</span>
+                        <span class="block text-xs opacity-80">${isSharedIP ? '세션만 차단' : '임시 차단'}</span>
                     </button>
                     <button class="ban-option-btn bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="300">
                         5분 차단
-                        <span class="block text-xs opacity-80">단기 차단</span>
+                        <span class="block text-xs opacity-80">${isSharedIP ? '세션만 차단' : '단기 차단'}</span>
                     </button>
                     <button class="ban-option-btn bg-red-700 hover:bg-red-800 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="600">
                         10분 차단
-                        <span class="block text-xs opacity-80">장기 차단</span>
+                        <span class="block text-xs opacity-80">${isSharedIP ? '세션만 차단' : '장기 차단'}</span>
                     </button>
                 </div>
                 <button class="cancel-btn w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 rounded-lg transition-colors">
@@ -600,7 +619,7 @@ class AdminDashboard {
 
     updateRecentMessages(messages) {
         const container = document.getElementById('recent-messages');
-        
+
         if (!messages || messages.length === 0) {
             container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">최근 메시지가 없습니다.</p>';
             return;
@@ -612,7 +631,7 @@ class AdminDashboard {
                 const filesize = msg.file.filesize != null ? this.formatFileSize(msg.file.filesize) : '';
                 const filetype = msg.file.filetype || '';
                 const url = msg.file.url || '#';
-                
+
                 // Validate URL for security
                 if (!this.isValidUrl(url)) {
                     return '<div class="text-red-400 text-xs mt-2">Invalid file URL</div>';
@@ -649,7 +668,7 @@ class AdminDashboard {
             // 관리자는 모든 메시지를 삭제 가능, 자신의 메시지만 수정 가능
             const canEdit = isAdminMsg;
             const canDelete = true; // 관리자는 모든 메시지 삭제 가능
-            
+
             const editButtons = `
                 <div class="mt-2 flex gap-2">
                     ${canEdit ? `
@@ -713,7 +732,7 @@ class AdminDashboard {
         const seconds = Math.floor(ms / 1000);
         const minutes = Math.floor(seconds / 60);
         const hours = Math.floor(minutes / 60);
-        
+
         if (hours > 0) return `${hours}시간 전`;
         if (minutes > 0) return `${minutes}분 전`;
         return `${seconds}초 전`;
@@ -724,7 +743,7 @@ class AdminDashboard {
         div.textContent = text;
         return div.innerHTML;
     }
-    
+
     isValidUrl(url) {
         try {
             const parsed = new URL(url);
@@ -733,7 +752,7 @@ class AdminDashboard {
             return false;
         }
     }
-    
+
     sanitizeUrl(url) {
         if (!this.isValidUrl(url)) {
             return '#';
@@ -748,7 +767,7 @@ class AdminDashboard {
                 const messageId = e.target.dataset.messageId;
                 const currentContent = e.target.dataset.content;
                 const newContent = prompt('메시지를 수정하세요:', currentContent);
-                
+
                 if (newContent !== null && newContent.trim() !== currentContent.trim()) {
                     await this.editAdminMessage(messageId, newContent.trim());
                 }
@@ -759,7 +778,7 @@ class AdminDashboard {
         document.querySelectorAll('.admin-delete-msg-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const messageId = e.target.dataset.messageId;
-                
+
                 if (confirm('이 메시지를 삭제하시겠습니까?\n\n삭제된 메시지는 복구할 수 없습니다.\n첨부된 파일도 함께 삭제됩니다.')) {
                     await this.deleteMessage(messageId);
                 }
@@ -858,16 +877,20 @@ class AdminDashboard {
             }
 
             const result = await response.json();
-            
+
             if (result.banned) {
                 const minutes = Math.floor(banDuration / 60);
                 const seconds = banDuration % 60;
                 const timeStr = minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
-                alert(`사용자가 강제퇴장되었습니다.\nIP ${result.ip}가 ${timeStr}간 차단되었습니다.`);
+                if (result.sharedIP) {
+                    alert(`사용자가 강제퇴장되었습니다.\n\n⚠️ 공유 IP 감지: 세션만 ${timeStr}간 차단됨\n(같은 IP의 다른 사용자는 영향 없음)`);
+                } else {
+                    alert(`사용자가 강제퇴장되었습니다.\nIP ${result.ip}가 ${timeStr}간 차단되었습니다.`);
+                }
             } else {
                 alert('사용자가 강제퇴장되었습니다.');
             }
-            
+
             this.refreshData();
         } catch (error) {
             console.error('kickUser error:', error);
@@ -914,7 +937,7 @@ class AdminDashboard {
             const oneDay = 24 * oneHour;
             const todayStart = new Date().setHours(0, 0, 0, 0);
 
-            switch(filterOptions) {
+            switch (filterOptions) {
                 case '2': // 활성 세션만
                     const activeSessions = new Set(sessions.map(s => s.sessionId));
                     messages = messages.filter(m => activeSessions.has(m.sessionId));
@@ -1008,7 +1031,7 @@ class AdminDashboard {
             alert('CSV 내보내기 중 오류가 발생했습니다.');
         }
     }
-    
+
     startAutoRefresh(interval) {
         if (this.autoRefreshInterval) {
             clearInterval(this.autoRefreshInterval);
@@ -1016,7 +1039,7 @@ class AdminDashboard {
         this.autoRefreshInterval = setInterval(() => this.refreshData(), interval);
         console.log(`Auto-refresh started with ${interval}ms interval`);
     }
-    
+
     stopAutoRefresh() {
         if (this.autoRefreshInterval) {
             clearInterval(this.autoRefreshInterval);
@@ -1024,27 +1047,27 @@ class AdminDashboard {
             console.log('Auto-refresh stopped');
         }
     }
-    
+
     async loadBannedIPs() {
         try {
             const response = await fetch('/api/admin/banned-ips', {
                 headers: { 'Authorization': `Bearer ${this.sessionToken}` }
             });
-            
+
             if (!response.ok) {
                 throw new Error('Failed to load banned IPs');
             }
-            
+
             const bannedList = await response.json();
             const tbody = document.getElementById('banned-ips-body');
-            
+
             if (!tbody) return;
-            
+
             if (!bannedList || bannedList.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="px-3 md:px-4 py-8 text-center text-gray-500">차단된 IP가 없습니다.</td></tr>';
                 return;
             }
-            
+
             tbody.innerHTML = bannedList.map(ban => `
                 <tr class="border-t border-gray-700 md:border-0">
                     <td data-label="IP 주소" class="px-3 md:px-4 py-3 font-mono text-sm">${ban.ip}</td>
@@ -1058,7 +1081,7 @@ class AdminDashboard {
                     </td>
                 </tr>
             `).join('');
-            
+
             // Unban button event
             document.querySelectorAll('.unban-ip-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
@@ -1066,17 +1089,17 @@ class AdminDashboard {
                     await this.unbanIP(ip);
                 });
             });
-            
+
         } catch (error) {
             console.error('Load banned IPs error:', error);
         }
     }
-    
+
     async unbanIP(ip) {
         if (!confirm(`IP ${ip}의 차단을 해제하시겠습니까?`)) {
             return;
         }
-        
+
         try {
             const response = await fetch('/api/admin/unban-ip', {
                 method: 'POST',
@@ -1086,36 +1109,36 @@ class AdminDashboard {
                 },
                 body: JSON.stringify({ ip })
             });
-            
+
             if (!response.ok) {
                 throw new Error('Failed to unban IP');
             }
-            
+
             alert(`IP ${ip}의 차단이 해제되었습니다.`);
             await this.loadBannedIPs();
-            
+
         } catch (error) {
             console.error('Unban IP error:', error);
             alert('IP 차단 해제 중 오류가 발생했습니다.');
         }
     }
-    
+
     async showUserDetails(sessionId) {
         try {
             const response = await fetch(`/api/admin/user-details?sessionId=${encodeURIComponent(sessionId)}`, {
                 headers: { 'Authorization': `Bearer ${this.sessionToken}` }
             });
-            
+
             if (!response.ok) {
                 throw new Error('Failed to load user details');
             }
-            
+
             const userDetails = await response.json();
             const modal = document.getElementById('user-details-modal');
             const content = document.getElementById('user-details-content');
-            
+
             if (!modal || !content) return;
-            
+
             content.innerHTML = `
                 <div class="space-y-4">
                     <div class="bg-gray-700 rounded-lg p-4">
@@ -1151,8 +1174,8 @@ class AdminDashboard {
                     <div class="bg-gray-700 rounded-lg p-4">
                         <h3 class="text-sm font-semibold text-gray-400 mb-2">메시지 기록 (최근 ${Math.min(userDetails.messages?.length || 0, 50)}개)</h3>
                         <div class="space-y-2 max-h-96 overflow-y-auto">
-                            ${userDetails.messages && userDetails.messages.length > 0 
-                                ? userDetails.messages.slice(0, 50).map(msg => `
+                            ${userDetails.messages && userDetails.messages.length > 0
+                    ? userDetails.messages.slice(0, 50).map(msg => `
                                     <div class="bg-gray-800 rounded p-3 text-sm">
                                         <div class="flex justify-between items-start mb-1">
                                             <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleString('ko-KR')}</span>
@@ -1162,47 +1185,47 @@ class AdminDashboard {
                                         ${msg.file ? `<p class="text-xs text-blue-400 mt-1">파일: ${msg.file.filename}</p>` : ''}
                                     </div>
                                 `).join('')
-                                : '<p class="text-gray-500 text-center py-4">메시지가 없습니다.</p>'
-                            }
+                    : '<p class="text-gray-500 text-center py-4">메시지가 없습니다.</p>'
+                }
                         </div>
                     </div>
                 </div>
             `;
-            
+
             modal.classList.remove('hidden');
-            
+
         } catch (error) {
             console.error('Show user details error:', error);
             alert('사용자 정보를 불러오는 중 오류가 발생했습니다.');
         }
     }
-    
+
     async loadAuditLogs() {
         try {
             const response = await fetch('/api/admin/audit-logs', {
                 headers: { 'Authorization': `Bearer ${this.sessionToken}` }
             });
-            
+
             if (!response.ok) {
                 throw new Error('Failed to load audit logs');
             }
-            
+
             const logs = await response.json();
             const container = document.getElementById('audit-logs-list');
             const filterSelect = document.getElementById('audit-log-filter');
-            
+
             if (!container) return;
-            
+
             const selectedFilter = filterSelect?.value || 'all';
-            const filteredLogs = selectedFilter === 'all' 
-                ? logs 
+            const filteredLogs = selectedFilter === 'all'
+                ? logs
                 : logs.filter(log => log.action === selectedFilter);
-            
+
             if (!filteredLogs || filteredLogs.length === 0) {
                 container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">감사 로그가 없습니다.</p>';
                 return;
             }
-            
+
             container.innerHTML = filteredLogs.map(log => {
                 const actionText = {
                     'kick_user': '유저 강퇴',
@@ -1211,7 +1234,7 @@ class AdminDashboard {
                     'send_announcement': '공지 전송',
                     'UNBAN_IP': 'IP 차단 해제'
                 }[log.action] || log.action;
-                
+
                 const actionColor = {
                     'kick_user': 'text-red-400',
                     'edit_message': 'text-yellow-400',
@@ -1219,7 +1242,7 @@ class AdminDashboard {
                     'send_announcement': 'text-blue-400',
                     'UNBAN_IP': 'text-green-400'
                 }[log.action] || 'text-gray-400';
-                
+
                 return `
                     <div class="bg-gray-700 rounded-lg p-3">
                         <div class="flex justify-between items-start mb-1">
@@ -1231,12 +1254,12 @@ class AdminDashboard {
                     </div>
                 `;
             }).join('');
-            
+
         } catch (error) {
             console.error('Load audit logs error:', error);
         }
     }
-    
+
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;

@@ -17,21 +17,21 @@ export class ChatRoom {
         this.bannedSessions = new Map(); // sessionId -> { bannedUntil: timestamp, reason: string }
         this.currentAnnouncement = null; // Current active announcement
         this.auditLogs = []; // Audit logs for admin actions
-        
+
         // Periodic cleanup of stale data (every 5 minutes)
         this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
     }
 
     async initializeMessages() {
         if (this.initialized) return;
-        
+
         // Load messages from Durable Object storage
         const stored = await this.state.storage.get('messages');
         if (stored) {
             // Filter out messages older than 12 hours
             const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
             this.messages = stored.filter(msg => msg.timestamp > twelveHoursAgo);
-            
+
             // Save cleaned messages back if any were removed
             if (this.messages.length !== stored.length) {
                 await this.state.storage.put('messages', this.messages);
@@ -61,16 +61,16 @@ export class ChatRoom {
         if (announcement) {
             this.currentAnnouncement = announcement;
         }
-        
+
         this.initialized = true;
     }
 
     async fetch(request) {
         // Get HMAC_SECRET from request headers
         const HMAC_SECRET = request.headers.get('X-HMAC-Secret');
-        
+
         const url = new URL(request.url);
-        
+
         // Admin API endpoints
         if (url.pathname === '/admin/metrics') {
             return new Response(JSON.stringify({
@@ -83,7 +83,7 @@ export class ChatRoom {
                 headers: { 'Content-Type': 'application/json' }
             });
         }
-        
+
         if (url.pathname === '/admin/sessions') {
             const sessions = Array.from(this.userMetadata.entries()).map(([sessionId, metadata]) => ({
                 sessionId,
@@ -92,12 +92,12 @@ export class ChatRoom {
                 messageCount: metadata.messageCount,
                 lastMessageTime: metadata.lastMessageTime
             }));
-            
+
             return new Response(JSON.stringify(sessions), {
                 headers: { 'Content-Type': 'application/json' }
             });
         }
-        
+
         if (url.pathname === '/admin/messages') {
             return new Response(JSON.stringify(this.messages), {
                 headers: { 'Content-Type': 'application/json' }
@@ -123,38 +123,38 @@ export class ChatRoom {
         if (url.pathname === '/admin/announce' && request.method === 'POST') {
             return await this.handleAdminAnnounce(request);
         }
-        
+
         if (url.pathname === '/admin/banned-ips') {
             return await this.handleAdminBannedIPs();
         }
-        
+
         if (url.pathname === '/admin/unban-ip' && request.method === 'POST') {
             return await this.handleAdminUnbanIP(request);
         }
-        
+
         if (url.pathname === '/admin/user-details') {
             return await this.handleAdminUserDetails(url);
         }
-        
+
         if (url.pathname === '/admin/audit-logs') {
             return await this.handleAdminAuditLogs();
         }
-        
+
         if (url.pathname === '/check-ban') {
             return await this.handleCheckBan(url, request);
         }
-        
+
         // Initialize messages from storage on first request
         await this.initializeMessages();
-        
+
         const clientIP = request.headers.get('CF-Connecting-IP');
         if (!clientIP) {
-            return new Response(JSON.stringify({ error: 'Invalid request' }), { 
+            return new Response(JSON.stringify({ error: 'Invalid request' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
-        
+
         // Check if IP is banned
         const banInfo = this.bannedIPs.get(clientIP);
         if (banInfo) {
@@ -165,7 +165,7 @@ export class ChatRoom {
                     error: 'banned',
                     message: `이 IP는 ${remainingSeconds}초 동안 차단되었습니다.`,
                     remainingSeconds
-                }), { 
+                }), {
                     status: 403,
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -175,7 +175,7 @@ export class ChatRoom {
                 await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
             }
         }
-        
+
         // Check IP-based connection limit
         const currentConnections = this.ipConnections.get(clientIP) || 0;
         if (currentConnections >= RATE_LIMIT.MAX_CONNECTIONS_PER_IP) {
@@ -271,7 +271,7 @@ export class ChatRoom {
 
             // Find the message
             const messageIndex = this.messages.findIndex(msg => msg.messageId === messageId);
-            
+
             if (messageIndex === -1) {
                 return new Response(JSON.stringify({ error: 'Message not found' }), {
                     status: 404,
@@ -348,7 +348,7 @@ export class ChatRoom {
 
             // Find the message
             const messageIndex = this.messages.findIndex(msg => msg.messageId === messageId);
-            
+
             if (messageIndex === -1) {
                 return new Response(JSON.stringify({ error: 'Message not found' }), {
                     status: 404,
@@ -406,7 +406,7 @@ export class ChatRoom {
             // Find the session
             const websocket = this.sessions.get(sessionId);
             const metadata = this.userMetadata.get(sessionId);
-            
+
             if (!websocket && !metadata) {
                 return new Response(JSON.stringify({ error: 'Session not found' }), {
                     status: 404,
@@ -416,20 +416,24 @@ export class ChatRoom {
 
             const clientIP = metadata?.ip;
 
+            // Detect shared IP (NAT/internal network)
+            const ipConnectionCount = clientIP ? (this.ipConnections.get(clientIP) || 0) : 0;
+            const isSharedIP = ipConnectionCount > 1;
+
             // Ban IP and Session if duration is specified
             if (banDuration > 0) {
                 const bannedUntil = Date.now() + (banDuration * 1000);
-                
-                // Ban the specific session
+
+                // Always ban the specific session
                 this.bannedSessions.set(sessionId, {
                     bannedUntil,
                     reason: 'Admin kick',
                     ip: clientIP
                 });
                 await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
-                
-                // Ban the IP if available
-                if (clientIP) {
+
+                // Ban IP only if NOT shared (to avoid banning innocent users on same network)
+                if (clientIP && !isSharedIP) {
                     this.bannedIPs.set(clientIP, {
                         bannedUntil,
                         reason: 'Admin kick',
@@ -438,31 +442,61 @@ export class ChatRoom {
                     await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
                 }
 
-                // Kick all sessions from this IP or with this sessionId
-                for (const [sid, ws] of this.sessions.entries()) {
-                    const meta = this.userMetadata.get(sid);
-                    const shouldKick = sid === sessionId || (meta && meta.ip === clientIP);
-                    
-                    if (shouldKick) {
+                if (isSharedIP) {
+                    // Shared IP: only kick the target session
+                    if (websocket) {
                         try {
-                            ws.send(JSON.stringify({
+                            websocket.send(JSON.stringify({
                                 type: 'kicked',
                                 content: `관리자에 의해 ${banDuration}초간 차단되었습니다.`,
                                 banDuration,
                                 permanent: true
                             }));
-                            ws.close(1008, 'Kicked by admin');
+                            websocket.close(1008, 'Kicked by admin');
                         } catch (e) {
                             console.error('Failed to kick session:', e);
                         }
-                        this.sessions.delete(sid);
-                        this.userMetadata.delete(sid);
-                        this.typingUsers.delete(sid);
                     }
-                }
+                    this.sessions.delete(sessionId);
+                    this.userMetadata.delete(sessionId);
+                    this.typingUsers.delete(sessionId);
 
-                // Update IP connection count
-                this.ipConnections.delete(clientIP);
+                    // Decrement IP connection count (don't delete, other users still connected)
+                    if (clientIP) {
+                        const currentCount = this.ipConnections.get(clientIP) || 0;
+                        if (currentCount > 1) {
+                            this.ipConnections.set(clientIP, currentCount - 1);
+                        } else {
+                            this.ipConnections.delete(clientIP);
+                        }
+                    }
+                } else {
+                    // Single IP: kick all sessions from this IP (original behavior)
+                    for (const [sid, ws] of this.sessions.entries()) {
+                        const meta = this.userMetadata.get(sid);
+                        const shouldKick = sid === sessionId || (meta && meta.ip === clientIP);
+
+                        if (shouldKick) {
+                            try {
+                                ws.send(JSON.stringify({
+                                    type: 'kicked',
+                                    content: `관리자에 의해 ${banDuration}초간 차단되었습니다.`,
+                                    banDuration,
+                                    permanent: true
+                                }));
+                                ws.close(1008, 'Kicked by admin');
+                            } catch (e) {
+                                console.error('Failed to kick session:', e);
+                            }
+                            this.sessions.delete(sid);
+                            this.userMetadata.delete(sid);
+                            this.typingUsers.delete(sid);
+                        }
+                    }
+
+                    // Delete IP connection count entirely
+                    this.ipConnections.delete(clientIP);
+                }
             } else {
                 // Just kick without ban
                 if (websocket) {
@@ -495,18 +529,23 @@ export class ChatRoom {
             this.broadcastUserCount();
 
             // Add audit log
+            const banType = isSharedIP ? 'session_only' : 'ip_and_session';
             await this.addAuditLog('kick_user', `Kicked session ${sessionId}`, {
                 sessionId,
                 ip: clientIP,
                 banDuration,
-                banned: banDuration > 0
+                banned: banDuration > 0,
+                sharedIP: isSharedIP,
+                banType
             });
 
-            return new Response(JSON.stringify({ 
+            return new Response(JSON.stringify({
                 success: true,
                 banned: banDuration > 0,
                 banDuration,
-                ip: clientIP
+                ip: clientIP,
+                sharedIP: isSharedIP,
+                banType
             }), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -546,7 +585,7 @@ export class ChatRoom {
                 content: this.currentAnnouncement.content,
                 timestamp: this.currentAnnouncement.timestamp
             };
-            
+
             console.log('Active sessions:', this.sessions.size);
             this.broadcast(announcementMessage);
 
@@ -556,9 +595,9 @@ export class ChatRoom {
                 sessionsNotified: this.sessions.size
             });
 
-            return new Response(JSON.stringify({ 
-                success: true, 
-                sessionsNotified: this.sessions.size 
+            return new Response(JSON.stringify({
+                success: true,
+                sessionsNotified: this.sessions.size
             }), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -574,7 +613,7 @@ export class ChatRoom {
     async handleAdminBannedIPs() {
         const now = Date.now();
         const bannedList = [];
-        
+
         for (const [ip, banInfo] of this.bannedIPs.entries()) {
             if (now < banInfo.bannedUntil) {
                 bannedList.push({
@@ -586,7 +625,7 @@ export class ChatRoom {
                 });
             }
         }
-        
+
         return new Response(JSON.stringify(bannedList), {
             headers: { 'Content-Type': 'application/json' }
         });
@@ -596,20 +635,20 @@ export class ChatRoom {
         try {
             const data = await request.json();
             const ip = data.ip;
-            
+
             if (!ip) {
                 return new Response(JSON.stringify({ error: 'Missing IP' }), {
                     status: 400,
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
-            
+
             this.bannedIPs.delete(ip);
             await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
-            
+
             // Add audit log
             await this.addAuditLog('UNBAN_IP', `Unbanned IP: ${ip}`);
-            
+
             return new Response(JSON.stringify({ success: true }), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -624,18 +663,18 @@ export class ChatRoom {
 
     async handleAdminUserDetails(url) {
         const sessionId = url.searchParams.get('sessionId');
-        
+
         if (!sessionId) {
             return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
-        
+
         const metadata = this.userMetadata.get(sessionId);
         const userMessages = this.messages.filter(m => m.sessionId === sessionId);
         const isOnline = this.sessions.has(sessionId);
-        
+
         return new Response(JSON.stringify({
             sessionId,
             metadata: metadata || null,
@@ -652,7 +691,7 @@ export class ChatRoom {
     async handleAdminAuditLogs() {
         // Return last 100 audit logs
         const logs = this.auditLogs.slice(-100).reverse();
-        
+
         return new Response(JSON.stringify(logs), {
             headers: { 'Content-Type': 'application/json' }
         });
@@ -662,7 +701,7 @@ export class ChatRoom {
         const ip = url.searchParams.get('ip') || request.headers.get('CF-Connecting-IP') || 'unknown';
         const sessionId = url.searchParams.get('sessionId');
         const now = Date.now();
-        
+
         // Check session ban first
         if (sessionId) {
             const sessionBanInfo = this.bannedSessions.get(sessionId);
@@ -681,7 +720,7 @@ export class ChatRoom {
                 await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
             }
         }
-        
+
         // Check IP ban
         const banInfo = this.bannedIPs.get(ip);
         if (banInfo) {
@@ -700,7 +739,7 @@ export class ChatRoom {
                 await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
             }
         }
-        
+
         return new Response(JSON.stringify({ banned: false }), {
             headers: { 'Content-Type': 'application/json' }
         });
@@ -729,7 +768,7 @@ export class ChatRoom {
                         }
                         break;
                     }
-                    
+
                     case 'join': {
                         await this.handleJoin(data, websocket, clientIP, (sid, meta) => {
                             sessionId = sid;
@@ -778,7 +817,7 @@ export class ChatRoom {
                 this.sessions.delete(sessionId);
                 this.userMetadata.delete(sessionId);
                 this.typingUsers.delete(sessionId);
-                
+
                 // Update IP connection count
                 const currentCount = this.ipConnections.get(clientIP) || 0;
                 if (currentCount > 1) {
@@ -786,7 +825,7 @@ export class ChatRoom {
                 } else {
                     this.ipConnections.delete(clientIP);
                 }
-                
+
                 metrics.activeConnections--;
                 this.broadcastUserCount();
             }
@@ -800,7 +839,7 @@ export class ChatRoom {
 
     async handleJoin(data, websocket, clientIP, setSession) {
         const sessionId = data.sessionId || this.generateSessionId();
-        
+
         // Check if session is banned
         const sessionBanInfo = this.bannedSessions.get(sessionId);
         if (sessionBanInfo) {
@@ -819,7 +858,7 @@ export class ChatRoom {
                 await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
             }
         }
-        
+
         // Check if IP is still banned
         const banInfo = this.bannedIPs.get(clientIP);
         if (banInfo) {
@@ -838,15 +877,15 @@ export class ChatRoom {
                 await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
             }
         }
-        
+
         const existingMetadata = this.userMetadata.get(sessionId);
         const wasAlreadyConnected = this.sessions.has(sessionId);
-        
+
         let metadata;
         if (wasAlreadyConnected || existingMetadata) {
             console.log('Session reconnecting:', sessionId);
             this.sessions.set(sessionId, websocket);
-            
+
             metadata = existingMetadata || {
                 ip: clientIP,
                 joinTime: Date.now(),
@@ -854,12 +893,12 @@ export class ChatRoom {
                 lastMessageTime: 0,
             };
             this.userMetadata.set(sessionId, metadata);
-            
+
             const recentMessages = this.messages.slice(-50);
             for (const msg of recentMessages) {
                 this.sendToSession(sessionId, msg);
             }
-            
+
             if (this.currentAnnouncement) {
                 this.sendToSession(sessionId, {
                     type: 'announcement',
@@ -867,11 +906,11 @@ export class ChatRoom {
                     timestamp: this.currentAnnouncement.timestamp
                 });
             }
-            
+
             this.broadcastUserCount();
         } else {
             console.log('New session joining:', sessionId);
-            
+
             metadata = {
                 ip: clientIP,
                 joinTime: Date.now(),
@@ -881,9 +920,9 @@ export class ChatRoom {
 
             this.sessions.set(sessionId, websocket);
             this.userMetadata.set(sessionId, metadata);
-            
+
             this.ipConnections.set(clientIP, (this.ipConnections.get(clientIP) || 0) + 1);
-            
+
             metrics.totalConnections++;
             metrics.activeConnections++;
 
@@ -893,12 +932,12 @@ export class ChatRoom {
                 type: 'system',
                 content: '채팅방에 입장했습니다.'
             });
-            
+
             const recentMessages = this.messages.slice(-50);
             for (const msg of recentMessages) {
                 this.sendToSession(sessionId, msg);
             }
-            
+
             if (this.currentAnnouncement) {
                 this.sendToSession(sessionId, {
                     type: 'announcement',
@@ -931,7 +970,7 @@ export class ChatRoom {
                 data.signature,
                 HMAC_SECRET
             );
-            
+
             if (!isValid) {
                 this.sendToSession(sessionId, {
                     type: 'error',
@@ -974,7 +1013,7 @@ export class ChatRoom {
             timestamp: Date.now(),
             editedAt: null
         };
-        
+
         // 답장 정보 추가
         if (data.replyTo) {
             message.replyTo = {
@@ -982,7 +1021,7 @@ export class ChatRoom {
                 content: this.sanitizeInput(data.replyTo.content),
                 isOwnMessage: data.replyTo.isOwnMessage
             };
-            
+
             // 비밀 메시지 정보 추가
             if (data.replyTo.isSecret) {
                 message.replyTo.isSecret = true;
@@ -990,7 +1029,7 @@ export class ChatRoom {
                 message.replyTo.targetSessionId = data.replyTo.targetSessionId;
             }
         }
-        
+
         if (data.file && data.file.url) {
             message.file = {
                 url: data.file.url,
@@ -999,16 +1038,16 @@ export class ChatRoom {
                 filetype: data.file.filetype
             };
         }
-        
+
         message.signature = await generateMessageSignature(message, HMAC_SECRET);
 
         this.messages.push(message);
-        
+
         const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
         this.messages = this.messages
             .filter(msg => msg.timestamp > twelveHoursAgo)
             .slice(-500);
-        
+
         this.state.storage.put('messages', this.messages);
 
         this.broadcast(message);
@@ -1033,7 +1072,7 @@ export class ChatRoom {
                 data.signature,
                 HMAC_SECRET
             );
-            
+
             if (!isValid) {
                 this.sendToSession(sessionId, {
                     type: 'error',
@@ -1053,7 +1092,7 @@ export class ChatRoom {
         }
 
         const messageIndex = this.messages.findIndex(msg => msg.messageId === data.messageId);
-        
+
         if (messageIndex === -1) {
             this.sendToSession(sessionId, {
                 type: 'error',
@@ -1131,7 +1170,7 @@ export class ChatRoom {
         }
 
         const messageIndex = this.messages.findIndex(msg => msg.messageId === data.messageId);
-        
+
         if (messageIndex === -1) {
             this.sendToSession(sessionId, {
                 type: 'error',
@@ -1190,7 +1229,7 @@ export class ChatRoom {
     validateMessage(data, metadata) {
         const hasFile = data.file && data.file.url;
         const hasContent = data.content && data.content.trim().length > 0;
-        
+
         if (!hasContent && !hasFile) {
             return '메시지 내용이 비어있습니다.';
         }
@@ -1205,7 +1244,7 @@ export class ChatRoom {
         }
 
         const oneMinuteAgo = now - 60000;
-        if (metadata.messageCount > RATE_LIMIT.MAX_MESSAGES_PER_MINUTE && 
+        if (metadata.messageCount > RATE_LIMIT.MAX_MESSAGES_PER_MINUTE &&
             metadata.joinTime > oneMinuteAgo) {
             return '분당 메시지 전송 한도를 초과했습니다.';
         }
@@ -1237,15 +1276,15 @@ export class ChatRoom {
             details,
             metadata
         };
-        
+
         this.auditLogs.push(log);
-        
+
         if (this.auditLogs.length > 500) {
             this.auditLogs = this.auditLogs.slice(-500);
         }
-        
+
         await this.state.storage.put('auditLogs', this.auditLogs);
-        
+
         return log;
     }
 
@@ -1320,11 +1359,11 @@ export class ChatRoom {
                 this.userMetadata.delete(sessionId);
             }
         }
-        
+
         const twelveHoursAgo = now - messageRetention;
         const initialLength = this.messages.length;
         this.messages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
-        
+
         if (this.messages.length !== initialLength) {
             this.state.storage.put('messages', this.messages);
         }
