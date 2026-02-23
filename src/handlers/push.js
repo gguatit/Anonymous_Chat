@@ -8,13 +8,29 @@ export async function handleGetVapidKey(request, env, corsHeaders) {
     const publicKey = env.VAPID_PUBLIC_KEY;
 
     if (!publicKey) {
+        console.warn('[Push API] VAPID_PUBLIC_KEY not configured');
         return new Response(JSON.stringify({ error: 'Push not configured' }), {
             status: 503,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
 
-    return new Response(JSON.stringify({ publicKey }), {
+    // Validate and sanitize the key
+    const sanitizedKey = publicKey.trim();
+    
+    // Log key info for debugging (first 20 chars only)
+    console.log('[Push API] Returning VAPID key:', sanitizedKey.substring(0, 20) + '...', 'length:', sanitizedKey.length);
+    
+    // Validate base64url format
+    if (!/^[A-Za-z0-9_-]+$/.test(sanitizedKey)) {
+        console.error('[Push API] Invalid VAPID key format - contains invalid characters');
+        return new Response(JSON.stringify({ error: 'Invalid VAPID key configuration' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    return new Response(JSON.stringify({ publicKey: sanitizedKey }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 }
