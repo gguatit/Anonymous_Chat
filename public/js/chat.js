@@ -45,6 +45,10 @@ class ChatClient {
         if (!result.supported || !bellBtn) {
             if (result.error) {
                 console.log('[Push] Notifications unavailable:', result.error);
+                // Show user-friendly message if VAPID keys are missing
+                if (result.error.includes('not configured')) {
+                    console.warn('[Push] Server push notifications not configured. Contact administrator.');
+                }
             }
             return;
         }
@@ -54,12 +58,21 @@ class ChatClient {
         this.updateBellIcon(bellBtn);
 
         bellBtn.addEventListener('click', async () => {
-            const success = await this.pushManager.toggle(this.sessionManager.getSessionId());
-            if (success !== undefined) {
-                this.updateBellIcon(bellBtn);
-            } else {
-                // Toggle failed, show error
-                this.ui.displayError('알림 설정을 변경할 수 없습니다.');
+            try {
+                console.log('[Chat] User clicked notification toggle');
+                const success = await this.pushManager.toggle(this.sessionManager.getSessionId());
+                
+                if (success !== undefined) {
+                    this.updateBellIcon(bellBtn);
+                    console.log('[Chat] Notification toggle successful:', success);
+                } else {
+                    // Toggle failed, show detailed error
+                    console.error('[Chat] Notification toggle returned undefined');
+                    this.ui.displayError('알림 설정을 변경할 수 없습니다. 브라우저 권한을 확인하거나 페이지를 새로고침 해주세요.');
+                }
+            } catch (error) {
+                console.error('[Chat] Notification toggle error:', error);
+                this.ui.displayError('알림 설정 중 오류가 발생했습니다: ' + error.message);
             }
         });
     }

@@ -58,26 +58,43 @@ export class PushNotificationManager {
      */
     async subscribe(sessionId) {
         try {
+            console.log('[Push] Starting subscription process...');
+            
             // Request permission
             const permission = await Notification.requestPermission();
+            console.log('[Push] Permission result:', permission);
+            
             if (permission !== 'granted') {
-                console.log('[Push] Permission denied');
+                console.log('[Push] Permission denied by user');
                 return false;
             }
 
             if (!this.swRegistration) {
-                await this.initialize();
+                console.log('[Push] Re-initializing Service Worker...');
+                const initResult = await this.initialize();
+                if (!initResult.supported) {
+                    console.error('[Push] Initialization failed:', initResult.error);
+                    return false;
+                }
             }
 
+            if (!this.vapidPublicKey) {
+                console.error('[Push] VAPID public key not available');
+                return false;
+            }
+
+            console.log('[Push] Converting VAPID key...');
             // Convert VAPID key from base64url to Uint8Array
             const applicationServerKey = this.urlBase64ToUint8Array(this.vapidPublicKey);
 
+            console.log('[Push] Subscribing to push service...');
             // Subscribe to push
             const subscription = await this.swRegistration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey
             });
 
+            console.log('[Push] Sending subscription to server...');
             // Send subscription to server
             const response = await fetch('/api/push/subscribe', {
                 method: 'POST',
@@ -90,14 +107,15 @@ export class PushNotificationManager {
 
             if (response.ok) {
                 this.isSubscribed = true;
-                console.log('[Push] Subscribed successfully');
+                console.log('[Push] ✓ Subscribed successfully');
                 return true;
             } else {
-                console.error('[Push] Server rejected subscription');
+                const errorText = await response.text();
+                console.error('[Push] ✗ Server rejected subscription:', response.status, errorText);
                 return false;
             }
         } catch (error) {
-            console.error('[Push] Subscribe failed:', error);
+            console.error('[Push] ✗ Subscribe failed:', error.name, error.message);
             return false;
         }
     }
