@@ -24,6 +24,7 @@ import {
     handleAdminAuditLogs
 } from './handlers/admin.js';
 import { handleWebSocket, handleCheckBan } from './handlers/websocket.js';
+import { handleGetVapidKey, handlePushSubscribe, handlePushUnsubscribe } from './handlers/push.js';
 import { handleMetrics, handleHealth } from './handlers/health.js';
 
 // Import Durable Object
@@ -41,7 +42,7 @@ export default {
                 return new Response('Service configuration error', { status: 500 });
             }
             const HMAC_SECRET = env.HMAC_SECRET;
-            
+
             const url = new URL(request.url);
 
             // Force HTTPS redirect in production
@@ -108,6 +109,17 @@ export default {
                 return await handleAdminAuditLogs(request, env, corsHeaders);
             }
 
+            // Push notification endpoints
+            if (url.pathname === '/api/push/vapid-key') {
+                return await handleGetVapidKey(request, env, corsHeaders);
+            }
+            if (url.pathname === '/api/push/subscribe') {
+                return await handlePushSubscribe(request, env, corsHeaders);
+            }
+            if (url.pathname === '/api/push/unsubscribe') {
+                return await handlePushUnsubscribe(request, env, corsHeaders);
+            }
+
             // Check IP ban status
             if (url.pathname === '/api/check-ban') {
                 return await handleCheckBan(request, env, corsHeaders);
@@ -133,18 +145,18 @@ export default {
                 try {
                     // Try to fetch the requested asset
                     const assetResponse = await env.ASSETS.fetch(request);
-                    
+
                     // If asset found, return it
                     if (assetResponse.status === 200) {
                         return assetResponse;
                     }
-                    
+
                     // For SPA routing: if not found and not an API endpoint, serve index.html
                     if (assetResponse.status === 404 && !url.pathname.startsWith('/api')) {
                         const indexRequest = new Request(new URL('/index.html', request.url), request);
                         return await env.ASSETS.fetch(indexRequest);
                     }
-                    
+
                     return assetResponse;
                 } catch (e) {
                     console.log('Asset fetch error:', e);

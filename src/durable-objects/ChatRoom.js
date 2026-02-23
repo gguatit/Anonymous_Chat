@@ -1299,6 +1299,19 @@ export class ChatRoom {
                 }
             }
         }
+
+        // Send push notifications to offline subscribers (fire-and-forget)
+        if (message.type === 'message' && this.env?.PUSH_SUBSCRIPTIONS) {
+            this.sendPushNotifications(message).catch(err => {
+                console.error('[Push] Background push error:', err);
+            });
+        }
+    }
+
+    async sendPushNotifications(message) {
+        const { sendPushToOfflineUsers } = await import('../handlers/push.js');
+        const onlineSessionIds = new Set(this.sessions.keys());
+        await sendPushToOfflineUsers(this.env, onlineSessionIds, message);
     }
 
     sendToSession(sessionId, message) {

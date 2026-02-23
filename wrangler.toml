@@ -17,6 +17,12 @@ id = "31c6551451f6466bb1ad33fbe10bf966"
 binding = "ADMIN_LOGS"
 id = "5eba46ff86454bf0a6dfb6791789e4f2"
 
+# 푸시 알림 구독 정보 KV
+# wrangler kv:namespace create PUSH_SUBSCRIPTIONS 후 id 업데이트 필요
+[[kv_namespaces]]
+binding = "PUSH_SUBSCRIPTIONS"
+id = "52dc3235581a4b2789625b4b0a837fda"
+
 # Durable Objects for WebSocket state management
 [[durable_objects.bindings]]
 name = "CHAT_ROOM"
@@ -37,6 +43,8 @@ ENVIRONMENT = "production"
 # HMAC_SECRET should be set in production via: wrangler secret put HMAC_SECRET
 # ADMIN_ID should be set in production via: wrangler secret put ADMIN_ID
 # ADMIN_PASSWORD should be set in production via: wrangler secret put ADMIN_PASSWORD
+# VAPID_PUBLIC_KEY should be set via: wrangler secret put VAPID_PUBLIC_KEY
+# VAPID_PRIVATE_KEY should be set via: wrangler secret put VAPID_PRIVATE_KEY
 
 # Observability configuration
 [observability]
