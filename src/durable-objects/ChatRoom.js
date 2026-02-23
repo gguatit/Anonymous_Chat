@@ -450,7 +450,8 @@ export class ChatRoom {
                                 type: 'kicked',
                                 content: `관리자에 의해 ${banDuration}초간 차단되었습니다.`,
                                 banDuration,
-                                permanent: true
+                                permanent: true,
+                                sessionBan: true
                             }));
                             websocket.close(1008, 'Kicked by admin');
                         } catch (e) {

@@ -12,13 +12,13 @@ class ChatClient {
         this.ui = new UIManager();
         this.fileUpload = new FileUploadManager('https://static.a85labs.net');
         this.deadDrop = new DeadDropClient('https://api.kalpha.kr');
-        
+
         // State
         this.typingTimeout = null;
         this.lastMessageTime = 0;
         this.messageRateLimit = 1000; // 1 message per second
         this.isTyping = false;
-        
+
         // Initialize WebSocket with message handler
         this.wsManager = new WebSocketManager(
             this.sessionManager.getSessionId(),
@@ -28,7 +28,7 @@ class ChatClient {
                 onError: (message) => this.ui.displayError(message)
             }
         );
-        
+
         this.initializeUI();
         this.wsManager.connect();
     }
@@ -49,7 +49,7 @@ class ChatClient {
         switch (data.type) {
             case 'message':
                 this.ui.displayMessage(
-                    data, 
+                    data,
                     data.sessionId === this.sessionManager.getSessionId(),
                     this.sessionManager.getSessionId()
                 );
@@ -82,25 +82,31 @@ class ChatClient {
                 // User was kicked by admin
                 const banDuration = data.banDuration || 0;
                 const isPermanent = data.permanent === true;
-                
+                const isSessionBan = data.sessionBan === true;
+
                 if (isPermanent && banDuration > 0) {
-                    // 영구 차단 - localStorage 세션 삭제하고 재접속 금지
+                    // 차단 - 재접속 금지
                     const minutes = Math.floor(banDuration / 60);
                     const seconds = banDuration % 60;
                     const timeStr = minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
-                    
+
                     this.ui.displayError(`${data.content}\n재접속은 ${timeStr} 후 가능합니다.`);
                     this.ui.setInputEnabled(false);
-                    
-                    // 세션 ID 삭제하여 재접속 시 새 ID 부여
-                    localStorage.removeItem('chatSessionId');
-                    
+
+                    if (isSessionBan) {
+                        // 세션 밴: 세션 ID를 유지하여 재접속 시 같은 (밴된) ID로 거부되도록 함
+                        // localStorage.removeItem 하지 않음!
+                    } else {
+                        // IP 밴: 세션 ID 삭제 (IP로 차단되므로 새 세션이어도 거부됨)
+                        localStorage.removeItem('chatSessionId');
+                    }
+
                     // WebSocket 연결 완전 종료
                     if (this.wsManager) {
                         this.wsManager.manualClose = true;
                         this.wsManager.disconnect();
                     }
-                    
+
                     alert(`관리자에 의해 ${timeStr}간 차단되었습니다.\n\n차단이 해제될 때까지 접속이 불가능합니다.\n차단 시간이 지난 후 페이지를 새로고침하여 재접속할 수 있습니다.`);
                 } else if (banDuration > 0) {
                     const minutes = Math.floor(banDuration / 60);
@@ -123,15 +129,15 @@ class ChatClient {
                 // Session or IP is banned
                 this.ui.displayError(data.content);
                 this.ui.setInputEnabled(false);
-                
+
                 // 세션 ID 삭제
                 localStorage.removeItem('chatSessionId');
-                
+
                 // WebSocket 연결 종료
                 if (this.wsManager) {
                     this.wsManager.disconnect();
                 }
-                
+
                 const remainingTime = data.remainingSeconds || 0;
                 if (remainingTime > 0) {
                     const mins = Math.floor(remainingTime / 60);
@@ -150,7 +156,7 @@ class ChatClient {
 
     handleConnectionChange(status, attempt, max) {
         let statusText = '';
-        
+
         switch (status) {
             case 'connected':
                 statusText = '연결됨';
@@ -174,7 +180,7 @@ class ChatClient {
                 this.ui.setInputEnabled(false);
                 break;
         }
-        
+
         this.ui.updateConnectionStatus(status, statusText);
     }
 
@@ -184,7 +190,7 @@ class ChatClient {
         const message = this.ui.getInputValue();
         const trimmedMessage = message.trim();
         const hasFile = this.fileUpload.hasFile();
-        
+
         // 메시지나 파일 중 하나는 있어야 함
         if (!trimmedMessage && !hasFile) return;
 
@@ -209,7 +215,7 @@ class ChatClient {
             sessionId: this.sessionManager.getSessionId(),
             timestamp: now
         };
-        
+
         // 답장 정보 추가
         const replyingTo = this.ui.getReplyingTo();
         if (replyingTo) {
@@ -246,9 +252,9 @@ class ChatClient {
         if (hasFile) {
             try {
                 const fileData = await this.fileUpload.uploadFile();
-                
+
                 console.log('File uploaded successfully:', fileData);
-                
+
                 // Add file info to message
                 messageData.file = {
                     url: fileData.url,
@@ -256,7 +262,7 @@ class ChatClient {
                     filesize: fileData.filesize,
                     filetype: fileData.filetype
                 };
-                
+
                 this.fileUpload.clearFile();
             } catch (error) {
                 console.error('File upload failed:', error);
@@ -297,7 +303,7 @@ class ChatClient {
         if (this.typingTimeout) {
             clearTimeout(this.typingTimeout);
         }
-        
+
         this.typingTimeout = setTimeout(() => {
             if (this.isTyping) {
                 this.isTyping = false;
@@ -348,21 +354,21 @@ class ChatClient {
         // Send delete request to server
         this.wsManager.send(deleteData);
     }
-    
+
     async revealSecretMessage(secretId, container) {
         const btn = container.querySelector('.reveal-secret-btn');
         const contentDiv = container.querySelector('.secret-message-content');
-        
+
         if (!btn || !contentDiv) return;
-        
+
         // 버튼 비활성화 및 로딩 상태 표시
         btn.disabled = true;
         btn.textContent = '읽는 중...';
-        
+
         try {
             // Dead Drop에서 메시지 읽기 (한 번만 가능)
             const result = await this.deadDrop.read(secretId);
-            
+
             // 버튼 숨기고 메시지 표시
             btn.remove();
             contentDiv.classList.remove('hidden');
@@ -375,7 +381,7 @@ class ChatClient {
             btn.textContent = '읽기 실패';
             btn.classList.add('bg-red-600', 'hover:bg-red-500');
             btn.classList.remove('bg-purple-600', 'hover:bg-purple-500');
-            
+
             // 에러 메시지 표시
             contentDiv.classList.remove('hidden');
             contentDiv.innerHTML = `
