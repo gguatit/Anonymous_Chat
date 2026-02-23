@@ -424,6 +424,54 @@ export async function handleAdminDeleteMessage(request, env, corsHeaders) {
     }
 }
 
+export async function handleAdminDeleteAllMessages(request, env, corsHeaders) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    try {
+        const body = await request.json();
+        const confirmation = body.confirmation;
+
+        if (confirmation !== 'DELETE_ALL_MESSAGES') {
+            return new Response(JSON.stringify({ error: 'Invalid confirmation' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/delete-all-messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
+            },
+            body: JSON.stringify({ confirmation })
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminDeleteAllMessages error:', error);
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 export async function handleAdminKickUser(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
