@@ -102,7 +102,18 @@ export async function handlePushUnsubscribe(request, env, corsHeaders) {
  * @param {Object} messageData - Message to send as notification
  */
 export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData) {
-    if (!env.PUSH_SUBSCRIPTIONS || !env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) {
+    console.log('[Push] sendPushToOfflineUsers called');
+
+    if (!env.PUSH_SUBSCRIPTIONS) {
+        console.log('[Push] ABORT: no PUSH_SUBSCRIPTIONS KV');
+        return;
+    }
+    if (!env.VAPID_PUBLIC_KEY) {
+        console.log('[Push] ABORT: no VAPID_PUBLIC_KEY');
+        return;
+    }
+    if (!env.VAPID_PRIVATE_KEY) {
+        console.log('[Push] ABORT: no VAPID_PRIVATE_KEY');
         return;
     }
 
@@ -115,6 +126,7 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
     try {
         // List all subscriptions from KV
         const list = await env.PUSH_SUBSCRIPTIONS.list({ prefix: 'sub:', limit: 100 });
+        console.log(`[Push] Found ${list.keys.length} subscriptions in KV`);
 
         const pushPromises = [];
 
@@ -122,13 +134,20 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
             const sessionId = key.name.replace('sub:', '');
 
             // Skip if it's the sender's own message
-            if (sessionId === messageData.sessionId) continue;
+            if (sessionId === messageData.sessionId) {
+                console.log(`[Push] Skipping sender: ${sessionId}`);
+                continue;
+            }
 
             try {
                 const subData = await env.PUSH_SUBSCRIPTIONS.get(key.name);
-                if (!subData) continue;
+                if (!subData) {
+                    console.log(`[Push] No data for key: ${key.name}`);
+                    continue;
+                }
 
                 const subscription = JSON.parse(subData);
+                console.log(`[Push] Sending to ${sessionId}, endpoint: ${subscription.endpoint?.substring(0, 60)}...`);
 
                 const payload = JSON.stringify({
                     title: '익명 채팅',
@@ -144,6 +163,8 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
                 pushPromises.push(
                     sendPushNotification(subscription, payload, vapidKeys)
                         .then(async (response) => {
+                            const body = await response.text();
+                            console.log(`[Push] Response for ${sessionId}: ${response.status} ${response.statusText} - ${body}`);
                             // If push service returns 404 or 410, subscription is invalid
                             if (response.status === 404 || response.status === 410) {
                                 await env.PUSH_SUBSCRIPTIONS.delete(key.name);
@@ -151,17 +172,19 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
                             }
                         })
                         .catch((err) => {
-                            console.error(`[Push] Failed to send to ${sessionId}:`, err);
+                            console.error(`[Push] Failed to send to ${sessionId}:`, err.message, err.stack);
                         })
                 );
             } catch (e) {
-                console.error(`[Push] Error processing subscription ${sessionId}:`, e);
+                console.error(`[Push] Error processing subscription ${sessionId}:`, e.message);
             }
         }
 
         // Send all push notifications concurrently
+        console.log(`[Push] Sending ${pushPromises.length} push notifications...`);
         await Promise.allSettled(pushPromises);
+        console.log('[Push] All push notifications processed');
     } catch (error) {
-        console.error('[Push] sendPushToOfflineUsers error:', error);
+        console.error('[Push] sendPushToOfflineUsers error:', error.message, error.stack);
     }
 }

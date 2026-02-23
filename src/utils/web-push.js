@@ -84,9 +84,8 @@ async function generateVAPIDHeaders(endpoint, vapidKeys) {
         new TextEncoder().encode(signingInput)
     );
 
-    // Convert DER signature to raw (r + s)
-    const rawSig = derToRaw(new Uint8Array(signature));
-    const sig = base64urlEncode(rawSig);
+    // Web Crypto ECDSA returns raw IEEE P1363 format (r || s), not DER
+    const sig = base64urlEncode(new Uint8Array(signature));
     const jwt = `${signingInput}.${sig}`;
 
     return {
