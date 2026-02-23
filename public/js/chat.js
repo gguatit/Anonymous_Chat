@@ -127,6 +127,11 @@ class ChatClient {
                 // Remove message from UI
                 this.ui.removeMessage(data.messageId);
                 break;
+            case 'all_messages_deleted':
+                // Clear all messages from UI
+                this.ui.clearAllMessages();
+                this.ui.displaySystemMessage('관리자가 모든 메시지를 삭제했습니다.');
+                break;
             case 'user_count':
                 this.ui.updateUserCount(data.count);
                 break;

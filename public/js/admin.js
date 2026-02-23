@@ -87,6 +87,9 @@ class AdminDashboard {
         this.adminSendBtn?.addEventListener('click', () => this.sendAdminMessage(false));
         this.adminAnnounceBtn?.addEventListener('click', () => this.sendAdminMessage(true));
 
+        this.deleteAllMessagesBtn = document.getElementById('delete-all-messages-btn');
+        this.deleteAllMessagesBtn?.addEventListener('click', () => this.deleteAllMessages());
+
         // Enter = send, Shift+Enter = newline for textarea
         if (this.adminMessageInput) {
             this.adminMessageInput.addEventListener('keydown', (e) => {
@@ -319,6 +322,56 @@ class AdminDashboard {
         } catch (error) {
             console.error('sendAdminMessage error:', error);
             alert('메시지 전송 중 오류가 발생했습니다.');
+        }
+    }
+
+    async deleteAllMessages() {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
+        // First confirmation
+        const firstConfirm = confirm('⚠️ 정말로 모든 메시지를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.');
+        if (!firstConfirm) {
+            return;
+        }
+
+        // Second confirmation with text input
+        const confirmation = prompt('계속하려면 "DELETE_ALL_MESSAGES"를 정확히 입력하세요:');
+        if (confirmation !== 'DELETE_ALL_MESSAGES') {
+            alert('확인 문구가 일치하지 않습니다. 작업이 취소되었습니다.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/delete-all-messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.sessionToken}`
+                },
+                body: JSON.stringify({ confirmation: 'DELETE_ALL_MESSAGES' })
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => null);
+                console.error('Delete all messages failed', err);
+                alert('모든 메시지 삭제에 실패했습니다. 콘솔을 확인하세요.');
+                return;
+            }
+
+            const result = await response.json();
+            console.log('All messages deleted:', result);
+
+            alert(`✓ 모든 메시지가 삭제되었습니다. (${result.deletedCount}개)`);
+
+            // Refresh data to show empty state
+            this.refreshData();
+
+        } catch (error) {
+            console.error('deleteAllMessages error:', error);
+            alert('모든 메시지 삭제 중 오류가 발생했습니다.');
         }
     }
 

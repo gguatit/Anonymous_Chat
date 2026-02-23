@@ -656,6 +656,12 @@ export class UIManager {
         }
     }
 
+    clearAllMessages() {
+        // Remove all message elements
+        const messages = this.messagesContainer.querySelectorAll('[data-message-id]');
+        messages.forEach(msg => msg.remove());
+    }
+
     displaySystemMessage(content) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'text-center text-xs text-gray-500 py-1.5';

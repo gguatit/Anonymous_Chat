@@ -117,6 +117,10 @@ export class ChatRoom {
             return await this.handleAdminDeleteMessage(request);
         }
 
+        if (url.pathname === '/admin/delete-all-messages' && request.method === 'POST') {
+            return await this.handleAdminDeleteAllMessages(request);
+        }
+
         if (url.pathname === '/admin/kick-user' && request.method === 'POST') {
             return await this.handleAdminKickUser(request);
         }
@@ -385,6 +389,51 @@ export class ChatRoom {
         } catch (error) {
             console.error('admin delete message error:', error);
             return new Response(JSON.stringify({ error: 'Failed to delete message' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+    }
+
+    async handleAdminDeleteAllMessages(request) {
+        try {
+            const data = await request.json();
+            const confirmation = data.confirmation;
+
+            if (confirmation !== 'DELETE_ALL_MESSAGES') {
+                return new Response(JSON.stringify({ error: 'Invalid confirmation' }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            const messageCount = this.messages.length;
+
+            // Clear all messages
+            this.messages = [];
+
+            // Persist to storage
+            await this.state.storage.put('messages', this.messages);
+
+            // Broadcast clear to all users
+            this.broadcast({
+                type: 'all_messages_deleted'
+            });
+
+            // Add audit log
+            await this.addAuditLog('admin_delete_all_messages', `Admin deleted all messages (${messageCount} messages)`, {
+                deletedCount: messageCount
+            });
+
+            return new Response(JSON.stringify({ 
+                success: true, 
+                deletedCount: messageCount 
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('admin delete all messages error:', error);
+            return new Response(JSON.stringify({ error: 'Failed to delete all messages' }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }
             });
