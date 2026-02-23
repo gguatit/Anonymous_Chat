@@ -10,27 +10,27 @@ export class UIManager {
         this.typingIndicator = document.getElementById('typing-indicator');
         this.charCount = document.getElementById('char-count');
         this.scrollButton = document.getElementById('scroll-to-bottom');
-        
+
         // 답장 상태
         this.replyingTo = null; // { messageId, content, isOwnMessage, isSecret }
-        
+
         // Announcement banner elements
         this.announcementBanner = document.getElementById('announcement-banner');
         this.announcementContent = document.getElementById('announcement-content');
         this.announcementTime = document.getElementById('announcement-time');
         this.announcementClose = document.getElementById('announcement-close');
-        
+
         // Setup announcement close button
         if (this.announcementClose) {
             this.announcementClose.addEventListener('click', () => {
                 this.hideAnnouncement();
             });
         }
-        
+
         // MutationObserver로 메시지 추가 감지하여 자동 스크롤
         this.initAutoScroll();
     }
-    
+
     /**
      * Validate URL to prevent XSS attacks
      */
@@ -43,7 +43,7 @@ export class UIManager {
             return false;
         }
     }
-    
+
     /**
      * Sanitize and encode URL for HTML attributes
      */
@@ -54,7 +54,7 @@ export class UIManager {
         // Encode special characters
         return url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-    
+
     /**
      * MutationObserver를 사용하여 새 메시지 추가 시 자동 스크롤
      */
@@ -73,7 +73,7 @@ export class UIManager {
                 }
             }
         });
-        
+
         // messagesContainer의 자식 요소 변경 감지
         observer.observe(this.messagesContainer, {
             childList: true,
@@ -84,7 +84,7 @@ export class UIManager {
     initializeEventListeners(callbacks) {
         // Form submission
         this.messageForm.addEventListener('submit', callbacks.onSubmit);
-        
+
         // Input handling
         this.messageInput.addEventListener('input', callbacks.onInput);
         this.messageInput.addEventListener('keydown', callbacks.onTyping);
@@ -102,16 +102,16 @@ export class UIManager {
                 }
             }
         });
-        
+
         // Character count
         this.messageInput.addEventListener('input', () => {
             this.charCount.textContent = this.messageInput.value.length;
         });
-        
+
         // Scroll button
         this.scrollButton.addEventListener('click', callbacks.onScrollClick);
         this.messagesContainer.addEventListener('scroll', callbacks.onScroll);
-        
+
         // Store callbacks
         this.onDelete = callbacks.onDelete;
         this.onRevealSecret = callbacks.onRevealSecret;
@@ -136,17 +136,17 @@ export class UIManager {
             messageDiv.setAttribute('aria-live', 'polite');
             messageDiv.setAttribute('aria-label', '관리자 메시지');
         } else {
-            messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
+            messageDiv.className = 'message-enter p-2.5 rounded-lg ' +
                 (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
         }
         messageDiv.style.maxWidth = '75%';
-        
+
         // 메시지 표식 추가 (MutationObserver가 감지)
         messageDiv.setAttribute('data-message', 'true');
         messageDiv.setAttribute('data-message-id', data.messageId);
         messageDiv.setAttribute('data-session-id', data.sessionId);
         messageDiv.setAttribute('data-timestamp', data.timestamp);
-        
+
         const timestamp = new Date(data.timestamp).toLocaleTimeString('ko-KR', {
             hour: '2-digit',
             minute: '2-digit'
@@ -158,15 +158,15 @@ export class UIManager {
 
         // Build message content
         let contentHtml = '';
-        
+
         // 답장된 메시지 표시
         if (data.replyTo) {
             const replyContent = data.replyTo.content || '[파일]';
-            const truncatedReply = replyContent.length > 50 
-                ? replyContent.substring(0, 50) + '...' 
+            const truncatedReply = replyContent.length > 50
+                ? replyContent.substring(0, 50) + '...'
                 : replyContent;
             const replyLabel = data.replyTo.isOwnMessage ? '내 메시지' : '익명';
-            
+
             contentHtml += `
                 <div class="reply-reference bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs">
                     <div class="text-gray-400">${replyLabel}에게 답장:</div>
@@ -174,7 +174,7 @@ export class UIManager {
                 </div>
             `;
         }
-        
+
         // Add text content if exists
         if (data.content && data.content.trim()) {
             // 비밀 메시지인 경우 읽기 버튼 추가
@@ -183,11 +183,11 @@ export class UIManager {
                 const isRecipient = data.replyTo.targetSessionId === sessionId;
                 if (isRecipient) {
                     contentHtml += `
-                        <div class="secret-message-container bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/50 rounded-lg p-3 mt-2">
+                        <div class="secret-message-container bg-gray-800/60 border border-gray-600/50 rounded-lg p-3 mt-2">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="text-purple-300 text-sm">비밀 메시지</span>
+                                <span class="text-gray-300 text-sm">비밀 메시지</span>
                             </div>
-                            <button class="reveal-secret-btn w-full bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded transition-colors text-sm font-medium"
+                            <button class="reveal-secret-btn w-full bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded transition-colors text-sm font-medium"
                                     data-secret-id="${this.sanitizeInput(data.replyTo.secretId)}">
                                 비밀 메시지 읽기 (한 번만 볼 수 있음)
                             </button>
@@ -195,7 +195,7 @@ export class UIManager {
                         </div>
                     `;
                 } else if (isOwnMessage) {
-                    contentHtml += `<div class="text-sm text-purple-400 italic">비밀 메시지를 보냈습니다</div>`;
+                    contentHtml += `<div class="text-sm text-gray-400 italic">비밀 메시지를 보냈습니다</div>`;
                 } else {
                     contentHtml += `<div class="text-sm text-gray-500 italic">비밀 메시지 (답장)</div>`;
                 }
@@ -203,12 +203,12 @@ export class UIManager {
                 contentHtml += `<div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>`;
             }
         }
-        
+
         // Add file if exists
         if (data.file && data.file.url) {
             contentHtml += this.formatFileContent(data.file);
         }
-        
+
         // If neither content nor file exists, show a placeholder
         if (!contentHtml) {
             contentHtml = '<div class="text-sm text-gray-500 italic">내용 없음</div>';
@@ -233,7 +233,7 @@ export class UIManager {
 
         // 메시지를 DOM에 추가 (MutationObserver가 자동으로 스크롤 처리)
         this.messagesContainer.appendChild(messageDiv);
-        
+
         // 비밀 메시지 읽기 버튼 이벤트 리스너 추가
         const revealBtn = messageDiv.querySelector('.reveal-secret-btn');
         if (revealBtn && this.onRevealSecret) {
@@ -309,7 +309,7 @@ export class UIManager {
         // Position the menu
         const x = event.touches ? event.touches[0].clientX : event.clientX;
         const y = event.touches ? event.touches[0].clientY : event.clientY;
-        
+
         menu.style.left = `${x}px`;
         menu.style.top = `${y}px`;
 
@@ -328,20 +328,20 @@ export class UIManager {
         const replyButton = menu.querySelector('.reply-message-btn');
         const editButton = menu.querySelector('.edit-message-btn');
         const deleteButton = menu.querySelector('.delete-message-btn');
-        
+
         replyButton.addEventListener('click', () => {
             menu.remove();
             const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
             if (!messageDiv) return;
-            
+
             const contentDiv = messageDiv.querySelector('.message-content');
             const content = contentDiv ? this.htmlToPlainText(contentDiv.innerHTML) : '[파일]';
             const isOwnMessage = messageDiv.classList.contains('ml-auto');
             const targetSessionId = messageDiv.dataset.sessionId; // 원본 메시지 작성자의 sessionId
-            
+
             this.setReplyingTo(messageId, content, isOwnMessage, targetSessionId);
         });
-        
+
         if (canEdit && editButton) {
             editButton.addEventListener('click', () => {
                 menu.remove();
@@ -397,7 +397,7 @@ export class UIManager {
         if (!messageDiv) return;
 
         let contentDiv = messageDiv.querySelector('.message-content');
-        
+
         // If no content div exists (file-only message), create one
         if (!contentDiv) {
             const headerDiv = messageDiv.querySelector('.flex.items-start.justify-between');
@@ -405,7 +405,7 @@ export class UIManager {
             contentDiv.className = 'text-sm break-words leading-relaxed message-content';
             headerDiv.insertAdjacentElement('afterend', contentDiv);
         }
-        
+
         const originalContent = currentContent;
 
         // Create edit input
@@ -474,7 +474,7 @@ export class UIManager {
         if (!messageDiv) return;
 
         let contentDiv = messageDiv.querySelector('.message-content');
-        
+
         // If no content div exists (file-only message), create one
         if (!contentDiv) {
             const headerDiv = messageDiv.querySelector('.flex.items-start.justify-between');
@@ -482,7 +482,7 @@ export class UIManager {
             contentDiv.className = 'text-sm break-words leading-relaxed message-content';
             headerDiv.insertAdjacentElement('afterend', contentDiv);
         }
-        
+
         // Use formatMessageContent to preserve line breaks and format URLs
         contentDiv.innerHTML = this.formatMessageContent(newContent);
 
@@ -513,31 +513,31 @@ export class UIManager {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'text-center text-xs text-gray-500 py-1.5';
         messageDiv.textContent = content;
-        
+
         // 시스템 메시지 표식 추가
         messageDiv.setAttribute('data-message', 'true');
-        
+
         this.messagesContainer.appendChild(messageDiv);
     }
 
     displayAnnouncement(content) {
         console.log('[UI] displayAnnouncement called with:', content);
-        
+
         if (!this.announcementBanner || !this.announcementContent || !this.announcementTime) {
             console.error('[UI] Announcement elements not found');
             return;
         }
-        
+
         // Set content
         this.announcementContent.textContent = content;
         this.announcementTime.textContent = new Date().toLocaleString('ko-KR');
-        
+
         // Show banner
         this.announcementBanner.classList.remove('hidden');
-        
+
         console.log('[UI] Announcement banner displayed');
     }
-    
+
     hideAnnouncement() {
         if (this.announcementBanner) {
             this.announcementBanner.classList.add('hidden');
@@ -548,12 +548,12 @@ export class UIManager {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'text-center text-xs text-red-400 py-2 bg-red-900/20 rounded-lg mx-4';
         errorDiv.textContent = content;
-        
+
         // 에러 메시지 표식 추가
         errorDiv.setAttribute('data-message', 'true');
-        
+
         this.messagesContainer.appendChild(errorDiv);
-        
+
         // Auto-remove error after 4 seconds
         setTimeout(() => {
             errorDiv.remove();
@@ -567,9 +567,9 @@ export class UIManager {
     updateConnectionStatus(status, text) {
         const statusDot = this.connectionStatus.querySelector('.w-2');
         const statusText = this.connectionStatus.querySelector('.text-xs');
-        
+
         statusText.textContent = text;
-        
+
         const colors = {
             connecting: 'bg-yellow-500',
             connected: 'bg-green-500',
@@ -577,7 +577,7 @@ export class UIManager {
             reconnecting: 'bg-orange-500',
             error: 'bg-red-600'
         };
-        
+
         statusDot.className = `w-2 h-2 rounded-full ${colors[status] || 'bg-gray-500'}`;
     }
 
@@ -610,7 +610,7 @@ export class UIManager {
 
     scrollToBottom(smooth = false) {
         const container = this.messagesContainer;
-        
+
         if (smooth) {
             // 부드러운 스크롤 애니메이션
             container.scrollTo({
@@ -621,15 +621,15 @@ export class UIManager {
             // 즉시 스크롤
             container.scrollTop = container.scrollHeight;
         }
-        
+
         // 스크롤 버튼 상태 업데이트
         this.updateScrollButton();
     }
-    
+
     updateScrollButton() {
         const container = this.messagesContainer;
         const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-        
+
         if (isAtBottom) {
             this.scrollButton.classList.add('opacity-0', 'pointer-events-none');
             this.scrollButton.classList.remove('opacity-100', 'pointer-events-auto');
@@ -648,22 +648,22 @@ export class UIManager {
 
     formatMessageContent(content) {
         if (!content) return '';
-        
+
         // Sanitize first
         const sanitized = this.sanitizeInput(content);
-        
+
         // URL 패턴 매칭 (더 정확한 패턴)
         const urlPattern = /(https?:\/\/[^\s<]+[^\s<.,)])/g;
-        
+
         // URL을 링크로 변환하고 프리뷰 생성
         const formatted = sanitized.replace(urlPattern, (url) => {
             // Validate URL to prevent XSS
             if (!this.isValidUrl(url)) {
                 return this.sanitizeInput(url);
             }
-            
+
             const safeUrl = this.sanitizeUrl(url);
-            
+
             // URL이 이미지인지 확인
             const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i;
             if (imageExtensions.test(url)) {
@@ -672,27 +672,27 @@ export class UIManager {
                 setTimeout(() => {
                     const img = document.getElementById(imgId);
                     if (img) {
-                        img.addEventListener('error', function() {
+                        img.addEventListener('error', function () {
                             this.style.display = 'none';
                         });
                     }
                 }, 0);
-                
+
                 return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline block">${this.sanitizeInput(url)}</a>
                     <img id="${imgId}" src="${safeUrl}" alt="Image preview" class="mt-2 max-w-full max-h-64 rounded-lg border border-gray-600 object-contain" loading="lazy">`;
             }
-            
+
             // 일반 링크
             return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${this.sanitizeInput(url)}</a>`;
         });
-        
+
         // 줄바꿈 처리
         return formatted.replace(/\n/g, '<br>');
     }
 
     formatFileContent(file) {
         if (!file || !file.url) return '';
-        
+
         // Validate file URL
         if (!this.isValidUrl(file.url)) {
             return '<div class="text-red-400 text-sm">Invalid file URL</div>';
@@ -710,12 +710,12 @@ export class UIManager {
             setTimeout(() => {
                 const img = document.getElementById(imgId);
                 if (img) {
-                    img.addEventListener('error', function() {
+                    img.addEventListener('error', function () {
                         this.style.display = 'none';
                     });
                 }
             }, 0);
-            
+
             return `
                 <div class="mt-2">
                     <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
@@ -796,30 +796,30 @@ export class UIManager {
         div.innerHTML = text;
         return div.textContent || div.innerText || '';
     }
-    
+
     setReplyingTo(messageId, content, isOwnMessage, targetSessionId) {
         this.replyingTo = { messageId, content, isOwnMessage, targetSessionId, isSecret: false };
         this.showReplyPreview();
         this.messageInput.focus();
     }
-    
+
     showReplyPreview() {
         // 기존 답장 프리뷰 제거
         const existingPreview = document.getElementById('reply-preview');
         if (existingPreview) {
             existingPreview.remove();
         }
-        
+
         if (!this.replyingTo) return;
-        
+
         const preview = document.createElement('div');
         preview.id = 'reply-preview';
         preview.className = 'bg-gray-700/50 border-l-4 border-blue-500 p-2 mb-2 text-sm flex flex-col gap-2';
-        
-        const truncatedContent = this.replyingTo.content.length > 50 
-            ? this.replyingTo.content.substring(0, 50) + '...' 
+
+        const truncatedContent = this.replyingTo.content.length > 50
+            ? this.replyingTo.content.substring(0, 50) + '...'
             : this.replyingTo.content;
-        
+
         preview.innerHTML = `
             <div class="flex items-start justify-between gap-2">
                 <div class="flex-1">
@@ -837,21 +837,21 @@ export class UIManager {
                 <span>비밀 메시지로 보내기 (받는 사람만 한 번 볼 수 있음)</span>
             </label>
         `;
-        
+
         const cancelBtn = preview.querySelector('.cancel-reply-btn');
         cancelBtn.addEventListener('click', () => {
             this.cancelReply();
         });
-        
+
         const secretCheckbox = preview.querySelector('#secret-reply-checkbox');
         secretCheckbox.addEventListener('change', (e) => {
             this.replyingTo.isSecret = e.target.checked;
         });
-        
+
         // 메시지 입력 폼 앞에 삽입
         this.messageForm.parentElement.insertBefore(preview, this.messageForm);
     }
-    
+
     cancelReply() {
         this.replyingTo = null;
         const preview = document.getElementById('reply-preview');
@@ -859,7 +859,7 @@ export class UIManager {
             preview.remove();
         }
     }
-    
+
     getReplyingTo() {
         return this.replyingTo;
     }
