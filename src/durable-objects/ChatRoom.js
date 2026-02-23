@@ -1,5 +1,6 @@
 import { RATE_LIMIT, SECURITY, metrics } from '../config/constants.js';
 import { generateMessageSignature, verifyMessageSignature } from '../utils/helpers.js';
+import { sendPushToOfflineUsers } from '../handlers/push.js';
 
 // Durable Object for managing chat room state
 export class ChatRoom {
@@ -1309,7 +1310,6 @@ export class ChatRoom {
     }
 
     async sendPushNotifications(message) {
-        const { sendPushToOfflineUsers } = await import('../handlers/push.js');
         const onlineSessionIds = new Set(this.sessions.keys());
         await sendPushToOfflineUsers(this.env, onlineSessionIds, message);
     }
