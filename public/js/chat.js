@@ -41,7 +41,7 @@ class ChatClient {
     async initializePush() {
         const result = await this.pushManager.initialize();
         const bellBtn = document.getElementById('notification-toggle');
-        
+
         if (!result.supported || !bellBtn) {
             if (result.error) {
                 console.log('[Push] Notifications unavailable:', result.error);
@@ -61,7 +61,7 @@ class ChatClient {
             try {
                 console.log('[Chat] User clicked notification toggle');
                 const success = await this.pushManager.toggle(this.sessionManager.getSessionId());
-                
+
                 if (success !== undefined) {
                     this.updateBellIcon(bellBtn);
                     console.log('[Chat] Notification toggle successful:', success);
@@ -468,10 +468,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.chatClient = new ChatClient();
 });
 
-// Handle page visibility changes - don't disconnect, just let heartbeat handle it
+// Handle page visibility changes - proactively check and reconnect if needed
 document.addEventListener('visibilitychange', () => {
-    // The heartbeat mechanism will keep the connection alive
-    // No need to manually reconnect
+    if (document.visibilityState === 'visible') {
+        if (window.chatClient && window.chatClient.wsManager) {
+            window.chatClient.wsManager.checkConnection();
+        }
+    }
 });
 
 // Clean disconnect when page is unloaded

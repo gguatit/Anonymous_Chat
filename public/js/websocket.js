@@ -140,11 +140,21 @@ export class WebSocketManager {
         return this.ws && this.ws.readyState === WebSocket.OPEN;
     }
 
+    checkConnection() {
+        if (!this.isConnected() && !this.isReconnecting) {
+            console.log('Connection lost, attempting proactive reconnect');
+            this.connect();
+        } else if (this.isConnected()) {
+            // If connected, send a ping to verify
+            this.send({ type: 'ping', timestamp: Date.now() });
+        }
+    }
+
     startHeartbeat() {
         // Stop existing heartbeat
         this.stopHeartbeat();
 
-        // Send ping every 30 seconds
+        // Send ping every 25 seconds
         this.heartbeatInterval = setInterval(() => {
             if (this.isConnected()) {
                 this.send({ type: 'ping', timestamp: Date.now() });
@@ -157,8 +167,10 @@ export class WebSocketManager {
                         this.ws.close();
                     }
                 }, 10000); // 10 second timeout
+            } else if (!this.isReconnecting) {
+                this.connect();
             }
-        }, 30000); // 30 second interval
+        }, 25000); // 25 second interval
     }
 
     stopHeartbeat() {
