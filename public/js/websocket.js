@@ -96,7 +96,8 @@ export class WebSocketManager {
         // - code 1008 = admin kick (Policy Violation)
         // - clean close
         const isAdminKick = event.code === 1008;
-        if (!this.manualClose && !event.wasClean && !isAdminKick) {
+        // Reconnect more aggressively: only stop if manually closed or kicked by admin
+        if (!this.manualClose && !isAdminKick) {
             this.isReconnecting = true;
             this.scheduleReconnect();
         }

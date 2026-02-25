@@ -477,6 +477,13 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+// Reconnect when the browsing device comes back online
+window.addEventListener('online', () => {
+    if (window.chatClient && window.chatClient.wsManager) {
+        window.chatClient.wsManager.checkConnection();
+    }
+});
+
 // Clean disconnect when page is unloaded
 window.addEventListener('beforeunload', () => {
     if (window.chatClient && window.chatClient.wsManager) {

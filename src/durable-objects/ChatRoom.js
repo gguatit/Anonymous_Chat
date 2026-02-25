@@ -804,14 +804,16 @@ export class ChatRoom {
 
         websocket.addEventListener('message', async (event) => {
             try {
+                // Update activity time for any interaction
+                if (metadata) {
+                    metadata.lastActivityTime = Date.now();
+                }
+
                 const data = JSON.parse(event.data);
 
                 // Handle different message types
                 switch (data.type) {
                     case 'ping': {
-                        if (metadata) {
-                            metadata.lastActivityTime = Date.now();
-                        }
                         try {
                             websocket.send(JSON.stringify({
                                 type: 'pong',
@@ -1426,7 +1428,8 @@ export class ChatRoom {
         }
 
         for (const [sessionId, metadata] of this.userMetadata) {
-            if (now - metadata.lastMessageTime > sessionTimeout && now - metadata.joinTime > sessionTimeout) {
+            const lastActivity = metadata.lastActivityTime || metadata.lastMessageTime || metadata.joinTime;
+            if (now - lastActivity > sessionTimeout && now - metadata.joinTime > sessionTimeout) {
                 const websocket = this.sessions.get(sessionId);
                 if (websocket) {
                     try {
