@@ -546,8 +546,8 @@ class AdminDashboard {
                     <div class="flex items-center gap-3 flex-1">
                         <div class="w-2 h-2 ${statusColor} rounded-full ${isOnline ? 'animate-pulse' : ''}"></div>
                         <div class="flex-1">
-                            <p class="text-sm font-mono text-gray-300">${this.truncateId(session.sessionId)}</p>
-                            <p class="text-xs text-gray-500">${session.ip || 'Unknown IP'}</p>
+                            <p class="text-sm font-mono text-gray-300 break-all">${this.truncateId(session.sessionId)}</p>
+                            <p class="text-xs text-gray-500 break-all">${session.ip || 'Unknown IP'}</p>
                             <p class="text-xs text-gray-400">${lastActiveText}</p>
                         </div>
                     </div>
@@ -1123,7 +1123,7 @@ class AdminDashboard {
 
             tbody.innerHTML = bannedList.map(ban => `
                 <tr class="border-t border-gray-700 md:border-0">
-                    <td data-label="IP 주소" class="px-3 md:px-4 py-3 font-mono text-sm">${ban.ip}</td>
+                    <td data-label="IP 주소" class="px-3 md:px-4 py-3 font-mono text-sm break-all">${ban.ip}</td>
                     <td data-label="남은 시간" class="px-3 md:px-4 py-3 text-sm">${this.formatDuration(ban.remainingSeconds * 1000)}</td>
                     <td data-label="사유" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${ban.reason || 'No reason'}</td>
                     <td data-label="차단 시각" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${new Date(ban.bannedAt).toLocaleString('ko-KR')}</td>
@@ -1199,11 +1199,11 @@ class AdminDashboard {
                         <div class="grid grid-cols-2 gap-3 text-sm">
                             <div>
                                 <p class="text-gray-500">세션 ID</p>
-                                <p class="text-gray-200 font-mono">${userDetails.sessionId || 'N/A'}</p>
+                                <p class="text-gray-200 font-mono break-all">${userDetails.sessionId || 'N/A'}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">IP 주소</p>
-                                <p class="text-gray-200 font-mono">${userDetails.metadata?.ip || 'N/A'}</p>
+                                <p class="text-gray-200 font-mono break-all">${userDetails.metadata?.ip || 'N/A'}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">접속 시각</p>
@@ -1234,8 +1234,8 @@ class AdminDashboard {
                                             <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleString('ko-KR')}</span>
                                             ${msg.editedAt ? '<span class="text-xs text-yellow-400">(수정됨)</span>' : ''}
                                         </div>
-                                        <p class="text-gray-200">${this.escapeHtml(msg.content)}</p>
-                                        ${msg.file ? `<p class="text-xs text-blue-400 mt-1">파일: ${msg.file.filename}</p>` : ''}
+                                        <p class="text-gray-200 break-all whitespace-pre-wrap">${this.escapeHtml(msg.content)}</p>
+                                        ${msg.file ? `<p class="text-xs text-blue-400 mt-1 break-all">파일: ${msg.file.filename}</p>` : ''}
                                     </div>
                                 `).join('')
                     : '<p class="text-gray-500 text-center py-4">메시지가 없습니다.</p>'
@@ -1302,8 +1302,8 @@ class AdminDashboard {
                             <span class="text-sm font-medium ${actionColor}">${actionText}</span>
                             <span class="text-xs text-gray-500">${new Date(log.timestamp).toLocaleString('ko-KR')}</span>
                         </div>
-                        <p class="text-sm text-gray-300">${log.details}</p>
-                        ${log.metadata ? `<p class="text-xs text-gray-500 mt-1">${JSON.stringify(log.metadata)}</p>` : ''}
+                        <p class="text-sm text-gray-300 break-all">${log.details}</p>
+                        ${log.metadata ? `<p class="text-xs text-gray-500 mt-1 break-all overflow-x-auto">${JSON.stringify(log.metadata)}</p>` : ''}
                     </div>
                 `;
             }).join('');
