@@ -809,6 +809,12 @@ export class UIManager {
         }
     }
 
+    decodeHtml(html) {
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        return div.textContent;
+    }
+
     sanitizeInput(input) {
         // Basic XSS prevention
         const div = document.createElement('div');
@@ -823,16 +829,16 @@ export class UIManager {
         const sanitized = this.sanitizeInput(content);
 
         // URL 패턴 매칭 (프로토콜이 없어도 도메인 형태면 인식)
-        // 1. http(s):// 형식
-        // 2. www. 형식
-        // 3. 도메인.TLD 형식 (최소 한 개의 점이 포함된 단어)
-        const urlPattern = /(https?:\/\/[^\s<]+[^\s<.,)])|(\bwww\.[^\s<]+[^\s<.,)])|(\b[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+\b(?:\/[^\s<]*[^\s<.,)])?)/g;
+        const urlPattern = /(https?:\/\/[^\s<]+[^\s<.,)])|(\bwww\.[^\s<]+[^\s<.,)])|(\b[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}(?::[0-9]+)?(?:\/[^\s<]*[^\s<.,)])?)/gi;
 
         // URL을 링크로 변환하고 프리뷰 생성
-        const formatted = sanitized.replace(urlPattern, (url) => {
+        const formatted = sanitized.replace(urlPattern, (match) => {
+            // 이미 sanitized된 문자열이므로 다시 디코딩하여 원본 URL 획득
+            const url = this.decodeHtml(match);
+
             // Validate URL to prevent XSS
             if (!this.isValidUrl(url)) {
-                return this.sanitizeInput(url);
+                return match; // 이미 sanitized된 원본 매치 유지
             }
 
             const safeUrl = this.sanitizeUrl(url);
@@ -851,12 +857,12 @@ export class UIManager {
                     }
                 }, 0);
 
-                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline block">${this.sanitizeInput(url)}</a>
+                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline block">${match}</a>
                     <img id="${imgId}" src="${safeUrl}" alt="Image preview" class="mt-2 max-w-full max-h-64 rounded-lg border border-gray-600 object-contain" loading="lazy">`;
             }
 
             // 일반 링크
-            return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${this.sanitizeInput(url)}</a>`;
+            return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${match}</a>`;
         });
 
         // 줄바꿈 처리
