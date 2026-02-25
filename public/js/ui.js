@@ -259,10 +259,10 @@ export class UIManager {
 
         // Create a DocumentFragment to batch DOM operations
         const fragment = document.createDocumentFragment();
-        
+
         // Temporarily disconnect the MutationObserver to prevent it from firing multiple times
         const tempContainer = document.createElement('div');
-        
+
         for (const data of messages) {
             // Skip duplicates
             if (data.messageId && this.messagesContainer.querySelector(`[data-message-id="${data.messageId}"]`)) {
@@ -273,7 +273,7 @@ export class UIManager {
             const isAdmin = !!(data.sessionId && String(data.sessionId).startsWith('admin_'));
 
             const messageDiv = document.createElement('div');
-            
+
             if (isAdmin) {
                 messageDiv.className = 'message-enter p-3 rounded-lg border-l-4 border-yellow-400 bg-yellow-900/20 shadow-lg ring-1 ring-yellow-400/20';
                 messageDiv.style.marginLeft = '0';
@@ -369,10 +369,10 @@ export class UIManager {
 
         // Add all messages to DOM at once
         this.messagesContainer.appendChild(fragment);
-        
+
         // Scroll to bottom after batch insert
         this.scrollToBottom();
-        
+
         console.log(`[UI] Batch rendering complete`);
 
         // Re-attach event listeners for secret message buttons
@@ -381,7 +381,7 @@ export class UIManager {
             // Remove existing listeners to prevent duplicates
             const newBtn = btn.cloneNode(true);
             btn.parentNode.replaceChild(newBtn, btn);
-            
+
             if (this.onRevealSecret) {
                 newBtn.addEventListener('click', async () => {
                     const secretId = newBtn.dataset.secretId;
@@ -673,8 +673,8 @@ export class UIManager {
         this.messagesContainer.appendChild(messageDiv);
     }
 
-    displayAnnouncement(content) {
-        console.log('[UI] displayAnnouncement called with:', content);
+    displayAnnouncement(content, timestamp) {
+        console.log('[UI] displayAnnouncement called with:', content, timestamp);
 
         if (!this.announcementBanner || !this.announcementContent || !this.announcementTime) {
             console.error('[UI] Announcement elements not found');
@@ -683,7 +683,10 @@ export class UIManager {
 
         // Set content
         this.announcementContent.textContent = content;
-        this.announcementTime.textContent = new Date().toLocaleString('ko-KR');
+
+        // Use provided timestamp or fallback to current time
+        const date = timestamp ? new Date(timestamp) : new Date();
+        this.announcementTime.textContent = date.toLocaleString('ko-KR');
 
         // Show banner
         this.announcementBanner.classList.remove('hidden');
