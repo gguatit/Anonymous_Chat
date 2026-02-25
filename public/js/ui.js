@@ -36,8 +36,18 @@ export class UIManager {
      */
     isValidUrl(url) {
         try {
-            const parsed = new URL(url);
-            // Only allow http and https protocols
+            // If it doesn't have a protocol, add a temporary one for validation
+            const urlWithProtocol = url.match(/^https?:\/\//) ? url : 'https://' + url;
+            const parsed = new URL(urlWithProtocol);
+
+            // Basic validation for protocol-less URLs: must have a dot and something after it
+            if (!url.match(/^https?:\/\//)) {
+                const domain = parsed.hostname;
+                if (!domain || !domain.includes('.') || domain.split('.').pop().length < 2) {
+                    return false;
+                }
+            }
+
             return parsed.protocol === 'http:' || parsed.protocol === 'https:';
         } catch {
             return false;
@@ -51,8 +61,12 @@ export class UIManager {
         if (!this.isValidUrl(url)) {
             return '#';
         }
+
+        // Ensure it has a protocol for the href attribute
+        let safeUrl = url.match(/^https?:\/\//) ? url : 'https://' + url;
+
         // Encode special characters
-        return url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        return safeUrl.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     /**
@@ -808,8 +822,11 @@ export class UIManager {
         // Sanitize first
         const sanitized = this.sanitizeInput(content);
 
-        // URL 패턴 매칭 (더 정확한 패턴)
-        const urlPattern = /(https?:\/\/[^\s<]+[^\s<.,)])/g;
+        // URL 패턴 매칭 (프로토콜이 없어도 도메인 형태면 인식)
+        // 1. http(s):// 형식
+        // 2. www. 형식
+        // 3. 도메인.TLD 형식 (최소 한 개의 점이 포함된 단어)
+        const urlPattern = /(https?:\/\/[^\s<]+[^\s<.,)])|(\bwww\.[^\s<]+[^\s<.,)])|(\b[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+\b(?:\/[^\s<]*[^\s<.,)])?)/g;
 
         // URL을 링크로 변환하고 프리뷰 생성
         const formatted = sanitized.replace(urlPattern, (url) => {
