@@ -34,21 +34,21 @@ export class PushNotificationManager {
                 console.warn('[Push] VAPID key not available:', errorData.error);
                 return { supported: false, subscribed: false, error: 'Push notifications not configured' };
             }
-            
+
             const data = await response.json();
             console.log('[Push] Received VAPID key from server:', data.publicKey?.substring(0, 20) + '...', 'length:', data.publicKey?.length);
-            
+
             if (!data.publicKey) {
                 console.error('[Push] Server returned empty VAPID key');
                 return { supported: false, subscribed: false, error: 'Invalid server response' };
             }
-            
+
             this.vapidPublicKey = data.publicKey.trim();
 
             // Check existing subscription
             const subscription = await this.swRegistration.pushManager.getSubscription();
             this.isSubscribed = !!subscription;
-            
+
             console.log('[Push] Initialization complete, subscribed:', this.isSubscribed);
 
             return { supported: true, subscribed: this.isSubscribed };
@@ -66,11 +66,46 @@ export class PushNotificationManager {
     async subscribe(sessionId) {
         try {
             console.log('[Push] Starting subscription process...');
-            
-            // Request permission
+
+            // --- ANDROID WEBVIEW / FCM HYBRID SUPPORT ---
+            // If running inside our Android Hybrid App, the Android native side will provide the FCM token
+            // via window.AndroidBridge.getDeviceToken() or similar mechanism.
+            if (window.AndroidBridge && typeof window.AndroidBridge.getFcmToken === 'function') {
+                console.log('[Push] Android Hybrid App detected. Using FCM token.');
+                const fcmToken = window.AndroidBridge.getFcmToken();
+
+                if (!fcmToken) {
+                    console.error('[Push] ✗ AndroidBridge returned empty FCM token.');
+                    return false;
+                }
+
+                // Send FCM token to server directly
+                const response = await fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscription: fcmToken,
+                        sessionId,
+                        isFcmToken: true
+                    })
+                });
+
+                if (response.ok) {
+                    this.isSubscribed = true;
+                    console.log('[Push] ✓ FCM Token subscribed successfully via Hybrid App');
+                    return true;
+                } else {
+                    const errorText = await response.text();
+                    console.error('[Push] ✗ Server rejected FCM subscription:', response.status, errorText);
+                    return false;
+                }
+            }
+            // --- END ANDROID OVERRIDE ---
+
+            // Request permission for standard Web Push
             const permission = await Notification.requestPermission();
             console.log('[Push] Permission result:', permission);
-            
+
             if (permission !== 'granted') {
                 console.log('[Push] Permission denied by user');
                 return false;
@@ -108,7 +143,8 @@ export class PushNotificationManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     subscription: subscription.toJSON(),
-                    sessionId
+                    sessionId,
+                    isFcmToken: false
                 })
             });
 
@@ -204,13 +240,13 @@ export class PushNotificationManager {
         if (!base64String) {
             throw new Error('VAPID public key is empty or undefined');
         }
-        
+
         if (typeof base64String !== 'string') {
             throw new Error('VAPID public key must be a string');
         }
-        
+
         console.log('[Push] VAPID key to decode:', base64String.substring(0, 20) + '...');
-        
+
         try {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
