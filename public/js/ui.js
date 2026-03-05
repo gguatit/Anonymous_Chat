@@ -437,7 +437,7 @@ export class UIManager {
 
         // Add visual feedback
         messageDiv.style.cursor = 'pointer';
-        messageDiv.style.userSelect = 'none';
+        messageDiv.style.userSelect = 'text';
     }
 
     showContextMenu(event, messageId, canEdit = false) {
@@ -454,6 +454,9 @@ export class UIManager {
         menu.style.minWidth = '120px';
 
         menu.innerHTML = `
+            <button class="copy-message-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
+                복사하기
+            </button>
             <button class="reply-message-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
                 답장하기
             </button>
@@ -486,9 +489,31 @@ export class UIManager {
         }
 
         // Add click handlers
+        const copyButton = menu.querySelector('.copy-message-btn');
         const replyButton = menu.querySelector('.reply-message-btn');
         const editButton = menu.querySelector('.edit-message-btn');
         const deleteButton = menu.querySelector('.delete-message-btn');
+
+        copyButton.addEventListener('click', () => {
+            menu.remove();
+            const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageDiv) return;
+            const contentDiv = messageDiv.querySelector('.message-content');
+            const text = contentDiv ? this.htmlToPlainText(contentDiv.innerHTML) : '';
+            if (text) {
+                navigator.clipboard.writeText(text).catch(() => {
+                    // fallback for older browsers
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                });
+            }
+        });
 
         replyButton.addEventListener('click', () => {
             menu.remove();
