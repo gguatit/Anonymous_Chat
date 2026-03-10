@@ -4,7 +4,7 @@
     border-radius: 0.5rem;
     overflow: hidden;
     border: 1px solid #374151;
-    background: #0d1117;
+    background: #1d1f21;
 }
 
 .code-block-header {
@@ -48,19 +48,25 @@
     overflow-x: auto;
     font-size: 0.8rem;
     line-height: 1.5;
-    background: #0d1117;
+    background: #1d1f21;
 }
 
 .code-block code {
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     background: transparent !important;
     padding: 0 !important;
+    white-space: pre;
+    word-break: normal;
+    word-wrap: normal;
 }
 
-/* Override highlight.js background */
-.code-block .hljs {
+/* Override Prism.js default backgrounds */
+.code-block code[class*="language-"],
+.code-block pre[class*="language-"] {
     background: transparent !important;
+    margin: 0 !important;
     padding: 0 !important;
+    text-shadow: none !important;
 }
 
 /* Inline Code Styles */
