@@ -280,8 +280,8 @@ class ChatClient {
         // Prepare message data
         const messageData = {
             type: 'message',
-            // Preserve newlines; sanitizeInput will escape HTML but keep the text as-is
-            content: this.ui.sanitizeInput(message) || '',
+            // Preserve newlines; sanitization happens server-side and at render time
+            content: message || '',
             sessionId: this.sessionManager.getSessionId(),
             timestamp: now
         };

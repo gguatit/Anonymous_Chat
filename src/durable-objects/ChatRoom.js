@@ -1326,9 +1326,7 @@ export class ChatRoom {
         if (typeof input !== 'string') return '';
         // Remove control characters
         let cleaned = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-        // Remove HTML tags for security
-        cleaned = cleaned.replace(/<[^>]*>/g, '');
-        // Normalize line breaks
+        // Normalize line breaks (HTML escaping is handled client-side at render time)
         return cleaned.replace(/\r\n?/g, '\n');
     }
 
