@@ -5,12 +5,15 @@ body {
 
 /* Hide scrollbar for messages container */
 #messages-container {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
 }
 
 #messages-container::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    display: none;
+    /* Chrome, Safari, Opera */
 }
 
 /* Scroll to bottom button mobile optimization */
@@ -22,10 +25,11 @@ body {
 @media (max-width: 640px) {
     #scroll-to-bottom {
         right: 0.75rem;
-        bottom: 5.5rem; /* Adjust for mobile keyboard */
+        bottom: 5.5rem;
+        /* Adjust for mobile keyboard */
         padding: 0.625rem;
     }
-    
+
     #scroll-to-bottom svg {
         width: 1.125rem;
         height: 1.125rem;
@@ -34,11 +38,12 @@ body {
 
 /* Mobile: Adjust input area for keyboard */
 @media (max-width: 640px) {
+
     /* Prevent zoom on input focus (iOS) */
     #message-input {
         font-size: 16px;
     }
-    
+
     /* Better mobile spacing */
     .fixed.bottom-0 {
         padding-bottom: env(safe-area-inset-bottom);
@@ -49,82 +54,6 @@ body {
 @media (prefers-reduced-motion: no-preference) {
     #scroll-to-bottom {
         transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-}
-
-/* Code Block Styles */
-.code-block-wrapper {
-    margin: 0.5rem 0;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    border: 1px solid #374151;
-    background: #0d1117;
-}
-
-.code-block-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.375rem 0.75rem;
-    background: #161b22;
-    border-bottom: 1px solid #374151;
-    min-height: 2rem;
-}
-
-.code-block-lang {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #8b949e;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.code-copy-btn {
-    font-size: 0.7rem;
-    color: #8b949e;
-    background: transparent;
-    border: 1px solid #374151;
-    border-radius: 0.25rem;
-    padding: 0.125rem 0.5rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.code-copy-btn:hover {
-    color: #c9d1d9;
-    background: #21262d;
-    border-color: #6e7681;
-}
-
-.code-block {
-    margin: 0;
-    padding: 0.75rem 1rem;
-    overflow-x: auto;
-    font-size: 0.8rem;
-    line-height: 1.5;
-    background: #0d1117;
-}
-
-.code-block code {
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    background: transparent !important;
-    padding: 0 !important;
-}
-
-/* Override highlight.js background */
-.code-block .hljs {
-    background: transparent !important;
-    padding: 0 !important;
-}
-
-/* Inline Code Styles */
-.inline-code {
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    background: rgba(110, 118, 129, 0.3);
-    color: #e6edf3;
-    padding: 0.125rem 0.375rem;
-    border-radius: 0.25rem;
-    font-size: 0.85em;
-    word-break: break-word;
 }
