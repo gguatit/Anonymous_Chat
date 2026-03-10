@@ -851,6 +851,12 @@ export class UIManager {
     formatMessageContent(content) {
         if (!content) return '';
 
+        // 명시적 코드 블록(```)이 없으면 자동 코드 감지를 먼저 시도
+        // (backtick 포함 코드가 인라인 코드로 오인되는 것을 방지)
+        if (!/```/.test(content) && isLikelyCode(content)) {
+            return renderCodeBlock(content, '', (text) => this.sanitizeInput(text));
+        }
+
         // 코드 블록을 먼저 추출하여 보호 (sanitize 전)
         let processed = content;
         const codeBlocks = [];
@@ -869,11 +875,6 @@ export class UIManager {
             inlineCodes.push(code);
             return placeholder;
         });
-
-        // 명시적 코드 블록이 없고 자동 코드 감지가 되면 전체를 코드 블록으로 처리
-        if (codeBlocks.length === 0 && inlineCodes.length === 0 && isLikelyCode(content)) {
-            return renderCodeBlock(content, '', (text) => this.sanitizeInput(text));
-        }
 
         // 나머지 텍스트를 sanitize
         const sanitized = this.sanitizeInput(processed);

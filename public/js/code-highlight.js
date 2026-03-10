@@ -40,69 +40,72 @@ function resolveLangAlias(lang) {
  * 표시용 언어 이름 (헤더 라벨용)
  */
 function getDisplayLang(inputLang, resolvedLang) {
-    // 사용자가 입력한 원래 이름 우선, 없으면 resolved 사용
     return inputLang || resolvedLang || '';
 }
 
 /**
  * 메시지 내용에서 언어를 휴리스틱으로 추정
+ * 순서가 중요 — 더 구체적인 패턴을 먼저 검사
  */
-function detectLanguage(content) {
+export function detectLanguage(content) {
     const trimmed = content.trim();
 
-    // HTML/XML
-    if (/^\s*<(!DOCTYPE|html|head|body|div|span|script|style|link|meta|p|a|ul|ol|li|table|form|input|img)/mi.test(trimmed)) return 'markup';
+    // === 매우 구체적인 패턴 (오탐 가능성 낮음) ===
 
-    // Python
-    if (/^(def |class |import |from .+ import |if __name__|print\(|elif |except )/m.test(trimmed)) return 'python';
+    // C/C++ — #include는 C/C++에만 존재
+    if (/^#include\s*[<"]/m.test(trimmed)) return 'cpp';
 
-    // CSS
-    if (/^(\.|#|@media|@keyframes|:root|body|html)\s*\{?/m.test(trimmed) && /[{};:]/.test(trimmed)) return 'css';
+    // Bash/Shell — shebang 또는 셸 전용 명령어
+    if (/^#!\/bin\/(bash|sh|zsh)/m.test(trimmed)) return 'bash';
+    if (/^(export\s+\w+=|alias\s+\w+=|source\s+|chmod\s+|echo\s+["'])/m.test(trimmed) && !/;\s*$/.test(trimmed.split('\n')[0])) return 'bash';
 
-    // C/C++
-    if (/^#include\s*[<"]/.test(trimmed)) return 'cpp';
-
-    // Java
-    if (/^(public\s+class|package\s+|import\s+java\.)/m.test(trimmed)) return 'java';
-
-    // C#
-    if (/^using\s+System/m.test(trimmed) || /^namespace\s+/m.test(trimmed)) return 'csharp';
-
-    // SQL
-    if (/^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\s/mi.test(trimmed)) return 'sql';
-
-    // Bash/Shell
-    if (/^(#!\/bin\/(bash|sh)|export\s|echo\s|sudo\s|apt |npm |yarn |pip |curl |wget )/m.test(trimmed)) return 'bash';
-
-    // JSON
-    if (/^\s*[\[{]/.test(trimmed) && /["\d\]},]$/.test(trimmed.trim())) {
+    // JSON — 유효한 JSON 파싱
+    if (/^\s*[\[{]/.test(trimmed)) {
         try { JSON.parse(trimmed); return 'json'; } catch { /* not json */ }
     }
 
-    // TypeScript (check before JS due to overlap)
-    if (/^(interface\s|type\s|enum\s|:\s*(string|number|boolean|void|any|Promise))/m.test(trimmed)) return 'typescript';
+    // HTML/XML — DOCTYPE이나 HTML 태그로 시작
+    if (/^\s*<(!DOCTYPE|html|head|body|div|span|script|style|link|meta|p\s|p>|a\s|ul|ol|li|table|form|input|img|section|header|footer|nav|main)/mi.test(trimmed)) return 'markup';
 
-    // JavaScript (generic)
-    if (/^(const |let |var |function |class |import |export |=>)/m.test(trimmed)) return 'javascript';
+    // SQL — SQL 키워드로 시작
+    if (/^(SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|CREATE\s+(TABLE|INDEX|VIEW|DATABASE)|ALTER\s+TABLE|DROP\s+TABLE)\s/mi.test(trimmed)) return 'sql';
 
-    // Go
-    if (/^(package\s+main|func\s|import\s+\()/m.test(trimmed)) return 'go';
+    // === 언어 고유 키워드 (중간 수준) ===
 
-    // Rust
-    if (/^(fn\s|let\s+mut|use\s+std|impl\s|pub\s+fn)/m.test(trimmed)) return 'rust';
+    // Rust — fn, let mut, impl 등 고유 패턴
+    if (/^(fn\s+\w+|let\s+mut\s|use\s+std::|impl\s+\w+|pub\s+fn\s)/m.test(trimmed)) return 'rust';
 
-    // Markdown
-    if (/^#{1,6}\s/.test(trimmed) && /(\*\*|__|\[.*\]\(.*\))/.test(trimmed)) return 'markdown';
+    // Go — package + func 조합
+    if (/^package\s+\w+/m.test(trimmed) && /^(func\s|import\s)/m.test(trimmed)) return 'go';
+
+    // C# — using System 또는 namespace + { 조합
+    if (/^using\s+System/m.test(trimmed)) return 'csharp';
+    if (/^namespace\s+[\w.]+\s*\{/m.test(trimmed)) return 'csharp';
+
+    // Java — public class, package + ;, import java.
+    if (/^(public\s+class\s+\w+|package\s+[\w.]+\s*;|import\s+java\.)/m.test(trimmed)) return 'java';
+
+    // Python — def func(): 또는 class Class:, from x import 등
+    if (/^(def\s+\w+\s*\(|class\s+\w+.*:\s*$|from\s+\w+\s+import\s|if\s+__name__\s*==|print\s*\(|elif\s|except\s)/m.test(trimmed)) return 'python';
+
+    // CSS — 셀렉터 + { } 블록 (# 뒤에 반드시 알파벳)
+    if (/^(\.[a-zA-Z_][\w-]*|#[a-zA-Z_][\w-]*|@media\s|@keyframes\s|@import\s|:root\s*\{|body\s*\{|html\s*\{|\*\s*\{)/m.test(trimmed) && /\{[\s\S]*\}/.test(trimmed)) return 'css';
+
+    // TypeScript — interface, type alias, 타입 어노테이션
+    if (/^(interface\s+\w+\s*\{|type\s+\w+\s*=|enum\s+\w+\s*\{)/m.test(trimmed)) return 'typescript';
+    if (/:\s*(string|number|boolean|void|any|never|Promise<)/m.test(trimmed) && /^(const|let|var|function|class|export|import)\s/m.test(trimmed)) return 'typescript';
+
+    // JavaScript — 일반 JS 패턴 (가장 마지막 - 다른 언어와 겹치는 키워드 많음)
+    if (/^(const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|function\s+\w+|class\s+\w+\s*\{|import\s+.*\s+from\s|export\s+(default\s+)?)/m.test(trimmed)) return 'javascript';
+
+    // Markdown — # 제목 + 마크다운 문법
+    if (/^#{1,6}\s/m.test(trimmed) && /(\*\*|__|\[.*\]\(.*\)|^-\s|^\d+\.\s)/m.test(trimmed)) return 'markdown';
 
     return '';
 }
 
 /**
  * 코드 블록 HTML 생성
- * @param {string} code - 원본 코드 텍스트
- * @param {string} lang - 언어 (빈 문자열이면 자동 감지)
- * @param {Function} sanitizeFn - HTML 이스케이프 함수
- * @returns {string} 렌더링된 코드 블록 HTML
  */
 export function renderCodeBlock(code, lang, sanitizeFn) {
     const trimmedCode = code.replace(/^\n+|\n+$/g, '');
@@ -128,9 +131,7 @@ export function renderCodeBlock(code, lang, sanitizeFn) {
         <pre class="code-block"><code id="${codeId}" class="${langClass}">${safeCode}</code></pre>
     </div>`;
 
-    // DOM 삽입 후 Prism 하이라이팅 + 복사 버튼 이벤트 등록
     setTimeout(() => {
-        // Prism 하이라이팅
         const codeEl = document.getElementById(codeId);
         if (codeEl && typeof Prism !== 'undefined' && resolvedLang) {
             try {
@@ -138,7 +139,6 @@ export function renderCodeBlock(code, lang, sanitizeFn) {
             } catch { /* ignore */ }
         }
 
-        // 복사 버튼 이벤트
         const btn = document.getElementById(copyBtnId);
         if (btn) {
             btn.addEventListener('click', () => {
@@ -158,8 +158,6 @@ export function renderCodeBlock(code, lang, sanitizeFn) {
 
 /**
  * 메시지가 코드인지 휴리스틱으로 판별
- * @param {string} content - 메시지 텍스트
- * @returns {boolean} 코드 여부
  */
 export function isLikelyCode(content) {
     if (!content || typeof content !== 'string') return false;
@@ -175,8 +173,8 @@ export function isLikelyCode(content) {
 
     let score = 0;
 
-    // 1. 코드 시작 패턴 키워드 검사
-    const startPatterns = /^(import\s|from\s|export\s|const\s|let\s|var\s|function[\s(]|class\s|def\s|return\s|if\s*\(|else\s*\{|for\s*\(|while\s*\(|switch\s*\(|try\s*\{|catch\s*\(|#include|#define|#import|using\s|namespace\s|public\s|private\s|protected\s|static\s|void\s|int\s|string\s|bool\s|package\s|interface\s|struct\s|enum\s|<!DOCTYPE|<html|<head|<body|<div|<script|<style|<link|<meta|SELECT\s|INSERT\s|UPDATE\s|DELETE\s|CREATE\s|ALTER\s|DROP\s)/mi;
+    // 1. 코드 시작 패턴 키워드 검사 (shebang 포함)
+    const startPatterns = /^(#!\/bin\/|import\s|from\s|export\s|const\s|let\s|var\s|function[\s(]|class\s|def\s|return\s|if\s*\(|else\s*\{|for\s*\(|while\s*\(|switch\s*\(|try\s*\{|catch\s*\(|#include|#define|#import|using\s|namespace\s|public\s|private\s|protected\s|static\s|void\s|int\s|string\s|bool\s|package\s|interface\s|struct\s|enum\s|<!DOCTYPE|<html|<head|<body|<div|<script|<style|<link|<meta|SELECT\s|INSERT\s|UPDATE\s|DELETE\s|CREATE\s|ALTER\s|DROP\s)/mi;
     if (startPatterns.test(trimmed)) score += 3;
 
     // 2. 줄 끝 패턴 검사
@@ -202,8 +200,8 @@ export function isLikelyCode(content) {
     if (charDensity > 0.08) score += 2;
     else if (charDensity > 0.04) score += 1;
 
-    // 5. 주석 패턴
-    if (/\/\/.*|\/\*[\s\S]*?\*\/|^\s*#(?!!).*$/m.test(trimmed)) score += 1;
+    // 5. 주석 패턴 (shebang #!도 인정)
+    if (/\/\/.*|\/\*[\s\S]*?\*\/|^\s*#.*$/m.test(trimmed)) score += 1;
 
     // 6. 문자열 리터럴 + 코드 문자
     if (/(["'])(?:(?=(\\?))\2.)*?\1/.test(trimmed) && /[;{}()=]/.test(trimmed)) score += 1;
@@ -215,8 +213,8 @@ export function isLikelyCode(content) {
     }
     if (htmlLines / lines.length > 0.3) score += 3;
 
-    // 8. 언어 감지 성공 여부
-    if (detectLanguage(trimmed)) score += 2;
+    // 8. 언어 감지 성공 여부 (강한 신호)
+    if (detectLanguage(trimmed)) score += 3;
 
     // 임계값: 5점 이상이면 코드로 판별
     return score >= 5;
