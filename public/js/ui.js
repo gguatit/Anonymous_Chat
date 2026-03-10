@@ -850,14 +850,33 @@ export class UIManager {
     formatMessageContent(content) {
         if (!content) return '';
 
-        // Sanitize first
-        const sanitized = this.sanitizeInput(content);
+        // 코드 블록을 먼저 추출하여 보호 (sanitize 전)
+        let processed = content;
+        const codeBlocks = [];
+        const inlineCodes = [];
+
+        // ```lang\ncode\n``` 패턴 감지 (sanitize 전에 처리, \r\n도 지원)
+        processed = processed.replace(/```(\w*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
+            const placeholder = `\u200B\u200BCODEBLOCK${codeBlocks.length}\u200B\u200B`;
+            codeBlocks.push({ lang: lang.toLowerCase(), code });
+            return placeholder;
+        });
+
+        // 인라인 코드 `code` 패턴 감지
+        processed = processed.replace(/`([^`\n]+)`/g, (match, code) => {
+            const placeholder = `\u200B\u200BINLINECODE${inlineCodes.length}\u200B\u200B`;
+            inlineCodes.push(code);
+            return placeholder;
+        });
+
+        // 나머지 텍스트를 sanitize
+        const sanitized = this.sanitizeInput(processed);
 
         // URL 패턴 매칭 (프로토콜이 없어도 도메인 형태면 인식)
         const urlPattern = /(https?:\/\/[^\s<]+[^\s<.,)])|(\bwww\.[^\s<]+[^\s<.,)])|(\b[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}(?::[0-9]+)?(?:\/[^\s<]*[^\s<.,)])?)/gi;
 
         // URL을 링크로 변환하고 프리뷰 생성
-        const formatted = sanitized.replace(urlPattern, (match) => {
+        let formatted = sanitized.replace(urlPattern, (match) => {
             // 이미 sanitized된 문자열이므로 다시 디코딩하여 원본 URL 획득
             const url = this.decodeHtml(match);
 
@@ -883,12 +902,68 @@ export class UIManager {
                 }, 0);
 
                 return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline block">${match}</a>
-                    <img id="${imgId}" src="${safeUrl}" alt="Image preview" class="mt-2 max-w-full max-h-64 rounded-lg border border-gray-600 object-contain" loading="lazy">`;
+                <img id="${imgId}" src="${safeUrl}" alt="Image preview" class="mt-2 max-w-full max-h-64 rounded-lg border border-gray-600 object-contain" loading="lazy">`;
             }
 
             // 일반 링크
             return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${match}</a>`;
         });
+
+        // 코드 블록 placeholder를 하이라이트된 코드로 교체
+        for (let i = 0; i < codeBlocks.length; i++) {
+            const { lang, code } = codeBlocks[i];
+            const trimmedCode = code.replace(/^\n+|\n+$/g, '');
+
+            let highlightedCode;
+            try {
+                if (typeof hljs !== 'undefined') {
+                    if (lang && hljs.getLanguage(lang)) {
+                        highlightedCode = hljs.highlight(trimmedCode, { language: lang }).value;
+                    } else {
+                        highlightedCode = hljs.highlightAuto(trimmedCode).value;
+                    }
+                } else {
+                    highlightedCode = this.sanitizeInput(trimmedCode);
+                }
+            } catch {
+                highlightedCode = this.sanitizeInput(trimmedCode);
+            }
+
+            const langLabel = lang ? `<span class="code-block-lang">${this.sanitizeInput(lang)}</span>` : '';
+            const copyBtnId = 'copy_' + Math.random().toString(36).substring(2, 9);
+            const codeHtml = `<div class="code-block-wrapper">
+                <div class="code-block-header">
+                    ${langLabel}
+                    <button id="${copyBtnId}" class="code-copy-btn" title="코드 복사">복사</button>
+                </div>
+                <pre class="code-block"><code class="hljs${lang ? ` language-${this.sanitizeInput(lang)}` : ''}">${highlightedCode}</code></pre>
+            </div>`;
+
+            // 복사 버튼 이벤트 등록
+            setTimeout(() => {
+                const btn = document.getElementById(copyBtnId);
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        navigator.clipboard.writeText(trimmedCode).then(() => {
+                            btn.textContent = '복사됨!';
+                            setTimeout(() => { btn.textContent = '복사'; }, 2000);
+                        }).catch(() => {
+                            btn.textContent = '실패';
+                            setTimeout(() => { btn.textContent = '복사'; }, 2000);
+                        });
+                    });
+                }
+            }, 0);
+
+            formatted = formatted.replace(`\u200B\u200BCODEBLOCK${i}\u200B\u200B`, codeHtml);
+        }
+
+        // 인라인 코드 placeholder를 교체
+        for (let i = 0; i < inlineCodes.length; i++) {
+            const code = inlineCodes[i];
+            const safeCode = this.sanitizeInput(code);
+            formatted = formatted.replace(`\u200B\u200BINLINECODE${i}\u200B\u200B`, `<code class="inline-code">${safeCode}</code>`);
+        }
 
         // 줄바꿈 처리
         return formatted.replace(/\n/g, '<br>');
