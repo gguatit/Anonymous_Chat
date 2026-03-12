@@ -81,7 +81,16 @@ export class UIManager {
                     for (const node of mutation.addedNodes) {
                         // data-message 표식이 있는 요소가 추가되면 스크롤
                         if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-message')) {
-                            this.scrollToBottom();
+                            // Only auto-scroll if we're already near the bottom
+                            const container = this.messagesContainer;
+                            const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+                            if (isAtBottom) {
+                                this.scrollToBottom();
+                            } else {
+                                // If we don't scroll, we should make sure the scroll button is visible
+                                this.scrollButton.classList.remove('opacity-0', 'pointer-events-none');
+                                this.scrollButton.classList.add('opacity-100', 'pointer-events-auto');
+                            }
                             return; // 한 번만 스크롤
                         }
                     }
@@ -385,8 +394,16 @@ export class UIManager {
         // Add all messages to DOM at once
         this.messagesContainer.appendChild(fragment);
 
-        // Scroll to bottom after batch insert
-        this.scrollToBottom();
+        // Scroll to bottom after batch insert if user was near the bottom
+        const container = this.messagesContainer;
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        if (isAtBottom) {
+            this.scrollToBottom();
+        } else {
+            // Update scroll button visibility if we do not auto-scroll
+            this.scrollButton.classList.remove('opacity-0', 'pointer-events-none');
+            this.scrollButton.classList.add('opacity-100', 'pointer-events-auto');
+        }
 
         console.log(`[UI] Batch rendering complete`);
 

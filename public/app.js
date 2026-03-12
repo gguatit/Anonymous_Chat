@@ -269,7 +269,17 @@ class ChatClient {
         `;
 
         this.messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
+        
+        // Scroll to bottom only if user was near the bottom
+        const container = this.messagesContainer;
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        if (isAtBottom) {
+            this.scrollToBottom();
+        } else {
+            // Update scroll button visibility if we do not auto-scroll
+            this.scrollButton.classList.remove('opacity-0', 'pointer-events-none');
+            this.scrollButton.classList.add('opacity-100', 'pointer-events-auto');
+        }
     }
 
     displaySystemMessage(content) {
@@ -277,7 +287,16 @@ class ChatClient {
         messageDiv.className = 'text-center text-xs text-gray-500 py-1.5';
         messageDiv.textContent = content;
         this.messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
+        
+        // Scroll to bottom only if user was near the bottom
+        const container = this.messagesContainer;
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        if (isAtBottom) {
+            this.scrollToBottom();
+        } else {
+            this.scrollButton.classList.remove('opacity-0', 'pointer-events-none');
+            this.scrollButton.classList.add('opacity-100', 'pointer-events-auto');
+        }
     }
 
     displayError(content) {
@@ -285,7 +304,16 @@ class ChatClient {
         errorDiv.className = 'text-center text-xs text-red-400 py-2 bg-red-900/20 rounded-lg mx-4';
         errorDiv.textContent = content;
         this.messagesContainer.appendChild(errorDiv);
-        this.scrollToBottom();
+        
+        // Scroll to bottom only if user was near the bottom
+        const container = this.messagesContainer;
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        if (isAtBottom) {
+            this.scrollToBottom();
+        } else {
+            this.scrollButton.classList.remove('opacity-0', 'pointer-events-none');
+            this.scrollButton.classList.add('opacity-100', 'pointer-events-auto');
+        }
         
         // Auto-remove error after 4 seconds
         setTimeout(() => {
