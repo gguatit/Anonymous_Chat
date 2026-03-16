@@ -98,9 +98,17 @@ export class ChatRoom {
 
     async fetch(request) {
         // Get HMAC_SECRET from request headers
-        const HMAC_SECRET = request.headers.get('X-HMAC-Secret');
+        const HMAC_SECRET = request.headers.get('X-HMAC-Secret') || request.headers.get('X-Admin-Internal-Token');
 
         const url = new URL(request.url);
+
+        // Security check for internal admin routes
+        if (url.pathname.startsWith('/admin/')) {
+            if (HMAC_SECRET !== this.env.HMAC_SECRET) {
+                this.addErrorLog('SECURITY', 'Unauthorized DO Admin Access Attempt', {}, `Path: ${url.pathname}`);
+                return new Response('Forbidden', { status: 403 });
+            }
+        }
 
         // Admin API endpoints
         if (url.pathname === '/admin/metrics') {

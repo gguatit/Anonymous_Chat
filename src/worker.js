@@ -128,7 +128,13 @@ export default {
             if (url.pathname === '/api/logs/error' && request.method === 'POST') {
                 const id = env.CHAT_ROOM.idFromName('global-room');
                 const room = env.CHAT_ROOM.get(id);
-                const response = await room.fetch(request);
+                // 중요 보안 패치: 클라이언트가 보낸 url을 그대로 넘기지 않고, 명시적으로 '/api/logs/error' 경로로 새로 만들어서 fetch
+                const logRequest = new Request('https://dummy/api/logs/error', {
+                    method: 'POST',
+                    headers: request.headers,
+                    body: request.body
+                });
+                const response = await room.fetch(logRequest);
                 return new Response(response.body, {
                     status: response.status,
                     headers: corsHeaders

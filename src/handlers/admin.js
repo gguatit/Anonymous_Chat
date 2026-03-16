@@ -162,7 +162,12 @@ export async function handleAdminMetrics(request, env, corsHeaders) {
     // Get metrics from Durable Object
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
-    const response = await room.fetch(new Request('https://dummy/admin/metrics'));
+    
+    // 내부 통신용 인증 헤더 추가
+    const checkRequest = new Request('https://dummy/admin/metrics', {
+        headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
+    });
+    const response = await room.fetch(checkRequest);
 
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -185,7 +190,12 @@ export async function handleAdminSessions(request, env, corsHeaders) {
 
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
-    const response = await room.fetch(new Request('https://dummy/admin/sessions'));
+    
+    // 내부 통신용 인증 헤더 추가
+    const checkRequest = new Request('https://dummy/admin/sessions', {
+        headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
+    });
+    const response = await room.fetch(checkRequest);
 
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -208,7 +218,11 @@ export async function handleAdminMessages(request, env, corsHeaders) {
 
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
-    const response = await room.fetch(new Request('https://dummy/admin/messages'));
+    
+    const forward = new Request('https://dummy/admin/messages', {
+        headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
+    });
+    const response = await room.fetch(forward);
 
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
