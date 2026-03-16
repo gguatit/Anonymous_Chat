@@ -2,10 +2,21 @@
 
 <div align="center">
 
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00FF11&center=true&vCenter=true&width=435&lines=Establishing+secure+link...;End-to-End+encryption+enabled.;Welcome+to+Anonymous+Chat." alt="Typing SVG" />
+
+```text
+    _                                                      
+   / \   _ __   ___  _ __  _   _ _ __ ___   ___  _   _ ___ 
+  / _ \ | '_ \ / _ \| '_ \| | | | '_ ` _ \ / _ \| | | / __|
+ / ___ \| | | | (_) | | | | |_| | | | | | | (_) | |_| \__ \
+/_/   \_\_| |_|\___/|_| |_|\__, |_| |_| |_|\___/ \__,_|___/
+                           |___/                           
+```
+
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
 [![WebSocket](https://img.shields.io/badge/WebSocket-Real--time-4285F4?style=for-the-badge&logo=socket.io&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/agpl-3.0)
 
 완전 익명 실시간 채팅 애플리케이션  
 Cloudflare Workers 기반 서버리스 아키텍처
@@ -1132,33 +1143,10 @@ chore: 빌드/설정 변경
 
 ## 라이선스
 
-이 프로젝트는 **MIT License**로 배포됩니다.
+이 프로젝트는 **AGPL-3.0 (GNU Affero General Public License v3.0)** 코어 기반으로 배포됩니다.
 
-```
-MIT License
-
-Copyright (c) 2024 gguatit
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-자유롭게 사용, 수정, 배포 가능합니다.
+- 🔒 **라이선스 (AGPL-3.0)**: 이 코드를 사용하거나 수정하여 배포 또는 네트워크 서비스(웹, 앱)를 제공할 경우, **반드시 동일한 라이선스(AGPL-3.0)로 소스 코드를 공개**해야 합니다. 상세 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+- 🛡️ **보안 정책**: 프로젝트의 보안 취약점 발견 시 대응 절차는 [SECURITY.md](SECURITY.md)를 참조해 주세요. 잠재적 취약점은 공개 이슈에 올리지 마시고, 이메일이나 비공개 채널로 제보해 주시기 바랍니다.
 
 ---
 
