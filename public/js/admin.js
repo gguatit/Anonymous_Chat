@@ -537,7 +537,10 @@ class AdminDashboard {
             return;
         }
 
-        container.innerHTML = logs.map(log => {
+        // Preserve opened details based on ID matching or index
+        const currentOpened = Array.from(container.querySelectorAll('tr[id^="error-detail-"]:not(.hidden)')).map(el => el.getAttribute('data-log-id'));
+
+        container.innerHTML = logs.map((log, index) => {
             const date = new Date(log.timestamp);
             let badgeClass = 'bg-gray-700 text-gray-300';
             
@@ -546,7 +549,10 @@ class AdminDashboard {
             else if (log.type === 'WS_CONNECTION') badgeClass = 'bg-purple-900/50 text-purple-500 border border-purple-700';
             else if (log.type === 'SYSTEM_ERROR') badgeClass = 'bg-red-900/50 text-red-500 border border-red-700';
 
-            const detailsId = `error-detail-${Math.random().toString(36).substr(2, 9)}`;
+            // Generate a more stable ID based on timestamp and type to keep it open across refreshes
+            const uniqueLogId = `log-${log.timestamp}-${log.type}`;
+            const detailsId = `error-detail-${index}`;
+            const isOpened = currentOpened.includes(uniqueLogId);
 
             return `
             <tr class="hover:bg-gray-700/30 transition-colors">
@@ -556,9 +562,9 @@ class AdminDashboard {
                 <td class="px-2 py-2 md:px-4 md:py-3 whitespace-nowrap">
                     <span class="px-2 py-1 rounded text-[10px] font-bold ${badgeClass}">${log.type}</span>
                 </td>
-                <td class="px-2 py-2 md:px-4 md:py-3 text-xs">
-                    <div class="font-mono text-red-400 truncate max-w-xs md:max-w-md" title="${this.escapeHtml(log.message)}">${this.escapeHtml(log.message)}</div>
-                    <div class="text-gray-500 text-[10px] mt-1">${this.escapeHtml(log.location)}</div>
+                <td class="px-2 py-2 md:px-4 md:py-3 text-xs" style="max-width: 0;">
+                    <div class="font-mono text-red-400 truncate w-full" title="${this.escapeHtml(log.message)}">${this.escapeHtml(log.message)}</div>
+                    <div class="text-gray-500 text-[10px] mt-1 truncate w-full" title="${this.escapeHtml(log.location)}">${this.escapeHtml(log.location)}</div>
                 </td>
                 <td class="px-2 py-2 md:px-4 md:py-3 text-right">
                     <button onclick="document.getElementById('${detailsId}').classList.toggle('hidden')" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300 transition-colors">
@@ -566,27 +572,28 @@ class AdminDashboard {
                     </button>
                 </td>
             </tr>
-            <tr id="${detailsId}" class="hidden bg-gray-900/50 border-t border-gray-800">
+            <tr id="${detailsId}" data-log-id="${uniqueLogId}" class="${isOpened ? '' : 'hidden'} bg-gray-900/50 border-t border-gray-800">
                 <td colspan="4" class="px-4 py-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+                        <div class="min-w-0">
                             <h4 class="text-xs font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1">환경 정보</h4>
-                            <ul class="text-[11px] text-gray-300 space-y-1 font-mono">
+                            <ul class="text-[11px] text-gray-300 space-y-1 font-mono break-all">
                                 <li><strong>IP / 지역:</strong> ${this.escapeHtml(log.environment?.ip || 'N/A')} (${this.escapeHtml(log.environment?.country || 'Unknown')})</li>
-                                <li><strong>User-Agent:</strong> <span class="break-all">${this.escapeHtml(log.environment?.userAgent || 'N/A')}</span></li>
+                                <li><strong>User-Agent:</strong> <span>${this.escapeHtml(log.environment?.userAgent || 'N/A')}</span></li>
                                 <li><strong>Context:</strong> ${this.escapeHtml(log.context || 'N/A')}</li>
-                                ${log.environment?.url ? `<li><strong>URL:</strong> <a href="${this.escapeHtml(log.environment.url)}" target="_blank" class="text-cyan-400 hover:underline break-all">${this.escapeHtml(log.environment.url)}</a></li>` : ''}
+                                ${log.environment?.url ? `<li><strong>URL:</strong> <a href="${this.escapeHtml(log.environment.url)}" target="_blank" class="text-cyan-400 hover:underline">${this.escapeHtml(log.environment.url)}</a></li>` : ''}
                             </ul>
                         </div>
-                        <div>
+                        <div class="min-w-0 flex flex-col">
                             <h4 class="text-xs font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1">Stack Trace</h4>
-                            <div class="bg-black p-2 rounded max-h-32 overflow-y-auto text-[10px] font-mono text-gray-400 whitespace-pre-wrap">${this.escapeHtml(log.stackTrace)}</div>
+                            <div class="bg-black p-2 rounded flex-1 min-h-[8rem] max-h-48 overflow-y-auto text-[10px] font-mono text-gray-400 whitespace-pre-wrap break-all">${this.escapeHtml(log.stackTrace)}</div>
                         </div>
                     </div>
                 </td>
             </tr>
             `;
         }).join('');
+    }
     }
 
     updateActiveSessions(sessions) {
