@@ -229,6 +229,39 @@ export async function handleAdminMessages(request, env, corsHeaders) {
     });
 }
 
+// 에러 로그 초기화
+export async function handleAdminDeleteErrorLogs(request, env, corsHeaders) {
+    if (request.method !== 'POST') {
+        return new Response(null, { status: 405, headers: corsHeaders });
+    }
+
+    const authHeader = request.headers.get('Authorization');
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+
+    if (!isValid) {
+        return new Response(null, { status: 401, headers: corsHeaders });
+    }
+
+    const roomId = env.CHAT_ROOM.idFromName('main-room');
+    const room = env.CHAT_ROOM.get(roomId);
+    
+    const forward = new Request('https://dummy/admin/delete-error-logs', {
+        method: 'POST',
+        headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
+    });
+    const response = await room.fetch(forward);
+
+    return new Response(response.body, {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
 // 로그아웃 (토큰 무효화)
 export async function handleAdminLogout(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');

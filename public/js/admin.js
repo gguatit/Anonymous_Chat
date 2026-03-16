@@ -23,6 +23,12 @@ class AdminDashboard {
         this.refreshBtn?.addEventListener('click', () => this.refreshData());
         this.exportCsvBtn = document.getElementById('export-csv-btn');
         this.exportCsvBtn?.addEventListener('click', () => this.exportCsv());
+        
+        // Error logs actions
+        const downloadErrorsBtn = document.getElementById('download-errors-btn');
+        downloadErrorsBtn?.addEventListener('click', () => this.downloadErrorLogs());
+        const deleteErrorsBtn = document.getElementById('delete-errors-btn');
+        deleteErrorsBtn?.addEventListener('click', () => this.deleteErrorLogs());
 
         // Mobile menu toggle (wrapped in try-catch for safety)
         try {
@@ -575,24 +581,82 @@ class AdminDashboard {
             <tr id="${detailsId}" data-log-id="${uniqueLogId}" class="${isOpened ? '' : 'hidden'} bg-gray-900/50 border-t border-gray-800">
                 <td colspan="4" class="px-4 py-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-                        <div class="min-w-0">
-                            <h4 class="text-xs font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1">환경 정보</h4>
-                            <ul class="text-[11px] text-gray-300 space-y-1 font-mono break-all">
-                                <li><strong>IP / 지역:</strong> ${this.escapeHtml(log.environment?.ip || 'N/A')} (${this.escapeHtml(log.environment?.country || 'Unknown')})</li>
-                                <li><strong>User-Agent:</strong> <span>${this.escapeHtml(log.environment?.userAgent || 'N/A')}</span></li>
-                                <li><strong>Context:</strong> ${this.escapeHtml(log.context || 'N/A')}</li>
-                                ${log.environment?.url ? `<li><strong>URL:</strong> <a href="${this.escapeHtml(log.environment.url)}" target="_blank" class="text-cyan-400 hover:underline">${this.escapeHtml(log.environment.url)}</a></li>` : ''}
-                            </ul>
+                        <div class="min-w-0 flex flex-col">
+                            <h4 class="text-xs font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1 shrink-0">환경 정보</h4>
+                            <div class="overflow-y-auto max-h-48 pr-1 min-h-[4rem]">
+                                <ul class="text-[11px] text-gray-300 space-y-1 font-mono break-all">
+                                    <li><strong class="text-gray-400">IP / 지역:</strong> ${this.escapeHtml(log.environment?.ip || 'N/A')} (${this.escapeHtml(log.environment?.country || 'Unknown')})</li>
+                                    <li><strong class="text-gray-400">User-Agent:</strong> <span>${this.escapeHtml(log.environment?.userAgent || 'N/A')}</span></li>
+                                    <li><strong class="text-gray-400">Context:</strong> ${this.escapeHtml(log.context || 'N/A')}</li>
+                                    ${log.environment?.url ? `<li><strong class="text-gray-400">URL:</strong> <a href="${this.escapeHtml(log.environment.url)}" target="_blank" class="text-cyan-400 hover:underline">${this.escapeHtml(log.environment.url)}</a></li>` : ''}
+                                </ul>
+                            </div>
                         </div>
                         <div class="min-w-0 flex flex-col">
-                            <h4 class="text-xs font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1">Stack Trace</h4>
-                            <div class="bg-black p-2 rounded flex-1 min-h-[8rem] max-h-48 overflow-y-auto text-[10px] font-mono text-gray-400 whitespace-pre-wrap break-all">${this.escapeHtml(log.stackTrace)}</div>
+                            <h4 class="text-xs font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1 shrink-0">Stack Trace</h4>
+                            <div class="bg-black p-2 rounded flex-1 min-h-[8rem] max-h-48 overflow-y-auto overflow-x-hidden text-[10px] font-mono text-gray-400 whitespace-pre-wrap break-all">${this.escapeHtml(log.stackTrace)}</div>
                         </div>
                     </div>
                 </td>
             </tr>
             `;
         }).join('');
+    }
+
+    downloadErrorLogs() {
+        if (!this.lastMetrics || !this.lastMetrics.errorLogs || this.lastMetrics.errorLogs.length === 0) {
+            this.showNotification('다운로드할 오류 로그가 없습니다.', 'error');
+            return;
+        }
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const fileName = `error_logs_${timestamp}.json`;
+        const jsonStr = JSON.stringify(this.lastMetrics.errorLogs, null, 2);
+        
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 0);
+    }
+
+    async deleteErrorLogs() {
+        if (!this.lastMetrics || !this.lastMetrics.errorLogs || this.lastMetrics.errorLogs.length === 0) {
+            this.showNotification('삭제할 오류 로그가 없습니다.', 'error');
+            return;
+        }
+
+        if (!confirm('경고: 모든 오류 로그 데이터가 서버에서 영구적으로 삭제됩니다. 계속하시겠습니까?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/delete-error-logs', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.sessionToken}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete error logs');
+            }
+
+            this.showNotification('모든 오류 로그가 성공적으로 삭제되었습니다.', 'success');
+            
+            // 데이터 새로고침
+            this.refreshData();
+        } catch (error) {
+            console.error('Error deleting logs:', error);
+            this.showNotification('오류 로그 삭제 중 문제가 발생했습니다.', 'error');
+        }
     }
 
     updateActiveSessions(sessions) {

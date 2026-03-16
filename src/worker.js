@@ -17,6 +17,7 @@ import {
     handleAdminEditMessage,
     handleAdminDeleteMessage,
     handleAdminDeleteAllMessages,
+    handleAdminDeleteErrorLogs,
     handleAdminKickUser,
     handleAdminAnnounce,
     handleAdminBannedIPs,
@@ -75,6 +76,9 @@ export default {
             }
             if (url.pathname === '/api/admin/messages') {
                 return await handleAdminMessages(request, env, corsHeaders);
+            }
+            if (url.pathname === '/api/admin/delete-error-logs') {
+                return await handleAdminDeleteErrorLogs(request, env, corsHeaders);
             }
             if (url.pathname === '/api/admin/logout') {
                 return await handleAdminLogout(request, env, corsHeaders);

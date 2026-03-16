@@ -40,6 +40,11 @@ export class ChatRoom {
         if (this.errorLogs.length > this.MAX_ERROR_LOGS) {
             this.errorLogs.pop();
         }
+
+        // Save to persistent storage without awaiting to prevent blocking
+        this.state.storage.put('errorLogs', this.errorLogs).catch(err => {
+            console.error('Failed to save error logs to storage', err);
+        });
     }
 
     extractErrorLocation(error) {
@@ -91,6 +96,12 @@ export class ChatRoom {
         const announcement = await this.state.storage.get('currentAnnouncement');
         if (announcement) {
             this.currentAnnouncement = announcement;
+        }
+
+        // Load error logs from storage
+        const errorLogs = await this.state.storage.get('errorLogs');
+        if (errorLogs) {
+            this.errorLogs = errorLogs;
         }
 
         this.initialized = true;
@@ -186,6 +197,14 @@ export class ChatRoom {
 
         if (url.pathname === '/check-ban') {
             return await this.handleCheckBan(url, request);
+        }
+
+        if (url.pathname === '/admin/delete-error-logs' && request.method === 'POST') {
+            this.errorLogs = [];
+            await this.state.storage.delete('errorLogs');
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
         if (url.pathname === '/api/logs/error' && request.method === 'POST') {
