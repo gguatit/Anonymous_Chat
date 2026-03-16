@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00FF11&center=true&vCenter=true&width=435&lines=Establishing+secure+link...;End-to-End+encryption+enabled.;Welcome+to+Anonymous+Chat." alt="Typing SVG" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=A0A0A0&center=true&vCenter=true&width=435&lines=Establishing+secure+link...;Welcome+to+Anonymous+Chat." alt="Typing SVG" />
 
 ```text
     _                                                      
