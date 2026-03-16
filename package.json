@@ -17,7 +17,7 @@
     "anonymous"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231025.0",
     "eslint": "^8.54.0",
