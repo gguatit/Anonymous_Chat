@@ -594,7 +594,6 @@ class AdminDashboard {
             `;
         }).join('');
     }
-    }
 
     updateActiveSessions(sessions) {
         const container = document.getElementById('active-sessions');
