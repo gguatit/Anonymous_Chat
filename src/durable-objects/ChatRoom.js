@@ -18,9 +18,39 @@ export class ChatRoom {
         this.bannedSessions = new Map(); // sessionId -> { bannedUntil: timestamp, reason: string }
         this.currentAnnouncement = null; // Current active announcement
         this.auditLogs = []; // Audit logs for admin actions
+        this.errorLogs = []; // Ring buffer for detailed errors
+        this.MAX_ERROR_LOGS = 100;
 
         // Periodic cleanup of stale data (every 5 minutes)
         this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
+    }
+
+    addErrorLog(type, error, environment = {}, context = '') {
+        const log = {
+            timestamp: new Date().toISOString(),
+            type,
+            message: error instanceof Error ? error.message : String(error),
+            stackTrace: error instanceof Error ? error.stack : 'No stack trace',
+            location: this.extractErrorLocation(error),
+            environment: environment || {},
+            context
+        };
+        
+        this.errorLogs.unshift(log);
+        if (this.errorLogs.length > this.MAX_ERROR_LOGS) {
+            this.errorLogs.pop();
+        }
+    }
+
+    extractErrorLocation(error) {
+        if (error instanceof Error && error.stack) {
+            const lines = error.stack.split('\n');
+            // get the first location line (usually the second line in stack)
+            if (lines.length > 1) {
+                return lines[1].trim();
+            }
+        }
+        return 'Unknown';
     }
 
     async initializeMessages() {
@@ -79,7 +109,8 @@ export class ChatRoom {
                 totalMessages: this.messages.length,
                 totalConnections: metrics.totalConnections,
                 errors: metrics.errors,
-                uptime: Date.now() - (this.startTime || Date.now())
+                uptime: Date.now() - (this.startTime || Date.now()),
+                errorLogs: this.errorLogs
             }), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -149,10 +180,25 @@ export class ChatRoom {
             return await this.handleCheckBan(url, request);
         }
 
+        if (url.pathname === '/api/logs/error' && request.method === 'POST') {
+            try {
+                const logData = await request.json();
+                this.addErrorLog('CLIENT_ERROR', new Error(logData.message), logData.environment, logData.context);
+                return new Response('OK', { status: 200 });
+            } catch (e) {
+                return new Response('Error', { status: 400 });
+            }
+        }
+
         // Initialize messages from storage on first request
         await this.initializeMessages();
 
         const clientIP = request.headers.get('CF-Connecting-IP');
+        const userAgent = request.headers.get('User-Agent') || 'Unknown';
+        const country = request.headers.get('CF-IPCountry') || 'Unknown';
+        const maskedIP = clientIP ? clientIP.replace(/\.\d+\.\d+$/, '.***.***') : 'unknown';
+        const environment = { ip: maskedIP, country, userAgent };
+
         if (!clientIP) {
             return new Response(JSON.stringify({ error: 'Invalid request' }), {
                 status: 400,
@@ -192,7 +238,7 @@ export class ChatRoom {
         const [client, server] = Object.values(pair);
 
         // Accept the WebSocket connection
-        await this.handleSession(server, clientIP, HMAC_SECRET);
+        await this.handleSession(server, clientIP, HMAC_SECRET, environment);
 
         return new Response(null, {
             status: 101,
@@ -796,7 +842,7 @@ export class ChatRoom {
         });
     }
 
-    async handleSession(websocket, clientIP, HMAC_SECRET) {
+    async handleSession(websocket, clientIP, HMAC_SECRET, environment) {
         websocket.accept();
 
         let sessionId = null;
@@ -829,6 +875,7 @@ export class ChatRoom {
                         await this.handleJoin(data, websocket, clientIP, (sid, meta) => {
                             sessionId = sid;
                             metadata = meta;
+                            if (environment) metadata.environment = environment;
                         });
                         break;
                     }
@@ -859,6 +906,8 @@ export class ChatRoom {
             } catch (error) {
                 metrics.errors++;
                 console.error('Message handling error:', error);
+                const errorEnv = metadata?.environment || (environment ? environment : {});
+                this.addErrorLog('WS_MESSAGE_PARSE', error, errorEnv, '메시지 처리 중 오류 발생');
                 if (sessionId) {
                     this.sendToSession(sessionId, {
                         type: 'error',
@@ -890,6 +939,8 @@ export class ChatRoom {
         websocket.addEventListener('error', (error) => {
             metrics.errors++;
             console.error('WebSocket error:', error);
+            const errorEnv = metadata?.environment || (environment ? environment : {});
+            this.addErrorLog('WS_CONNECTION', error, errorEnv, '웹소켓 연결 오류 발생');
         });
     }
 

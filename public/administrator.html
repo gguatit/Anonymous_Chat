@@ -302,6 +302,35 @@
                 </div>
             </div>
 
+            <!-- Error Logs Panel -->
+            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
+                <div class="p-3 md:p-4 border-b border-gray-700">
+                    <h2 class="text-base md:text-lg font-semibold text-red-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>시스템 오류 로그
+                    </h2>
+                    <p class="text-xs md:text-sm text-gray-400">최근 서버 및 클라이언트 측 에러 내역 (최대 100건)</p>
+                </div>
+                <div class="p-0">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="text-gray-400 bg-gray-700/50">
+                                <tr>
+                                    <th class="px-2 py-2 md:px-4 md:py-3 cursor-pointer">발생 시간</th>
+                                    <th class="px-2 py-2 md:px-4 md:py-3">유형</th>
+                                    <th class="px-2 py-2 md:px-4 md:py-3">발생 위치 / 메시지</th>
+                                    <th class="px-2 py-2 md:px-4 md:py-3 text-right">상세 정보</th>
+                                </tr>
+                            </thead>
+                            <tbody id="error-logs-list" class="divide-y divide-gray-700 text-gray-300">
+                                <tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">최근 오류 내역이 없습니다.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Detailed Stats -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
                 <!-- Active Sessions -->

@@ -1,3 +1,34 @@
+// Error Tracking setup
+window.addEventListener('error', (event) => {
+    fetch('/api/logs/error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            message: event.message,
+            context: `File: ${event.filename}, Line: ${event.lineno}`,
+            environment: {
+                userAgent: navigator.userAgent,
+                url: window.location.href
+            }
+        })
+    }).catch(() => {});
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    fetch('/api/logs/error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            message: event.reason ? (event.reason.message || String(event.reason)) : 'Unhandled Promise Rejection',
+            context: 'Promise Rejection',
+            environment: {
+                userAgent: navigator.userAgent,
+                url: window.location.href
+            }
+        })
+    }).catch(() => {});
+});
+
 // Anonymous Chat Client Application
 class ChatClient {
     constructor() {

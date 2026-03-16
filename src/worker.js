@@ -124,6 +124,17 @@ export default {
                 return await handlePushUnsubscribe(request, env, corsHeaders);
             }
 
+            // Client Error logging endpoint
+            if (url.pathname === '/api/logs/error' && request.method === 'POST') {
+                const id = env.CHAT_ROOM.idFromName('global-room');
+                const room = env.CHAT_ROOM.get(id);
+                const response = await room.fetch(request);
+                return new Response(response.body, {
+                    status: response.status,
+                    headers: corsHeaders
+                });
+            }
+
             // Check IP ban status
             if (url.pathname === '/api/check-ban') {
                 return await handleCheckBan(request, env, corsHeaders);
