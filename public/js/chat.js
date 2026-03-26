@@ -19,6 +19,7 @@ class ChatClient {
         this.lastMessageTime = 0;
         this.messageRateLimit = 1000; // 1 message per second
         this.isTyping = false;
+        this.isNicknameLocked = true;
 
         // Initialize WebSocket with message handler
         this.wsManager = new WebSocketManager(
@@ -100,14 +101,49 @@ class ChatClient {
             onScroll: () => this.ui.updateScrollButton(),
             onDelete: (messageId) => this.deleteMessage(messageId),
             onRevealSecret: (secretId, container) => this.revealSecretMessage(secretId, container),
-            onSetNickname: (newName) => this.handleSetNickname(newName)
+            onSetNickname: (newName) => this.handleSetNickname(newName),
+            onToggleNicknameLock: () => this.handleToggleNicknameLock(),
+            onAcceptNotice: (dontShowAgain) => this.handleAcceptNotice(dontShowAgain)
         });
         this.ui.updateNicknameDisplay(this.sessionManager.getNickname());
+        this.ui.setNicknameLockState(this.isNicknameLocked);
     }
 
     handleSetNickname(newName) {
         const savedName = this.sessionManager.setNickname(newName);
         this.ui.updateNicknameDisplay(savedName);
+    }
+
+    handleToggleNicknameLock() {
+        if (this.isNicknameLocked) {
+            // Attempting to unlock
+            if (this.sessionManager.hasAcceptedNicknameNotice()) {
+                // Already accepted notice
+                this.isNicknameLocked = false;
+                this.ui.setNicknameLockState(this.isNicknameLocked);
+            } else {
+                // Show notice
+                this.ui.showNoticeModal();
+            }
+        } else {
+            // Attempting to lock after changes
+            this.isNicknameLocked = true;
+            this.ui.setNicknameLockState(this.isNicknameLocked);
+            
+            // Trigger a save just in case
+            if (this.ui.nicknameInput) {
+                this.handleSetNickname(this.ui.nicknameInput.value);
+            }
+        }
+    }
+
+    handleAcceptNotice(dontShowAgain) {
+        if (dontShowAgain) {
+            this.sessionManager.setNicknameNoticeAccepted(true);
+        }
+        // Unlock nickname input
+        this.isNicknameLocked = false;
+        this.ui.setNicknameLockState(this.isNicknameLocked);
     }
 
     handleMessage(data) {

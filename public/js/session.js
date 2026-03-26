@@ -47,4 +47,16 @@ export class SessionManager {
         localStorage.setItem('chatNickname', this.nickname);
         return this.nickname;
     }
+
+    hasAcceptedNicknameNotice() {
+        return localStorage.getItem('chatNicknameNoticeAccepted') === 'true';
+    }
+
+    setNicknameNoticeAccepted(accepted = true) {
+        if (accepted) {
+            localStorage.setItem('chatNicknameNoticeAccepted', 'true');
+        } else {
+            localStorage.removeItem('chatNicknameNoticeAccepted');
+        }
+    }
 }

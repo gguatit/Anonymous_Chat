@@ -12,6 +12,14 @@ export class UIManager {
         this.charCount = document.getElementById('char-count');
         this.scrollButton = document.getElementById('scroll-to-bottom');
         this.nicknameInput = document.getElementById('nickname-input');
+        this.nicknameLockBtn = document.getElementById('nickname-lock-btn');
+        this.lockIcon = document.getElementById('lock-icon');
+        this.unlockIcon = document.getElementById('unlock-icon');
+        
+        // Notice Modal elements
+        this.noticeModal = document.getElementById('notice-modal');
+        this.noticeAcceptBtn = document.getElementById('notice-accept-btn');
+        this.noticeDontShowAgain = document.getElementById('notice-dont-show-again');
 
         // 답장 상태
         this.replyingTo = null; // { messageId, content, isOwnMessage, isSecret }
@@ -143,6 +151,20 @@ export class UIManager {
             });
         }
 
+        if (this.nicknameLockBtn && callbacks.onToggleNicknameLock) {
+            this.nicknameLockBtn.addEventListener('click', () => {
+                callbacks.onToggleNicknameLock();
+            });
+        }
+        
+        if (this.noticeAcceptBtn && callbacks.onAcceptNotice) {
+            this.noticeAcceptBtn.addEventListener('click', () => {
+                const dontShowAgain = this.noticeDontShowAgain ? this.noticeDontShowAgain.checked : false;
+                callbacks.onAcceptNotice(dontShowAgain);
+                this.hideNoticeModal();
+            });
+        }
+
         // Store callbacks
         this.onDelete = callbacks.onDelete;
         this.onRevealSecret = callbacks.onRevealSecret;
@@ -151,6 +173,37 @@ export class UIManager {
     updateNicknameDisplay(name) {
         if (this.nicknameInput) {
             this.nicknameInput.value = name && name !== '익명' ? name : '';
+        }
+    }
+
+    setNicknameLockState(isLocked) {
+        if (!this.nicknameInput || !this.nicknameLockBtn) return;
+        
+        if (isLocked) {
+            this.nicknameInput.readOnly = true;
+            this.nicknameInput.classList.add('opacity-80', 'cursor-not-allowed');
+            this.nicknameLockBtn.classList.remove('hidden');
+            this.nicknameLockBtn.title = '닉네임 변경 보호됨';
+            this.nicknameLockBtn.setAttribute('aria-label', '닉네임 잠금 해제');
+        } else {
+            this.nicknameInput.readOnly = false;
+            this.nicknameInput.classList.remove('opacity-80', 'cursor-not-allowed');
+            this.nicknameLockBtn.classList.add('hidden');
+            this.nicknameLockBtn.title = '닉네임 변경 가능';
+            this.nicknameLockBtn.setAttribute('aria-label', '닉네임 변경 가능');
+            this.nicknameInput.focus();
+        }
+    }
+    
+    showNoticeModal() {
+        if (this.noticeModal) {
+            this.noticeModal.classList.remove('hidden');
+        }
+    }
+    
+    hideNoticeModal() {
+        if (this.noticeModal) {
+            this.noticeModal.classList.add('hidden');
         }
     }
 
