@@ -1,7 +1,7 @@
 // Main Chat Client Application
-import { SessionManager } from './session.js?v=1.0.3';
+import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
-import { UIManager } from './ui.js?v=1.0.3';
+import { UIManager } from './ui.js?v=1.0.4';
 import { FileUploadManager } from './file-upload.js?v=1.0.3';
 import { DeadDropClient } from './dead-drop.js?v=1.0.3';
 import { PushNotificationManager } from './push-manager.js?v=1.0.3';
