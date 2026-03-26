@@ -100,19 +100,14 @@ class ChatClient {
             onScroll: () => this.ui.updateScrollButton(),
             onDelete: (messageId) => this.deleteMessage(messageId),
             onRevealSecret: (secretId, container) => this.revealSecretMessage(secretId, container),
-            onSetNickname: () => this.handleSetNickname()
+            onSetNickname: (newName) => this.handleSetNickname(newName)
         });
         this.ui.updateNicknameDisplay(this.sessionManager.getNickname());
     }
 
-    handleSetNickname() {
-        const currentName = this.sessionManager.getNickname();
-        const placeholder = currentName === '익명' ? '' : currentName;
-        const newName = prompt('사용할 닉네임을 입력하세요. (최대 12자)\n빈 칸으로 두면 "익명"으로 설정됩니다.', placeholder);
-        if (newName !== null) {
-            const savedName = this.sessionManager.setNickname(newName);
-            this.ui.updateNicknameDisplay(savedName);
-        }
+    handleSetNickname(newName) {
+        const savedName = this.sessionManager.setNickname(newName);
+        this.ui.updateNicknameDisplay(savedName);
     }
 
     handleMessage(data) {

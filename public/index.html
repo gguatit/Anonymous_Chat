@@ -379,9 +379,9 @@
                         class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 resize-none"
                         placeholder="메시지 입력 (Shift+Enter: 줄바꿈, Enter: 전송, 최대 5000자)" maxlength="5000" autocomplete="off"
                         aria-label="메시지 입력"></textarea>
-                    <button type="button" id="nickname-button"
-                        class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium whitespace-nowrap"
-                        aria-label="닉네임 설정" title="닉네임 설정">익명</button>
+                    <input type="text" id="nickname-input"
+                        class="bg-gray-700 text-gray-200 px-3 py-2.5 rounded-lg border border-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium w-24 text-center placeholder-gray-400"
+                        placeholder="익명" aria-label="닉네임" title="닉네임 (최대 12자)" maxlength="12">
                     <input type="file" id="file-input" accept="*/*" class="hidden">
                     <button type="button" id="file-button"
                         class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -411,7 +411,7 @@
     </footer>
 
     <!-- JavaScript Modules -->
-    <script type="module" src="/js/chat.js?v=1.0.3"></script>
+    <script type="module" src="/js/chat.js?v=1.0.4"></script>
     <script>
         // Platform info toggle
         const infoToggle = document.getElementById('info-toggle');

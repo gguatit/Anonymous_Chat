@@ -11,7 +11,7 @@ export class UIManager {
         this.typingIndicator = document.getElementById('typing-indicator');
         this.charCount = document.getElementById('char-count');
         this.scrollButton = document.getElementById('scroll-to-bottom');
-        this.nicknameButton = document.getElementById('nickname-button');
+        this.nicknameInput = document.getElementById('nickname-input');
 
         // 답장 상태
         this.replyingTo = null; // { messageId, content, isOwnMessage, isSecret }
@@ -137,8 +137,10 @@ export class UIManager {
         this.scrollButton.addEventListener('click', callbacks.onScrollClick);
         this.messagesContainer.addEventListener('scroll', callbacks.onScroll);
 
-        if (this.nicknameButton && callbacks.onSetNickname) {
-            this.nicknameButton.addEventListener('click', callbacks.onSetNickname);
+        if (this.nicknameInput && callbacks.onSetNickname) {
+            this.nicknameInput.addEventListener('change', (e) => {
+                callbacks.onSetNickname(e.target.value);
+            });
         }
 
         // Store callbacks
@@ -147,8 +149,8 @@ export class UIManager {
     }
 
     updateNicknameDisplay(name) {
-        if (this.nicknameButton) {
-            this.nicknameButton.textContent = name;
+        if (this.nicknameInput) {
+            this.nicknameInput.value = name && name !== '익명' ? name : '';
         }
     }
 
