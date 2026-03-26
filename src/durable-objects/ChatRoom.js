@@ -1158,6 +1158,7 @@ export class ChatRoom {
             messageId: messageId,
             content: this.sanitizeInput(data.content),
             sessionId: sessionId,
+            nickname: this.sanitizeInput(data.nickname || '익명').substring(0, 12),
             timestamp: Date.now(),
             editedAt: null
         };
@@ -1370,6 +1371,7 @@ export class ChatRoom {
         this.broadcast({
             type: 'typing',
             sessionId: sessionId,
+            nickname: this.sanitizeInput(data.nickname || '익명').substring(0, 12),
             typing: data.typing
         }, sessionId);
     }

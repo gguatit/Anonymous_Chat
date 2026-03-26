@@ -99,8 +99,20 @@ class ChatClient {
             onScrollClick: () => this.ui.scrollToBottom(true),
             onScroll: () => this.ui.updateScrollButton(),
             onDelete: (messageId) => this.deleteMessage(messageId),
-            onRevealSecret: (secretId, container) => this.revealSecretMessage(secretId, container)
+            onRevealSecret: (secretId, container) => this.revealSecretMessage(secretId, container),
+            onSetNickname: () => this.handleSetNickname()
         });
+        this.ui.updateNicknameDisplay(this.sessionManager.getNickname());
+    }
+
+    handleSetNickname() {
+        const currentName = this.sessionManager.getNickname();
+        const placeholder = currentName === '익명' ? '' : currentName;
+        const newName = prompt('사용할 닉네임을 입력하세요. (최대 12자)\n빈 칸으로 두면 "익명"으로 설정됩니다.', placeholder);
+        if (newName !== null) {
+            const savedName = this.sessionManager.setNickname(newName);
+            this.ui.updateNicknameDisplay(savedName);
+        }
     }
 
     handleMessage(data) {
@@ -137,7 +149,7 @@ class ChatClient {
                 break;
             case 'typing':
                 if (data.sessionId !== this.sessionManager.getSessionId()) {
-                    this.ui.showTypingIndicator(data.typing);
+                    this.ui.showTypingIndicator(data.typing, data.nickname);
                 }
                 break;
             case 'system':
@@ -283,6 +295,7 @@ class ChatClient {
             // Preserve newlines; sanitization happens server-side and at render time
             content: message || '',
             sessionId: this.sessionManager.getSessionId(),
+            nickname: this.sessionManager.getNickname(),
             timestamp: now
         };
 
@@ -365,6 +378,7 @@ class ChatClient {
             this.wsManager.send({
                 type: 'typing',
                 sessionId: this.sessionManager.getSessionId(),
+                nickname: this.sessionManager.getNickname(),
                 typing: true
             });
         }
@@ -380,6 +394,7 @@ class ChatClient {
                 this.wsManager.send({
                     type: 'typing',
                     sessionId: this.sessionManager.getSessionId(),
+                    nickname: this.sessionManager.getNickname(),
                     typing: false
                 });
             }

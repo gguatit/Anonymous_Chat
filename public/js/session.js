@@ -2,6 +2,7 @@
 export class SessionManager {
     constructor() {
         this.sessionId = this.getOrCreateSessionId();
+        this.nickname = this.getOrCreateNickname();
     }
 
     getOrCreateSessionId() {
@@ -25,5 +26,25 @@ export class SessionManager {
 
     getSessionId() {
         return this.sessionId;
+    }
+
+    getOrCreateNickname() {
+        let nickname = localStorage.getItem('chatNickname');
+        if (!nickname) {
+            nickname = '익명';
+            localStorage.setItem('chatNickname', nickname);
+        }
+        return nickname;
+    }
+
+    getNickname() {
+        return this.nickname;
+    }
+
+    setNickname(name) {
+        const safeName = name ? name.trim().substring(0, 12) : '익명';
+        this.nickname = safeName || '익명';
+        localStorage.setItem('chatNickname', this.nickname);
+        return this.nickname;
     }
 }

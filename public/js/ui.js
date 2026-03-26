@@ -11,6 +11,7 @@ export class UIManager {
         this.typingIndicator = document.getElementById('typing-indicator');
         this.charCount = document.getElementById('char-count');
         this.scrollButton = document.getElementById('scroll-to-bottom');
+        this.nicknameButton = document.getElementById('nickname-button');
 
         // 답장 상태
         this.replyingTo = null; // { messageId, content, isOwnMessage, isSecret }
@@ -136,9 +137,19 @@ export class UIManager {
         this.scrollButton.addEventListener('click', callbacks.onScrollClick);
         this.messagesContainer.addEventListener('scroll', callbacks.onScroll);
 
+        if (this.nicknameButton && callbacks.onSetNickname) {
+            this.nicknameButton.addEventListener('click', callbacks.onSetNickname);
+        }
+
         // Store callbacks
         this.onDelete = callbacks.onDelete;
         this.onRevealSecret = callbacks.onRevealSecret;
+    }
+
+    updateNicknameDisplay(name) {
+        if (this.nicknameButton) {
+            this.nicknameButton.textContent = name;
+        }
     }
 
     displayMessage(data, isOwnMessage, sessionId) {
@@ -238,11 +249,12 @@ export class UIManager {
             contentHtml = '<div class="text-sm text-gray-500 italic">내용 없음</div>';
         }
 
+        const senderName = data.nickname || '익명';
         // Name/label section: show 관리자 for admin messages
         // 관리자 메시지는 아이콘 없이 텍스트로만 강조
         const nameLabel = isAdmin
             ? `<span class="text-xs font-semibold text-yellow-300">관리자</span>`
-            : `<span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">${isOwnMessage ? '나' : '익명'}</span>`;
+            : `<span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">${isOwnMessage ? `나 (${this.sanitizeInput(senderName)})` : this.sanitizeInput(senderName)}</span>`;
 
         messageDiv.innerHTML = `
             <div class="flex items-start justify-between gap-2 mb-1">
@@ -375,9 +387,10 @@ export class UIManager {
                 contentHtml = '<div class="text-sm text-gray-500 italic">내용 없음</div>';
             }
 
+            const senderName = data.nickname || '익명';
             const nameLabel = isAdmin
                 ? `<span class="text-xs font-semibold text-yellow-300">관리자</span>`
-                : `<span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">${isOwnMessage ? '나' : '익명'}</span>`;
+                : `<span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">${isOwnMessage ? `나 (${this.sanitizeInput(senderName)})` : this.sanitizeInput(senderName)}</span>`;
 
             messageDiv.innerHTML = `
                 <div class="flex items-start justify-between gap-2 mb-1">
@@ -794,9 +807,11 @@ export class UIManager {
         statusDot.className = `w-2 h-2 rounded-full ${colors[status] || 'bg-gray-500'}`;
     }
 
-    showTypingIndicator(show) {
+    showTypingIndicator(show, nickname) {
         if (show) {
             this.typingIndicator.classList.remove('hidden');
+            const displayName = nickname ? this.sanitizeInput(nickname) + '님이' : '';
+            this.typingIndicator.innerHTML = `<span>●</span><span>●</span><span>●</span> ${displayName} 입력 중`;
         } else {
             this.typingIndicator.classList.add('hidden');
         }
