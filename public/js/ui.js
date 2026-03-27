@@ -799,24 +799,9 @@ export class UIManager {
     }
 
     displayAnnouncement(content, timestamp) {
-        console.log('[UI] displayAnnouncement called with:', content, timestamp);
-
-        if (!this.announcementBanner || !this.announcementContent || !this.announcementTime) {
-            console.error('[UI] Announcement elements not found');
-            return;
-        }
-
-        // Set content
-        this.announcementContent.textContent = content;
-
-        // Use provided timestamp or fallback to current time
-        const date = timestamp ? new Date(timestamp) : new Date();
-        this.announcementTime.textContent = date.toLocaleString('ko-KR');
-
-        // Show banner
-        this.announcementBanner.classList.remove('hidden');
-
-        console.log('[UI] Announcement banner displayed');
+        // 공지사항은 채팅에 표시하지 않습니다.
+        // 사용자는 헤더의 공지사항 버튼(확성기 아이콘)을 통해 /announcements.html에서 확인할 수 있습니다.
+        console.log('[UI] Announcement received (not displayed in chat):', content?.substring(0, 50));
     }
 
     hideAnnouncement() {
