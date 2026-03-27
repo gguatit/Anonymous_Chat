@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="익명 채팅 공지사항 기록">
+    <title>공지사항 | 익명 채팅</title>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/ico/favicon.ico">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+    </script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/base.css">
+
+    <style>
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in-up {
+            animation: fadeInUp 0.35s ease both;
+        }
+        .announcement-card:nth-child(n) { animation-delay: calc(var(--i, 0) * 60ms); }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .loading-dot span { animation: pulse-dot 1.2s ease-in-out infinite; }
+        .loading-dot span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dot span:nth-child(3) { animation-delay: 0.4s; }
+    </style>
+</head>
+
+<body class="dark bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700 py-3 px-4 shadow-lg sticky top-0 z-50">
+        <div class="max-w-3xl mx-auto flex items-center gap-3">
+            <a href="/" class="text-gray-400 hover:text-gray-200 transition-colors p-2 rounded-lg hover:bg-gray-700"
+                aria-label="채팅으로 돌아가기" title="채팅으로 돌아가기">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+                        clip-rule="evenodd" />
+                </svg>
+            </a>
+            <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                <h1 class="text-xl font-bold text-gray-100">공지사항</h1>
+            </div>
+            <span id="count-badge"
+                class="ml-auto text-xs bg-gray-700 px-2.5 py-1 rounded-full font-medium text-gray-300 hidden"></span>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-1 max-w-3xl w-full mx-auto px-4 py-6">
+
+        <!-- Loading state -->
+        <div id="loading-state" class="flex flex-col items-center justify-center py-20 gap-4">
+            <div class="loading-dot flex gap-1.5 text-yellow-400 text-2xl font-bold">
+                <span>●</span><span>●</span><span>●</span>
+            </div>
+            <p class="text-gray-400 text-sm">공지사항을 불러오는 중...</p>
+        </div>
+
+        <!-- Error state -->
+        <div id="error-state" class="hidden flex flex-col items-center justify-center py-20 gap-4">
+            <div class="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center border border-red-700/50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-400" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z" />
+                </svg>
+            </div>
+            <p class="text-red-400 font-semibold">불러오기 실패</p>
+            <p class="text-gray-400 text-sm">잠시 후 다시 시도해 주세요.</p>
+            <button onclick="loadAnnouncements()"
+                class="mt-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg text-sm transition-colors">
+                다시 시도
+            </button>
+        </div>
+
+        <!-- Empty state -->
+        <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 gap-4">
+            <div class="w-16 h-16 bg-gray-700/50 rounded-full flex items-center justify-center border border-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+            </div>
+            <p class="text-gray-400 font-semibold">등록된 공지사항이 없습니다</p>
+            <p class="text-gray-500 text-sm">관리자가 공지사항을 올리면 여기에 표시됩니다.</p>
+        </div>
+
+        <!-- Announcements list -->
+        <div id="announcements-list" class="hidden space-y-3"></div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-gray-700 py-2 px-4 text-center text-xs text-gray-500">
+        <p>Cloudflare Workers 기반 익명 채팅</p>
+    </footer>
+
+    <script>
+        async function loadAnnouncements() {
+            const loadingEl = document.getElementById('loading-state');
+            const errorEl = document.getElementById('error-state');
+            const emptyEl = document.getElementById('empty-state');
+            const listEl = document.getElementById('announcements-list');
+            const countBadge = document.getElementById('count-badge');
+
+            // Show loading
+            loadingEl.classList.remove('hidden');
+            errorEl.classList.add('hidden');
+            emptyEl.classList.add('hidden');
+            listEl.classList.add('hidden');
+            listEl.innerHTML = '';
+
+            try {
+                const res = await fetch('/api/announcements');
+                if (!res.ok) throw new Error('Network error');
+                const data = await res.json();
+
+                loadingEl.classList.add('hidden');
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                // Update badge
+                countBadge.textContent = `총 ${data.length}개`;
+                countBadge.classList.remove('hidden');
+
+                // Render cards
+                data.forEach((item, i) => {
+                    const card = document.createElement('div');
+                    card.className = 'announcement-card fade-in-up bg-gray-800 border border-yellow-700/40 rounded-xl p-4 shadow-lg hover:border-yellow-600/60 transition-colors';
+                    card.style.setProperty('--i', i);
+
+                    const date = new Date(item.timestamp);
+                    const dateStr = date.toLocaleString('ko-KR', {
+                        year: 'numeric', month: 'long', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+
+                    // Latest badge only on first
+                    const latestBadge = i === 0
+                        ? `<span class="ml-auto text-xs bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 px-2 py-0.5 rounded-full font-medium">최신</span>`
+                        : '';
+
+                    card.innerHTML = `
+                        <div class="flex items-center gap-2 mb-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-400 flex-shrink-0" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                            </svg>
+                            <span class="text-xs font-semibold text-yellow-300">📢 관리자 공지</span>
+                            ${latestBadge}
+                        </div>
+                        <p class="text-sm text-gray-200 whitespace-pre-wrap break-words leading-relaxed mb-3">${escapeHtml(item.content)}</p>
+                        <div class="flex items-center gap-1.5 text-xs text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            ${dateStr}
+                        </div>
+                    `;
+                    listEl.appendChild(card);
+                });
+
+                listEl.classList.remove('hidden');
+
+            } catch (e) {
+                console.error('Failed to load announcements:', e);
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Load on page start
+        loadAnnouncements();
+    </script>
+
+</body>
+
+</html>

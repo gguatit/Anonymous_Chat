@@ -104,6 +104,18 @@ export default {
             if (url.pathname === '/api/admin/announce') {
                 return await handleAdminAnnounce(request, env, corsHeaders);
             }
+
+            // Public: announcement history (no auth required)
+            if (url.pathname === '/api/announcements' && request.method === 'GET') {
+                const id = env.CHAT_ROOM.idFromName('main-room');
+                const room = env.CHAT_ROOM.get(id);
+                const forward = new Request('https://dummy/announcement-history');
+                const response = await room.fetch(forward);
+                return new Response(response.body, {
+                    status: response.status,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
             if (url.pathname === '/api/admin/banned-ips') {
                 return await handleAdminBannedIPs(request, env, corsHeaders);
             }

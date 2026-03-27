@@ -17,6 +17,7 @@ export class ChatRoom {
         this.bannedIPs = new Map(); // IP -> { bannedUntil: timestamp, reason: string }
         this.bannedSessions = new Map(); // sessionId -> { bannedUntil: timestamp, reason: string }
         this.currentAnnouncement = null; // Current active announcement
+        this.announcementHistory = []; // History of all announcements
         this.auditLogs = []; // Audit logs for admin actions
         this.errorLogs = []; // Ring buffer for detailed errors
         this.MAX_ERROR_LOGS = 100;
@@ -98,6 +99,12 @@ export class ChatRoom {
             this.currentAnnouncement = announcement;
         }
 
+        // Load announcement history from storage
+        const announcementHistory = await this.state.storage.get('announcementHistory');
+        if (announcementHistory) {
+            this.announcementHistory = announcementHistory;
+        }
+
         // Load error logs from storage
         const errorLogs = await this.state.storage.get('errorLogs');
         if (errorLogs) {
@@ -177,6 +184,13 @@ export class ChatRoom {
 
         if (url.pathname === '/admin/announce' && request.method === 'POST') {
             return await this.handleAdminAnnounce(request);
+        }
+
+        if (url.pathname === '/announcement-history') {
+            await this.initializeMessages();
+            return new Response(JSON.stringify(this.announcementHistory), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
         if (url.pathname === '/admin/banned-ips') {
@@ -702,6 +716,13 @@ export class ChatRoom {
                 timestamp: Date.now()
             };
             await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+
+            // Append to announcement history (newest first, keep up to 100)
+            this.announcementHistory.unshift(this.currentAnnouncement);
+            if (this.announcementHistory.length > 100) {
+                this.announcementHistory = this.announcementHistory.slice(0, 100);
+            }
+            await this.state.storage.put('announcementHistory', this.announcementHistory);
 
             // Broadcast system announcement to all users
             const announcementMessage = {
