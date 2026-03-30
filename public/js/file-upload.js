@@ -1,7 +1,7 @@
 // File Upload Manager
 export class FileUploadManager {
     constructor(apiBaseUrl) {
-        this.apiBaseUrl = apiBaseUrl || 'https://static.a85labs.net';
+        this.apiBaseUrl = apiBaseUrl || 'https://file.xeon.kr';
         this.fileInput = document.getElementById('file-input');
         this.fileButton = document.getElementById('file-button');
         this.filePreview = document.getElementById('file-preview');

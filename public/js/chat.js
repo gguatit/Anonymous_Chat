@@ -11,7 +11,7 @@ class ChatClient {
         // Initialize managers
         this.sessionManager = new SessionManager();
         this.ui = new UIManager();
-        this.fileUpload = new FileUploadManager('https://static.a85labs.net');
+        this.fileUpload = new FileUploadManager('https://file.xeon.kr');
         this.deadDrop = new DeadDropClient('https://api.kalpha.kr');
 
         // State

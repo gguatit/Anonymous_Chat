@@ -144,7 +144,7 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - 실시간 업로드 진행 상태 표시
 - 이미지 인라인 미리보기
 - 비디오/오디오 스트리밍 재생
-- 외부 API 서버 연동 (static.a85labs.net)
+- 외부 API 서버 연동 (file.xeon.kr)
 
 ### 답장 및 비밀 메시지
 
@@ -254,7 +254,7 @@ graph TB
     end
     
     subgraph "External Services"
-        F[File Upload API<br/>static.a85labs.net]
+        F[File Upload API<br/>file.xeon.kr]
         G[Dead Drop API<br/>api.kalpha.kr]
     end
     
@@ -276,7 +276,7 @@ graph TB
 2. WebSocket → WSS → Worker → IP 검증 → Durable Object
 3. 메시지 → 클라이언트 검증 → 서버 검증 → 브로드캐스트
 4. 타이핑 → 2초 디바운싱 → 다른 클라이언트에게 전파
-5. 파일 업로드 → static.a85labs.net → 파일 URL 반환 → 메시지에 첨부
+5. 파일 업로드 → file.xeon.kr → 파일 URL 반환 → 메시지에 첨부
 6. 비밀 메시지 저장 → Dead Drop API → secretId 반환 → targetSessionId와 함께 브로드캐스트
 7. 비밀 메시지 읽기 → targetSessionId 검증 → Dead Drop API에서 일회성 조회 및 삭제
 ```
@@ -332,7 +332,7 @@ sequenceDiagram
 | Client App | WebSocket 클라이언트, UI 렌더링 | `public/js/` |
 | File Upload Manager | 파일 업로드 및 미리보기 처리 | `public/js/file-upload.js` |
 | Dead Drop Client | 일회성 비밀 메시지 API 클라이언트 | `public/js/dead-drop.js` |
-| External File API | 파일 저장 및 제공 | `static.a85labs.net` |
+| External File API | 파일 저장 및 제공 | `file.xeon.kr` |
 | Dead Drop API | 일회성 비밀 메시지 저장소 (1hr TTL) | `api.kalpha.kr` |
 
 ---
@@ -840,7 +840,7 @@ Anonymous_Chat/
 | `/api/admin/logs` | GET | 감사 로그 조회 |
 | `/api/admin/logout` | POST | 로그아웃 (토큰 무효화) |
 
-#### 파일 업로드 API (static.a85labs.net)
+#### 파일 업로드 API (file.xeon.kr)
 
 | 엔드포인트 | 메서드 | 설명 |
 |-----------|--------|------|
@@ -865,7 +865,7 @@ Anonymous_Chat/
 {
   "id": "abc123xyz",
   "name": "image.jpg",
-  "url": "https://static.a85labs.net/abc123xyz/image.jpg"
+  "url": "https://file.xeon.kr/abc123xyz/image.jpg"
 }
 ```
 
