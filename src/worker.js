@@ -140,6 +140,35 @@ export default {
                 return await handlePushUnsubscribe(request, env, corsHeaders);
             }
 
+            // File upload proxy endpoint (same-origin) to avoid browser CORS issues
+            if (url.pathname === '/api/upload' && request.method === 'POST') {
+                try {
+                    const formData = await request.formData();
+                    const upstreamResponse = await fetch('https://file.xeon.kr/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const contentType = upstreamResponse.headers.get('content-type') || 'application/json';
+                    return new Response(upstreamResponse.body, {
+                        status: upstreamResponse.status,
+                        headers: {
+                            ...corsHeaders,
+                            'Content-Type': contentType
+                        }
+                    });
+                } catch (error) {
+                    console.error('File upload proxy error:', error);
+                    return new Response(JSON.stringify({ error: 'Upload proxy failed' }), {
+                        status: 502,
+                        headers: {
+                            ...corsHeaders,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                }
+            }
+
             // Client Error logging endpoint
             if (url.pathname === '/api/logs/error' && request.method === 'POST') {
                 const id = env.CHAT_ROOM.idFromName('global-room');

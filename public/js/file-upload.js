@@ -1,7 +1,8 @@
 // File Upload Manager
 export class FileUploadManager {
-    constructor(apiBaseUrl) {
+    constructor(apiBaseUrl, uploadEndpoint) {
         this.apiBaseUrl = apiBaseUrl || 'https://file.xeon.kr';
+        this.uploadEndpoint = uploadEndpoint || '/api/upload';
         this.fileInput = document.getElementById('file-input');
         this.fileButton = document.getElementById('file-button');
         this.filePreview = document.getElementById('file-preview');
@@ -195,7 +196,7 @@ export class FileUploadManager {
                 const formData = new FormData();
                 formData.append('file', this.selectedFile);
 
-                console.log('Uploading to:', `${this.apiBaseUrl}/upload`);
+                console.log('Uploading to:', this.uploadEndpoint);
                 
                 this.uploadXhr = new XMLHttpRequest();
                 
@@ -283,7 +284,7 @@ export class FileUploadManager {
                 });
                 
                 // Send request
-                this.uploadXhr.open('POST', `${this.apiBaseUrl}/upload`);
+                this.uploadXhr.open('POST', this.uploadEndpoint);
                 this.uploadXhr.send(formData);
                 
             } catch (error) {

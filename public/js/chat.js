@@ -2,7 +2,7 @@
 import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
 import { UIManager } from './ui.js?v=1.0.4';
-import { FileUploadManager } from './file-upload.js?v=1.0.3';
+import { FileUploadManager } from './file-upload.js?v=1.0.4';
 import { DeadDropClient } from './dead-drop.js?v=1.0.3';
 import { PushNotificationManager } from './push-manager.js?v=1.0.3';
 
@@ -11,7 +11,7 @@ class ChatClient {
         // Initialize managers
         this.sessionManager = new SessionManager();
         this.ui = new UIManager();
-        this.fileUpload = new FileUploadManager('https://file.xeon.kr');
+        this.fileUpload = new FileUploadManager('https://file.xeon.kr', '/api/upload');
         this.deadDrop = new DeadDropClient('https://api.kalpha.kr');
 
         // State
