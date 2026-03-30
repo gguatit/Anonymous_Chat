@@ -260,9 +260,10 @@ graph TB
     
     A -->|HTTPS| C
     A -.->|WSS| B
-    A -.->|File Upload| F
+    A -.->|HTTPS /api/upload| B
     A -.->|Secret Message<br/>Store/Read| G
     B -->|Routing| D
+    B -.->|Proxy Upload| F
     D -->|State| E
     D -.->|Broadcast<br/>+targetSessionId| A
     F -.->|File URL| A
@@ -276,7 +277,7 @@ graph TB
 2. WebSocket → WSS → Worker → IP 검증 → Durable Object
 3. 메시지 → 클라이언트 검증 → 서버 검증 → 브로드캐스트
 4. 타이핑 → 2초 디바운싱 → 다른 클라이언트에게 전파
-5. 파일 업로드 → file.xeon.kr → 파일 URL 반환 → 메시지에 첨부
+5. 파일 업로드 → Worker `/api/upload` 프록시 → file.xeon.kr → 파일 URL 반환 → 메시지에 첨부
 6. 비밀 메시지 저장 → Dead Drop API → secretId 반환 → targetSessionId와 함께 브로드캐스트
 7. 비밀 메시지 읽기 → targetSessionId 검증 → Dead Drop API에서 일회성 조회 및 삭제
 ```
@@ -568,7 +569,7 @@ element.textContent = userInput;
 ```
 default-src 'self';
 script-src 'self' https://cdn.tailwindcss.com;
-connect-src 'self' wss: ws:;
+connect-src 'self' https://file.xeon.kr https://api.kalpha.kr https://cloudflareinsights.com wss: ws:;
 object-src 'none';
 ```
 
@@ -840,7 +841,13 @@ Anonymous_Chat/
 | `/api/admin/logs` | GET | 감사 로그 조회 |
 | `/api/admin/logout` | POST | 로그아웃 (토큰 무효화) |
 
-#### 파일 업로드 API (file.xeon.kr)
+#### 파일 업로드 API (앱 내부 프록시)
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/api/upload` | POST | Worker 업로드 프록시 (same-origin, CORS 우회) |
+
+#### 외부 파일 API (file.xeon.kr)
 
 | 엔드포인트 | 메서드 | 설명 |
 |-----------|--------|------|
