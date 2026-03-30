@@ -20,6 +20,10 @@ class ChatClient {
         this.messageRateLimit = 1000; // 1 message per second
         this.isTyping = false;
         this.isNicknameLocked = true;
+        this.announcementHistoryBtn = document.getElementById('announcement-history-btn');
+        this.announcementNewBadge = document.getElementById('announcement-new-badge');
+        this.latestAnnouncementTimestamp = 0;
+        this.announcementSeenStorageKey = 'chatLastSeenAnnouncementTs';
 
         // Initialize WebSocket with message handler
         this.wsManager = new WebSocketManager(
@@ -35,8 +39,93 @@ class ChatClient {
         this.pushManager = new PushNotificationManager();
 
         this.initializeUI();
+        this.initializeAnnouncementIndicator();
         this.wsManager.connect();
         this.initializePush();
+    }
+
+    toTimestamp(value) {
+        const numericValue = Number(value);
+        if (Number.isFinite(numericValue) && numericValue > 0) {
+            return numericValue;
+        }
+
+        const parsed = Date.parse(value);
+        return Number.isFinite(parsed) ? parsed : Date.now();
+    }
+
+    getSeenAnnouncementTimestamp() {
+        try {
+            const stored = localStorage.getItem(this.announcementSeenStorageKey);
+            const ts = Number(stored);
+            return Number.isFinite(ts) && ts > 0 ? ts : 0;
+        } catch {
+            return 0;
+        }
+    }
+
+    setSeenAnnouncementTimestamp(timestamp) {
+        if (!Number.isFinite(timestamp) || timestamp <= 0) {
+            return;
+        }
+
+        try {
+            localStorage.setItem(this.announcementSeenStorageKey, String(Math.floor(timestamp)));
+        } catch {
+            // Ignore storage failures (e.g. private mode restrictions)
+        }
+    }
+
+    showAnnouncementBadge() {
+        if (this.announcementNewBadge) {
+            this.announcementNewBadge.classList.remove('hidden');
+        }
+    }
+
+    hideAnnouncementBadge() {
+        if (this.announcementNewBadge) {
+            this.announcementNewBadge.classList.add('hidden');
+        }
+    }
+
+    updateAnnouncementBadgeVisibility() {
+        const seenTs = this.getSeenAnnouncementTimestamp();
+        if (this.latestAnnouncementTimestamp > seenTs) {
+            this.showAnnouncementBadge();
+        } else {
+            this.hideAnnouncementBadge();
+        }
+    }
+
+    async initializeAnnouncementIndicator() {
+        if (this.announcementHistoryBtn) {
+            this.announcementHistoryBtn.addEventListener('click', () => {
+                const timestampToMark = this.latestAnnouncementTimestamp || Date.now();
+                this.setSeenAnnouncementTimestamp(timestampToMark);
+                this.hideAnnouncementBadge();
+            });
+        }
+
+        try {
+            const res = await fetch('/api/announcements');
+            if (!res.ok) {
+                return;
+            }
+
+            const announcements = await res.json();
+            if (!Array.isArray(announcements) || announcements.length === 0) {
+                return;
+            }
+
+            this.latestAnnouncementTimestamp = announcements.reduce((latest, item) => {
+                const ts = this.toTimestamp(item?.timestamp);
+                return Math.max(latest, ts);
+            }, 0);
+
+            this.updateAnnouncementBadgeVisibility();
+        } catch (error) {
+            console.error('Failed to initialize announcement indicator:', error);
+        }
     }
 
     async initializePush() {
@@ -189,7 +278,12 @@ class ChatClient {
             case 'announcement':
                 // Display system announcement with special styling
                 console.log('Received announcement:', data.content);
+                this.latestAnnouncementTimestamp = Math.max(
+                    this.latestAnnouncementTimestamp,
+                    this.toTimestamp(data.timestamp)
+                );
                 this.ui.displayAnnouncement(data.content, data.timestamp);
+                this.updateAnnouncementBadgeVisibility();
                 break;
             case 'kicked':
                 // User was kicked by admin

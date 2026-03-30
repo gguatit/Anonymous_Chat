@@ -82,11 +82,13 @@
             </div>
             <div class="flex items-center gap-3">
                 <a href="/announcements.html" id="announcement-history-btn"
-                    class="text-gray-400 hover:text-yellow-300 transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-gray-700"
+                    class="relative text-gray-400 hover:text-yellow-300 transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-gray-700"
                     title="공지사항 목록" aria-label="공지사항 기록 보기">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                     </svg>
+                    <span id="announcement-new-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center shadow-md"
+                        aria-label="새 공지 있음">!</span>
                 </a>
                 <button id="notification-toggle"
                     class="hidden text-gray-400 hover:text-gray-200 transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-gray-700"
@@ -464,7 +466,7 @@
     </footer>
 
     <!-- JavaScript Modules -->
-    <script type="module" src="/js/chat.js?v=1.0.5"></script>
+    <script type="module" src="/js/chat.js?v=1.0.6"></script>
     <script>
         // Platform info toggle
         const infoToggle = document.getElementById('info-toggle');

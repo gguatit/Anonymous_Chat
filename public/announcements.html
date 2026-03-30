@@ -144,6 +144,16 @@
                     return;
                 }
 
+                // Mark the currently fetched latest announcement as seen.
+                const latestAnnouncementTs = data.reduce((latest, item) => {
+                    const numericTs = Number(item?.timestamp);
+                    const parsedTs = Number.isFinite(numericTs) ? numericTs : Date.parse(item?.timestamp);
+                    return Number.isFinite(parsedTs) && parsedTs > latest ? parsedTs : latest;
+                }, 0);
+                if (latestAnnouncementTs > 0) {
+                    localStorage.setItem('chatLastSeenAnnouncementTs', String(latestAnnouncementTs));
+                }
+
                 // Update badge
                 countBadge.textContent = `총 ${data.length}개`;
                 countBadge.classList.remove('hidden');
