@@ -12,6 +12,11 @@ export class WebSocketManager {
         this.isReconnecting = false;
         this.hasConnectedBefore = false;
         this.manualClose = false;
+        // Heartbeat timing (visible vs hidden)
+        this.visibleHeartbeatInterval = 25000;
+        this.visibleHeartbeatTimeout = 10000;
+        this.hiddenHeartbeatInterval = 60000;
+        this.hiddenHeartbeatTimeout = 30000;
     }
 
     async connect() {
@@ -64,7 +69,12 @@ export class WebSocketManager {
         this.messageHandler.onConnectionChange('connected');
 
         // Start heartbeat to keep connection alive
-        this.startHeartbeat();
+        // Start with appropriate timing depending on visibility
+        if (typeof document !== 'undefined' && document.hidden) {
+            this.startHeartbeat(this.hiddenHeartbeatInterval, this.hiddenHeartbeatTimeout);
+        } else {
+            this.startHeartbeat(this.visibleHeartbeatInterval, this.visibleHeartbeatTimeout);
+        }
     }
 
     handleMessage(event) {
@@ -151,11 +161,15 @@ export class WebSocketManager {
         }
     }
 
-    startHeartbeat() {
+    startHeartbeat(intervalDelay = this.visibleHeartbeatInterval, timeoutDelay = this.visibleHeartbeatTimeout) {
         // Stop existing heartbeat
         this.stopHeartbeat();
 
-        // Send ping every 25 seconds
+        // Keep current delays
+        this.currentHeartbeatIntervalDelay = intervalDelay;
+        this.currentHeartbeatTimeoutDelay = timeoutDelay;
+
+        // Send ping on the configured interval
         this.heartbeatInterval = setInterval(() => {
             if (this.isConnected()) {
                 this.send({ type: 'ping', timestamp: Date.now() });
@@ -167,11 +181,33 @@ export class WebSocketManager {
                     if (this.ws) {
                         this.ws.close();
                     }
-                }, 10000); // 10 second timeout
+                }, timeoutDelay);
             } else if (!this.isReconnecting) {
                 this.connect();
             }
-        }, 25000); // 25 second interval
+        }, intervalDelay);
+
+        // Listen for visibility changes to adapt heartbeat timing
+        if (typeof document !== 'undefined' && !this._visibilityHandlerAttached) {
+            document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
+            this._visibilityHandlerAttached = true;
+        }
+    }
+
+    handleVisibilityChange() {
+        if (typeof document === 'undefined') return;
+        if (document.hidden) {
+            // Tab hidden: relax heartbeat to reduce false timeouts
+            this.startHeartbeat(this.hiddenHeartbeatInterval, this.hiddenHeartbeatTimeout);
+        } else {
+            // Tab visible: restore aggressive heartbeat and probe connection
+            this.startHeartbeat(this.visibleHeartbeatInterval, this.visibleHeartbeatTimeout);
+            if (this.isConnected()) {
+                this.send({ type: 'ping', timestamp: Date.now() });
+            } else if (!this.isReconnecting) {
+                this.connect();
+            }
+        }
     }
 
     stopHeartbeat() {
