@@ -511,6 +511,8 @@ class AdminDashboard {
     }
 
     updateMetrics(metrics) {
+        // Keep a reference to latest metrics so other actions (download/delete logs) can use them
+        this.lastMetrics = metrics;
         document.getElementById('stat-active-connections').textContent =
             metrics.activeConnections?.toLocaleString() || '0';
         document.getElementById('stat-total-messages').textContent =
@@ -1443,6 +1445,49 @@ class AdminDashboard {
 
         } catch (error) {
             console.error('Load audit logs error:', error);
+        }
+    }
+
+    showNotification(message, type = 'info') {
+        try {
+            const containerId = 'admin-notifications-container';
+            let container = document.getElementById(containerId);
+            if (!container) {
+                container = document.createElement('div');
+                container.id = containerId;
+                container.style.position = 'fixed';
+                container.style.top = '1rem';
+                container.style.right = '1rem';
+                container.style.zIndex = '9999';
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.gap = '0.5rem';
+                document.body.appendChild(container);
+            }
+
+            const colorClass = {
+                success: 'background: #16a34a; color: #fff;',
+                error: 'background: #dc2626; color: #fff;',
+                warn: 'background: #d97706; color: #fff;',
+                info: 'background: #374151; color: #fff;'
+            }[type] || 'background: #374151; color: #fff;';
+
+            const el = document.createElement('div');
+            el.setAttribute('role', 'status');
+            el.style.cssText = `padding:8px 12px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.4);max-width:320px;${colorClass}`;
+            el.textContent = message;
+
+            container.appendChild(el);
+
+            // Fade out after 3s
+            setTimeout(() => {
+                el.style.transition = 'opacity 300ms ease, transform 300ms ease';
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(-6px)';
+                setTimeout(() => el.remove(), 350);
+            }, 3000);
+        } catch (err) {
+            console.error('showNotification error:', err);
         }
     }
 
