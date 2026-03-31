@@ -681,7 +681,10 @@ class AdminDashboard {
                     <div class="flex items-center gap-3 flex-1">
                         <div class="w-2 h-2 ${statusColor} rounded-full ${isOnline ? 'animate-pulse' : ''}"></div>
                         <div class="flex-1">
-                            <p class="text-sm font-mono text-gray-300 break-all">${this.truncateId(session.sessionId)}</p>
+                            <p class="text-sm font-mono text-gray-300 break-all">
+                                ${this.truncateId(session.sessionId)}
+                                ${session.nickname ? `<span class="text-xs ml-2 text-yellow-300">(${this.escapeHtml(session.nickname)})</span>` : ''}
+                            </p>
                             <p class="text-xs text-gray-500 break-all">${session.ip || 'Unknown IP'}</p>
                             <p class="text-xs text-gray-400">${lastActiveText}</p>
                         </div>

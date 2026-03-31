@@ -148,7 +148,8 @@ export class ChatRoom {
                 ip: metadata.ip,
                 joinTime: metadata.joinTime,
                 messageCount: metadata.messageCount,
-                lastMessageTime: metadata.lastMessageTime
+                lastMessageTime: metadata.lastMessageTime,
+                nickname: metadata.nickname || '익명'
             }));
 
             return new Response(JSON.stringify(sessions), {
@@ -1157,6 +1158,15 @@ export class ChatRoom {
             });
             console.warn('Session ID mismatch:', data.sessionId, '!=', sessionId);
             return;
+        }
+
+        // Track the user's current nickname in metadata for admin view
+        try {
+            const nick = this.sanitizeInput(data.nickname || metadata.nickname || '익명').substring(0, 12);
+            metadata.nickname = nick;
+            this.userMetadata.set(sessionId, metadata);
+        } catch (e) {
+            // ignore nickname sanitization errors
         }
 
         const validationError = this.validateMessage(data, metadata);
