@@ -1399,6 +1399,18 @@ export class ChatRoom {
             this.typingUsers.delete(sessionId);
         }
 
+        // Update nickname in metadata when typing events include a nickname
+        try {
+            const meta = this.userMetadata.get(sessionId);
+            if (meta) {
+                const nick = this.sanitizeInput(data.nickname || meta.nickname || '익명').substring(0, 12);
+                meta.nickname = nick;
+                this.userMetadata.set(sessionId, meta);
+            }
+        } catch (e) {
+            // ignore
+        }
+
         this.broadcast({
             type: 'typing',
             sessionId: sessionId,
