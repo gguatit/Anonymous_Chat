@@ -1,7 +1,7 @@
 // Rate limiting configuration
 export const RATE_LIMIT = {
     MAX_MESSAGES_PER_MINUTE: 30,
-    MAX_CONNECTIONS_PER_IP: 5,
+    MAX_CONNECTIONS_PER_IP: 25,
     MESSAGE_COOLDOWN: 1000, // 1 second between messages
 };
 
