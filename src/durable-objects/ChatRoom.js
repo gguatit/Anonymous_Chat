@@ -134,7 +134,8 @@ export class ChatRoom {
                 activeConnections: this.sessions.size,
                 totalMessages: this.messages.length,
                 totalConnections: metrics.totalConnections,
-                errors: metrics.errors,
+                // Combine in-memory server error counter with persisted error log count
+                errors: (metrics.errors || 0) + (this.errorLogs ? this.errorLogs.length : 0),
                 uptime: Date.now() - (this.startTime || Date.now()),
                 errorLogs: this.errorLogs
             }), {
