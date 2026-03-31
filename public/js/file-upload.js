@@ -248,6 +248,18 @@ export class FileUploadManager {
                                 // URL이 없으면 id와 name으로 구성
                                 this.uploadedFileUrl = `${this.apiBaseUrl}/${result.id}/${result.name}`;
                             } else {
+                                // Report invalid upload response to server error logs
+                                try {
+                                    fetch('/api/logs/error', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            message: 'Invalid upload response',
+                                            context: 'FileUploadManager.uploadFile - invalid response shape',
+                                            environment: { userAgent: navigator.userAgent, url: location.href }
+                                        })
+                                    }).catch(()=>{});
+                                } catch(e) {}
                                 reject(new Error('Invalid upload response'));
                                 return;
                             }
@@ -260,11 +272,33 @@ export class FileUploadManager {
                             });
                         } catch (parseError) {
                             console.error('Upload response parse error:', parseError);
+                            try {
+                                fetch('/api/logs/error', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        message: parseError.message || 'Upload response parse error',
+                                        context: 'FileUploadManager.uploadFile - parse error',
+                                        environment: { userAgent: navigator.userAgent, url: location.href }
+                                    })
+                                }).catch(()=>{});
+                            } catch(e) {}
                             reject(new Error('Invalid upload response'));
                         }
                     } else {
                         const errorText = this.uploadXhr.responseText;
                         console.error('Upload error response:', errorText);
+                        try {
+                            fetch('/api/logs/error', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    message: `Upload failed: ${this.uploadXhr.status} ${this.uploadXhr.statusText}`,
+                                    context: `FileUploadManager.uploadFile - server status ${this.uploadXhr.status}`,
+                                    environment: { userAgent: navigator.userAgent, url: location.href }
+                                })
+                            }).catch(()=>{});
+                        } catch(e) {}
                         reject(new Error(`Upload failed: ${this.uploadXhr.status} ${this.uploadXhr.statusText}`));
                     }
                 });
@@ -273,6 +307,17 @@ export class FileUploadManager {
                 this.uploadXhr.addEventListener('error', () => {
                     console.error('Upload network error');
                     this.hideUploadProgress();
+                    try {
+                        fetch('/api/logs/error', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                message: 'Network error during upload',
+                                context: 'FileUploadManager.uploadFile - network error',
+                                environment: { userAgent: navigator.userAgent, url: location.href }
+                            })
+                        }).catch(()=>{});
+                    } catch(e) {}
                     reject(new Error('Network error during upload'));
                 });
                 
@@ -280,6 +325,17 @@ export class FileUploadManager {
                 this.uploadXhr.addEventListener('abort', () => {
                     console.log('Upload aborted');
                     this.hideUploadProgress();
+                    try {
+                        fetch('/api/logs/error', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                message: 'Upload cancelled',
+                                context: 'FileUploadManager.uploadFile - aborted by user',
+                                environment: { userAgent: navigator.userAgent, url: location.href }
+                            })
+                        }).catch(()=>{});
+                    } catch(e) {}
                     reject(new Error('Upload cancelled'));
                 });
                 
@@ -289,6 +345,17 @@ export class FileUploadManager {
                 
             } catch (error) {
                 console.error('File upload error:', error);
+                try {
+                    fetch('/api/logs/error', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: error.message || 'File upload error',
+                            context: 'FileUploadManager.uploadFile - unexpected error',
+                            environment: { userAgent: navigator.userAgent, url: location.href }
+                        })
+                    }).catch(()=>{});
+                } catch(e) {}
                 this.hideUploadProgress();
                 reject(error);
             }

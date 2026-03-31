@@ -444,6 +444,17 @@ class ChatClient {
                 } catch (error) {
                     console.error('Dead Drop store error:', error);
                     this.ui.displayError('비밀 메시지 저장 실패: ' + error.message);
+                    try {
+                        fetch('/api/logs/error', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                message: error.message || 'DeadDrop store error',
+                                context: 'ChatClient.sendMessage - deadDrop.store failed',
+                                environment: { userAgent: navigator.userAgent, url: location.href }
+                            })
+                        }).catch(()=>{});
+                    } catch(e) {}
                     return;
                 }
             } else {
@@ -475,12 +486,54 @@ class ChatClient {
             } catch (error) {
                 console.error('File upload failed:', error);
                 this.ui.displayError('파일 업로드 실패: ' + error.message);
+                try {
+                    fetch('/api/logs/error', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: error.message || 'File upload failed',
+                            context: 'ChatClient.sendMessage - file upload failed',
+                            environment: { userAgent: navigator.userAgent, url: location.href }
+                        })
+                    }).catch(()=>{});
+                } catch(e) {}
                 return;
             }
         }
 
         // Send message with or without file
-        this.wsManager.send(messageData);
+        try {
+            this.wsManager.send(messageData);
+            if (!this.wsManager.isConnected()) {
+                // Report message send attempt while not connected
+                try {
+                    fetch('/api/logs/error', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: 'Message send attempted while WebSocket not connected',
+                            context: 'ChatClient.sendMessage - ws not connected',
+                            environment: { userAgent: navigator.userAgent, url: location.href }
+                        })
+                    }).catch(()=>{});
+                } catch(e) {}
+                this.ui.displayError('메시지 전송 실패: 연결되어 있지 않습니다.');
+            }
+        } catch (err) {
+            console.error('Message send error:', err);
+            try {
+                fetch('/api/logs/error', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: err.message || 'Message send error',
+                        context: 'ChatClient.sendMessage - exception on send',
+                        environment: { userAgent: navigator.userAgent, url: location.href }
+                    })
+                }).catch(()=>{});
+            } catch(e) {}
+            this.ui.displayError('메시지 전송 중 오류가 발생했습니다.');
+        }
 
         this.lastMessageTime = now;
         this.ui.clearInput();
