@@ -118,17 +118,6 @@ export class WebSocketManager {
     handleError(error) {
         console.error('WebSocket error:', error);
         this.messageHandler.onConnectionChange('error');
-        try {
-            fetch('/api/logs/error', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: error && error.message ? error.message : 'WebSocket error',
-                    context: 'WebSocketManager.handleError',
-                    environment: { userAgent: navigator.userAgent, url: location.href }
-                })
-            }).catch(()=>{});
-        } catch (e) {}
     }
 
     scheduleReconnect() {
