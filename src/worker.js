@@ -171,7 +171,9 @@ export default {
 
             // Client Error logging endpoint
             if (url.pathname === '/api/logs/error' && request.method === 'POST') {
-                const id = env.CHAT_ROOM.idFromName('global-room');
+                // Forward client error logs to the main-room durable object
+                // so admin metrics (which query main-room) can see client-side errors.
+                const id = env.CHAT_ROOM.idFromName('main-room');
                 const room = env.CHAT_ROOM.get(id);
                 // 중요 보안 패치: 클라이언트가 보낸 url을 그대로 넘기지 않고, 명시적으로 '/api/logs/error' 경로로 새로 만들어서 fetch
                 const logRequest = new Request('https://dummy/api/logs/error', {
