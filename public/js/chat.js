@@ -22,6 +22,7 @@ class ChatClient {
         this.isNicknameLocked = true;
         this.announcementHistoryBtn = document.getElementById('announcement-history-btn');
         this.announcementNewBadge = document.getElementById('announcement-new-badge');
+        this.announcementTooltip = document.getElementById('announcement-tooltip');
         this.latestAnnouncementTimestamp = 0;
         this.announcementSeenStorageKey = 'chatLastSeenAnnouncementTs';
 
@@ -80,11 +81,17 @@ class ChatClient {
         if (this.announcementNewBadge) {
             this.announcementNewBadge.classList.remove('hidden');
         }
+        if (this.announcementTooltip) {
+            this.announcementTooltip.classList.remove('hidden');
+        }
     }
 
     hideAnnouncementBadge() {
         if (this.announcementNewBadge) {
             this.announcementNewBadge.classList.add('hidden');
+        }
+        if (this.announcementTooltip) {
+            this.announcementTooltip.classList.add('hidden');
         }
     }
 
@@ -97,14 +104,25 @@ class ChatClient {
         }
     }
 
+    // Add click listener to tooltip as well
     async initializeAnnouncementIndicator() {
+        const markAsSeen = () => {
+            const timestampToMark = this.latestAnnouncementTimestamp || Date.now();
+            this.setSeenAnnouncementTimestamp(timestampToMark);
+            this.hideAnnouncementBadge();
+        };
+
         if (this.announcementHistoryBtn) {
-            this.announcementHistoryBtn.addEventListener('click', () => {
-                const timestampToMark = this.latestAnnouncementTimestamp || Date.now();
-                this.setSeenAnnouncementTimestamp(timestampToMark);
-                this.hideAnnouncementBadge();
+            this.announcementHistoryBtn.addEventListener('click', markAsSeen);
+        }
+        if (this.announcementTooltip) {
+            this.announcementTooltip.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                markAsSeen();
             });
         }
+
 
         try {
             const res = await fetch('/api/announcements');

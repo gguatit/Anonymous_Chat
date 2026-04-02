@@ -81,15 +81,23 @@
                 <h1 class="text-xl font-bold text-gray-100">익명 채팅</h1>
             </div>
             <div class="flex items-center gap-3">
-                <a href="/announcements.html" id="announcement-history-btn"
-                    class="relative text-gray-400 hover:text-yellow-300 transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-gray-700"
-                    title="공지사항 목록" aria-label="공지사항 기록 보기">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                    </svg>
-                    <span id="announcement-new-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center shadow-md"
-                        aria-label="새 공지 있음">!</span>
-                </a>
+                <div class="relative flex items-center">
+                    <a href="/announcements.html" id="announcement-history-btn"
+                        class="relative text-gray-400 hover:text-yellow-300 transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-gray-700"
+                        title="공지사항 목록" aria-label="공지사항 기록 보기">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                        </svg>
+                        <span id="announcement-new-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center shadow-md"
+                            aria-label="새 공지 있음">!</span>
+                    </a>
+                    
+                    <!-- 새 공지사항 말풍선 -->
+                    <div id="announcement-tooltip" class="hidden absolute right-full mr-3 bg-blue-900/95 border border-blue-500 rounded-lg px-3 py-1.5 shadow-lg flex justify-center items-center whitespace-nowrap animate-bounce z-50 cursor-pointer pointer-events-auto">
+                        <span class="text-blue-300 text-xs font-semibold">새로운 공지사항을 확인해보세요!</span>
+                        <div class="absolute top-1/2 -right-1.5 transform -translate-y-1/2 border-y-4 border-y-transparent border-l-[6px] border-l-blue-500 w-0 h-0"></div>
+                    </div>
+                </div>
                 <button id="notification-toggle"
                     class="hidden text-gray-400 hover:text-gray-200 transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-gray-700"
                     type="button" aria-label="알림 설정" title="알림 켜기">
