@@ -116,10 +116,9 @@ class ChatClient {
             this.announcementHistoryBtn.addEventListener('click', markAsSeen);
         }
         if (this.announcementTooltip) {
-            this.announcementTooltip.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            this.announcementTooltip.addEventListener('click', () => {
                 markAsSeen();
+                window.location.href = '/announcements.html';
             });
         }
 

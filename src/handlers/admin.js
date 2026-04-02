@@ -583,9 +583,17 @@ export async function handleAdminAnnounce(request, env, corsHeaders) {
     try {
         const body = await request.json();
         const content = typeof body.content === 'string' ? body.content : '';
+        const timestamp = body.timestamp; // Required for PUT/DELETE
 
-        if (!content) {
+        if (request.method === 'POST' && !content) {
             return new Response(JSON.stringify({ error: 'Missing content' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
+        if ((request.method === 'PUT' || request.method === 'DELETE') && !timestamp) {
+            return new Response(JSON.stringify({ error: 'Missing timestamp' }), {
                 status: 400,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
@@ -594,18 +602,24 @@ export async function handleAdminAnnounce(request, env, corsHeaders) {
         const roomId = env.CHAT_ROOM.idFromName('main-room');
         const room = env.CHAT_ROOM.get(roomId);
 
+        let forwardBody = { content };
+        if (request.method === 'PUT' || request.method === 'DELETE') {
+            forwardBody.timestamp = timestamp;
+        }
+
         const forward = new Request('https://dummy/admin/announce', {
-            method: 'POST',
+            method: request.method, // Forward POST, PUT, or DELETE
             headers: {
                 'Content-Type': 'application/json',
                 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
             },
-            body: JSON.stringify({ content })
+            body: JSON.stringify(forwardBody)
         });
 
         const response = await room.fetch(forward);
         return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: response.status
         });
     } catch (error) {
         console.error('handleAdminAnnounce error:', error);

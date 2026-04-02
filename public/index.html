@@ -93,9 +93,13 @@
                     </a>
                     
                     <!-- 새 공지사항 말풍선 -->
-                    <div id="announcement-tooltip" class="hidden absolute right-full mr-3 bg-blue-900/95 border border-blue-500 rounded-lg px-3 py-1.5 shadow-lg flex justify-center items-center whitespace-nowrap animate-bounce z-50 cursor-pointer pointer-events-auto">
+                    <div id="announcement-tooltip" class="hidden absolute right-0 top-full mt-3 md:right-full md:top-1/2 md:-translate-y-1/2 md:mt-0 md:mr-3 bg-blue-900/95 border border-blue-500 rounded-lg px-3 py-1.5 shadow-lg flex justify-center items-center whitespace-nowrap animate-bounce z-50 cursor-pointer pointer-events-auto">
+                        <!-- 모바일용 위쪽 화살표 -->
+                        <div class="absolute -top-1.5 right-2 md:hidden border-x-[6px] border-x-transparent border-b-[6px] border-b-blue-500 w-0 h-0"></div>
+                        <!-- 데스크탑용 오른쪽 화살표 -->
+                        <div class="hidden md:block absolute top-1/2 -right-1.5 transform -translate-y-1/2 border-y-4 border-y-transparent border-l-[6px] border-l-blue-500 w-0 h-0"></div>
+                        
                         <span class="text-blue-300 text-xs font-semibold">새로운 공지사항을 확인해보세요!</span>
-                        <div class="absolute top-1/2 -right-1.5 transform -translate-y-1/2 border-y-4 border-y-transparent border-l-[6px] border-l-blue-500 w-0 h-0"></div>
                     </div>
                 </div>
                 <button id="notification-toggle"

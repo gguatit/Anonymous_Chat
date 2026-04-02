@@ -187,6 +187,14 @@ export class ChatRoom {
         if (url.pathname === '/admin/announce' && request.method === 'POST') {
             return await this.handleAdminAnnounce(request);
         }
+        
+        if (url.pathname === '/admin/announce' && request.method === 'PUT') {
+            return await this.handleAdminEditAnnounce(request);
+        }
+        
+        if (url.pathname === '/admin/announce' && request.method === 'DELETE') {
+            return await this.handleAdminDeleteAnnounce(request);
+        }
 
         if (url.pathname === '/announcement-history') {
             await this.initializeMessages();
@@ -692,6 +700,102 @@ export class ChatRoom {
         } catch (error) {
             console.error('admin kick user error:', error);
             return new Response(JSON.stringify({ error: 'Failed to kick user' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+    }
+
+    async handleAdminEditAnnounce(request) {
+        try {
+            const data = await request.json();
+            const timestamp = Number(data.timestamp);
+            const content = typeof data.content === 'string' ? data.content : '';
+
+            if (!timestamp || !content) {
+                return new Response(JSON.stringify({ error: 'Missing timestamp or content' }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            const announcementIndex = this.announcementHistory.findIndex(a => a.timestamp === timestamp);
+            if (announcementIndex === -1) {
+                return new Response(JSON.stringify({ error: 'Announcement not found' }), {
+                    status: 404,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            this.announcementHistory[announcementIndex].content = this.sanitizeInput(content);
+            await this.state.storage.put('announcementHistory', this.announcementHistory);
+
+            // Update currentAnnouncement if it matches
+            if (this.currentAnnouncement && this.currentAnnouncement.timestamp === timestamp) {
+                this.currentAnnouncement.content = this.announcementHistory[announcementIndex].content;
+                await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+            }
+
+            await this.addAuditLog('edit_announcement', `Edited announcement from timestamp ${timestamp}: ${content.substring(0, 50)}...`, {
+                timestamp
+            });
+
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('admin edit announce error:', error);
+            return new Response(JSON.stringify({ error: 'Failed to edit announcement' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+    }
+
+    async handleAdminDeleteAnnounce(request) {
+        try {
+            const data = await request.json();
+            const timestamp = Number(data.timestamp);
+
+            if (!timestamp) {
+                return new Response(JSON.stringify({ error: 'Missing timestamp' }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            const announcementIndex = this.announcementHistory.findIndex(a => a.timestamp === timestamp);
+            if (announcementIndex === -1) {
+                return new Response(JSON.stringify({ error: 'Announcement not found' }), {
+                    status: 404,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            this.announcementHistory.splice(announcementIndex, 1);
+            await this.state.storage.put('announcementHistory', this.announcementHistory);
+
+            // Update currentAnnouncement if it matches
+            if (this.currentAnnouncement && this.currentAnnouncement.timestamp === timestamp) {
+                if (this.announcementHistory.length > 0) {
+                    this.currentAnnouncement = this.announcementHistory[0];
+                    await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+                } else {
+                    this.currentAnnouncement = null;
+                    await this.state.storage.delete('currentAnnouncement');
+                }
+            }
+
+            await this.addAuditLog('delete_announcement', `Deleted announcement from timestamp ${timestamp}`, {
+                timestamp
+            });
+
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('admin delete announce error:', error);
+            return new Response(JSON.stringify({ error: 'Failed to delete announcement' }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }
             });

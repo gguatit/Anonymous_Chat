@@ -503,6 +503,9 @@ class AdminDashboard {
             // Fetch audit logs
             await this.loadAuditLogs();
 
+            // Fetch announcements
+            await this.loadAnnouncements();
+
             this.updateLastUpdated();
 
         } catch (error) {
@@ -1391,6 +1394,121 @@ class AdminDashboard {
         }
     }
 
+    async loadAnnouncements() {
+        try {
+            const response = await fetch('/api/announcements');
+            
+            if (!response.ok) {
+                throw new Error('Failed to load announcements');
+            }
+            
+            const announcements = await response.json();
+            this.lastAnnouncements = announcements;
+            this.updateAnnouncementsList(announcements);
+        } catch (error) {
+            console.error('Announcements load error:', error);
+            const container = document.getElementById('announcement-list');
+            if (container) {
+                container.innerHTML = '<p class="text-sm text-red-500 text-center py-8">공지사항을 불러오는 중 오류가 발생했습니다.</p>';
+            }
+        }
+    }
+
+    updateAnnouncementsList(announcements) {
+        const container = document.getElementById('announcement-list');
+        if (!container) return;
+
+        if (!announcements || announcements.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">등록된 공지사항이 없습니다.</p>';
+            return;
+        }
+
+        container.innerHTML = announcements.map(acc => {
+            const timeStr = new Date(acc.timestamp).toLocaleString('ko-KR');
+            const content = this.escapeHtml(acc.content).replace(/\n/g, '<br>');
+            
+            return `
+                <div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4">
+                    <div class="flex-1">
+                        <div class="text-xs text-gray-400 mb-1">${timeStr}</div>
+                        <div class="text-sm text-gray-200">${content}</div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="window.adminDashboard.editAnnouncement(${acc.timestamp})" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">수정</button>
+                        <button onclick="window.adminDashboard.deleteAnnouncement(${acc.timestamp})" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">삭제</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async editAnnouncement(timestamp) {
+        const item = this.lastAnnouncements?.find(a => a.timestamp === timestamp);
+        if (!item) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-lg w-full mx-4 border border-gray-700">
+                <h3 class="text-lg font-bold text-gray-100 mb-4">공지사항 수정</h3>
+                <textarea id="edit-announce-input" rows="5" class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none resize-none mb-4">${item.content}</textarea>
+                <div class="flex justify-end gap-2">
+                    <button id="cancel-edit-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded text-sm transition-colors">취소</button>
+                    <button id="save-edit-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors">저장</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.querySelector('#cancel-edit-btn').addEventListener('click', () => modal.remove());
+        modal.querySelector('#save-edit-btn').addEventListener('click', async () => {
+            const newContent = modal.querySelector('#edit-announce-input').value.trim();
+            if (!newContent) {
+                this.showNotification('내용을 입력하세요.', 'error');
+                return;
+            }
+            modal.remove();
+
+            try {
+                const response = await fetch('/api/admin/announce', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.sessionToken}`
+                    },
+                    body: JSON.stringify({ timestamp, content: newContent })
+                });
+
+                if (!response.ok) throw new Error('Failed to edit announcement');
+                this.showNotification('공지사항이 수정되었습니다.', 'success');
+                this.refreshData();
+            } catch (error) {
+                this.showNotification('공지사항 수정에 실패했습니다.', 'error');
+            }
+        });
+    }
+
+    async deleteAnnouncement(timestamp) {
+        if (!confirm('정말 이 공지사항을 삭제하시겠습니까?')) return;
+
+        try {
+            const response = await fetch('/api/admin/announce', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.sessionToken}`
+                },
+                body: JSON.stringify({ timestamp })
+            });
+
+            if (!response.ok) throw new Error('Failed to delete announcement');
+            this.showNotification('공지사항이 삭제되었습니다.', 'success');
+            this.refreshData();
+        } catch (error) {
+            this.showNotification('공지사항 삭제에 실패했습니다.', 'error');
+        }
+    }
+
     async loadAuditLogs() {
         try {
             const response = await fetch('/api/admin/audit-logs', {
@@ -1502,4 +1620,4 @@ class AdminDashboard {
 }
 
 // Initialize admin dashboard
-new AdminDashboard();
+window.adminDashboard = new AdminDashboard();
