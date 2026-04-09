@@ -1,3 +1,5 @@
 # Cloudflare Workers Assets redirects
 # Note: Workers Assets handles routing differently than Pages
 # The /* redirect is handled by the Worker itself
+
+/privacy /privacy.html 200
