@@ -153,7 +153,7 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - **엄격한 접근 제어**: 비밀 메시지는 답장 보낸 사람과 받는 사람(targetSessionId)만 열람 가능
 - **일회성 읽기**: 한 번 읽으면 영구 삭제 (1시간 TTL, 2000자 제한)
 - **3자 보호**: 다른 사용자는 비밀 메시지 존재만 알 수 있고 내용은 볼 수 없음
-- Dead Drop 제공: [kalpha.kr](https://api.kalpha.kr)
+- Dead Drop 제공: [api.kalpha.kr](https://api.kalpha.kr)
 
 ### 완전 익명 & 임시 닉네임
 
@@ -199,7 +199,7 @@ Cloudflare Workers 기반 서버리스 아키텍처
 
 ### 관리자 대시보드
 
-- 보안 인증 기반 접근 (`/administrator`)
+- 보안 인증 기반 접근 (`/administrator.html`)
 - 실시간 통계, 오류 발생 횟수 및 시스템 환경 모니터링
 - **활성 세션 관리 및 이중 차단 시스템**
   - 사용자 강제 퇴장 (즉시 퇴장, 30초, 5분, 10분 차단)
@@ -328,7 +328,7 @@ sequenceDiagram
 | 컴포넌트 | 역할 | 위치 |
 |---------|------|------|
 | Cloudflare Worker | HTTP/WebSocket 진입점, 라우팅 | `src/worker.js` |
-| Durable Object | 채팅방 상태 관리, 메시지 브로드캐스트 | `src/worker.js` (ChatRoom) |
+| Durable Object | 채팅방 상태 관리, 메시지 브로드캐스트 | `src/durable-objects/ChatRoom.js` |
 | Static Assets | HTML, CSS, JavaScript 정적 파일 | `public/` |
 | Client App | WebSocket 클라이언트, UI 렌더링 | `public/js/` |
 | File Upload Manager | 파일 업로드 및 미리보기 처리 | `public/js/file-upload.js` |
@@ -416,12 +416,12 @@ tailwind.config = {
 <details>
 <summary><b>메시지 제한 변경</b></summary>
 
-`src/worker.js`에서 상수 수정:
+`src/config/constants.js`에서 상수 수정:
 
 ```javascript
 const RATE_LIMIT = {
     MAX_MESSAGES_PER_MINUTE: 30,  // 분당 메시지 수
-    MAX_CONNECTIONS_PER_IP: 5,    // IP당 동시 연결
+    MAX_CONNECTIONS_PER_IP: 25,   // IP당 동시 연결
     MESSAGE_COOLDOWN: 1000,        // 메시지 간 쿨다운 (ms)
 };
 ```
@@ -431,7 +431,7 @@ const RATE_LIMIT = {
 <details>
 <summary><b>IP 차단/화이트리스트 설정</b></summary>
 
-`src/worker.js`에서 설정:
+`src/config/constants.js`에서 설정:
 
 ```javascript
 const SECURITY = {
@@ -609,7 +609,7 @@ if (messagesThisMinute >= MAX_MESSAGES_PER_MINUTE) {
 - Cloudflare의 네트워크 레벨 DDoS 보호
 - IP당 동시 연결 수 제한
 - 지수적 백오프 재연결 (최대 10회)
-- 메시지 크기 제한 (1000자)
+- 메시지 크기 제한 (5000자)
 
 </details>
 
@@ -724,14 +724,15 @@ Windows, Linux, Android, iOS, macOS에서 최상의 경험을 제공합니다.
 
 ### 환경 변수 및 시크릿
 
-`wrangler.toml` 설정:
+`wrangler.toml` 설정(현재 저장소 기준):
 
 ```toml
-[env.production]
-vars = { ENVIRONMENT = "production" }
+[vars]
+ENVIRONMENT = "production"
 
 [env.development]
-vars = { ENVIRONMENT = "development" }
+[env.development.vars]
+ENVIRONMENT = "development"
 ```
 
 ### 필수 시크릿 설정
@@ -759,7 +760,8 @@ npx wrangler secret put HMAC_SECRET
 - 정기적으로 비밀번호를 변경하세요
 - `wrangler.toml` 파일에 시크릿을 포함하지 마세요
 
-자세한 내용은 [SECURITY_SETUP.md](SECURITY_SETUP.md)를 참조하세요.
+자세한 보안 설정 및 취약점 제보 절차는 [SECURITY.md](SECURITY.md)를 참조하세요.
+로컬 개발용 예시는 [.dev.vars.example](.dev.vars.example)을 참조하세요.
 
 ### 프로젝트 구조
 
@@ -786,21 +788,17 @@ Anonymous_Chat/
 ├── functions/            # Cloudflare Pages Functions
 │   └── _middleware.js    # 미들웨어 (보안 헤더)
 ├── src/                  # Worker 소스
-│   └── worker.js         # Worker + Durable Object + Admin API
-├── test/                 # 테스트 파일
-│   ├── worker.test.js    # Worker 테스트
-│   ├── security.test.js  # 보안 테스트
-│   ├── message-edit.test.js # 메시지 수정 테스트
-│   ├── message-delete.test.js # 메시지 삭제 테스트
-│   └── link-preview.test.js # 링크 프리뷰 테스트
+│   ├── worker.js         # Worker 진입점 + 라우팅
+│   ├── config/           # 상수/CORS 설정
+│   ├── durable-objects/
+│   │   └── ChatRoom.js   # 채팅 상태/브로드캐스트 Durable Object
+│   ├── handlers/         # API 핸들러
+│   ├── middleware/       # 인증/보안 미들웨어
+│   └── utils/            # 유틸리티 (로그, 보안, 웹푸시 등)
 ├── package.json          # 프로젝트 설정
 ├── wrangler.toml         # Cloudflare 설정
-├── vitest.config.js      # 테스트 설정
 ├── deploy.sh             # 배포 스크립트
-├── ADMIN_GUIDE.md        # 관리자 가이드
-├── SECURITY_SETUP.md     # 보안 설정 가이드
-├── SECURITY_VERIFICATION.md # 보안 검증 가이드
-└── FEATURE_IDEAS.md      # 기능 아이디어
+└── SECURITY.md           # 보안 정책
 ```
 
 ### API 엔드포인트
@@ -814,8 +812,8 @@ Anonymous_Chat/
 | `/metrics` | GET | 익명 메트릭 (연결 수, 메시지 수) |
 | `/api/announcements` | GET | 공지사항 히스토리 조회 (인증 불필요) |
 | `/` | GET | 정적 파일 (HTML) |
-| `/administrator` | GET | 관리자 대시보드 |
-| `/announcements` | GET | 공지사항 히스토리 페이지 |
+| `/administrator.html` | GET | 관리자 대시보드 |
+| `/announcements.html` | GET | 공지사항 히스토리 페이지 |
 
 #### 관리자 API (인증 필요)
 
@@ -828,10 +826,16 @@ Anonymous_Chat/
 | `/api/admin/messages` | GET, DELETE | 메시지 조회 및 삭제 |
 | `/api/admin/edit-message` | POST | 관리자 메시지 수정 (시간 제한 없음) |
 | `/api/admin/delete-message` | POST | 관리자 메시지 삭제 (시간 제한 없음) |
+| `/api/admin/delete-all-messages` | POST | 전체 메시지 삭제 |
+| `/api/admin/delete-error-logs` | POST | 에러 로그 초기화 |
 | `/api/admin/kick-user` | POST | 사용자 강제 퇴장 및 IP 차단 |
 | `/api/admin/announce` | POST | 시스템 공지사항 전송 |
 | `/api/admin/broadcast` | POST | 관리자 메시지 브로드캐스트 |
 | `/api/admin/logs` | GET | 감사 로그 조회 |
+| `/api/admin/banned-ips` | GET | 차단된 IP 목록 조회 |
+| `/api/admin/unban-ip` | POST | IP 차단 해제 |
+| `/api/admin/user-details` | GET | 특정 사용자 상세 정보 |
+| `/api/admin/audit-logs` | GET | 관리자 활동 감사 로그 조회 |
 
 #### 보안 API
 
@@ -840,6 +844,14 @@ Anonymous_Chat/
 | `/api/check-ban` | GET | IP 차단 상태 확인 |
 | `/api/admin/logs` | GET | 감사 로그 조회 |
 | `/api/admin/logout` | POST | 로그아웃 (토큰 무효화) |
+
+#### 푸시 API
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/api/push/vapid-key` | GET | VAPID 공개키 조회 |
+| `/api/push/subscribe` | POST | 푸시 구독 등록 |
+| `/api/push/unsubscribe` | POST | 푸시 구독 해제 |
 
 #### 파일 업로드 API (앱 내부 프록시)
 
@@ -880,18 +892,14 @@ Anonymous_Chat/
 
 ## 테스트
 
-### 단위 테스트 실행
+### 자동 검사 실행
 
 ```bash
-# 모든 테스트 실행
-npm test
-
-# Watch 모드 (파일 변경 감지)
-npm run test:watch
-
-# 커버리지 리포트
-npm run test:coverage
+# 린트
+npm run lint
 ```
+
+현재 `package.json`에는 `test` 스크립트가 정의되어 있지 않습니다.
 
 ### 로컬 테스트
 
@@ -928,57 +936,77 @@ chmod +x deploy.sh
 
 - Wrangler 설치 확인
 - 인증 상태 확인
-- Worker + Assets 배포
-- 배포 URL 표시
+- Worker 배포 드라이런 검증 (`wrangler deploy --dry-run`)
+- Pages/Workers 배포 전 점검 안내 출력
 
 ### 방법 2: npm 스크립트
 
 ```bash
 # 프로덕션 배포
 npm run deploy
-
-# 개발 환경 배포
-npm run deploy:dev
 ```
 
 ### 방법 3: GitHub Actions (CI/CD)
 
-`.github/workflows/deploy.yml` 생성:
+이미 `.github/workflows/deploy.yml`이 구성되어 있습니다:
 
 ```yaml
 name: Deploy to Cloudflare
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  deploy:
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      deployments: write
-    name: Deploy to Cloudflare Workers
     steps:
       - uses: actions/checkout@v4
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
       
       - name: Install dependencies
         run: npm ci
       
+      - name: Run lint
+        run: npm run lint
+        continue-on-error: true
+
       - name: Run tests
         run: npm test
+
+  deploy:
+    name: Deploy Worker with Assets
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
       
-      - name: Deploy
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --env production
+          command: deploy
 ```
 
 **필요한 GitHub Secrets:**
@@ -1025,7 +1053,7 @@ wrangler rollback [deployment-id]
 **해결:**
 
 1. Cloudflare Dashboard → Workers & Pages → Durable Objects 활성화 확인
-2. `src/worker.js`의 `ALLOWED_ORIGINS`에 도메인 추가
+2. `src/config/constants.js`의 `ALLOWED_ORIGINS`에 도메인 추가
 3. `BANNED_IPS`에서 IP 제거
 
 </details>
@@ -1036,13 +1064,13 @@ wrangler rollback [deployment-id]
 **원인:**
 
 - Rate Limiting 제한 (1초당 1개)
-- 메시지 길이 초과 (1000자)
+- 메시지 길이 초과 (5000자)
 - 세션 만료
 
 **해결:**
 
 1. 1초 이상 간격을 두고 메시지 전송
-2. 메시지 길이 1000자 이하로 줄이기
+2. 메시지 길이 5000자 이하로 줄이기
 3. 페이지 새로고침 (새 세션 생성)
 
 </details>
@@ -1059,7 +1087,7 @@ wrangler rollback [deployment-id]
 
 1. 잠시 대기 (1분 후 자동 해제)
 2. 불필요한 브라우저 탭 닫기
-3. `src/worker.js`에서 `RATE_LIMIT` 값 조정 (필요시)
+3. `src/config/constants.js`에서 `RATE_LIMIT` 값 조정 (필요시)
 
 </details>
 
@@ -1092,7 +1120,7 @@ wrangler login
 
 **해결:**
 
-`src/worker.js`에서 도메인 추가:
+`src/config/constants.js`에서 도메인 추가:
 
 ```javascript
 const ALLOWED_ORIGINS = [
@@ -1286,7 +1314,7 @@ chore: 빌드/설정 변경
 - [Cloudflare Workers](https://workers.cloudflare.com/) - 서버리스 컴퓨팅
 - [Durable Objects](https://developers.cloudflare.com/durable-objects/) - 상태 관리
 - [Tailwind CSS](https://tailwindcss.com/) - CSS 프레임워크
-- [Vitest](https://vitest.dev/) - 테스트 프레임워크
+- [ESLint](https://eslint.org/) - 코드 정적 분석
 
 ### 영감
 
