@@ -38,81 +38,71 @@
     <main class="max-w-4xl mx-auto px-4 py-8 space-y-6">
         <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
             <p class="text-sm text-gray-300 leading-relaxed">
-                Anonymous Chat(이하 "서비스")는 익명 채팅 기능 제공을 위해 최소한의 정보를 처리합니다.
-                본 방침은 서비스 내에서 처리되는 정보의 종류, 목적, 보관 기간, 이용자의 권리를 안내합니다.
+                Anonymous Chat(이하 "서비스")는 익명 채팅 서비스 제공을 위해 필요한 최소 범위의 정보를 처리합니다.
+                본 개인정보 처리방침은 수집 항목, 처리 목적, 보관 기간, 이용자 권리 및 안전조치에 관한 기준을 안내합니다.
             </p>
-            <p class="text-xs text-gray-500 mt-3">시행일: 2026-04-09</p>
+            <div class="mt-4 text-xs text-gray-500 space-y-1">
+                <p>시행일: 2026-04-09</p>
+                <p>최종 수정일: 2026-04-09</p>
+                <p>버전: v1.1</p>
+            </div>
         </section>
 
         <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
-            <h2 class="text-base font-semibold text-gray-100 mb-3">1. 처리하는 정보 항목</h2>
+            <h2 class="text-base font-semibold text-gray-100 mb-3">1. 개인정보 처리 원칙</h2>
             <ul class="text-sm text-gray-300 space-y-2 list-disc list-inside">
-                <li>접속 정보: IP 주소, 국가 코드, User-Agent</li>
-                <li>세션 식별자: sessionId (로컬 생성 식별자)</li>
-                <li>이용자 입력 정보: 닉네임, 채팅 메시지 내용, 파일 첨부 메타데이터(URL/파일명/용량/유형)</li>
-                <li>운영/보안 정보: 차단 정보(IP, sessionId), 감사 로그, 오류 로그</li>
-                <li>알림 정보: 웹 푸시 구독 정보(endpoint, key) 또는 FCM 토큰</li>
-                <li>브라우저 로컬 저장소 정보: chatSessionId, chatNickname, admin_token 등</li>
+                <li>서비스는 최소 수집 원칙에 따라 기능 제공에 필요한 항목만 처리합니다.</li>
+                <li>서비스는 이용자 식별을 목적으로 주민등록번호, 실명, 전화번호를 요구하지 않습니다.</li>
+                <li>처리 목적이 달성되거나 보관 기간이 경과한 정보는 지체 없이 삭제 또는 비식별화합니다.</li>
             </ul>
         </section>
 
         <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
-            <h2 class="text-base font-semibold text-gray-100 mb-3">2. 정보 처리 목적</h2>
-            <ul class="text-sm text-gray-300 space-y-2 list-disc list-inside">
-                <li>실시간 채팅 제공 및 세션 유지</li>
-                <li>스팸/남용 방지, 차단 정책 적용, 보안 사고 대응</li>
-                <li>서비스 장애 분석 및 오류 복구</li>
-                <li>관리자 인증 및 감사 추적</li>
-                <li>사용자 선택 시 푸시 알림 제공</li>
-            </ul>
-        </section>
-
-        <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
-            <h2 class="text-base font-semibold text-gray-100 mb-3">3. 보관 기간</h2>
+            <h2 class="text-base font-semibold text-gray-100 mb-3">2. 처리하는 개인정보 항목</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left text-gray-300">
                     <thead class="text-xs text-gray-400 uppercase border-b border-gray-700">
                         <tr>
-                            <th class="py-2 pr-3">항목</th>
-                            <th class="py-2 pr-3">보관 기간</th>
-                            <th class="py-2">비고</th>
+                            <th class="py-2 pr-3">구분</th>
+                            <th class="py-2 pr-3">세부 항목</th>
+                            <th class="py-2">수집 경로</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-700">
                         <tr>
-                            <td class="py-2 pr-3">채팅 메시지</td>
-                            <td class="py-2 pr-3">최대 12시간</td>
-                            <td class="py-2">주기적 정리 및 메시지 처리 시점 정리</td>
+                            <td class="py-2 pr-3">접속/환경 정보</td>
+                            <td class="py-2 pr-3">IP 주소, 국가 코드, User-Agent</td>
+                            <td class="py-2">HTTP/WebSocket 요청 헤더</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">관리자 감사 로그</td>
-                            <td class="py-2 pr-3">최대 30일</td>
-                            <td class="py-2">KV TTL 적용</td>
+                            <td class="py-2 pr-3">세션 식별 정보</td>
+                            <td class="py-2 pr-3">sessionId</td>
+                            <td class="py-2">브라우저 로컬 생성 및 전송</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">푸시 구독 정보</td>
-                            <td class="py-2 pr-3">최대 30일</td>
-                            <td class="py-2">KV TTL 적용</td>
+                            <td class="py-2 pr-3">이용자 입력 정보</td>
+                            <td class="py-2 pr-3">닉네임, 메시지 내용, 답장 메타데이터</td>
+                            <td class="py-2">채팅 입력 및 전송</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">로그인 시도 제한 데이터</td>
-                            <td class="py-2 pr-3">최대 10분</td>
-                            <td class="py-2">브루트포스 방지 목적</td>
+                            <td class="py-2 pr-3">첨부 파일 정보</td>
+                            <td class="py-2 pr-3">파일 URL, 파일명, 크기, 형식</td>
+                            <td class="py-2">파일 업로드/메시지 전송</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">무효화 토큰 정보</td>
-                            <td class="py-2 pr-3">최대 2시간</td>
-                            <td class="py-2">관리자 세션 보안 목적</td>
+                            <td class="py-2 pr-3">운영/보안 로그</td>
+                            <td class="py-2 pr-3">차단 정보(IP, sessionId), 감사 로그, 오류 로그</td>
+                            <td class="py-2">운영 관리 및 보안 처리</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">오류 로그</td>
-                            <td class="py-2 pr-3">최대 100건</td>
-                            <td class="py-2">링 버퍼 형태로 순환 보관</td>
+                            <td class="py-2 pr-3">푸시 알림 정보</td>
+                            <td class="py-2 pr-3">Push Subscription(endpoint, key) 또는 FCM 토큰</td>
+                            <td class="py-2">알림 기능 활성화 시</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">로컬스토리지 데이터</td>
-                            <td class="py-2 pr-3">이용자 삭제 전까지</td>
-                            <td class="py-2">브라우저 단말 내 저장</td>
+                            <td class="py-2 pr-3">브라우저 저장 정보</td>
+                            <td class="py-2 pr-3">chatSessionId, chatNickname, chatNicknameNoticeAccepted 등</td>
+                            <td class="py-2">이용자 브라우저 로컬스토리지</td>
                         </tr>
                     </tbody>
                 </table>
@@ -120,32 +110,163 @@
         </section>
 
         <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
-            <h2 class="text-base font-semibold text-gray-100 mb-3">4. 제3자 제공 및 외부 서비스</h2>
+            <h2 class="text-base font-semibold text-gray-100 mb-3">3. 개인정보 처리 목적 및 처리 근거</h2>
             <ul class="text-sm text-gray-300 space-y-2 list-disc list-inside">
-                <li>파일 업로드 기능 사용 시 파일 저장/전송을 위해 외부 파일 API(file.xeon.kr)를 사용할 수 있습니다.</li>
-                <li>비밀 메시지 기능 사용 시 Dead Drop API(api.kalpha.kr)를 사용할 수 있습니다.</li>
-                <li>푸시 알림 기능 사용 시 브라우저 푸시 인프라 또는 FCM 연동이 사용될 수 있습니다.</li>
-                <li>서비스 인프라 운영을 위해 Cloudflare 플랫폼을 사용합니다.</li>
+                <li>서비스 제공 및 계약 이행: 실시간 채팅 제공, 메시지 동기화, 세션 유지</li>
+                <li>정당한 이익 및 보안 보호: 스팸/남용 방지, 접속 제한, 차단 정책 운영, 사고 대응</li>
+                <li>운영 안정성 확보: 오류 분석, 장애 복구, 성능/품질 개선</li>
+                <li>선택 기능 제공(동의 기반): 웹/모바일 푸시 알림</li>
+                <li>법령 또는 분쟁 대응: 권리 침해, 보안 사고, 운영 상 필요한 기록 유지</li>
             </ul>
         </section>
 
         <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
-            <h2 class="text-base font-semibold text-gray-100 mb-3">5. 이용자 권리</h2>
+            <h2 class="text-base font-semibold text-gray-100 mb-3">4. 보관 기간 및 파기 기준</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-300">
+                    <thead class="text-xs text-gray-400 uppercase border-b border-gray-700">
+                        <tr>
+                            <th class="py-2 pr-3">항목</th>
+                            <th class="py-2 pr-3">보관 기간</th>
+                            <th class="py-2">파기/정리 방식</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
+                        <tr>
+                            <td class="py-2 pr-3">채팅 메시지</td>
+                            <td class="py-2 pr-3">최대 12시간</td>
+                            <td class="py-2">주기적 정리(5분 단위) 및 처리 시점 정리</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">관리자 감사 로그</td>
+                            <td class="py-2 pr-3">최대 30일</td>
+                            <td class="py-2">KV TTL 만료 기반 자동 삭제</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">푸시 구독 정보</td>
+                            <td class="py-2 pr-3">최대 30일</td>
+                            <td class="py-2">KV TTL 만료 또는 구독 해제 시 삭제</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">로그인 시도 제한 데이터</td>
+                            <td class="py-2 pr-3">최대 10분</td>
+                            <td class="py-2">브루트포스 방지 목적 기간 경과 시 삭제</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">무효화 토큰 정보</td>
+                            <td class="py-2 pr-3">최대 2시간</td>
+                            <td class="py-2">관리자 세션 보안 목적 기간 경과 시 삭제</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">오류 로그</td>
+                            <td class="py-2 pr-3">최대 100건</td>
+                            <td class="py-2">링 버퍼 순환(초과분 자동 제거)</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">브라우저 로컬스토리지</td>
+                            <td class="py-2 pr-3">이용자 삭제 전까지</td>
+                            <td class="py-2">이용자가 브라우저 설정에서 직접 삭제</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
+            <h2 class="text-base font-semibold text-gray-100 mb-3">5. 개인정보의 제3자 제공 및 처리 위탁</h2>
             <ul class="text-sm text-gray-300 space-y-2 list-disc list-inside">
-                <li>브라우저 로컬스토리지 데이터는 브라우저 설정에서 직접 삭제할 수 있습니다.</li>
-                <li>푸시 알림 구독은 서비스 내 알림 토글 또는 브라우저 권한 설정에서 해제할 수 있습니다.</li>
-                <li>문의 시 합리적인 범위에서 정보 처리 관련 안내를 받을 수 있습니다.</li>
+                <li>서비스는 원칙적으로 이용자 개인정보를 판매하거나 광고 목적의 제3자 제공을 하지 않습니다.</li>
+                <li>다만 기능 제공을 위해 아래 외부 인프라/서비스를 이용할 수 있습니다.</li>
+            </ul>
+            <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-300">
+                    <thead class="text-xs text-gray-400 uppercase border-b border-gray-700">
+                        <tr>
+                            <th class="py-2 pr-3">구분</th>
+                            <th class="py-2 pr-3">제공/처리 항목</th>
+                            <th class="py-2">목적</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
+                        <tr>
+                            <td class="py-2 pr-3">Cloudflare</td>
+                            <td class="py-2 pr-3">네트워크/요청 처리에 필요한 접속 정보</td>
+                            <td class="py-2">서비스 호스팅 및 보안/트래픽 처리</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">file.xeon.kr</td>
+                            <td class="py-2 pr-3">업로드 파일 및 메타데이터</td>
+                            <td class="py-2">파일 업로드/다운로드 기능 제공</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">api.kalpha.kr</td>
+                            <td class="py-2 pr-3">비밀 메시지 데이터(일회성)</td>
+                            <td class="py-2">Dead Drop 비밀 메시지 기능 제공</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">브라우저 Push 인프라/FCM</td>
+                            <td class="py-2 pr-3">푸시 구독 정보 또는 토큰</td>
+                            <td class="py-2">푸시 알림 전송</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
+            <h2 class="text-base font-semibold text-gray-100 mb-3">6. 국외 이전 가능성 안내</h2>
+            <p class="text-sm text-gray-300 leading-relaxed">
+                서비스는 글로벌 인프라(예: Cloudflare 엣지 네트워크, 푸시 인프라)를 사용할 수 있으므로,
+                네트워크 처리 과정에서 정보가 국내외 서버에서 처리될 수 있습니다.
+                서비스는 전송 구간 보호 및 최소 처리 원칙을 적용하여 위험을 줄이기 위해 노력합니다.
+            </p>
+        </section>
+
+        <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
+            <h2 class="text-base font-semibold text-gray-100 mb-3">7. 이용자 권리 및 행사 방법</h2>
+            <ul class="text-sm text-gray-300 space-y-2 list-disc list-inside">
+                <li>이용자는 언제든지 로컬스토리지 데이터(세션/닉네임/토큰)를 브라우저 설정에서 삭제할 수 있습니다.</li>
+                <li>푸시 알림은 서비스 내 토글 또는 브라우저 권한 설정을 통해 철회할 수 있습니다.</li>
+                <li>개인정보 처리 관련 문의 시, 합리적인 범위 내에서 열람/정정/삭제/처리정지 요청에 대해 안내합니다.</li>
             </ul>
         </section>
 
         <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
-            <h2 class="text-base font-semibold text-gray-100 mb-3">6. 문의</h2>
+            <h2 class="text-base font-semibold text-gray-100 mb-3">8. 개인정보 보호를 위한 기술적/관리적 조치</h2>
+            <ul class="text-sm text-gray-300 space-y-2 list-disc list-inside">
+                <li>전송 구간 보호(HTTPS/WSS), 접근 통제, 인증 토큰 검증</li>
+                <li>Rate limiting 및 차단 정책을 통한 비정상 접근 방지</li>
+                <li>로그 최소화 및 보관 기간 제한, 자동 만료/정리 정책 운영</li>
+                <li>오류 로그 순환 보관(최대 건수 제한) 및 관리자 접근 통제</li>
+            </ul>
+        </section>
+
+        <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
+            <h2 class="text-base font-semibold text-gray-100 mb-3">9. 아동의 개인정보</h2>
+            <p class="text-sm text-gray-300 leading-relaxed">
+                서비스는 아동을 대상으로 개인정보를 의도적으로 수집하지 않습니다.
+                법정대리인이 아동 관련 정보 처리에 대한 문의를 하는 경우 아래 문의처로 연락해 주세요.
+            </p>
+        </section>
+
+        <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
+            <h2 class="text-base font-semibold text-gray-100 mb-3">10. 문의 및 개인정보 보호 책임 안내</h2>
             <p class="text-sm text-gray-300">개인정보 처리 관련 문의: dev@kalpha.kr</p>
+            <p class="text-xs text-gray-500 mt-2">문의 시 서비스 이용 환경, 발생 시각, 관련 화면/오류 정보를 함께 제공하면 빠른 확인에 도움이 됩니다.</p>
+        </section>
+
+        <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
+            <h2 class="text-base font-semibold text-gray-100 mb-3">11. 방침 변경 안내</h2>
+            <p class="text-sm text-gray-300 leading-relaxed">
+                본 방침의 내용 추가, 삭제 및 수정이 있는 경우 서비스 공지사항 또는 본 페이지를 통해 사전 또는 사후 고지합니다.
+                중요한 변경의 경우 시행일과 변경 사유를 명확히 안내합니다.
+            </p>
         </section>
 
         <section class="text-xs text-gray-500">
             <p>
-                본 문서는 서비스 운영 정책 안내를 위한 페이지이며, 관련 법령/서비스 변경에 따라 개정될 수 있습니다.
+                본 문서는 서비스 운영 정책 안내를 위한 페이지이며, 관련 법령 및 서비스 구조 변경에 따라 개정될 수 있습니다.
+                국가/지역별 법적 요구사항에 따라 추가 조항이 적용될 수 있습니다.
             </p>
         </section>
     </main>
