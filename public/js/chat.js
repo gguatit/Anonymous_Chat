@@ -1,10 +1,12 @@
 // Main Chat Client Application
 import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
-import { UIManager } from './ui.js?v=1.0.4';
-import { FileUploadManager } from './file-upload.js?v=1.0.4';
+import { UIManager } from './ui.js?v=1.0.5';
+import { FileUploadManager } from './file-upload.js?v=1.0.5';
 import { DeadDropClient } from './dead-drop.js?v=1.0.3';
 import { PushNotificationManager } from './push-manager.js?v=1.0.3';
+import { SearchManager } from './search.js?v=1.0.2';
+import { GalleryManager } from './gallery.js?v=1.0.2';
 
 class ChatClient {
     constructor() {
@@ -38,6 +40,11 @@ class ChatClient {
 
         // Push notifications
         this.pushManager = new PushNotificationManager();
+
+        // Search & Gallery
+        this.search = new SearchManager((messageId) => this.scrollToMessage(messageId));
+        this.gallery = new GalleryManager();
+        window.chatClient = this;
 
         this.initializeUI();
         this.initializeAnnouncementIndicator();
@@ -633,6 +640,17 @@ class ChatClient {
 
         // Send delete request to server
         this.wsManager.send(deleteData);
+    }
+
+    scrollToMessage(messageId) {
+        const messageEl = this.ui.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageEl) {
+            messageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            messageEl.classList.add('ring-2', 'ring-blue-500');
+            setTimeout(() => {
+                messageEl.classList.remove('ring-2', 'ring-blue-500');
+            }, 2000);
+        }
     }
 
     async revealSecretMessage(secretId, container) {

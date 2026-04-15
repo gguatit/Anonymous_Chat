@@ -21,6 +21,39 @@ body {
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
+/* Search overlay scrollbar */
+#search-results-container {
+    scrollbar-width: thin;
+    scrollbar-color: #4B5563 transparent;
+}
+
+#search-results-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+#search-results-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#search-results-container::-webkit-scrollbar-thumb {
+    background-color: #4B5563;
+    border-radius: 3px;
+}
+
+/* Gallery grid */
+#gallery-grid img {
+    transition: transform 0.2s ease;
+}
+
+#gallery-grid img:hover {
+    transform: scale(1.03);
+}
+
+/* Message highlight for search navigation */
+[data-message-id].ring-blue-500 {
+    transition: box-shadow 0.3s ease;
+}
+
 /* Mobile: Better touch targets */
 @media (max-width: 640px) {
     #scroll-to-bottom {

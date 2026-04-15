@@ -977,6 +977,13 @@ export class UIManager {
                         img.addEventListener('error', function () {
                             this.style.display = 'none';
                         });
+                        img.addEventListener('click', function () {
+                            const galleryBtn = document.getElementById('gallery-toggle-btn');
+                            if (galleryBtn && window.chatClient && window.chatClient.gallery) {
+                                window.chatClient.gallery.open();
+                            }
+                        });
+                        img.title = '갤러리에서 보기';
                     }
                 }, 0);
 
@@ -1023,13 +1030,20 @@ export class UIManager {
         // 이미지 파일
         if (fileType.startsWith('image/')) {
             const imgId = 'file_img_' + Math.random().toString(36).substring(2, 9);
-            // Use DOM API instead of inline handlers
             setTimeout(() => {
                 const img = document.getElementById(imgId);
                 if (img) {
                     img.addEventListener('error', function () {
                         this.style.display = 'none';
                     });
+                    img.addEventListener('click', function () {
+                        const galleryBtn = document.getElementById('gallery-toggle-btn');
+                        if (galleryBtn && window.chatClient && window.chatClient.gallery) {
+                            window.chatClient.gallery.open();
+                        }
+                    });
+                    img.style.cursor = 'pointer';
+                    img.title = '갤러리에서 보기';
                 }
             }, 0);
 

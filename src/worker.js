@@ -188,6 +188,19 @@ export default {
                 });
             }
 
+            // Search messages endpoint
+            if (url.pathname === '/api/search') {
+                const id = env.CHAT_ROOM.idFromName('main-room');
+                const room = env.CHAT_ROOM.get(id);
+                const searchUrl = new URL('https://dummy/search' + url.search);
+                const searchRequest = new Request(searchUrl.toString());
+                const response = await room.fetch(searchRequest);
+                return new Response(response.body, {
+                    status: response.status,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
             // Check IP ban status
             if (url.pathname === '/api/check-ban') {
                 return await handleCheckBan(request, env, corsHeaders);

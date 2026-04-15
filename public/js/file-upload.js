@@ -45,6 +45,26 @@ export class FileUploadManager {
                 this.clearFile();
             }
         });
+
+        // Clipboard image paste
+        document.addEventListener('paste', (e) => this.handlePaste(e));
+    }
+
+    handlePaste(e) {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                if (file) {
+                    const namedFile = new File([file], `pasted-image-${Date.now()}.${file.type.split('/')[1] || 'png'}`, { type: file.type });
+                    this.handleFileSelection(namedFile);
+                }
+                return;
+            }
+        }
     }
 
     handleFileSelection(file) {

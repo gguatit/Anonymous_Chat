@@ -203,6 +203,13 @@ export class ChatRoom {
             });
         }
 
+        if (url.pathname === '/search') {
+            await this.initializeMessages();
+            const query = url.searchParams.get('q') || '';
+            const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
+            return this.handleSearch(query, limit);
+        }
+
         if (url.pathname === '/admin/banned-ips') {
             return await this.handleAdminBannedIPs();
         }
@@ -1548,6 +1555,56 @@ export class ChatRoom {
         }
 
         return null;
+    }
+
+    handleSearch(query, limit) {
+        if (!query || query.trim().length === 0) {
+            return new Response(JSON.stringify({ results: [], total: 0 }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const searchTerms = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+        if (searchTerms.length === 0) {
+            return new Response(JSON.stringify({ results: [], total: 0 }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const results = [];
+        const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+        const recentMessages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
+
+        for (const msg of recentMessages) {
+            if (results.length >= limit) break;
+
+            const content = (msg.content || '').toLowerCase();
+            const nickname = (msg.nickname || '').toLowerCase();
+            const fileName = (msg.file?.filename || '').toLowerCase();
+
+            const matchesAllTerms = searchTerms.every(term =>
+                content.includes(term) ||
+                nickname.includes(term) ||
+                fileName.includes(term)
+            );
+
+            if (matchesAllTerms) {
+                results.push({
+                    messageId: msg.messageId,
+                    content: msg.content || '',
+                    nickname: msg.nickname || 'Anonymous',
+                    sessionId: msg.sessionId,
+                    timestamp: msg.timestamp,
+                    hasFile: !!(msg.file),
+                    fileName: msg.file?.filename || null,
+                    fileType: msg.file?.filetype || null
+                });
+            }
+        }
+
+        return new Response(JSON.stringify({ results, total: results.length }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 
     sanitizeInput(input) {
