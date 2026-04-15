@@ -188,13 +188,6 @@ syncInputFromTags() {
             }
         }
     }
-        const rawText = input.value.replace(/#\w+/g, '').trim();
-        if (rawText) parts.push(rawText);
-        const cursorPos = input.selectionStart;
-        input.value = parts.join(' ');
-        const newPos = Math.min(cursorPos, input.value.length);
-        input.setSelectionRange(newPos, newPos);
-    }
 
     syncTagsFromInput() {
         const text = this.searchInput.value;
