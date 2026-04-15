@@ -956,7 +956,7 @@ export class UIManager {
 
         // URL을 링크로 변환하고 프리뷰 생성
         let formatted = sanitized.replace(urlPattern, (match) => {
-            // 이미 sanitized된 문자열이므로 다시 디코딩하여 원본 URL 획득
+            // 이미 sanitized된 문자열이므로 다시 디코딩하여 원본 URL 획듍
             const url = this.decodeHtml(match);
 
             // Validate URL to prevent XSS
@@ -984,7 +984,27 @@ export class UIManager {
                 <img id="${imgId}" src="${safeUrl}" alt="Image preview" class="mt-2 max-w-full max-h-64 rounded-lg border border-gray-600 object-contain" loading="lazy">`;
             }
 
-            // 일반 링크
+            // 일반 링크 (보안 헤더 분석 버튼 포함)
+            if (/^https?:\/\//i.test(url)) {
+                const secBtnId = 'secbtn_' + Math.random().toString(36).substring(2, 9);
+                // Use DOM API instead of inline handlers
+                setTimeout(() => {
+                    const btnEl = document.getElementById(secBtnId);
+                    if (btnEl) {
+                        btnEl.addEventListener('click', function (e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.chatClient && window.chatClient.securityHeaders) {
+                                const urlData = this.getAttribute('data-sec-url');
+                                window.chatClient.securityHeaders.analyze(urlData);
+                            }
+                        });
+                        btnEl.title = '보안 헤더 분석';
+                    }
+                }, 0);
+                return `<span class="inline-flex items-center gap-1"><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${match}</a><button id="${secBtnId}" data-sec-url="${safeUrl}" class="inline-flex items-center justify-center w-4 h-4 text-gray-500 hover:text-emerald-400 transition-colors flex-shrink-0" aria-label="보안 헤더 분석"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-2.332 9-7.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></button></span>`;
+            }
+
             return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${match}</a>`;
         });
 
