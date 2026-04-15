@@ -1564,8 +1564,22 @@ export class ChatRoom {
             });
         }
 
-        const searchTerms = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
-        if (searchTerms.length === 0) {
+        const tags = [];
+        const terms = [];
+        const parts = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+        for (const part of parts) {
+            if (part.startsWith('#')) {
+                tags.push(part.substring(1));
+            } else {
+                terms.push(part);
+            }
+        }
+
+        if (tags.length > 0) {
+            terms.length = 0;
+        }
+
+        if (tags.length === 0 && terms.length === 0) {
             return new Response(JSON.stringify({ results: [], total: 0 }), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -1578,33 +1592,91 @@ export class ChatRoom {
         for (const msg of recentMessages) {
             if (results.length >= limit) break;
 
-            const content = (msg.content || '').toLowerCase();
-            const nickname = (msg.nickname || '').toLowerCase();
-            const fileName = (msg.file?.filename || '').toLowerCase();
-
-            const matchesAllTerms = searchTerms.every(term =>
-                content.includes(term) ||
-                nickname.includes(term) ||
-                fileName.includes(term)
-            );
-
-            if (matchesAllTerms) {
-                results.push({
-                    messageId: msg.messageId,
-                    content: msg.content || '',
-                    nickname: msg.nickname || 'Anonymous',
-                    sessionId: msg.sessionId,
-                    timestamp: msg.timestamp,
-                    hasFile: !!(msg.file),
-                    fileName: msg.file?.filename || null,
-                    fileType: msg.file?.filetype || null
-                });
+            if (tags.length > 0) {
+                let matchesAllTags = true;
+                for (const tag of tags) {
+                    if (tag === 'images') {
+                        if (!(msg.file && msg.file.filetype && msg.file.filetype.startsWith('image/'))) {
+                            matchesAllTags = false;
+                            break;
+                        }
+                    } else if (tag === 'files') {
+                        if (!(msg.file && msg.file.filetype && !msg.file.filetype.startsWith('image/'))) {
+                            matchesAllTags = false;
+                            break;
+                        }
+                    } else if (tag === 'code') {
+                        if (!this.isLikelyCode(msg.content || '')) {
+                            matchesAllTags = false;
+                            break;
+                        }
+                    } else {
+                        matchesAllTags = false;
+                        break;
+                    }
+                }
+                if (!matchesAllTags) continue;
             }
+
+            if (terms.length > 0) {
+                const content = (msg.content || '').toLowerCase();
+                const nickname = (msg.nickname || '').toLowerCase();
+                const fileName = (msg.file?.filename || '').toLowerCase();
+                const matchesAllTerms = terms.every(term =>
+                    content.includes(term) ||
+                    nickname.includes(term) ||
+                    fileName.includes(term)
+                );
+                if (!matchesAllTerms) continue;
+            }
+
+            let tagList = [];
+            if (msg.file && msg.file.filetype) {
+                if (msg.file.filetype.startsWith('image/')) {
+                    tagList.push('images');
+                } else {
+                    tagList.push('files');
+                }
+            }
+            if (this.isLikelyCode(msg.content || '')) {
+                tagList.push('code');
+            }
+
+            results.push({
+                messageId: msg.messageId,
+                content: msg.content || '',
+                nickname: msg.nickname || 'Anonymous',
+                sessionId: msg.sessionId,
+                timestamp: msg.timestamp,
+                hasFile: !!(msg.file),
+                fileName: msg.file?.filename || null,
+                fileType: msg.file?.filetype || null,
+                tags: tagList
+            });
         }
 
         return new Response(JSON.stringify({ results, total: results.length }), {
             headers: { 'Content-Type': 'application/json' }
         });
+    }
+
+    isLikelyCode(content) {
+        if (!content || typeof content !== 'string') return false;
+        if (/```/.test(content)) return true;
+        const trimmed = content.trim();
+        const lines = trimmed.split(/\r?\n/);
+        if (lines.length < 2) return false;
+        if (lines.length > 50) return true;
+        if (/^(#!\/bin\/|import\s|from\s|export\s|const\s|let\s|var\s|function[\s(]|class\s|def\s|return\s|#include|#define|using\s|namespace\s|public\s|private\s|SELECT\s|INSERT\s|CREATE\s)/mi.test(trimmed)) return true;
+        let codeEndingLines = 0;
+        for (const line of lines) {
+            const t = line.trim();
+            if (/[;{})\]]=?>?\s*$/.test(t) && t.length > 1) codeEndingLines++;
+        }
+        if (codeEndingLines / lines.length > 0.4) return true;
+        const codeChars = (trimmed.match(/[{}();=<>]/g) || []).length;
+        if (codeChars / trimmed.length > 0.08) return true;
+        return false;
     }
 
     sanitizeInput(input) {
