@@ -6,7 +6,6 @@ import { FileUploadManager } from './file-upload.js?v=1.0.5';
 import { DeadDropClient } from './dead-drop.js?v=1.0.3';
 import { PushNotificationManager } from './push-manager.js?v=1.0.3';
 import { SearchManager } from './search.js?v=1.0.3';
-import { GalleryManager } from './gallery.js?v=1.0.2';
 
 class ChatClient {
     constructor() {
@@ -41,9 +40,8 @@ class ChatClient {
         // Push notifications
         this.pushManager = new PushNotificationManager();
 
-        // Search & Gallery
+        // Search
         this.search = new SearchManager((messageId) => this.scrollToMessage(messageId));
-        this.gallery = new GalleryManager();
         window.chatClient = this;
 
         this.initializeUI();

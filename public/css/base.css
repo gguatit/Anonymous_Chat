@@ -40,15 +40,6 @@ body {
     border-radius: 3px;
 }
 
-/* Gallery grid */
-#gallery-grid img {
-    transition: transform 0.2s ease;
-}
-
-#gallery-grid img:hover {
-    transform: scale(1.03);
-}
-
 /* Message highlight for search navigation */
 [data-message-id].ring-blue-500 {
     transition: box-shadow 0.3s ease;

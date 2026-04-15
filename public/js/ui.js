@@ -977,13 +977,6 @@ export class UIManager {
                         img.addEventListener('error', function () {
                             this.style.display = 'none';
                         });
-                        img.addEventListener('click', function () {
-                            const galleryBtn = document.getElementById('gallery-toggle-btn');
-                            if (galleryBtn && window.chatClient && window.chatClient.gallery) {
-                                window.chatClient.gallery.open();
-                            }
-                        });
-                        img.title = '갤러리에서 보기';
                     }
                 }, 0);
 
@@ -1036,14 +1029,6 @@ export class UIManager {
                     img.addEventListener('error', function () {
                         this.style.display = 'none';
                     });
-                    img.addEventListener('click', function () {
-                        const galleryBtn = document.getElementById('gallery-toggle-btn');
-                        if (galleryBtn && window.chatClient && window.chatClient.gallery) {
-                            window.chatClient.gallery.open();
-                        }
-                    });
-                    img.style.cursor = 'pointer';
-                    img.title = '갤러리에서 보기';
                 }
             }, 0);
 
