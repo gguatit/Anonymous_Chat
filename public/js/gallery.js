@@ -50,7 +50,12 @@ export class GalleryManager {
 
         this.gridContainer = this.overlay.querySelector('#gallery-grid');
         this.overlay.querySelector('#gallery-close-btn').addEventListener('click', () => this.close());
-        this.overlay.querySelector('#gallery-refresh-btn').addEventListener('click', () => this.collectAndRender());
+        const refreshBtn = this.overlay.querySelector('#gallery-refresh-btn');
+        refreshBtn.addEventListener('click', () => {
+            refreshBtn.classList.add('gallery-refresh-spin');
+            this.collectAndRender();
+            setTimeout(() => refreshBtn.classList.remove('gallery-refresh-spin'), 600);
+        });
         this.overlay.addEventListener('click', (e) => {
             if (e.target === this.overlay) this.close();
         });
@@ -206,6 +211,11 @@ export class GalleryManager {
         this.overlay.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
         this.collectAndRender();
+        const refreshBtn = this.overlay.querySelector('#gallery-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.classList.add('gallery-refresh-spin');
+            setTimeout(() => refreshBtn.classList.remove('gallery-refresh-spin'), 600);
+        }
     }
 
     close() {
