@@ -1005,7 +1005,7 @@ export class UIManager {
                             sessionStorage.setItem('secHintShown', '1');
                             const hint = document.createElement('span');
                             hint.className = 'sec-hint ml-1 text-[10px] text-emerald-400/80 whitespace-nowrap animate-sec-hint';
-                            hint.textContent = '보안헤더를 확인해주세요 →';
+                            hint.textContent = '← 보안헤더를 확인해주세요';
                             btnEl.parentElement.appendChild(hint);
                             setTimeout(() => { if (hint.parentElement) hint.remove(); }, 5000);
                         }
