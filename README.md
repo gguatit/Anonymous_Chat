@@ -47,11 +47,12 @@ Cloudflare Workers 기반 서버리스 아키텍처
 
 ## 최근 업데이트
 
-### 2026년 4월 15일 - 메시지 검색, 이미지 붙여넣기 추가
+### 2026년 4월 15일 - 메시지 검색, 이미지 붙여넣기, URL 보안 헤더 분석 추가
 
 #### 새로운 기능
 - **메시지 검색**: 상단 돋보기 버튼 또는 `Ctrl+F`로 12시간 이내의 모든 메시지를 서버 사이드에서 검색. 내용, 닉네임, 파일명 다중 키워드 AND 검색 지원. 검색 결과 하이라이트 및 클릭 시 해당 메시지로 스크롤 이동. `#images`(이미지), `#files`(파일), `#code`(코드) 태그로 유형별 필터링 가능. 태그 버튼 클릭 또는 검색어에 직접 입력 지원
 - **클립보드 이미지 붙여넣기**: `Ctrl+V`로 클립보드에 복사한 이미지를 채팅 입력창에 바로 붙여넣기. 파일명 자동 생성 및 업로드 미리보기 처리
+- **URL 보안 헤더 분석**: 채팅 내 HTTP/HTTPS URL 옆에 방패 아이콘 표시. 클릭 시 Kalpha Security API(`GET /security/headers`)로 해당 사이트의 보안 헤더를 분석하여 점수·등급·헤더 상태·상세 분석 결과를 모달로 표시
 
 #### 서버 사이드 변경
 - `GET /api/search?q=검색어&limit=N` 엔드포인트 추가 (Durable Object 내 전체 메시지 대상 검색)
@@ -148,7 +149,9 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - 메시지 수정 및 삭제 (10분 제한)
 - **파일 공유** (이미지, 비디오, 오디오, 문서)
 - **메시지 검색** (서버 사이드 다중 키워드 AND 검색, 내용/닉네임/파일명 대상)
+- **태그 필터** (`#images`, `#files`, `#code`로 유형별 검색)
 - **클립보드 이미지 붙여넣기** (Ctrl+V로 이미지 즉시 첨부)
+- **URL 보안 헤더 분석** (채팅 내 URL 옆 방패 아이콘 클릭 시 Kalpha API로 보안 헤더 등급 산출)
 
 ### 파일 공유 시스템
 
@@ -268,19 +271,21 @@ graph TB
     
     subgraph "External Services"
         F[File Upload API<br/>file.xeon.kr]
-        G[Dead Drop API<br/>api.kalpha.kr]
+        G[Kalpha API<br/>api.kalpha.kr]
     end
     
     A -->|HTTPS| C
     A -.->|WSS| B
     A -.->|HTTPS /api/upload| B
     A -.->|Secret Message<br/>Store/Read| G
+    A -.->|Security Headers<br/>Analysis| G
     B -->|Routing| D
     B -.->|Proxy Upload| F
     D -->|State| E
     D -.->|Broadcast<br/>+targetSessionId| A
     F -.->|File URL| A
     G -.->|One-time Secret<br/>1hr TTL| A
+    G -.->|Security Header<br/>Score & Analysis| A
 ```
 
 ### 데이터 흐름
@@ -291,8 +296,10 @@ graph TB
 3. 메시지 → 클라이언트 검증 → 서버 검증 → 브로드캐스트
 4. 타이핑 → 2초 디바운싱 → 다른 클라이언트에게 전파
 5. 파일 업로드 → Worker `/api/upload` 프록시 → file.xeon.kr → 파일 URL 반환 → 메시지에 첨부
-6. 비밀 메시지 저장 → Dead Drop API → secretId 반환 → targetSessionId와 함께 브로드캐스트
-7. 비밀 메시지 읽기 → targetSessionId 검증 → Dead Drop API에서 일회성 조회 및 삭제
+6. 비밀 메시지 저장 → Kalpha API (Dead Drop) → secretId 반환 → targetSessionId와 함께 브로드캐스트
+7. 비밀 메시지 읽기 → targetSessionId 검증 → Kalpha API에서 일회성 조회 및 삭제
+8. 보안 헤더 분석 → 채팅 내 URL 클릭 → Kalpha API (`/security/headers`) → 점수/등급/분석 결과 표시
+9. 메시지 검색 → Worker `/api/search` → Durable Object 내 전체 메시지 검색 → 결과 반환
 ```
 
 ### 비밀 메시지 보안 흐름
@@ -303,7 +310,7 @@ sequenceDiagram
     participant B as 사용자 B
     participant C as 사용자 C (제3자)
     participant Chat as ChatRoom
-    participant DD as Dead Drop API
+    participant DD as Kalpha API
 
     Note over A,DD: 1. 답장 대상 선택 및 비밀 메시지 작성
     A->>A: 사용자 B의 메시지 우클릭
@@ -346,8 +353,9 @@ sequenceDiagram
 | Client App | WebSocket 클라이언트, UI 렌더링 | `public/js/` |
 | File Upload Manager | 파일 업로드 및 미리보기 처리 | `public/js/file-upload.js` |
 | Dead Drop Client | 일회성 비밀 메시지 API 클라이언트 | `public/js/dead-drop.js` |
+| Security Headers Manager | URL 보안 헤더 분석 클라이언트 | `public/js/security-headers.js` |
 | External File API | 파일 저장 및 제공 | `file.xeon.kr` |
-| Dead Drop API | 일회성 비밀 메시지 저장소 (1hr TTL) | `api.kalpha.kr` |
+| Kalpha API | 비밀 메시지(Dead Drop) + 보안 헤더 분석 | `api.kalpha.kr` |
 
 ---
 
@@ -790,8 +798,9 @@ Anonymous_Chat/
 │   │   ├── session.js    # 세션 관리
 │   │   ├── ui.js         # UI 렌더링
 │   │   ├── file-upload.js # 파일 업로드 관리
-│   │   ├── search.js     # 메시지 검색
-│   │   └── admin.js      # 관리자 페이지 로직
+│   │   ├── search.js          # 메시지 검색
+│   │   ├── security-headers.js # URL 보안 헤더 분석
+│   │   └── admin.js           # 관리자 페이지 로직
 │   ├── css/              # 스타일시트
 │   │   ├── base.css      # 기본 스타일
 │   │   └── animations.css # 애니메이션
@@ -881,6 +890,14 @@ Anonymous_Chat/
 | `/upload` | POST | 파일 업로드 (multipart/form-data) |
 | `/{id}/{name}` | GET | 업로드된 파일 다운로드 |
 | `/{id}/{name}` | HEAD | 파일 메타데이터 조회 |
+
+#### 외부 보안 API (api.kalpha.kr)
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/store` | POST | 일회성 비밀 메시지 저장 |
+| `/read/{id}` | GET | 비밀 메시지 읽기 (읽기 후 삭제, 1hr TTL) |
+| `/security/headers` | GET | URL 보안 헤더 분석 (점수, 등급, 헤더 상태) |
 
 #### 메트릭 API 응답 예시
 
@@ -1249,9 +1266,14 @@ chore: 빌드/설정 변경
   - 헤더 검색 버튼 및 `Ctrl+F` 단축키 지원
   - **태그 검색**: `#images`(이미지), `#files`(파일), `#code`(코드) 태그로 유형별 필터링
     - 태그 버튼 클릭 또는 검색어에 직접 `#images` 입력 가능
-    - 키워드와 조합 가능 (예: `#images 풍경`, `#code function`)
+    - 태그 검색 시 키워드는 무시되고 태그만 필터링에 적용
     - 검색 결과에 색상 태그 배지 표시 (이미지=초록, 파일=주황, 코드=보라)
 - **클립보드 이미지 붙여넣기**: `Ctrl+V`로 클립보드 이미지 자동 감지 및 업로드 미리보기 처리
+- **URL 보안 헤더 분석**: Kalpha Security API(`GET /security/headers`) 연동
+  - 채팅 내 HTTP/HTTPS URL 옆에 방패+체크 아이콘 버튼 표시
+  - 클릭 시 해당 사이트의 보안 헤더 분석 결과 모달 표시
+  - 점수, 등급, 프로그레스 바, 헤더 설정 상태, 상세 분석 항목 제공
+  - 분석 결과 하단에 참고용 안내 표시 (개발 중인 API, 신뢰성 관련)
 
 ---
 

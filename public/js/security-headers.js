@@ -183,6 +183,10 @@ export class SecurityHeadersManager {
                     </div>
                 </div>
                 ` : ''}
+
+                <div class="bg-amber-900/20 rounded-lg p-3 border border-amber-700/30">
+                    <p class="text-[11px] text-amber-300/70 leading-relaxed">본 분석은 개발 중인 API를 사용하며, 일부 사이트는 보안 헤더 검증이 불가할 수 있습니다. 결과의 신뢰성이 떨어질 수 있으니 참고용으로만 활용해주세요.</p>
+                </div>
             </div>
         `;
     }

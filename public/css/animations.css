@@ -35,3 +35,13 @@
         opacity: 1; 
     }
 }
+
+/* Security header hint animation */
+@keyframes secHintPulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 0.3; }
+}
+
+.sec-hint {
+    animation: secHintPulse 1.5s ease-in-out 3;
+}
