@@ -63,8 +63,8 @@ export class SearchManager {
                         <p class="text-sm">검색어를 입력하세요</p>
                         <p class="text-xs text-gray-600 mt-1">최근 12시간 이내의 모든 메시지에서 검색합니다</p>
                         <div class="mt-3 text-left bg-gray-800/60 rounded-lg p-3 border border-gray-700/50">
-                            <p class="text-xs text-gray-400 font-medium mb-1.5">태그 필터</p>
-                            <p class="text-xs text-gray-500 leading-relaxed">
+                            <p class="text-xs text-gray-400 font-medium mb-2">태그 필터</p>
+                            <p class="text-xs text-gray-500 leading-loose">
                                 <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-1 bg-emerald-600/30 text-emerald-300 border border-emerald-500/40">#images</span>
                                 이미지가 포함된 메시지<br>
                                 <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-1 bg-amber-600/30 text-amber-300 border border-amber-500/40">#files</span>
@@ -72,7 +72,7 @@ export class SearchManager {
                                 <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-1 bg-violet-600/30 text-violet-300 border border-violet-500/40">#code</span>
                                 코드 블록이 포함된 메시지
                             </p>
-                            <p class="text-[10px] text-gray-600 mt-1.5">태그 검색 시 키워드는 무시되고 태그만 적용됩니다</p>
+                            <p class="text-[10px] text-gray-600 mt-2">태그 검색 시 키워드는 무시되고 태그만 적용됩니다</p>
                         </div>
                     </div>
                 </div>
@@ -254,8 +254,8 @@ syncInputFromTags() {
                 <p class="text-sm">검색어를 입력하세요</p>
                 <p class="text-xs text-gray-600 mt-1">최근 12시간 이내의 모든 메시지에서 검색합니다</p>
                 <div class="mt-3 text-left bg-gray-800/60 rounded-lg p-3 border border-gray-700/50">
-                    <p class="text-xs text-gray-400 font-medium mb-1.5">태그 필터</p>
-                    <p class="text-xs text-gray-500 leading-relaxed">
+                    <p class="text-xs text-gray-400 font-medium mb-2">태그 필터</p>
+                    <p class="text-xs text-gray-500 leading-loose">
                         <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-1 bg-emerald-600/30 text-emerald-300 border border-emerald-500/40">#images</span>
                         이미지가 포함된 메시지<br>
                         <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-1 bg-amber-600/30 text-amber-300 border border-amber-500/40">#files</span>
@@ -263,7 +263,7 @@ syncInputFromTags() {
                         <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-1 bg-violet-600/30 text-violet-300 border border-violet-500/40">#code</span>
                         코드 블록이 포함된 메시지
                     </p>
-                    <p class="text-[10px] text-gray-600 mt-1.5">태그 검색 시 키워드는 무시되고 태그만 적용됩니다</p>
+                    <p class="text-[10px] text-gray-600 mt-2">태그 검색 시 키워드는 무시되고 태그만 적용됩니다</p>
                 </div>
             </div>
         `;
