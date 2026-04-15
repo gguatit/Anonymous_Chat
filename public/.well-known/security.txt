@@ -1,0 +1,14 @@
+# Security Policy - Anonymous Chat
+# https://securitytxt.org/ | RFC 9116
+
+Contact: mailto:dev@kalpha.kr
+Preferred-Languages: ko, en
+Canonical: https://kalpha.mmv.kr/.well-known/security.txt
+
+Policy: https://kalpha.mmv.kr/privacy.html
+
+Acknowledgments: https://github.com/gguatit/Anonymous_Chat
+
+Hiring: https://github.com/gguatit/Anonymous_Chat
+
+Expires: 2027-04-13T00:00:00.000Z
