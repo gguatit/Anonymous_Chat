@@ -91,6 +91,10 @@ export class SearchManager {
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen) {
+                const galleryOverlay = document.getElementById('gallery-overlay');
+                const galleryLightbox = document.getElementById('gallery-lightbox');
+                if (galleryOverlay && !galleryOverlay.classList.contains('hidden')) return;
+                if (galleryLightbox && !galleryLightbox.classList.contains('hidden')) return;
                 e.preventDefault();
                 this.close();
             }

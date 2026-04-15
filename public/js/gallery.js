@@ -104,6 +104,9 @@ export class GalleryManager {
                     e.preventDefault();
                     this.closeLightbox();
                 }
+            } else if (this.isOpen && e.key === 'Escape') {
+                e.preventDefault();
+                this.close();
             }
         });
     }
