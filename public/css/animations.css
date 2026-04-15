@@ -35,3 +35,8 @@
         opacity: 1; 
     }
 }
+
+/* Message highlight for search navigation */
+[data-message-id].ring-blue-500 {
+    transition: box-shadow 0.3s ease;
+}
