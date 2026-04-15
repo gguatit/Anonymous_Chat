@@ -83,8 +83,9 @@ export class SecurityHeadersManager {
     renderResult(data, url) {
         const content = this.overlay.querySelector('#sec-content');
 
-        const scoreColor = this.getScoreColor(data.grade);
-        const gradeLabel = this.getGradeLabel(data.score, data.grade);
+        const numericScore = typeof data.score === 'number' ? data.score : (typeof data.grade === 'number' ? data.grade : 0);
+        const letterGrade = typeof data.grade === 'string' ? data.grade : (typeof data.score === 'string' ? data.score : '');
+        const scoreColor = this.getScoreColor(numericScore);
 
         let headersHtml = '';
         const headerNames = {
@@ -147,13 +148,13 @@ export class SecurityHeadersManager {
                         </div>
                         <div class="text-center flex-shrink-0">
                             <div class="w-14 h-14 rounded-full flex items-center justify-center border-2 ${scoreColor.border} mb-1">
-                                <span class="text-xl font-bold ${scoreColor.text}">${this.esc(String(data.score))}</span>
+                                <span class="text-xl font-bold ${scoreColor.text}">${this.esc(letterGrade || String(numericScore))}</span>
                             </div>
-                            <span class="text-[10px] text-gray-400">${gradeLabel}</span>
+                            <span class="text-[10px] text-gray-400">${numericScore}/100</span>
                         </div>
                     </div>
                     <div class="w-full bg-gray-600 rounded-full h-2">
-                        <div class="h-2 rounded-full transition-all duration-500 ${scoreColor.bg}" style="width: ${data.grade}%"></div>
+                        <div class="h-2 rounded-full transition-all duration-500 ${scoreColor.bg}" style="width: ${numericScore}%"></div>
                     </div>
                 </div>
 
@@ -186,21 +187,11 @@ export class SecurityHeadersManager {
         `;
     }
 
-    getScoreColor(grade) {
-        if (grade >= 90) return { bg: 'bg-emerald-500', text: 'text-emerald-300', border: 'border-emerald-500' };
-        if (grade >= 70) return { bg: 'bg-blue-500', text: 'text-blue-300', border: 'border-blue-500' };
-        if (grade >= 50) return { bg: 'bg-amber-500', text: 'text-amber-300', border: 'border-amber-500' };
+    getScoreColor(score) {
+        if (score >= 90) return { bg: 'bg-emerald-500', text: 'text-emerald-300', border: 'border-emerald-500' };
+        if (score >= 70) return { bg: 'bg-blue-500', text: 'text-blue-300', border: 'border-blue-500' };
+        if (score >= 50) return { bg: 'bg-amber-500', text: 'text-amber-300', border: 'border-amber-500' };
         return { bg: 'bg-red-500', text: 'text-red-300', border: 'border-red-500' };
-    }
-
-    getGradeLabel(score, grade) {
-        if (typeof score === 'string') return score;
-        if (grade >= 90) return 'A+';
-        if (grade >= 80) return 'A';
-        if (grade >= 70) return 'B';
-        if (grade >= 60) return 'C';
-        if (grade >= 50) return 'D';
-        return 'F';
     }
 
     truncateUrl(url) {
