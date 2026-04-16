@@ -140,6 +140,12 @@ class AdminDashboard {
             auditLogFilter.addEventListener('change', () => this.loadAuditLogs());
         }
 
+        // Clear audit logs
+        const clearAuditBtn = document.getElementById('clear-audit-logs-btn');
+        if (clearAuditBtn) {
+            clearAuditBtn.addEventListener('click', () => this.clearAuditLogs());
+        }
+
         // User details modal close
         const closeUserModal = document.getElementById('close-user-modal');
         const userDetailsModal = document.getElementById('user-details-modal');
@@ -1566,6 +1572,28 @@ class AdminDashboard {
 
         } catch (error) {
             console.error('Load audit logs error:', error);
+        }
+    }
+
+    async clearAuditLogs() {
+        const confirmed = confirm('모든 감사 로그를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.');
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch('/api/admin/delete-audit-logs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.sessionToken}`
+                }
+            });
+
+            if (!response.ok) throw new Error('Failed to delete audit logs');
+            this.showNotification('감사 로그가 삭제되었습니다.', 'success');
+            this.loadAuditLogs();
+        } catch (error) {
+            console.error('Clear audit logs error:', error);
+            this.showNotification('감사 로그 삭제에 실패했습니다.', 'error');
         }
     }
 

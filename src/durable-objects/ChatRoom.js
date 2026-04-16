@@ -228,6 +228,14 @@ export class ChatRoom {
             return await this.handleAdminAuditLogs();
         }
 
+        if (url.pathname === '/admin/delete-audit-logs' && request.method === 'POST') {
+            this.auditLogs = [];
+            await this.state.storage.delete('auditLogs');
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         if (url.pathname === '/check-ban') {
             return await this.handleCheckBan(url, request);
         }

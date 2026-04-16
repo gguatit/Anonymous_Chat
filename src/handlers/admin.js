@@ -786,3 +786,26 @@ export async function handleAdminAuditLogs(request, env, corsHeaders) {
         });
     }
 }
+
+export async function handleAdminDeleteAuditLogs(request, env, corsHeaders) {
+    try {
+        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const room = env.CHAT_ROOM.get(roomId);
+
+        const forward = new Request('https://dummy/admin/delete-audit-logs', {
+            method: 'POST',
+            headers: { 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID() }
+        });
+
+        const response = await room.fetch(forward);
+        return new Response(response.body, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('handleAdminDeleteAuditLogs error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to delete audit logs' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}

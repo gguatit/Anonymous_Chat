@@ -23,7 +23,8 @@ import {
     handleAdminBannedIPs,
     handleAdminUnbanIP,
     handleAdminUserDetails,
-    handleAdminAuditLogs
+    handleAdminAuditLogs,
+    handleAdminDeleteAuditLogs
 } from './handlers/admin.js';
 import { handleWebSocket, handleCheckBan } from './handlers/websocket.js';
 import { handleGetVapidKey, handlePushSubscribe, handlePushUnsubscribe } from './handlers/push.js';
@@ -127,6 +128,9 @@ export default {
             }
             if (url.pathname === '/api/admin/audit-logs') {
                 return await handleAdminAuditLogs(request, env, corsHeaders);
+            }
+            if (url.pathname === '/api/admin/delete-audit-logs' && request.method === 'POST') {
+                return await handleAdminDeleteAuditLogs(request, env, corsHeaders);
             }
 
             // Push notification endpoints
