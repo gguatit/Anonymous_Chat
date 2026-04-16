@@ -4,7 +4,7 @@ import { WebSocketManager } from './websocket.js?v=1.0.3';
 import { UIManager } from './ui.js?v=1.0.6';
 import { FileUploadManager } from './file-upload.js?v=1.0.5';
 import { DeadDropClient } from './dead-drop.js?v=1.0.3';
-import { PushNotificationManager } from './push-manager.js?v=1.0.4';
+import { PushNotificationManager } from './push-manager.js?v=1.0.5';
 import { SearchManager } from './search.js?v=1.0.3';
 import { SecurityHeadersManager } from './security-headers.js?v=1.0.1';
 
@@ -159,7 +159,6 @@ class ChatClient {
         if (!result.supported || !bellBtn) {
             if (result.error) {
                 console.log('[Push] Notifications unavailable:', result.error);
-                // Show user-friendly message if VAPID keys are missing
                 if (result.error.includes('not configured')) {
                     console.warn('[Push] Server push notifications not configured. Contact administrator.');
                 }
@@ -168,8 +167,15 @@ class ChatClient {
         }
 
         bellBtn.classList.remove('hidden');
-        // Update UI to reflect current subscription state
         this.updateBellIcon(bellBtn);
+
+        if (Notification.permission === 'granted' && !result.subscribed && this.pushManager._sessionSubscribed) {
+            console.log('[Push] Re-subscribing — subscription lost but permission granted');
+            const resubscribed = await this.pushManager.subscribe(this.sessionManager.getSessionId());
+            if (resubscribed) {
+                this.updateBellIcon(bellBtn);
+            }
+        }
 
         bellBtn.addEventListener('click', async () => {
             try {
@@ -180,7 +186,6 @@ class ChatClient {
                     this.updateBellIcon(bellBtn);
                     console.log('[Chat] Notification toggle successful:', success);
                 } else {
-                    // Toggle failed, show detailed error
                     console.error('[Chat] Notification toggle returned undefined');
                     this.ui.displayError('알림 설정을 변경할 수 없습니다. 브라우저 권한을 확인하거나 페이지를 새로고침 해주세요.');
                 }

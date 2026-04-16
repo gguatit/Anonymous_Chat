@@ -23,6 +23,14 @@
   ],
   "categories": ["social", "communication"],
   "lang": "ko",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "채팅 열기",
+      "url": "/",
+      "icons": [{ "src": "/ico/android-chrome-192x192.png", "sizes": "192x192" }]
+    }
+  ],
   "share_target": {
     "action": "/",
     "method": "POST",

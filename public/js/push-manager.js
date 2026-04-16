@@ -6,28 +6,21 @@ export class PushNotificationManager {
         this.swRegistration = null;
         this.isSubscribed = false;
         this.vapidPublicKey = null;
+        this._sessionSubscribed = false;
     }
 
-    /**
-     * Initialize push notifications
-     * @returns {Promise<Object>} { supported: boolean, subscribed: boolean, error?: string }
-     */
     async initialize() {
-        // Check browser support
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             console.log('[Push] Push notifications not supported');
             return { supported: false, subscribed: false };
         }
 
         try {
-            // Register Service Worker
-            this.swRegistration = await navigator.serviceWorker.register('/sw.js');
+            this.swRegistration = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
             console.log('[Push] Service Worker registered');
 
-            // Wait for the SW to be ready
             await navigator.serviceWorker.ready;
 
-            // Fetch VAPID public key from server
             const response = await fetch('/api/push/vapid-key');
             if (!response.ok) {
                 const errorData = await response.json();
@@ -44,11 +37,24 @@ export class PushNotificationManager {
 
             this.vapidPublicKey = data.publicKey.trim();
 
-            // Check existing subscription
             const subscription = await this.swRegistration.pushManager.getSubscription();
-            this.isSubscribed = !!subscription;
+            if (subscription) {
+                this.isSubscribed = true;
+                this._sessionSubscribed = true;
+            } else {
+                const stored = sessionStorage.getItem('pushSubscribed');
+                if (stored === 'true') {
+                    this._sessionSubscribed = true;
+                }
+            }
 
             console.log('[Push] Initialization complete, subscribed:', this.isSubscribed);
+
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data?.type === 'push-received') {
+                    console.log('[Push] Push forwarded from SW while page visible');
+                }
+            });
 
             return { supported: true, subscribed: this.isSubscribed };
         } catch (error) {
@@ -91,6 +97,8 @@ export class PushNotificationManager {
 
                 if (response.ok) {
                     this.isSubscribed = true;
+                    this._sessionSubscribed = true;
+                    sessionStorage.setItem('pushSubscribed', 'true');
                     console.log('[Push] ✓ FCM Token subscribed successfully via Hybrid App');
                     return true;
                 } else {
@@ -149,6 +157,8 @@ export class PushNotificationManager {
 
             if (response.ok) {
                 this.isSubscribed = true;
+                this._sessionSubscribed = true;
+                sessionStorage.setItem('pushSubscribed', 'true');
                 console.log('[Push] ✓ Subscribed successfully');
                 return true;
             } else {
@@ -181,6 +191,8 @@ export class PushNotificationManager {
             });
 
             this.isSubscribed = false;
+            this._sessionSubscribed = false;
+            sessionStorage.removeItem('pushSubscribed');
             console.log('[Push] Unsubscribed');
             return true;
         } catch (error) {

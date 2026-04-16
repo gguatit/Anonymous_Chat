@@ -36,7 +36,42 @@ export async function handleGetVapidKey(request, env, corsHeaders) {
 export async function handlePushSubscribe(request, env, corsHeaders) {
     try {
         const body = await request.json();
-        const { subscription, sessionId, isFcmToken } = body;
+        const { subscription, sessionId, isFcmToken, type } = body;
+
+        if (type === 'resubscribe' && subscription) {
+            if (!subscription.endpoint) {
+                return new Response(JSON.stringify({ error: 'Invalid resubscribe data' }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
+            if (!env.PUSH_SUBSCRIPTIONS) {
+                return new Response(JSON.stringify({ error: 'Push not configured' }), {
+                    status: 503,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
+            const allKeys = await listAllKvKeys(env.PUSH_SUBSCRIPTIONS, 'sub:');
+            for (const key of allKeys) {
+                const rawData = await env.PUSH_SUBSCRIPTIONS.get(key.name);
+                if (!rawData) continue;
+                const parsed = parseSubscriptionData(rawData);
+                if (parsed && parsed.type === 'web' && parsed.data?.endpoint === subscription.endpoint) {
+                    const dataToSave = { type: 'web', data: subscription };
+                    await env.PUSH_SUBSCRIPTIONS.put(key.name, JSON.stringify(dataToSave), { expirationTtl: 30 * 24 * 60 * 60 });
+                    console.log(`[Push API] Updated subscription for ${key.name}`);
+                    return new Response(JSON.stringify({ success: true }), {
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    });
+                }
+            }
+
+            return new Response(JSON.stringify({ success: true, note: 'No matching subscription found' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
 
         if (!subscription || !sessionId) {
             return new Response(JSON.stringify({ error: 'Missing subscription or sessionId' }), {

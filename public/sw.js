@@ -1,7 +1,4 @@
-// Service Worker for Push Notifications
-// This runs in the background even when the page is closed
-
-self.addEventListener('install', (event) => {
+self.addEventListener('install', (_event) => {
     console.log('[SW] Installed');
     self.skipWaiting();
 });
@@ -11,7 +8,6 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(self.clients.claim());
 });
 
-// Handle incoming push notifications
 self.addEventListener('push', (event) => {
     console.log('[SW] Push received');
 
@@ -43,25 +39,28 @@ self.addEventListener('push', (event) => {
     };
 
     event.waitUntil(
-        // Only skip notification if user is actively viewing the chat (visible AND focused)
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-            // Check if any client is both visible and focused
-            const isActivelyUsing = clients.some(client => {
-                return client.visibilityState === 'visible' && client.focused;
+            const isActivelyViewing = clients.some(client => {
+                return client.visibilityState === 'visible';
             });
-            
-            if (isActivelyUsing) {
-                console.log('[SW] User is actively using the chat, skipping notification');
+
+            if (isActivelyViewing) {
+                clients.forEach(client => {
+                    client.postMessage({
+                        type: 'push-received',
+                        payload: data
+                    });
+                });
+                console.log('[SW] Page is visible, forwarding push to page');
                 return;
             }
-            
-            console.log('[SW] Showing notification - user not actively using chat');
+
+            console.log('[SW] Showing notification - page not visible');
             return self.registration.showNotification(data.title || '익명 채팅', options);
         })
     );
 });
 
-// Handle notification click
 self.addEventListener('notificationclick', (event) => {
     console.log('[SW] Notification clicked');
     event.notification.close();
@@ -72,14 +71,33 @@ self.addEventListener('notificationclick', (event) => {
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-            // Focus existing tab if available
             for (const client of clients) {
                 if (client.url.includes(self.location.origin) && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Otherwise open a new tab
             return self.clients.openWindow(urlToOpen);
+        })
+    );
+});
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+    console.log('[SW] Push subscription changed/expired');
+    event.waitUntil(
+        self.registration.pushManager.getSubscription().then((subscription) => {
+            if (!subscription) {
+                return;
+            }
+            return fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subscription: subscription.toJSON(),
+                    type: 'resubscribe'
+                })
+            }).catch(err => {
+                console.error('[SW] Failed to resubscribe:', err);
+            });
         })
     );
 });
