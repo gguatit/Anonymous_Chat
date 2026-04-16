@@ -4,7 +4,7 @@ import { WebSocketManager } from './websocket.js?v=1.0.3';
 import { UIManager } from './ui.js?v=1.0.6';
 import { FileUploadManager } from './file-upload.js?v=1.0.5';
 import { DeadDropClient } from './dead-drop.js?v=1.0.3';
-import { PushNotificationManager } from './push-manager.js?v=1.0.3';
+import { PushNotificationManager } from './push-manager.js?v=1.0.4';
 import { SearchManager } from './search.js?v=1.0.3';
 import { SecurityHeadersManager } from './security-headers.js?v=1.0.1';
 

@@ -21,6 +21,8 @@ export class ChatRoom {
         this.auditLogs = []; // Audit logs for admin actions
         this.errorLogs = []; // Ring buffer for detailed errors
         this.MAX_ERROR_LOGS = 100;
+        this.pushThrottleTimer = null;
+        this.pushThrottleQueue = [];
 
         // Periodic cleanup of stale data (every 5 minutes)
         this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
@@ -1724,12 +1726,27 @@ export class ChatRoom {
             }
         }
 
-        // Send push notifications to offline subscribers (fire-and-forget)
+        // Send push notifications to offline subscribers (fire-and-forget, throttled)
         if (message.type === 'message' && this.env?.PUSH_SUBSCRIPTIONS) {
-            this.sendPushNotifications(message).catch(err => {
+            this.throttledPushNotification(message);
+        }
+    }
+
+    throttledPushNotification(message) {
+        this.pushThrottleQueue.push(message);
+
+        if (this.pushThrottleTimer) {
+            return;
+        }
+
+        this.pushThrottleTimer = setTimeout(() => {
+            this.pushThrottleTimer = null;
+            const latest = this.pushThrottleQueue[this.pushThrottleQueue.length - 1];
+            this.pushThrottleQueue = [];
+            this.sendPushNotifications(latest).catch(err => {
                 console.error('[Push] Background push error:', err);
             });
-        }
+        }, 1500);
     }
 
     async sendPushNotifications(message) {
@@ -1756,6 +1773,12 @@ export class ChatRoom {
     }
 
     cleanup() {
+        if (this.pushThrottleTimer) {
+            clearTimeout(this.pushThrottleTimer);
+            this.pushThrottleTimer = null;
+            this.pushThrottleQueue = [];
+        }
+
         const now = Date.now();
         const sessionTimeout = 1800000; // 30 minutes
         const messageRetention = 12 * 60 * 60 * 1000;

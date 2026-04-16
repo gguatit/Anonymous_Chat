@@ -36,7 +36,6 @@ export class PushNotificationManager {
             }
 
             const data = await response.json();
-            console.log('[Push] Received VAPID key from server:', data.publicKey?.substring(0, 20) + '...', 'length:', data.publicKey?.length);
 
             if (!data.publicKey) {
                 console.error('[Push] Server returned empty VAPID key');
@@ -173,14 +172,13 @@ export class PushNotificationManager {
             const subscription = await this.swRegistration?.pushManager.getSubscription();
             if (subscription) {
                 await subscription.unsubscribe();
-
-                // Notify server
-                await fetch('/api/push/unsubscribe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId })
-                });
             }
+
+            await fetch('/api/push/unsubscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId })
+            });
 
             this.isSubscribed = false;
             console.log('[Push] Unsubscribed');
@@ -237,15 +235,9 @@ export class PushNotificationManager {
      * Convert base64url to Uint8Array (for applicationServerKey)
      */
     urlBase64ToUint8Array(base64String) {
-        if (!base64String) {
-            throw new Error('VAPID public key is empty or undefined');
+        if (!base64String || typeof base64String !== 'string') {
+            throw new Error('VAPID public key is empty or invalid');
         }
-
-        if (typeof base64String !== 'string') {
-            throw new Error('VAPID public key must be a string');
-        }
-
-        console.log('[Push] VAPID key to decode:', base64String.substring(0, 20) + '...');
 
         try {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -255,11 +247,9 @@ export class PushNotificationManager {
             for (let i = 0; i < rawData.length; i++) {
                 outputArray[i] = rawData.charCodeAt(i);
             }
-            console.log('[Push] Successfully decoded VAPID key, length:', outputArray.length);
             return outputArray;
         } catch (error) {
             console.error('[Push] Failed to decode VAPID key:', error);
-            console.error('[Push] Invalid key value:', base64String);
             throw new Error('Invalid VAPID public key format: ' + error.message);
         }
     }

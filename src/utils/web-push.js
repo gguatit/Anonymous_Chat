@@ -50,8 +50,6 @@ async function generateVAPIDHeaders(endpoint, vapidKeys) {
         sub: vapidKeys.subject
     };
 
-    // Import VAPID private key
-    const privateKeyBytes = base64urlDecode(vapidKeys.privateKey);
     const jwk = {
         kty: 'EC',
         crv: 'P-256',
@@ -271,40 +269,4 @@ async function hkdfExpand(prk, info, length) {
     return okm.slice(0, length);
 }
 
-/**
- * Convert DER-encoded ECDSA signature to raw (r || s) format
- */
-function derToRaw(der) {
-    // DER: 0x30 <total_len> 0x02 <r_len> <r> 0x02 <s_len> <s>
-    const raw = new Uint8Array(64);
 
-    let offset = 2; // Skip 0x30 and total length
-    // Read r
-    offset++; // Skip 0x02
-    let rLen = der[offset++];
-    let rStart = offset;
-    offset += rLen;
-
-    // Read s
-    offset++; // Skip 0x02
-    let sLen = der[offset++];
-    let sStart = offset;
-
-    // Copy r (right-aligned to 32 bytes, skip leading zeros)
-    const rBytes = der.slice(rStart, rStart + rLen);
-    if (rLen > 32) {
-        raw.set(rBytes.slice(rLen - 32), 0);
-    } else {
-        raw.set(rBytes, 32 - rLen);
-    }
-
-    // Copy s (right-aligned to 32 bytes, skip leading zeros)
-    const sBytes = der.slice(sStart, sStart + sLen);
-    if (sLen > 32) {
-        raw.set(sBytes.slice(sLen - 32), 32);
-    } else {
-        raw.set(sBytes, 64 - sLen);
-    }
-
-    return raw;
-}

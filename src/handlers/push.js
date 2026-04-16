@@ -9,7 +9,6 @@ export async function handleGetVapidKey(request, env, corsHeaders) {
     const publicKey = env.VAPID_PUBLIC_KEY;
 
     if (!publicKey) {
-        console.warn('[Push API] VAPID_PUBLIC_KEY not configured');
         return new Response(JSON.stringify({ error: 'Push not configured' }), {
             status: 503,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -19,12 +18,7 @@ export async function handleGetVapidKey(request, env, corsHeaders) {
     // Validate and sanitize the key
     const sanitizedKey = publicKey.trim();
 
-    // Log key info for debugging (first 20 chars only)
-    console.log('[Push API] Returning VAPID key:', sanitizedKey.substring(0, 20) + '...', 'length:', sanitizedKey.length);
-
-    // Validate base64url format
     if (!/^[A-Za-z0-9_-]+$/.test(sanitizedKey)) {
-        console.error('[Push API] Invalid VAPID key format - contains invalid characters');
         return new Response(JSON.stringify({ error: 'Invalid VAPID key configuration' }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -166,6 +160,48 @@ async function sendFcmNotification(fcmToken, payload, env) {
 }
 
 /**
+ * List all KV keys with cursor-based pagination (handles >100 entries)
+ */
+async function listAllKvKeys(kv, prefix) {
+    const allKeys = [];
+    let cursor = null;
+
+    do {
+        const list = await kv.list({ prefix, limit: 1000, cursor });
+        allKeys.push(...list.keys);
+        cursor = list.list_complete ? null : list.cursor;
+    } while (cursor);
+
+    return allKeys;
+}
+
+/**
+ * Parse subscription data, handling legacy formats gracefully
+ */
+function parseSubscriptionData(rawData) {
+    const parsed = JSON.parse(rawData);
+
+    if (parsed && typeof parsed === 'object' && parsed.type && parsed.data !== undefined) {
+        return parsed;
+    }
+
+    if (parsed && typeof parsed === 'object' && parsed.endpoint && parsed.keys) {
+        return { type: 'web', data: parsed };
+    }
+
+    if (typeof parsed === 'string') {
+        try {
+            const inner = JSON.parse(parsed);
+            if (inner && typeof inner === 'object' && inner.endpoint && inner.keys) {
+                return { type: 'web', data: inner };
+            }
+        } catch { /* not valid nested JSON */ }
+    }
+
+    return null;
+}
+
+/**
  * Send push notifications to offline subscribers
  * Called from ChatRoom.broadcast()
  * @param {Object} env - Worker environment
@@ -173,57 +209,49 @@ async function sendFcmNotification(fcmToken, payload, env) {
  * @param {Object} messageData - Message to send as notification
  */
 export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData) {
-    console.log('[Push] sendPushToOfflineUsers called');
-
-    // Validate environment configuration
     if (!env.PUSH_SUBSCRIPTIONS) {
-        console.warn('[Push] PUSH_SUBSCRIPTIONS KV not configured');
         return;
     }
 
-    const vapidKeysKeysExist = env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY;
+    const vapidKeysExist = !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
     const fcmKeyExists = !!env.FCM_SERVICE_ACCOUNT;
 
-    if (!vapidKeysKeysExist && !fcmKeyExists) {
-        console.warn('[Push] Neither VAPID nor FCM keys configured - push notifications disabled');
+    if (!vapidKeysExist && !fcmKeyExists) {
         return;
     }
 
-    const vapidKeys = vapidKeysKeysExist ? {
+    const vapidKeys = vapidKeysExist ? {
         publicKey: env.VAPID_PUBLIC_KEY,
         privateKey: env.VAPID_PRIVATE_KEY,
         subject: 'mailto:admin@kalpha.kr'
     } : null;
 
     try {
-        // List all subscriptions from KV
-        const list = await env.PUSH_SUBSCRIPTIONS.list({ prefix: 'sub:', limit: 100 });
-        console.log(`[Push] Found ${list.keys.length} subscriptions in KV`);
+        const allKeys = await listAllKvKeys(env.PUSH_SUBSCRIPTIONS, 'sub:');
+        console.log(`[Push] Found ${allKeys.length} subscriptions, online: ${onlineSessionIds.size}`);
 
         const pushPromises = [];
+        const keysToDelete = [];
 
-        for (const key of list.keys) {
+        for (const key of allKeys) {
             const sessionId = key.name.replace('sub:', '');
+
+            if (onlineSessionIds.has(sessionId)) {
+                continue;
+            }
 
             try {
                 const subRawData = await env.PUSH_SUBSCRIPTIONS.get(key.name);
                 if (!subRawData) {
-                    console.log(`[Push] No data for key: ${key.name}`);
+                    keysToDelete.push(key.name);
                     continue;
                 }
 
-                let subWrap;
-                try {
-                    subWrap = JSON.parse(subRawData);
-                } catch (e) {
-                    console.warn(`[Push] Failed to parse subscription data for ${key.name} - might be legacy format`);
-                    // Fallback for legacy format
-                    subWrap = { type: 'web', data: JSON.parse(subRawData) };
-                }
-
-                // For legacy compatibility, auto-detect web push
-                if (!subWrap.type) {
-                    subWrap = { type: 'web', data: subWrap };
+                const subWrap = parseSubscriptionData(subRawData);
+                if (!subWrap) {
+                    console.warn(`[Push] Unparseable subscription for ${sessionId}, removing`);
+                    keysToDelete.push(key.name);
+                    continue;
                 }
 
                 const payload = {
@@ -237,60 +265,53 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
                     url: '/'
                 };
 
-                console.log(`[Push] Sending to ${sessionId} using ${subWrap.type} push...`);
-
                 if (subWrap.type === 'fcm') {
-                    if (!fcmKeyExists) {
-                        console.warn('[Push] Cannot send FCM message: FCM_SERVICE_ACCOUNT missing.');
-                        continue;
-                    }
+                    if (!fcmKeyExists) continue;
 
                     const fcmToken = subWrap.data;
                     pushPromises.push(
                         sendFcmNotification(fcmToken, payload, env)
-                            .then(response => console.log(`[Push FCM] ✓ Sent to ${sessionId}`))
+                            .then(() => console.log(`[Push FCM] ✓ Sent to ${sessionId}`))
                             .catch(async (err) => {
-                                // If token is unregistered, delete it from KV
-                                if (err.message.includes('UNREGISTERED') || err.message.includes('INVALID_ARGUMENT')) {
-                                    await env.PUSH_SUBSCRIPTIONS.delete(key.name);
-                                    console.log(`[Push FCM] Removed invalid subscription for ${sessionId}`);
+                                if (err.message && (err.message.includes('UNREGISTERED') || err.message.includes('INVALID_ARGUMENT'))) {
+                                    keysToDelete.push(key.name);
                                 }
                             })
                     );
-                } else if (subWrap.type === 'web' && vapidKeysKeysExist) {
+                } else if (subWrap.type === 'web' && vapidKeysExist) {
                     const subscription = subWrap.data;
                     pushPromises.push(
                         sendPushNotification(subscription, JSON.stringify(payload), vapidKeys)
                             .then(async (response) => {
-                                const body = await response.text();
-
                                 if (response.ok) {
-                                    console.log(`[Push WEB] ✓ Sent to ${sessionId}: ${response.status}`);
+                                    console.log(`[Push WEB] ✓ Sent to ${sessionId}`);
                                 } else {
-                                    console.warn(`[Push WEB] ✗ Failed for ${sessionId}: ${response.status} ${response.statusText} - ${body}`);
+                                    console.warn(`[Push WEB] ✗ Failed for ${sessionId}: ${response.status}`);
                                 }
-
-                                // If push service returns 404 or 410, subscription is invalid
                                 if (response.status === 404 || response.status === 410) {
-                                    await env.PUSH_SUBSCRIPTIONS.delete(key.name);
-                                    console.log(`[Push WEB] Removed invalid subscription: ${sessionId}`);
+                                    keysToDelete.push(key.name);
                                 }
                             })
                             .catch((err) => {
-                                console.error(`[Push WEB] Network error sending to ${sessionId}:`, err.message);
+                                console.error(`[Push WEB] Network error for ${sessionId}:`, err.message);
                             })
                     );
                 }
             } catch (e) {
-                console.error(`[Push] Error processing subscription ${sessionId}:`, e.message);
+                console.error(`[Push] Error processing ${sessionId}:`, e.message);
             }
         }
 
-        // Send all push notifications concurrently
-        console.log(`[Push] Sending ${pushPromises.length} push notifications...`);
-        await Promise.allSettled(pushPromises);
-        console.log('[Push] All push notifications processed');
+        if (pushPromises.length > 0) {
+            await Promise.allSettled(pushPromises);
+        }
+
+        if (keysToDelete.length > 0) {
+            const deletePromises = keysToDelete.map(k => env.PUSH_SUBSCRIPTIONS.delete(k));
+            await Promise.allSettled(deletePromises);
+            console.log(`[Push] Cleaned up ${keysToDelete.length} invalid subscriptions`);
+        }
     } catch (error) {
-        console.error('[Push] sendPushToOfflineUsers error:', error.message, error.stack);
+        console.error('[Push] sendPushToOfflineUsers error:', error.message);
     }
 }
