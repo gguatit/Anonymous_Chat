@@ -529,10 +529,12 @@ export class UIManager {
 
         // Reply reference click handler
         const replyRef = messageDiv.querySelector('.reply-reference[data-reply-to-id]');
+        console.log('[DEBUG] replyRef found:', !!replyRef, 'messageId:', messageId, 'replyToId:', replyRef?.getAttribute('data-reply-to-id'));
         if (replyRef) {
             replyRef.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const targetId = replyRef.getAttribute('data-reply-to-id');
+                console.log('[DEBUG] Reply clicked, targetId:', targetId);
                 if (targetId) {
                     this.highlightMessage(targetId);
                 }
