@@ -258,7 +258,8 @@ export class UIManager {
             const replyLabel = data.replyTo.isOwnMessage ? '내 메시지' : '익명';
 
             contentHtml += `
-                <div class="reply-reference bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs">
+                <div class="reply-reference cursor-pointer hover:bg-gray-700/50 transition-colors bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs"
+                     data-reply-to-id="${this.sanitizeInput(data.replyTo.messageId || '')}">
                     <div class="text-gray-400">${replyLabel}에게 답장:</div>
                     <div class="text-gray-300 italic">${this.sanitizeInput(truncatedReply)}</div>
                 </div>
@@ -401,7 +402,8 @@ export class UIManager {
                 const replyLabel = data.replyTo.isOwnMessage ? '내 메시지' : '익명';
 
                 contentHtml += `
-                    <div class="reply-reference bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs">
+                    <div class="reply-reference cursor-pointer hover:bg-gray-700/50 transition-colors bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs"
+                         data-reply-to-id="${this.sanitizeInput(data.replyTo.messageId || '')}">
                         <div class="text-gray-400">${replyLabel}에게 답장:</div>
                         <div class="text-gray-300 italic">${this.sanitizeInput(truncatedReply)}</div>
                     </div>
@@ -524,6 +526,33 @@ export class UIManager {
         // Add visual feedback
         messageDiv.style.cursor = 'pointer';
         messageDiv.style.userSelect = 'text';
+
+        // Reply reference click handler
+        const replyRef = messageDiv.querySelector('.reply-reference[data-reply-to-id]');
+        if (replyRef) {
+            replyRef.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const targetId = replyRef.getAttribute('data-reply-to-id');
+                if (targetId) {
+                    this.highlightMessage(targetId);
+                }
+            });
+        }
+    }
+
+    highlightMessage(messageId) {
+        const targetDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+        if (!targetDiv) {
+            alert('해당 메시지를 찾을 수 없습니다. (오래된 메시지일 수 있습니다)');
+            return;
+        }
+
+        targetDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetDiv.classList.add('ring-2', 'ring-yellow-400', 'transition-all');
+
+        setTimeout(() => {
+            targetDiv.classList.remove('ring-2', 'ring-yellow-400', 'transition-all');
+        }, 2000);
     }
 
     showContextMenu(event, messageId, canEdit = false) {
