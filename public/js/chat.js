@@ -7,6 +7,9 @@ import { DeadDropClient } from './dead-drop.js?v=1.0.3';
 import { PushNotificationManager } from './push-manager.js?v=1.0.5';
 import { SearchManager } from './search.js?v=1.0.3';
 import { SecurityHeadersManager } from './security-headers.js?v=1.0.1';
+import { TurnstileManager } from './turnstile.js?v=1.0.0';
+
+const TURNSTILE_SITE_KEY = '0x4AAAAAADAY6kk52-ZxU23s';
 
 class ChatClient {
     constructor() {
@@ -48,6 +51,12 @@ class ChatClient {
 
         this.initializeUI();
         this.initializeAnnouncementIndicator();
+        // WebSocket connection is started after Turnstile verification
+        this.turnstile = new TurnstileManager(TURNSTILE_SITE_KEY, () => this.onTurnstileVerified());
+        this.turnstile.init();
+    }
+
+    onTurnstileVerified() {
         this.wsManager.connect();
         this.initializePush();
     }

@@ -51,6 +51,10 @@
         }
     </script>
 
+    <!-- Cloudflare Turnstile -->
+    <link rel="preconnect" href="https://challenges.cloudflare.com" />
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/animations.css">
@@ -480,6 +484,31 @@
                     <span id="char-count">0</span>/5000
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Turnstile Verification Modal -->
+    <div id="turnstile-modal" class="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-md overflow-hidden transform transition-all p-6 text-center">
+            <div class="w-16 h-16 bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-100 mb-2">보안 인증</h3>
+            <p class="text-gray-400 text-sm mb-5">봇이 아닌지 확인하기 위해 인증이 필요합니다.</p>
+            <div class="flex justify-center mb-4">
+                <div id="turnstile-widget"></div>
+            </div>
+            <div id="turnstile-success" class="hidden">
+                <div class="flex items-center justify-center gap-2 text-green-400 font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                    인증 완료! 채팅에 접속합니다...
+                </div>
+            </div>
+            <div id="turnstile-error" class="hidden text-red-400 text-sm mt-3"></div>
         </div>
     </div>
 

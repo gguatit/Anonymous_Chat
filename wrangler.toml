@@ -45,6 +45,7 @@ ENVIRONMENT = "production"
 # ADMIN_PASSWORD should be set in production via: wrangler secret put ADMIN_PASSWORD
 # VAPID_PUBLIC_KEY should be set via: wrangler secret put VAPID_PUBLIC_KEY
 # VAPID_PRIVATE_KEY should be set via: wrangler secret put VAPID_PRIVATE_KEY
+# TURNSTILE_SECRET_KEY should be set via: wrangler secret put TURNSTILE_SECRET_KEY
 
 # Observability configuration
 [observability]
