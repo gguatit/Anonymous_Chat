@@ -875,14 +875,26 @@ export class UIManager {
         statusDot.className = `w-2 h-2 rounded-full ${colors[status] || 'bg-gray-500'}`;
     }
 
-    showTypingIndicator(show, nickname) {
-        if (show) {
-            this.typingIndicator.classList.remove('hidden');
-            const displayName = nickname ? this.sanitizeInput(nickname) + '님이' : '';
-            this.typingIndicator.innerHTML = `<span>●</span><span>●</span><span>●</span> ${displayName} 입력 중`;
-        } else {
+    updateTypingIndicator(typingUsers) {
+        const count = typingUsers.size;
+        if (count === 0) {
             this.typingIndicator.classList.add('hidden');
+            return;
         }
+
+        this.typingIndicator.classList.remove('hidden');
+        const users = Array.from(typingUsers.values()).map(u => this.sanitizeInput(u.nickname || '익명'));
+
+        let text;
+        if (count === 1) {
+            text = `${users[0]}님이 입력 중`;
+        } else if (count === 2) {
+            text = `${users[0]}, ${users[1]}님이 입력 중`;
+        } else {
+            text = `${users[0]} 외 ${count - 1}명이 입력 중`;
+        }
+
+        this.typingIndicator.innerHTML = `<span>●</span><span>●</span><span>●</span> ${text}`;
     }
 
     setInputEnabled(enabled) {

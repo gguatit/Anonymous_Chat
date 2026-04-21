@@ -28,6 +28,7 @@ class ChatClient {
         this.unreadCount = 0;
         this.originalTitle = document.title;
         this.titleBlinkInterval = null;
+        this.typingUsers = new Map(); // sessionId -> { nickname, timeout }
         this.announcementHistoryBtn = document.getElementById('announcement-history-btn');
         this.announcementNewBadge = document.getElementById('announcement-new-badge');
         this.announcementTooltip = document.getElementById('announcement-tooltip');
@@ -314,7 +315,7 @@ class ChatClient {
                 break;
             case 'typing':
                 if (data.sessionId !== this.sessionManager.getSessionId()) {
-                    this.ui.showTypingIndicator(data.typing, data.nickname);
+                    this.handleTypingEvent(data.sessionId, data.nickname, data.typing);
                 }
                 break;
             case 'system':
@@ -404,6 +405,25 @@ class ChatClient {
             default:
                 console.log('Unknown message type:', data.type);
         }
+    }
+
+    handleTypingEvent(sessionId, nickname, isTyping) {
+        const existing = this.typingUsers.get(sessionId);
+        if (existing) {
+            clearTimeout(existing.timeout);
+        }
+
+        if (isTyping) {
+            const timeout = setTimeout(() => {
+                this.typingUsers.delete(sessionId);
+                this.ui.updateTypingIndicator(this.typingUsers);
+            }, 5000);
+            this.typingUsers.set(sessionId, { nickname: nickname || '익명', timeout });
+        } else {
+            this.typingUsers.delete(sessionId);
+        }
+
+        this.ui.updateTypingIndicator(this.typingUsers);
     }
 
     updateUnreadTitle() {
