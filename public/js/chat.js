@@ -25,6 +25,9 @@ class ChatClient {
         this.messageRateLimit = 1000; // 1 message per second
         this.isTyping = false;
         this.isNicknameLocked = true;
+        this.unreadCount = 0;
+        this.originalTitle = document.title;
+        this.titleBlinkInterval = null;
         this.announcementHistoryBtn = document.getElementById('announcement-history-btn');
         this.announcementNewBadge = document.getElementById('announcement-new-badge');
         this.announcementTooltip = document.getElementById('announcement-tooltip');
@@ -288,6 +291,10 @@ class ChatClient {
                     data.sessionId === this.sessionManager.getSessionId(),
                     this.sessionManager.getSessionId()
                 );
+                if (document.hidden) {
+                    this.unreadCount++;
+                    this.updateUnreadTitle();
+                }
                 break;
             case 'message_edited':
                 // Update existing message in UI
@@ -397,6 +404,28 @@ class ChatClient {
             default:
                 console.log('Unknown message type:', data.type);
         }
+    }
+
+    updateUnreadTitle() {
+        if (this.titleBlinkInterval) clearInterval(this.titleBlinkInterval);
+        let showCount = true;
+        const update = () => {
+            document.title = showCount
+                ? `(${this.unreadCount}) ${this.originalTitle}`
+                : this.originalTitle;
+            showCount = !showCount;
+        };
+        update();
+        this.titleBlinkInterval = setInterval(update, 1000);
+    }
+
+    clearUnreadTitle() {
+        if (this.titleBlinkInterval) {
+            clearInterval(this.titleBlinkInterval);
+            this.titleBlinkInterval = null;
+        }
+        this.unreadCount = 0;
+        document.title = this.originalTitle;
     }
 
     handleConnectionChange(status, attempt, max) {
@@ -713,8 +742,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // Handle page visibility changes - proactively check and reconnect if needed
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-        if (window.chatClient && window.chatClient.wsManager) {
-            window.chatClient.wsManager.checkConnection();
+        if (window.chatClient) {
+            window.chatClient.clearUnreadTitle();
+            if (window.chatClient.wsManager) {
+                window.chatClient.wsManager.checkConnection();
+            }
         }
     }
 });
