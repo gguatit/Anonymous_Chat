@@ -36,6 +36,7 @@ export class FileUploadManager {
         this.fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
             if (files.length > 0) {
+                this.selectedFiles = []; // Reset previous selection
                 this.handleFileSelection(files);
             }
         });
@@ -293,15 +294,16 @@ export class FileUploadManager {
 
                 console.log('Uploading to:', this.uploadEndpoint);
                 
-                this.uploadXhr = new XMLHttpRequest();
+                const xhr = new XMLHttpRequest();
+                this.uploadXhr = xhr;
                 
                 // Server response received
-                this.uploadXhr.addEventListener('load', () => {
-                    console.log('Server response received:', this.uploadXhr.status, this.uploadXhr.statusText);
+                xhr.addEventListener('load', () => {
+                    console.log('Server response received:', xhr.status, xhr.statusText);
                     
-                    if (this.uploadXhr.status >= 200 && this.uploadXhr.status < 300) {
+                    if (xhr.status >= 200 && xhr.status < 300) {
                         try {
-                            const result = JSON.parse(this.uploadXhr.responseText);
+                            const result = JSON.parse(xhr.responseText);
                             console.log('Upload result:', result);
             
                             let uploadedFileUrl;
@@ -329,27 +331,27 @@ export class FileUploadManager {
                             reject(new Error('Invalid upload response'));
                         }
                     } else {
-                        const errorText = this.uploadXhr.responseText;
+                        const errorText = xhr.responseText;
                         console.error('Upload error response:', errorText);
-                        reject(new Error(`Upload failed: ${this.uploadXhr.status} ${this.uploadXhr.statusText}`));
+                        reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
                     }
                 });
                 
                 // Upload error
-                this.uploadXhr.addEventListener('error', () => {
+                xhr.addEventListener('error', () => {
                     console.error('Upload network error');
                     reject(new Error('Network error during upload'));
                 });
                 
                 // Upload aborted
-                this.uploadXhr.addEventListener('abort', () => {
+                xhr.addEventListener('abort', () => {
                     console.log('Upload aborted');
                     reject(new Error('Upload cancelled'));
                 });
                 
                 // Send request
-                this.uploadXhr.open('POST', this.uploadEndpoint);
-                this.uploadXhr.send(formData);
+                xhr.open('POST', this.uploadEndpoint);
+                xhr.send(formData);
                 
             } catch (error) {
                 console.error('File upload error:', error);
