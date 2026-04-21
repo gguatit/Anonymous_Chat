@@ -295,8 +295,10 @@ export class UIManager {
             }
         }
 
-        // Add file if exists
-        if (data.file && data.file.url) {
+        // Add files if exists
+        if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+            contentHtml += this.formatFileGallery(data.files);
+        } else if (data.file && data.file.url) {
             contentHtml += this.formatFileContent(data.file);
         }
 
@@ -436,7 +438,9 @@ export class UIManager {
                 }
             }
 
-            if (data.file && data.file.url) {
+            if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+                contentHtml += this.formatFileGallery(data.files);
+            } else if (data.file && data.file.url) {
                 contentHtml += this.formatFileContent(data.file);
             }
 
@@ -1089,16 +1093,18 @@ export class UIManager {
                     img.addEventListener('error', function () {
                         this.style.display = 'none';
                     });
+                    img.addEventListener('click', () => {
+                        this.ensureLightboxExists();
+                        this.openLightbox([{url: file.url, filename: file.filename}], 0);
+                    });
                 }
             }, 0);
 
             return `
                 <div class="mt-2">
-                    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
-                        <img id="${imgId}" src="${safeUrl}" alt="${fileName}" 
-                             class="max-w-full max-h-96 rounded-lg border border-gray-600 object-contain cursor-pointer hover:opacity-90 transition-opacity" 
-                             loading="lazy">
-                    </a>
+                    <img id="${imgId}" src="${safeUrl}" alt="${fileName}" 
+                         class="max-w-full max-h-96 rounded-lg border border-gray-600 object-contain cursor-pointer hover:opacity-90 transition-opacity" 
+                         loading="lazy">
                     <div class="mt-1 text-xs text-gray-400">
                         <span>${fileName}</span> · <span>${fileSize}</span>
                     </div>
@@ -1151,6 +1157,165 @@ export class UIManager {
                 </a>
             </div>
         `;
+    }
+
+    formatFileGallery(files) {
+        if (!files || files.length === 0) return '';
+
+        const images = files.filter(f => f.filetype && f.filetype.startsWith('image/'));
+        const others = files.filter(f => !f.filetype || !f.filetype.startsWith('image/'));
+
+        let html = '';
+
+        // Image gallery
+        if (images.length > 0) {
+            const gridCols = images.length === 1 ? 'grid-cols-1' : 
+                           images.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
+            
+            html += `<div class="grid ${gridCols} gap-1.5 mt-2 max-w-md">`;
+            
+            images.forEach((file, index) => {
+                const safeUrl = this.sanitizeUrl(file.url);
+                const fileName = this.sanitizeInput(file.filename || 'image');
+                const imgId = 'gallery_img_' + Math.random().toString(36).substring(2, 9) + '_' + index;
+                
+                // Show overlay for images beyond the first 6
+                const showOverlay = index === 5 && images.length > 6;
+                const hiddenClass = index >= 6 ? 'hidden' : '';
+                
+                html += `
+                    <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-600 cursor-pointer gallery-image ${hiddenClass}"
+                         data-gallery-index="${index}" data-gallery-images='${JSON.stringify(images.map(img => ({url: img.url, filename: img.filename})))}'>
+                        <img id="${imgId}" src="${safeUrl}" alt="${fileName}" 
+                             class="w-full h-full object-cover hover:opacity-90 transition-opacity" 
+                             loading="lazy">
+                        ${showOverlay ? `
+                            <div class="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-lg font-bold">
+                                +${images.length - 5}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
+
+        // Other files list
+        others.forEach(file => {
+            html += this.formatFileContent(file);
+        });
+
+        // Add lightbox if not exists
+        this.ensureLightboxExists();
+
+        // Add click handlers after render
+        setTimeout(() => {
+            const gallery = document.querySelectorAll('.gallery-image');
+            gallery.forEach(img => {
+                img.addEventListener('click', () => {
+                    const images = JSON.parse(img.dataset.galleryImages);
+                    const index = parseInt(img.dataset.galleryIndex);
+                    this.openLightbox(images, index);
+                });
+            });
+        }, 0);
+
+        return html;
+    }
+
+    ensureLightboxExists() {
+        if (document.getElementById('gallery-lightbox')) return;
+
+        const lightbox = document.createElement('div');
+        lightbox.id = 'gallery-lightbox';
+        lightbox.className = 'fixed inset-0 z-[200] bg-black/90 hidden flex items-center justify-center';
+        lightbox.innerHTML = `
+            <button id="lightbox-close" class="absolute top-4 right-4 text-white/80 hover:text-white p-2 z-10">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            <button id="lightbox-prev" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-2 z-10 hidden">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <button id="lightbox-next" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-2 z-10 hidden">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+            <div class="max-w-5xl max-h-[90vh] p-4">
+                <img id="lightbox-img" src="" alt="" class="max-w-full max-h-[85vh] object-contain rounded-lg">
+                <p id="lightbox-caption" class="text-center text-white/80 mt-3 text-sm"></p>
+            </div>
+        `;
+        document.body.appendChild(lightbox);
+
+        // Close on click
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox || e.target.id === 'lightbox-close') {
+                this.closeLightbox();
+            }
+        });
+
+        // Prev/Next buttons
+        document.getElementById('lightbox-prev').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.navigateLightbox(-1);
+        });
+        document.getElementById('lightbox-next').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.navigateLightbox(1);
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (lightbox.classList.contains('hidden')) return;
+            if (e.key === 'Escape') this.closeLightbox();
+            if (e.key === 'ArrowLeft') this.navigateLightbox(-1);
+            if (e.key === 'ArrowRight') this.navigateLightbox(1);
+        });
+    }
+
+    openLightbox(images, startIndex) {
+        this.lightboxImages = images;
+        this.lightboxIndex = startIndex;
+        this.updateLightbox();
+        
+        const lightbox = document.getElementById('gallery-lightbox');
+        lightbox.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeLightbox() {
+        const lightbox = document.getElementById('gallery-lightbox');
+        lightbox.classList.add('hidden');
+        document.body.style.overflow = '';
+        this.lightboxImages = null;
+    }
+
+    navigateLightbox(direction) {
+        if (!this.lightboxImages) return;
+        this.lightboxIndex = (this.lightboxIndex + direction + this.lightboxImages.length) % this.lightboxImages.length;
+        this.updateLightbox();
+    }
+
+    updateLightbox() {
+        const img = document.getElementById('lightbox-img');
+        const caption = document.getElementById('lightbox-caption');
+        const prev = document.getElementById('lightbox-prev');
+        const next = document.getElementById('lightbox-next');
+        
+        const current = this.lightboxImages[this.lightboxIndex];
+        img.src = this.sanitizeUrl(current.url);
+        caption.textContent = `${this.lightboxIndex + 1} / ${this.lightboxImages.length}`;
+        
+        if (this.lightboxImages.length > 1) {
+            prev.classList.remove('hidden');
+            next.classList.remove('hidden');
+        }
     }
 
     formatFileSize(bytes) {

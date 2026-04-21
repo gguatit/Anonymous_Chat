@@ -554,22 +554,33 @@ class ChatClient {
             }
         }
 
-        // Upload file if selected
+        // Upload files if selected
         if (hasFile) {
             try {
-                const fileData = await this.fileUpload.uploadFile();
+                const filesData = await this.fileUpload.uploadFiles();
 
-                console.log('File uploaded successfully:', fileData);
+                console.log('Files uploaded successfully:', filesData);
 
-                // Add file info to message
-                messageData.file = {
-                    url: fileData.url,
-                    filename: fileData.filename,
-                    filesize: fileData.filesize,
-                    filetype: fileData.filetype
-                };
+                // Add files info to message
+                if (filesData.length === 1) {
+                    // Single file - backward compatibility
+                    messageData.file = {
+                        url: filesData[0].url,
+                        filename: filesData[0].filename,
+                        filesize: filesData[0].filesize,
+                        filetype: filesData[0].filetype
+                    };
+                } else if (filesData.length > 1) {
+                    // Multiple files
+                    messageData.files = filesData.map(f => ({
+                        url: f.url,
+                        filename: f.filename,
+                        filesize: f.filesize,
+                        filetype: f.filetype
+                    }));
+                }
 
-                this.fileUpload.clearFile();
+                this.fileUpload.clearFiles();
             } catch (error) {
                 console.error('File upload failed:', error);
                 this.ui.displayError('파일 업로드 실패: ' + error.message);

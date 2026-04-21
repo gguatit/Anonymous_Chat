@@ -1332,6 +1332,7 @@ export class ChatRoom {
             }
         }
 
+        // Handle single file (backward compatibility)
         if (data.file && data.file.url) {
             message.file = {
                 url: data.file.url,
@@ -1339,6 +1340,16 @@ export class ChatRoom {
                 filesize: data.file.filesize,
                 filetype: data.file.filetype
             };
+        }
+
+        // Handle multiple files
+        if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+            message.files = data.files.map(f => ({
+                url: f.url,
+                filename: f.filename || '',
+                filesize: f.filesize || null,
+                filetype: f.filetype || ''
+            }));
         }
 
         message.signature = await generateMessageSignature(message, HMAC_SECRET);
@@ -1543,9 +1554,10 @@ export class ChatRoom {
 
     validateMessage(data, metadata) {
         const hasFile = data.file && data.file.url;
+        const hasFiles = data.files && Array.isArray(data.files) && data.files.length > 0 && data.files[0].url;
         const hasContent = data.content && data.content.trim().length > 0;
 
-        if (!hasContent && !hasFile) {
+        if (!hasContent && !hasFile && !hasFiles) {
             return '메시지 내용이 비어있습니다.';
         }
 
