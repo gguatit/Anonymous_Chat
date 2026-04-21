@@ -1236,7 +1236,7 @@ export class UIManager {
         lightbox.id = 'gallery-lightbox';
         lightbox.className = 'fixed inset-0 z-[200] bg-black/90 hidden flex items-center justify-center';
         lightbox.innerHTML = `
-            <button id="lightbox-close" class="absolute top-4 right-4 text-white/80 hover:text-white p-2 z-10">
+            <button id="lightbox-close" class="absolute top-4 right-4 text-white/80 hover:text-white p-2 z-50 cursor-pointer">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -1251,16 +1251,16 @@ export class UIManager {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
             </button>
-            <div class="max-w-5xl max-h-[90vh] p-4">
-                <img id="lightbox-img" src="" alt="" class="max-w-full max-h-[85vh] object-contain rounded-lg">
-                <p id="lightbox-caption" class="text-center text-white/80 mt-3 text-sm"></p>
+            <div class="max-w-5xl max-h-[90vh] p-4 pointer-events-none">
+                <img id="lightbox-img" src="" alt="" class="max-w-full max-h-[85vh] object-contain rounded-lg pointer-events-auto">
+                <p id="lightbox-caption" class="text-center text-white/80 mt-3 text-sm pointer-events-auto"></p>
             </div>
         `;
         document.body.appendChild(lightbox);
 
         // Close on click
         lightbox.addEventListener('click', (e) => {
-            if (e.target === lightbox || e.target.id === 'lightbox-close') {
+            if (e.target === lightbox || e.target.closest('#lightbox-close')) {
                 this.closeLightbox();
             }
         });
