@@ -39,6 +39,20 @@ export class UIManager {
 
         // MutationObserver로 메시지 추가 감지하여 자동 스크롤
         this.initAutoScroll();
+        
+        // Gallery image click delegation
+        this.messagesContainer.addEventListener('click', (e) => {
+            const galleryImage = e.target.closest('.gallery-image');
+            if (galleryImage) {
+                try {
+                    const images = JSON.parse(galleryImage.dataset.galleryImages);
+                    const index = parseInt(galleryImage.dataset.galleryIndex);
+                    this.openLightbox(images, index);
+                } catch (err) {
+                    console.error('[Gallery] Failed to open lightbox:', err);
+                }
+            }
+        });
     }
 
     /**
@@ -1162,8 +1176,10 @@ export class UIManager {
     formatFileGallery(files) {
         if (!files || files.length === 0) return '';
 
+        console.log('[Gallery] Files:', files);
         const images = files.filter(f => f.filetype && f.filetype.startsWith('image/'));
         const others = files.filter(f => !f.filetype || !f.filetype.startsWith('image/'));
+        console.log('[Gallery] Images:', images.length, 'Others:', others.length);
 
         let html = '';
 
@@ -1177,7 +1193,6 @@ export class UIManager {
             images.forEach((file, index) => {
                 const safeUrl = this.sanitizeUrl(file.url);
                 const fileName = this.sanitizeInput(file.filename || 'image');
-                const imgId = 'gallery_img_' + Math.random().toString(36).substring(2, 9) + '_' + index;
                 
                 // Show overlay for images beyond the first 6
                 const showOverlay = index === 5 && images.length > 6;
@@ -1186,9 +1201,9 @@ export class UIManager {
                 html += `
                     <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-600 cursor-pointer gallery-image ${hiddenClass}"
                          data-gallery-index="${index}" data-gallery-images='${JSON.stringify(images.map(img => ({url: img.url, filename: img.filename})))}'>
-                        <img id="${imgId}" src="${safeUrl}" alt="${fileName}" 
+                        <img src="${safeUrl}" alt="${fileName}" 
                              class="w-full h-full object-cover hover:opacity-90 transition-opacity" 
-                             loading="lazy">
+                             loading="lazy" onerror="this.style.display='none'; this.parentElement.style.display='none';">
                         ${showOverlay ? `
                             <div class="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-lg font-bold">
                                 +${images.length - 5}
@@ -1208,18 +1223,6 @@ export class UIManager {
 
         // Add lightbox if not exists
         this.ensureLightboxExists();
-
-        // Add click handlers after render
-        setTimeout(() => {
-            const gallery = document.querySelectorAll('.gallery-image');
-            gallery.forEach(img => {
-                img.addEventListener('click', () => {
-                    const images = JSON.parse(img.dataset.galleryImages);
-                    const index = parseInt(img.dataset.galleryIndex);
-                    this.openLightbox(images, index);
-                });
-            });
-        }, 0);
 
         return html;
     }

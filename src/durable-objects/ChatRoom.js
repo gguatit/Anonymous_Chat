@@ -1618,12 +1618,16 @@ export class ChatRoom {
                 let matchesAllTags = true;
                 for (const tag of tags) {
                     if (tag === 'images') {
-                        if (!(msg.file && msg.file.filetype && msg.file.filetype.startsWith('image/'))) {
+                        const hasImage = (msg.file && msg.file.filetype && msg.file.filetype.startsWith('image/')) ||
+                                       (msg.files && msg.files.some(f => f.filetype && f.filetype.startsWith('image/')));
+                        if (!hasImage) {
                             matchesAllTags = false;
                             break;
                         }
                     } else if (tag === 'files') {
-                        if (!(msg.file && msg.file.filetype && !msg.file.filetype.startsWith('image/'))) {
+                        const hasNonImage = (msg.file && msg.file.filetype && !msg.file.filetype.startsWith('image/')) ||
+                                          (msg.files && msg.files.some(f => f.filetype && !f.filetype.startsWith('image/')));
+                        if (!hasNonImage) {
                             matchesAllTags = false;
                             break;
                         }
@@ -1658,10 +1662,22 @@ export class ChatRoom {
             }
 
             let tagList = [];
+            // Check single file
             if (msg.file && msg.file.filetype) {
                 if (msg.file.filetype.startsWith('image/')) {
                     tagList.push('images');
                 } else {
+                    tagList.push('files');
+                }
+            }
+            // Check multiple files
+            if (msg.files && msg.files.length > 0) {
+                const hasImage = msg.files.some(f => f.filetype && f.filetype.startsWith('image/'));
+                const hasNonImage = msg.files.some(f => f.filetype && !f.filetype.startsWith('image/'));
+                if (hasImage && !tagList.includes('images')) {
+                    tagList.push('images');
+                }
+                if (hasNonImage && !tagList.includes('files')) {
                     tagList.push('files');
                 }
             }

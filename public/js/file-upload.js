@@ -255,16 +255,31 @@ export class FileUploadManager {
         this.uploadedFiles = [];
         this.showUploadProgress();
         const maxConcurrency = 3;
+        const progressMap = new Map(); // index -> 0~1
+
+        const updateTotalProgress = () => {
+            let total = 0;
+            progressMap.forEach(v => total += v);
+            const avg = total / this.selectedFiles.length;
+            const percent = Math.round(avg * 100);
+            this.updateUploadProgress(percent);
+        };
 
         try {
             const results = new Array(this.selectedFiles.length);
             let completed = 0;
 
             const uploadWithProgress = async (file, index) => {
-                const result = await this.uploadSingleFile(file);
+                progressMap.set(index, 0);
+                const result = await this.uploadSingleFile(file, (percent) => {
+                    progressMap.set(index, percent);
+                    updateTotalProgress();
+                });
+                progressMap.set(index, 1);
                 completed++;
                 this.uploadPercent.textContent = `${completed}/${this.selectedFiles.length}`;
                 results[index] = result;
+                updateTotalProgress();
             };
 
             for (let i = 0; i < this.selectedFiles.length; i += maxConcurrency) {
@@ -284,7 +299,7 @@ export class FileUploadManager {
         }
     }
 
-    async uploadSingleFile(file) {
+    async uploadSingleFile(file, onProgress) {
         return new Promise((resolve, reject) => {
             try {
                 console.log('Starting file upload:', file.name, file.type, file.size);
@@ -296,6 +311,14 @@ export class FileUploadManager {
                 
                 const xhr = new XMLHttpRequest();
                 this.uploadXhr = xhr;
+                
+                // Upload progress
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable && onProgress) {
+                        const percent = (e.loaded / e.total);
+                        onProgress(percent);
+                    }
+                });
                 
                 // Server response received
                 xhr.addEventListener('load', () => {
