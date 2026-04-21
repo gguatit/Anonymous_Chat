@@ -95,7 +95,28 @@ export class TurnstileManager {
                 'timeout-callback': () => this.handleExpired()
             });
         } else {
-            this.showError('보안 인증 로딩 실패. 페이지를 새로고침해주세요.');
+            this.showError('보안 인증 로딩 중...');
+            let attempts = 0;
+            const maxAttempts = 50;
+            const waitInterval = setInterval(() => {
+                attempts++;
+                if (typeof turnstile !== 'undefined') {
+                    clearInterval(waitInterval);
+                    this.hideError();
+                    this.widgetId = turnstile.render(container, {
+                        sitekey: this.siteKey,
+                        theme: 'dark',
+                        size: 'normal',
+                        callback: (token) => this.handleCallback(token),
+                        'error-callback': () => this.handleError(),
+                        'expired-callback': () => this.handleExpired(),
+                        'timeout-callback': () => this.handleExpired()
+                    });
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(waitInterval);
+                    this.showError('보안 인증 로딩 실패. 페이지를 새로고침해주세요.');
+                }
+            }, 100);
         }
     }
 

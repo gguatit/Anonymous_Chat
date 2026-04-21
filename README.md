@@ -49,6 +49,19 @@ Cloudflare Workers 기반 서버리스 아키텍처
 
 > 전체 변경 이력은 [CHANGELOG.md](CHANGELOG.md)를 참조하세요.
 
+### 2026년 4월 21일 - Cloudflare Turnstile 인증 추가
+
+#### 새로운 기능
+- **Cloudflare Turnstile 봇 방지**: 채팅 접속 전 보안 인증 (봇이 아닌지 확인)
+  - 세션당 1회 인증 (sessionStorage로 관리, 최대 4시간 유효)
+  - 인증 완료 후 WebSocket 연결 및 채팅 접속 허용
+  - 서버 사이드 토큰 검증 (`POST /api/turnstile/verify`)
+  - CSP에 `challenges.cloudflare.com` (script-src, connect-src, frame-src) 추가
+
+#### 서버 사이드 변경
+- `POST /api/turnstile/verify` 엔드포인트 추가 (Cloudflare siteverify API 호출)
+- `TURNSTILE_SECRET_KEY` 환경변수 필요 (`npx wrangler secret put TURNSTILE_SECRET_KEY`)
+
 ### 2026년 4월 15일 - 메시지 검색, 이미지 붙여넣기, URL 보안 헤더 분석 추가
 
 #### 새로운 기능
@@ -133,6 +146,7 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - XSS/CSRF 공격 방어
 - HMAC-SHA256 메시지 서명
 - Content Security Policy (CSP)
+- Cloudflare Turnstile 봇 방지 (접속 전 인증)
 
 ### 현대적인 UI/UX
 
@@ -231,14 +245,15 @@ graph TB
 
 ```plaintext
 1. 클라이언트 → HTTP(S) → Static Assets (HTML/CSS/JS)
-2. WebSocket → WSS → Worker → IP 검증 → Durable Object
-3. 메시지 → 클라이언트 검증 → 서버 검증 → 브로드캐스트
-4. 타이핑 → 2초 디바운싱 → 다른 클라이언트에게 전파
-5. 파일 업로드 → Worker `/api/upload` 프록시 → file.xeon.kr → 파일 URL 반환 → 메시지에 첨부
-6. 비밀 메시지 저장 → Kalpha API (Dead Drop) → secretId 반환 → targetSessionId와 함께 브로드캐스트
-7. 비밀 메시지 읽기 → targetSessionId 검증 → Kalpha API에서 일회성 조회 및 삭제
-8. 보안 헤더 분석 → 채팅 내 URL 클릭 → Kalpha API (`/security/headers`) → 점수/등급/분석 결과 표시
-9. 메시지 검색 → Worker `/api/search` → Durable Object 내 전체 메시지 검색 → 결과 반환
+2. Turnstile 인증 → Cloudflare siteverify API → 토큰 검증 → 세션 인증 완료
+3. WebSocket → WSS → Worker → IP 검증 → Durable Object
+4. 메시지 → 클라이언트 검증 → 서버 검증 → 브로드캐스트
+5. 타이핑 → 2초 디바운싱 → 다른 클라이언트에게 전파
+6. 파일 업로드 → Worker `/api/upload` 프록시 → file.xeon.kr → 파일 URL 반환 → 메시지에 첨부
+7. 비밀 메시지 저장 → Kalpha API (Dead Drop) → secretId 반환 → targetSessionId와 함께 브로드캐스트
+8. 비밀 메시지 읽기 → targetSessionId 검증 → Kalpha API에서 일회성 조회 및 삭제
+9. 보안 헤더 분석 → 채팅 내 URL 클릭 → Kalpha API (`/security/headers`) → 점수/등급/분석 결과 표시
+10. 메시지 검색 → Worker `/api/search` → Durable Object 내 전체 메시지 검색 → 결과 반환
 ```
 
 ### 비밀 메시지 보안 흐름
@@ -419,6 +434,7 @@ Layer 1: Cloudflare Network
 └── 글로벌 WAF
 
 Layer 2: Worker (Entry Point)
+├── Cloudflare Turnstile (봇 방지)
 ├── IP 기반 접근 제어
 ├── Origin 헤더 검증
 └── Rate Limiting
@@ -528,8 +544,9 @@ element.textContent = userInput;
 
 ```
 default-src 'self';
-script-src 'self' https://cdn.tailwindcss.com;
-connect-src 'self' https://file.xeon.kr https://api.kalpha.kr https://cloudflareinsights.com wss: ws:;
+script-src 'self' https://cdn.tailwindcss.com https://challenges.cloudflare.com;
+connect-src 'self' https://file.xeon.kr https://api.kalpha.kr https://challenges.cloudflare.com wss: ws:;
+frame-src https://challenges.cloudflare.com;
 object-src 'none';
 ```
 
@@ -588,6 +605,7 @@ if (messagesThisMinute >= MAX_MESSAGES_PER_MINUTE) {
 - [x] IP 기반 접근 제어
 - [x] 메시지 크기 제한
 - [x] 연결 수 제한
+- [x] Cloudflare Turnstile 봇 방지
 - [x] **비밀 메시지 targetSessionId 검증**
 - [x] **Dead Drop API 일회성 읽기**
 
@@ -712,6 +730,10 @@ npx wrangler secret put ADMIN_PASSWORD
 npx wrangler secret put HMAC_SECRET
 # 32자 이상의 랜덤 문자열 사용
 # 생성 예시: openssl rand -base64 32
+
+# Cloudflare Turnstile 비밀 키 설정
+npx wrangler secret put TURNSTILE_SECRET_KEY
+# Cloudflare 대시보드 > Turnstile 앱에서 발급받은 비밀 키 입력
 ```
 
 **보안 주의사항:**
@@ -738,6 +760,7 @@ Anonymous_Chat/
 │   │   ├── ui.js         # UI 렌더링
 │   │   ├── file-upload.js # 파일 업로드 관리
 │   │   ├── search.js          # 메시지 검색
+│   │   ├── turnstile.js       # Cloudflare Turnstile 인증 관리
 │   │   ├── security-headers.js # URL 보안 헤더 분석
 │   │   └── admin.js           # 관리자 페이지 로직
 │   ├── css/              # 스타일시트
@@ -755,6 +778,9 @@ Anonymous_Chat/
 │   ├── durable-objects/
 │   │   └── ChatRoom.js   # 채팅 상태/브로드캐스트 Durable Object
 │   ├── handlers/         # API 핸들러
+│   │   ├── admin.js       # 관리자 API 핸들러
+│   │   ├── turnstile.js   # Turnstile 인증 검증 핸들러
+│   │   ├── websocket.js   # WebSocket 핸들러
 │   ├── middleware/       # 인증/보안 미들웨어
 │   └── utils/            # 유틸리티 (로그, 보안, 웹푸시 등)
 ├── package.json          # 프로젝트 설정
@@ -804,6 +830,7 @@ Anonymous_Chat/
 
 | 엔드포인트 | 메서드 | 설명 |
 |-----------|--------|------|
+| `/api/turnstile/verify` | POST | Cloudflare Turnstile 토큰 검증 |
 | `/api/check-ban` | GET | IP 차단 상태 확인 |
 | `/api/admin/logs` | GET | 감사 로그 조회 |
 | `/api/admin/logout` | POST | 로그아웃 (토큰 무효화) |
