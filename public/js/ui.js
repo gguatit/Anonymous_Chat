@@ -321,7 +321,7 @@ export class UIManager {
         `;
 
         // 모든 메시지에 컨텍스트 메뉴 추가 (답장 기능을 위해)
-        this.addMessageInteractions(messageDiv, data.messageId, canEdit);
+        this.addMessageInteractions(messageDiv, data.messageId, canEdit, data.replyTo?.messageId);
 
         // 메시지를 DOM에 추가 (MutationObserver가 자동으로 스크롤 처리)
         this.messagesContainer.appendChild(messageDiv);
@@ -457,7 +457,7 @@ export class UIManager {
                 ${contentHtml}
             `;
 
-            this.addMessageInteractions(messageDiv, data.messageId, canEdit);
+            this.addMessageInteractions(messageDiv, data.messageId, canEdit, data.replyTo?.messageId);
             fragment.appendChild(messageDiv);
         }
 
@@ -496,7 +496,7 @@ export class UIManager {
         });
     }
 
-    addMessageInteractions(messageDiv, messageId, canEdit) {
+    addMessageInteractions(messageDiv, messageId, canEdit, replyToMessageId) {
         let longPressTimer;
         let isLongPress = false;
 
@@ -527,16 +527,13 @@ export class UIManager {
         messageDiv.style.cursor = 'pointer';
         messageDiv.style.userSelect = 'text';
 
-        // Reply reference click handler
-        const replyRef = messageDiv.querySelector('.reply-reference[data-reply-to-id]');
-        console.log('[DEBUG] replyRef found:', !!replyRef, 'messageId:', messageId, 'replyToId:', replyRef?.getAttribute('data-reply-to-id'));
-        if (replyRef) {
-            replyRef.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const targetId = replyRef.getAttribute('data-reply-to-id');
-                console.log('[DEBUG] Reply clicked, targetId:', targetId);
-                if (targetId) {
-                    this.highlightMessage(targetId);
+        // Click on message to jump to replied message
+        if (replyToMessageId) {
+            messageDiv.addEventListener('click', (e) => {
+                // Don't trigger if clicking on interactive elements
+                const interactive = e.target.closest('a, button, input, textarea, [role="button"], .secret-message-container');
+                if (!interactive) {
+                    this.highlightMessage(replyToMessageId);
                 }
             });
         }

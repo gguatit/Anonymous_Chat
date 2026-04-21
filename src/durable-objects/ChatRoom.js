@@ -1620,6 +1620,11 @@ export class ChatRoom {
                             matchesAllTags = false;
                             break;
                         }
+                    } else if (tag === 'url') {
+                        if (!this.containsUrl(msg.content || '')) {
+                            matchesAllTags = false;
+                            break;
+                        }
                     } else {
                         matchesAllTags = false;
                         break;
@@ -1650,6 +1655,9 @@ export class ChatRoom {
             }
             if (this.isLikelyCode(msg.content || '')) {
                 tagList.push('code');
+            }
+            if (this.containsUrl(msg.content || '')) {
+                tagList.push('url');
             }
 
             results.push({
@@ -1687,6 +1695,13 @@ export class ChatRoom {
         const codeChars = (trimmed.match(/[{}();=<>]/g) || []).length;
         if (codeChars / trimmed.length > 0.08) return true;
         return false;
+    }
+
+    containsUrl(content) {
+        if (!content || typeof content !== 'string') return false;
+        // Match http/https URLs and common URL patterns
+        return /https?:\/\/[^\s<>"{}|\^`\[\]]+/i.test(content) ||
+               /www\.[a-zA-Z0-9][-a-zA-Z0-9]*[a-zA-Z0-9]*(\.[a-zA-Z]{2,})+/i.test(content);
     }
 
     sanitizeInput(input) {

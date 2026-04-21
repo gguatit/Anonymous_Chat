@@ -25,7 +25,7 @@ export class SearchManager {
                     <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
-                    <input id="search-input" type="text" placeholder="검색어 입력... (#images #files #code 태그로만 필터링)" 
+                    <input id="search-input" type="text" placeholder="검색어 입력... (#images #files #code #url 태그로만 필터링)" 
                         class="flex-1 bg-gray-900 text-gray-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 border border-gray-600"
                         autocomplete="off" maxlength="200">
                     <button id="search-close-btn" class="text-gray-400 hover:text-gray-200 transition-colors p-1.5 rounded-lg hover:bg-gray-700" aria-label="검색 닫기">
@@ -53,6 +53,12 @@ export class SearchManager {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                         </svg>
                         #code
+                    </button>
+                    <button data-tag="url" class="search-tag-btn flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border transition-colors bg-gray-700/50 border-gray-600 text-gray-400 hover:border-blue-500 hover:text-blue-400">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                        </svg>
+                        #url
                     </button>
                 </div>
                 <div id="search-results-container" class="flex-1 overflow-y-auto p-4 space-y-2" style="scrollbar-width: thin; scrollbar-color: #4B5563 transparent;">
@@ -155,7 +161,7 @@ syncInputFromTags() {
 
     syncTagsFromInput() {
         const text = this.searchInput.value;
-        const tagRegex = /#(images|files|code)\b/gi;
+        const tagRegex = /#(images|files|code|url)\b/gi;
         const foundTags = new Set();
         let match;
         while ((match = tagRegex.exec(text)) !== null) {
@@ -179,7 +185,7 @@ syncInputFromTags() {
 
     syncTagsFromInput() {
         const text = this.searchInput.value;
-        const tagRegex = /#(images|files|code)\b/gi;
+        const tagRegex = /#(images|files|code|url)\b/gi;
         const foundTags = new Set();
         let match;
         while ((match = tagRegex.exec(text)) !== null) {
@@ -291,7 +297,7 @@ syncInputFromTags() {
     }
 
     getQueryWithoutTags() {
-        return this.currentQuery.replace(/#(images|files|code)\b/gi, '').trim();
+        return this.currentQuery.replace(/#(images|files|code|url)\b/gi, '').trim();
     }
 
     highlightText(text) {
@@ -313,7 +319,8 @@ syncInputFromTags() {
         const tagConfig = {
             images: { label: 'images', bg: 'bg-emerald-600/30', text: 'text-emerald-300', border: 'border-emerald-500/40' },
             files: { label: 'files', bg: 'bg-amber-600/30', text: 'text-amber-300', border: 'border-amber-500/40' },
-            code: { label: 'code', bg: 'bg-violet-600/30', text: 'text-violet-300', border: 'border-violet-500/40' }
+            code: { label: 'code', bg: 'bg-violet-600/30', text: 'text-violet-300', border: 'border-violet-500/40' },
+            url: { label: 'url', bg: 'bg-sky-600/30', text: 'text-sky-300', border: 'border-sky-500/40' }
         };
         return tags.map(tag => {
             const cfg = tagConfig[tag] || { label: tag, bg: 'bg-gray-600/30', text: 'text-gray-300', border: 'border-gray-500/40' };
