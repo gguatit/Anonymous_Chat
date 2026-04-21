@@ -45,7 +45,7 @@ export class UIManager {
             const galleryImage = e.target.closest('.gallery-image');
             if (galleryImage) {
                 try {
-                    const images = JSON.parse(galleryImage.dataset.galleryImages);
+                    const images = JSON.parse(decodeURIComponent(atob(galleryImage.dataset.galleryData)));
                     const index = parseInt(galleryImage.dataset.galleryIndex);
                     this.openLightbox(images, index);
                 } catch (err) {
@@ -1190,6 +1190,8 @@ export class UIManager {
             
             html += `<div class="grid ${gridCols} gap-1.5 mt-2 max-w-md">`;
             
+            const galleryData = btoa(encodeURIComponent(JSON.stringify(images.map(img => ({url: img.url, filename: img.filename})))));
+            
             images.forEach((file, index) => {
                 const safeUrl = this.sanitizeUrl(file.url);
                 const fileName = this.sanitizeInput(file.filename || 'image');
@@ -1200,10 +1202,10 @@ export class UIManager {
                 
                 html += `
                     <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-600 cursor-pointer gallery-image ${hiddenClass}"
-                         data-gallery-index="${index}" data-gallery-images='${JSON.stringify(images.map(img => ({url: img.url, filename: img.filename})))}'>
+                         data-gallery-index="${index}" data-gallery-data="${galleryData}">
                         <img src="${safeUrl}" alt="${fileName}" 
                              class="w-full h-full object-cover hover:opacity-90 transition-opacity" 
-                             loading="lazy" onerror="this.style.display='none'; this.parentElement.style.display='none';">
+                             loading="lazy">
                         ${showOverlay ? `
                             <div class="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-lg font-bold">
                                 +${images.length - 5}
