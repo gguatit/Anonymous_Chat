@@ -130,7 +130,6 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - **임시 닉네임**: 세션 동안만 유지되는 1회성 닉네임 설정 가능
 - **닉네임 잠금(Padlock)**: 기본 잠금 상태, 해제 시 사칭 방지 면책 모달 표시
 - 세션 기반 식별만 사용
-- IP 주소 저장 안 함
 
 ### 임시 메시지 저장
 
@@ -142,7 +141,7 @@ Cloudflare Workers 기반 서버리스 아키텍처
 ### 강력한 보안
 
 - Rate Limiting (1초당 1개, 분당 30개)
-- IP당 최대 5개 동시 연결
+- IP당 최대 동시 연결 기기 제한
 - XSS/CSRF 공격 방어
 - HMAC-SHA256 메시지 서명
 - Content Security Policy (CSP)
