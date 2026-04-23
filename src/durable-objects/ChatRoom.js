@@ -1216,10 +1216,13 @@ export class ChatRoom {
 
             this.broadcastUserCount();
 
-            this.sendToSession(sessionId, {
-                type: 'system',
-                content: '채팅방에 입장했습니다.'
-            });
+            // Only show join message for truly new sessions, not reconnections
+            if (!existingMetadata) {
+                this.sendToSession(sessionId, {
+                    type: 'system',
+                    content: '채팅방에 입장했습니다.'
+                });
+            }
 
             // Send recent messages as a batch for better performance
             const recentMessages = this.messages.slice(-50);
