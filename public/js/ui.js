@@ -991,6 +991,8 @@ export class UIManager {
         let processed = content;
         const codeBlocks = [];
         const inlineCodes = [];
+        const urlPlaceholders = [];
+        const mdLinkPlaceholders = [];
 
         // ```lang\ncode\n``` 패턴 감지 (sanitize 전에 처리, \r\n도 지원)
         processed = processed.replace(/```(\w*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
@@ -1009,29 +1011,27 @@ export class UIManager {
         // 나머지 텍스트를 sanitize
         const sanitized = this.sanitizeInput(processed);
 
-        // 마크다운 링크 [텍스트](URL)를 먼저 처리 (URL 자동 변환과 충돌 방지)
-        let markdownProcessed = sanitized.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">$1</a>');
+        // URL 자동 변환을 먼저 실행하고 placeholder로 보호
+        // (마크다운 링크 처리나 서식 변환과 충돌 방지)
+        let step1 = sanitized;
+        const urlPattern = /(https?:\/\/[^\s<">]+[^\s<".,;)])|(\bwww\.[^\s<">]+[^\s<".,;)])|(\b[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}(?::[0-9]+)?(?:\/[^\s<"]*[^\s<".,;)])?)/gi;
 
-        // URL 패턴 매칭 (프로토콜이 없어도 도메인 형태면 인식)
-        const urlPattern = /(https?:\/\/[^\s<]+[^\s<.,)])|(\bwww\.[^\s<]+[^\s<.,)])|(\b[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}(?::[0-9]+)?(?:\/[^\s<]*[^\s<.,)])?)/gi;
-
-        // URL을 링크로 변환하고 프리뷰 생성
-        let formatted = markdownProcessed.replace(urlPattern, (match) => {
-            // 이미 sanitized된 문자열이므로 다시 디코딩하여 원본 URL 획듍
+        step1 = step1.replace(urlPattern, (match) => {
             const url = this.decodeHtml(match);
 
             // Validate URL to prevent XSS
             if (!this.isValidUrl(url)) {
-                return match; // 이미 sanitized된 원본 매치 유지
+                return match;
             }
 
             const safeUrl = this.sanitizeUrl(url);
+            const placeholder = `__URL_PLACEHOLDER_${urlPlaceholders.length}__`;
 
             // URL이 이미지인지 확인
             const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i;
+            let html;
             if (imageExtensions.test(url)) {
                 const imgId = 'img_' + Math.random().toString(36).substring(2, 9);
-                // Use DOM API instead of inline handlers
                 setTimeout(() => {
                     const img = document.getElementById(imgId);
                     if (img) {
@@ -1041,14 +1041,10 @@ export class UIManager {
                     }
                 }, 0);
 
-                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline block">${match}</a>
+                html = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline block">${match}</a>
                 <img id="${imgId}" src="${safeUrl}" alt="Image preview" class="mt-2 max-w-full max-h-64 rounded-lg border border-gray-600 object-contain" loading="lazy">`;
-            }
-
-            // 일반 링크 (보안 헤더 분석 버튼 포함)
-            if (/^https?:\/\//i.test(url)) {
+            } else if (/^https?:\/\//i.test(url)) {
                 const secBtnId = 'secbtn_' + Math.random().toString(36).substring(2, 9);
-                // Use DOM API instead of inline handlers
                 setTimeout(() => {
                     const btnEl = document.getElementById(secBtnId);
                     if (btnEl) {
@@ -1063,23 +1059,41 @@ export class UIManager {
                         btnEl.title = '보안 헤더 분석';
                     }
                 }, 0);
-                return `<span class="inline-flex items-center gap-1"><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${match}</a><button id="${secBtnId}" data-sec-url="${safeUrl}" class="inline-flex items-center justify-center w-4 h-4 text-gray-500 hover:text-emerald-400 transition-colors flex-shrink-0" aria-label="보안 헤더 분석"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-2.332 9-7.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></button><span class="text-[10px] text-emerald-400/70 whitespace-nowrap">← 보안 헤더를 확인해 주세요.</span></span>`;
+                html = `<span class="inline-flex items-center gap-1"><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${match}</a><button id="${secBtnId}" data-sec-url="${safeUrl}" class="inline-flex items-center justify-center w-4 h-4 text-gray-500 hover:text-emerald-400 transition-colors flex-shrink-0" aria-label="보안 헤더 분석"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-2.332 9-7.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></button><span class="text-[10px] text-emerald-400/70 whitespace-nowrap">← 보안 헤더를 확인해 주세요.</span></span>`;
+            } else {
+                html = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${match}</a>`;
             }
 
-            return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${match}</a>`;
+            urlPlaceholders.push(html);
+            return placeholder;
         });
 
-        // 마크다운 서식 변환 (코드 블록 복원 전에 처리)
-        // Bold
+        // 마크다운 링크 [텍스트](URL) 처리 (placeholder로 보호)
+        let step2 = step1;
+        step2 = step2.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (match, text, url) => {
+            const placeholder = `__MDLINK_PLACEHOLDER_${mdLinkPlaceholders.length}__`;
+            mdLinkPlaceholders.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${text}</a>`);
+            return placeholder;
+        });
+
+        // 마크다운 서식 변환 (placeholder 보호된 상태에서 실행)
+        let formatted = step2;
         formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
         formatted = formatted.replace(/__(.+?)__/g, '<strong class="font-bold text-white">$1</strong>');
-        // Italic
         formatted = formatted.replace(/\*(.+?)\*/g, '<em class="italic text-gray-200">$1</em>');
         formatted = formatted.replace(/_(.+?)_/g, '<em class="italic text-gray-200">$1</em>');
-        // Strikethrough
         formatted = formatted.replace(/~~(.+?)~~/g, '<del class="line-through text-gray-500">$1</del>');
-        // Blockquotes
         formatted = formatted.replace(/(^|<br>)&gt;\s?([^<]+)/g, '$1<span class="block border-l-2 border-gray-500 pl-2 my-1 text-gray-300 italic">$2</span>');
+
+        // 마크다운 링크 placeholder 복원
+        for (let i = 0; i < mdLinkPlaceholders.length; i++) {
+            formatted = formatted.replace(`__MDLINK_PLACEHOLDER_${i}__`, mdLinkPlaceholders[i]);
+        }
+
+        // URL placeholder 복원
+        for (let i = 0; i < urlPlaceholders.length; i++) {
+            formatted = formatted.replace(`__URL_PLACEHOLDER_${i}__`, urlPlaceholders[i]);
+        }
 
         // 코드 블록 placeholder를 하이라이트된 코드로 교체
         for (let i = 0; i < codeBlocks.length; i++) {
