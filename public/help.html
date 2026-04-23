@@ -23,15 +23,13 @@
         <section class="bg-blue-900/20 border border-blue-700 rounded-xl p-6 mb-8">
             <h2 class="text-lg font-bold text-blue-300 mb-3">빠른 시작</h2>
             <p class="text-gray-300 leading-relaxed mb-4">
-                별도의 회원가입 없이 바로 채팅에 참여할 수 있습니다. 페이지에 접속하면 Cloudflare Turnstile 보안 검증 후
-                자동으로 익명 세션이 생성됩니다. 브라우저의 localStorage에 세션 ID가 저장되며, 같은 브라우저에서는
-                세션이 유지됩니다.
+                별도의 회원가입 없이 바로 채팅에 참여할 수 있습니다. 페이지에 접속하면 자동으로 익명 세션이 생성되며,
+                브라우저에 세션 정보가 저장되어 같은 브라우저에서는 닉네임 등 설정이 유지됩니다.
             </p>
             <div class="flex flex-wrap gap-3">
                 <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">회원가입 불필요</span>
                 <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">익명 보장</span>
-                <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">WebSocket 실시간 채팅</span>
-                <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">Turnstile 보안 검증</span>
+                <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">실시간 채팅</span>
             </div>
         </section>
 
@@ -75,7 +73,7 @@
             <!-- Formatting -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
                 <h2 class="text-lg font-bold text-white mb-4">메시지 포맷팅 (마크다운)</h2>
-                <p class="text-gray-400 text-sm mb-4">메시지에 다양한 서식을 적용할 수 있습니다. 서버에서는 HTML 이스케이프 처리 후 마크다운이 파싱되어 XSS 공격을 방지합니다.</p>
+                <p class="text-gray-400 text-sm mb-4">메시지에 다양한 서식을 적용할 수 있습니다.</p>
                 <div class="grid gap-3">
                     <div class="flex items-center justify-between bg-gray-900/50 rounded-lg p-3">
                         <code class="text-pink-300 font-mono text-sm">**볼드**</code>
@@ -121,10 +119,7 @@
                         <span class="text-cyan-400 mt-1">•</span>
                         <span>코드 블록 헤더에는 감지된 언어명이 표시되며, 우측 상단의 <strong class="text-white">복사</strong> 버튼으로 코드를 클립보드에 복사할 수 있습니다.</span>
                     </li>
-                    <li class="flex items-start gap-3">
-                        <span class="text-cyan-400 mt-1">•</span>
-                        <span>Prism.js의 Tomorrow Dark 테마가 적용되며, Autoloader 플러그인으로 필요한 언어 구문 파일을 동적으로 로드합니다.</span>
-                    </li>
+
                 </ul>
             </section>
 
@@ -161,7 +156,7 @@
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-pink-400 mt-1">•</span>
-                        <span>파일을 채팅창에 <strong class="text-white">드래그 앤 드롭</strong>하거나, 클립보드에서 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Ctrl+V</kbd>로 이미지를 붙여넣을 수 있습니다. 붙여넣기된 이미지는 자동으로 <code class="text-pink-300 font-mono text-sm">pasted-image-타임스탬프</code> 이름으로 업로드됩니다.</span>
+                        <span>파일을 채팅창에 <strong class="text-white">드래그 앤 드롭</strong>하거나, 클립보드에서 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Ctrl+V</kbd>로 이미지를 붙여넣을 수 있습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-pink-400 mt-1">•</span>
@@ -171,10 +166,7 @@
                         <span class="text-pink-400 mt-1">•</span>
                         <span>업로드 진행률이 실시간으로 표시되며, 업로드 중에는 전송 버튼이 비활성화됩니다. 업로드 취소도 가능합니다.</span>
                     </li>
-                    <li class="flex items-start gap-3">
-                        <span class="text-pink-400 mt-1">•</span>
-                        <span>파일 업로드는 <code class="text-pink-300 font-mono text-sm">file.xeon.kr</code> API를 통해 처리되며, 동일 출처 프록시(<code class="text-pink-300 font-mono text-sm">/api/upload</code>)를 통해 CORS 문제를 우회합니다.</span>
-                    </li>
+
                 </ul>
             </section>
 
@@ -236,10 +228,7 @@
                         <span class="text-indigo-400 mt-1">•</span>
                         <span>전송 후 생성된 링크를 복사해서 특정 상대에게만 공유할 수 있습니다. 링크를 가진 사람은 누구나 1회 열람할 수 있습니다.</span>
                     </li>
-                    <li class="flex items-start gap-3">
-                        <span class="text-indigo-400 mt-1">•</span>
-                        <span>비밀 메시지는 Kalpha API(<code class="text-pink-300 font-mono text-sm">api.kalpha.kr</code>)를 통해 저장 및 관리됩니다.</span>
-                    </li>
+
                 </ul>
             </section>
 
@@ -292,7 +281,7 @@
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-amber-400 mt-1">•</span>
-                        <span>헤더의 "공지" 버튼을 누르면 <code class="text-pink-300 font-mono text-sm">announcements.html</code> 페이지로 이동하여 과거 공지 전체를 열람할 수 있습니다. 버튼 옆의 빨간 점은 읽지 않은 새 공지가 있음을 알립니다.</span>
+                        <span>헤더의 "공지" 버튼을 누르면 <code class="text-pink-300 font-mono text-sm">공지사항 페이지</code>로 이동하여 과거 공지 전체를 열람할 수 있습니다. 버튼 옆의 빨간 점은 읽지 않은 새 공지가 있음을 알립니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-amber-400 mt-1">•</span>
@@ -307,11 +296,11 @@
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-rose-400 mt-1">•</span>
-                        <span>브라우저 푸시 알림을 받으려면 상단의 종 아이콘을 눌러 구독하세요. 구독 시 Service Worker가 등록되고 VAPID 키 기반 푸시 알림이 활성화됩니다.</span>
+                        <span>브라우저 푸시 알림을 받으려면 상단의 종 아이콘을 눌러 구독하세요.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-rose-400 mt-1">•</span>
-                        <span>PWA(Progressive Web App)로 홈 화면에 추가하면 앱처럼 사용할 수 있습니다. <code class="text-pink-300 font-mono text-sm">manifest.json</code>이 제공되며, Android에서는 완전히 종료된 상태에서도 푸시 알림 수신이 가능합니다.</span>
+                        <span>PWA(Progressive Web App)로 홈 화면에 추가하면 앱처럼 사용할 수 있으며, Android에서는 완전히 종료된 상태에서도 푸시 알림 수신이 가능합니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-rose-400 mt-1">•</span>
@@ -334,7 +323,7 @@
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span>아이콘을 클릭하면 Kalpha Security API(<code class="text-pink-300 font-mono text-sm">api.kalpha.kr/security/headers</code>)를 통해 해당 사이트의 보안 헤더를 분석한 결과가 모달로 표시됩니다.</span>
+                        <span>아이콘을 클릭하면 Kalpha Security API(<code class="text-pink-300 font-mono text-sm">외부 보안 분석 API</code>)를 통해 해당 사이트의 보안 헤더를 분석한 결과가 모달로 표시됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
@@ -353,39 +342,31 @@
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span>모든 메시지는 <strong class="text-white">익명</strong>으로 전송되며, 개인정보를 수집하지 않습니다. 세션 ID는 브라우저 localStorage에만 저장됩니다.</span>
+                        <span>모든 메시지는 <strong class="text-white">익명</strong>으로 전송되며, 개인정보를 수집하지 않습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span><strong class="text-white">Cloudflare Turnstile</strong>을 통해 봇 및 악성 접근을 필터링합니다. 보안 검증은 세션당 4시간 유효합니다.</span>
+                        <span>봇 및 악성 접근을 필터링하는 보안 검증을 거친 후 채팅에 참여할 수 있습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span><strong class="text-white">Rate Limiting</strong>: IP당 동시 연결을 5개로 제한하고, 초당 1개/분당 30개 메시지 전송을 제한하여 도배를 방지합니다.</span>
+                        <span>과도한 메시지 전송을 방지하기 위해 전송 속도 제한이 적용되어 있습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span><strong class="text-white">IP/Session 기반 차단</strong>: 관리자가 부적절한 사용자를 IP 또는 Session ID 기반으로 차단(밴)할 수 있으며, 차단 시 localStorage의 세션 ID가 자동 삭제됩니다.</span>
+                        <span>부적절한 사용자는 관리자에 의해 차단될 수 있습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span><strong class="text-white">XSS 방어</strong>: 모든 입력은 서버/클라이언트 양측에서 HTML 이스케이프 처리되며, URL은 검증 후 안전한 형태로 변환됩니다.</span>
+                        <span>모든 입력은 HTML 이스케이프 처리되며, URL은 검증 후 안전한 형태로 변환됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span><strong class="text-white">HMAC 메시지 서명</strong>: 메시지 무결성을 위해 HMAC 서명이 적용되어 위조된 메시지를 차단합니다.</span>
+                        <span>메시지 무결성 검증이 적용되어 위조된 메시지를 차단합니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span><strong class="text-white">SSRF 방지</strong>: Worker와 Durable Object 간 내부 통신 시 <code class="text-pink-300 font-mono text-sm">X-Admin-Internal-Token</code> 인증 헤더를 강제하여 내부 라우팅 탈취를 방지합니다.</span>
-                    </li>
-                    <li class="flex items-start gap-3">
-                        <span class="text-emerald-400 mt-1">•</span>
-                        <span><strong class="text-white">Force HTTPS</strong>: 프로덕션 환경에서는 HTTP 요청을 HTTPS로 자동 리다이렉트합니다.</span>
-                    </li>
-                    <li class="flex items-start gap-3">
-                        <span class="text-emerald-400 mt-1">•</span>
-                        <span><strong class="text-white">CORS 보안</strong>: 허용된 도메인만 API에 접근할 수 있도록 CORS 헤더를 제한적으로 설정합니다.</span>
+                        <span>프로덕션 환경에서는 HTTP 요청을 HTTPS로 자동 전환합니다.</span>
                     </li>
                 </ul>
             </section>
@@ -435,7 +416,7 @@
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-blue-400 mt-1">•</span>
-                        <span>연결이 끊어지면 <strong class="text-white">지수 백오프(Exponential Backoff)</strong> 방식으로 자동 재연결을 시도합니다. 기본 1초부터 시작하여 최대 30초 간격으로, 최대 10회까지 시도합니다.</span>
+                        <span>연결이 끊어지면 자동으로 재연결을 시도합니다. 최대 10회까지 재시도하며, 간격이 점점 늘어나는 방식으로 시도합니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-blue-400 mt-1">•</span>
