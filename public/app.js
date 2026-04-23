@@ -219,7 +219,7 @@ class ChatClient {
 
         this.send({
             type: 'message',
-            content: this.sanitizeInput(message),
+            content: message,
             sessionId: this.sessionId,
             timestamp: now
         });
@@ -276,6 +276,52 @@ class ChatClient {
         return div.innerHTML;
     }
 
+    formatMessage(input) {
+        if (!input) return '';
+
+        // 1. HTML escape
+        const div = document.createElement('div');
+        div.textContent = input;
+        let text = div.innerHTML;
+
+        // 2. Newlines to <br>
+        text = text.replace(/\n/g, '<br>');
+
+        // 3. Blockquotes (> text)
+        text = text.replace(/(^|<br>)&gt;\s?([^<]+)/g, '$1<span class="block border-l-2 border-gray-500 pl-2 my-1 text-gray-300 italic">$2</span>');
+
+        // 4. Protect inline code from markdown parsing
+        const codeBlocks = [];
+        text = text.replace(/`([^`]+)`/g, (match, code) => {
+            codeBlocks.push(code);
+            return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+        });
+
+        // 5. Bold
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+        text = text.replace(/__(.+?)__/g, '<strong class="font-bold text-white">$1</strong>');
+
+        // 6. Italic
+        text = text.replace(/\*(.+?)\*/g, '<em class="italic text-gray-200">$1</em>');
+        text = text.replace(/_(.+?)_/g, '<em class="italic text-gray-200">$1</em>');
+
+        // 7. Strikethrough
+        text = text.replace(/~~(.+?)~~/g, '<del class="line-through text-gray-500">$1</del>');
+
+        // 8. Markdown links [text](url)
+        text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">$1</a>');
+
+        // 9. Auto-link plain URLs
+        text = text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">$1</a>');
+
+        // 10. Restore inline code
+        text = text.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => {
+            return `<code class="bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-pink-300">${codeBlocks[index]}</code>`;
+        });
+
+        return text;
+    }
+
     displayMessage(data) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message-enter p-2.5 rounded-lg ' + 
@@ -296,7 +342,7 @@ class ChatClient {
                 </span>
                 <span class="text-xs text-gray-500">${timestamp}</span>
             </div>
-            <div class="text-sm break-words leading-relaxed">${this.sanitizeInput(data.content)}</div>
+            <div class="text-sm break-words leading-relaxed">${this.formatMessage(data.content)}</div>
         `;
 
         this.messagesContainer.appendChild(messageDiv);

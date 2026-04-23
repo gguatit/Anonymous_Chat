@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>익명채팅 이용방법 | Anonymous Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex items-center gap-3 mb-8">
+            <a href="index.html" class="text-gray-400 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+            </a>
+            <h1 class="text-2xl font-bold text-white">익명채팅 이용방법</h1>
+        </div>
+
+        <!-- Quick Start -->
+        <section class="bg-blue-900/20 border border-blue-700 rounded-xl p-6 mb-8">
+            <h2 class="text-lg font-bold text-blue-300 mb-3 flex items-center gap-2">
+                <span>🚀</span> 빠른 시작
+            </h2>
+            <p class="text-gray-300 leading-relaxed mb-4">
+                별도의 회원가입 없이 바로 채팅에 참여할 수 있습니다. 페이지에 접속하면 자동으로 익명 세션이 생성되며,
+                닉네임을 설정하면 나를 식별하는 데 도움이 됩니다.
+            </p>
+            <div class="flex flex-wrap gap-3">
+                <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">회원가입 불필요</span>
+                <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">익명 보장</span>
+                <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">실시간 채팅</span>
+            </div>
+        </section>
+
+        <!-- Features Grid -->
+        <div class="grid gap-6">
+            <!-- Basic Chat -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-green-900/50 p-2 rounded-lg">💬</span>
+                    기본 채팅
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-400 mt-1">•</span>
+                        <span>메시지 입력창에 내용을 입력하고 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Enter</kbd>를 누륩면 전송됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-400 mt-1">•</span>
+                        <span>줄바꿈이 필요하면 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Shift + Enter</kbd>를 사용하세요.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-400 mt-1">•</span>
+                        <span>초당 1개, 분당 30개의 메시지 전송 제한이 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-400 mt-1">•</span>
+                        <span>메시지는 12시간 후 자동으로 삭제됩니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Formatting -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-purple-900/50 p-2 rounded-lg">✨</span>
+                    메시지 포맷팅 (마크다운)
+                </h2>
+                <p class="text-gray-400 text-sm mb-4">메시지에 다양한 서식을 적용할 수 있습니다.</p>
+                <div class="grid gap-3">
+                    <div class="flex items-center justify-between bg-gray-900/50 rounded-lg p-3">
+                        <code class="text-pink-300 font-mono text-sm">**볼드**</code>
+                        <span class="font-bold text-white">볼드</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-gray-900/50 rounded-lg p-3">
+                        <code class="text-pink-300 font-mono text-sm">*이탤릭*</code>
+                        <span class="italic text-gray-200">이탤릭</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-gray-900/50 rounded-lg p-3">
+                        <code class="text-pink-300 font-mono text-sm">~~취소선~~</code>
+                        <span class="line-through text-gray-500">취소선</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-gray-900/50 rounded-lg p-3">
+                        <code class="text-pink-300 font-mono text-sm">`코드`</code>
+                        <code class="bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-pink-300">코드</code>
+                    </div>
+                    <div class="flex items-center justify-between bg-gray-900/50 rounded-lg p-3">
+                        <code class="text-pink-300 font-mono text-sm">&gt; 인용구</code>
+                        <span class="border-l-2 border-gray-500 pl-2 text-gray-300 italic">인용구</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-gray-900/50 rounded-lg p-3">
+                        <code class="text-pink-300 font-mono text-sm">[링크](URL)</code>
+                        <span class="text-blue-400 underline">링크</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Nickname -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-yellow-900/50 p-2 rounded-lg">👤</span>
+                    닉네임 설정
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-yellow-400 mt-1">•</span>
+                        <span>화면 우측 상단의 닉네임 입력창에서 원하는 이름을 설정할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-yellow-400 mt-1">•</span>
+                        <span>닉네임은 세션 동안 유지되며, 자물쇠 아이콘으로 잠글 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-yellow-400 mt-1">•</span>
+                        <span>설정하지 않으면 자동으로 "익명"으로 표시됩니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- File Sharing -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-pink-900/50 p-2 rounded-lg">📎</span>
+                    파일 및 이미지 공유
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-pink-400 mt-1">•</span>
+                        <span>이미지, 동영상, 오디오, 일반 파일을 업로드할 수 있습니다. (최대 100MB)</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-pink-400 mt-1">•</span>
+                        <span>파일을 채팅창에 <strong class="text-white">드래그 앤 드롭</strong>하거나, 클립보드에서 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Ctrl+V</kbd>로 붙여넣기 할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-pink-400 mt-1">•</span>
+                        <span>이미지와 비디오는 채팅 내에서 바로 미리보기가 가능합니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Code Blocks -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-cyan-900/50 p-2 rounded-lg">💻</span>
+                    코드 블록
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-cyan-400 mt-1">•</span>
+                        <span>세 개의 백틱(```)으로 코드 블록을 만들 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-cyan-400 mt-1">•</span>
+                        <span>언어를 자동으로 감지하여 구문 강조(Syntax Highlighting)를 적용합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-cyan-400 mt-1">•</span>
+                        <span>코드 블록 우측 상단의 <strong class="text-white">복사</strong> 버튼으로 코드를 클립보드에 복사할 수 있습니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Reply -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-orange-900/50 p-2 rounded-lg">↩️</span>
+                    메시지 답장
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-orange-400 mt-1">•</span>
+                        <span>답장하고 싶은 메시지를 <strong class="text-white">우클릭</strong>하거나 <strong class="text-white">길게 누르세요</strong>(모바일).</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-orange-400 mt-1">•</span>
+                        <span>"답장"을 선택하면 해당 메시지에 대한 답장이 작성됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-orange-400 mt-1">•</span>
+                        <span>원본 메시지 내용이 50자로 미리보기되어 표시됩니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Edit & Delete -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-red-900/50 p-2 rounded-lg">✏️</span>
+                    메시지 수정 및 삭제
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-red-400 mt-1">•</span>
+                        <span>본인이 보낸 메시지는 <strong class="text-white">전송 후 10분 이내</strong>에만 수정/삭제할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-red-400 mt-1">•</span>
+                        <span>메시지를 우클릭/길게 눌러 "수정" 또는 "삭제"를 선택하세요.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-red-400 mt-1">•</span>
+                        <span>수정된 메시지에는 <strong class="text-white">(수정됨)</strong> 표시가 붙습니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Secret Message -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-indigo-900/50 p-2 rounded-lg">🔒</span>
+                    비밀 메시지 (Dead Drop)
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-indigo-400 mt-1">•</span>
+                        <span>입력창 옆의 <strong class="text-white">🔒 버튼</strong>을 눌러 비밀 메시지를 작성할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-indigo-400 mt-1">•</span>
+                        <span>비밀 메시지는 <strong class="text-white">1회만 열람</strong> 가능하며, 열람 후 즉시 삭제됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-indigo-400 mt-1">•</span>
+                        <span>링크를 복사해서 특정 상대에게만 공유할 수 있습니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Search -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-teal-900/50 p-2 rounded-lg">🔍</span>
+                    메시지 검색
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-teal-400 mt-1">•</span>
+                        <span>헤더의 검색 버튼이나 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Ctrl+F</kbd>를 눌러 검색할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-teal-400 mt-1">•</span>
+                        <span>키워드로 메시지 내용, 닉네임, 파일명을 검색할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-teal-400 mt-1">•</span>
+                        <span>태그 검색: <code class="text-pink-300 font-mono text-sm">#images</code> (이미지), <code class="text-pink-300 font-mono text-sm">#files</code> (파일), <code class="text-pink-300 font-mono text-sm">#code</code> (코드)로 유형별 필터링이 가능합니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Announcements -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-amber-900/50 p-2 rounded-lg">📢</span>
+                    공지사항
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-400 mt-1">•</span>
+                        <span>헤더의 "📢 공지" 버튼을 눌러 과거 공지사항을 확인할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-400 mt-1">•</span>
+                        <span>새로운 공지가 등록되면 채팅 상단에 표시됩니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Notifications -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-rose-900/50 p-2 rounded-lg">🔔</span>
+                    알림 설정
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-rose-400 mt-1">•</span>
+                        <span>브라우저 푸시 알림을 받으려면 상단의 종 아이콘을 눌러 구독하세요.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-rose-400 mt-1">•</span>
+                        <span>PWA(홈 화면에 추가)로 설치하면 앱처럼 사용할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-rose-400 mt-1">⚠️</span>
+                        <span class="text-yellow-400">현재 일부 플랫폼에서 푸시 알림이 정상 작동하지 않을 수 있습니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Security -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-emerald-900/50 p-2 rounded-lg">🛡️</span>
+                    보안 및 익명성
+                </h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span>모든 메시지는 <strong class="text-white">익명</strong>으로 전송되며, 개인정보를 수집하지 않습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span>URL 옆의 <strong class="text-white">🛡️</strong> 아이콘을 눌러 해당 사이트의 보안 헤더를 분석할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span>메시지는 12시간 후 자동 삭제되며, 서버에 장기간 저장되지 않습니다.</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-10 pt-6 border-t border-gray-700 text-center text-gray-500 text-sm">
+            <p>Anonymous Chat | 익명 실시간 채팅 플랫폼</p>
+            <p class="mt-1">문제가 있으신가요? <a href="https://github.com/gguatit/Anonymous_Chat/issues" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">GitHub Issues</a>에 알려주세요.</p>
+        </div>
+    </div>
+</body>
+</html>
