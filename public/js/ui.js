@@ -1025,7 +1025,7 @@ export class UIManager {
             }
 
             const safeUrl = this.sanitizeUrl(url);
-            const placeholder = `__URL_PLACEHOLDER_${urlPlaceholders.length}__`;
+            const placeholder = `{{URL_PLACEHOLDER_${urlPlaceholders.length}}}`;
 
             // URL이 이미지인지 확인
             const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i;
@@ -1071,7 +1071,7 @@ export class UIManager {
         // 마크다운 링크 [텍스트](URL) 처리 (placeholder로 보호)
         let step2 = step1;
         step2 = step2.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (match, text, url) => {
-            const placeholder = `__MDLINK_PLACEHOLDER_${mdLinkPlaceholders.length}__`;
+            const placeholder = `{{MDLINK_PLACEHOLDER_${mdLinkPlaceholders.length}}}`;
             mdLinkPlaceholders.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${text}</a>`);
             return placeholder;
         });
@@ -1087,12 +1087,12 @@ export class UIManager {
 
         // 마크다운 링크 placeholder 복원
         for (let i = 0; i < mdLinkPlaceholders.length; i++) {
-            formatted = formatted.replace(`__MDLINK_PLACEHOLDER_${i}__`, mdLinkPlaceholders[i]);
+            formatted = formatted.replace(`{{MDLINK_PLACEHOLDER_${i}}}`, mdLinkPlaceholders[i]);
         }
 
         // URL placeholder 복원
         for (let i = 0; i < urlPlaceholders.length; i++) {
-            formatted = formatted.replace(`__URL_PLACEHOLDER_${i}__`, urlPlaceholders[i]);
+            formatted = formatted.replace(`{{URL_PLACEHOLDER_${i}}}`, urlPlaceholders[i]);
         }
 
         // 코드 블록 placeholder를 하이라이트된 코드로 교체
