@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>익명채팅 이용방법 | Anonymous Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>AC</text></svg>">
+    <link rel="icon" type="image/x-icon" href="/ico/favicon.ico">
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
     <div class="max-w-3xl mx-auto px-4 py-8">
@@ -21,17 +21,17 @@
 
         <!-- Quick Start -->
         <section class="bg-blue-900/20 border border-blue-700 rounded-xl p-6 mb-8">
-            <h2 class="text-lg font-bold text-blue-300 mb-3 flex items-center gap-2">
-                빠른 시작
-            </h2>
+            <h2 class="text-lg font-bold text-blue-300 mb-3">빠른 시작</h2>
             <p class="text-gray-300 leading-relaxed mb-4">
-                별도의 회원가입 없이 바로 채팅에 참여할 수 있습니다. 페이지에 접속하면 자동으로 익명 세션이 생성되며,
-                닉네임을 설정하면 나를 식별하는 데 도움이 됩니다.
+                별도의 회원가입 없이 바로 채팅에 참여할 수 있습니다. 페이지에 접속하면 Cloudflare Turnstile 보안 검증 후
+                자동으로 익명 세션이 생성됩니다. 브라우저의 localStorage에 세션 ID가 저장되며, 같은 브라우저에서는
+                세션이 유지됩니다.
             </p>
             <div class="flex flex-wrap gap-3">
                 <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">회원가입 불필요</span>
                 <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">익명 보장</span>
-                <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">실시간 채팅</span>
+                <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">WebSocket 실시간 채팅</span>
+                <span class="bg-blue-800/50 text-blue-200 px-3 py-1 rounded-full text-sm">Turnstile 보안 검증</span>
             </div>
         </section>
 
@@ -39,13 +39,11 @@
         <div class="grid gap-6">
             <!-- Basic Chat -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    기본 채팅
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">기본 채팅</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-green-400 mt-1">•</span>
-                        <span>메시지 입력창에 내용을 입력하고 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Enter</kbd>를 누륩면 전송됩니다.</span>
+                        <span>메시지 입력창에 내용을 입력하고 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Enter</kbd>를 누르면 전송됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-green-400 mt-1">•</span>
@@ -53,21 +51,31 @@
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-green-400 mt-1">•</span>
-                        <span>초당 1개, 분당 30개의 메시지 전송 제한이 있습니다.</span>
+                        <span>메시지는 최대 5000자까지 입력할 수 있으며, 실시간으로 글자 수가 표시됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-green-400 mt-1">•</span>
-                        <span>메시지는 12시간 후 자동으로 삭제됩니다.</span>
+                        <span>Rate Limiting: 초당 1개, 분당 30개의 메시지 전송 제한이 있습니다. 제한을 초과하면 경고 메시지가 표시됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-400 mt-1">•</span>
+                        <span>메시지는 전송 후 <strong class="text-white">12시간이 지나면 자동으로 삭제</strong>됩니다. 서버에 장기간 저장되지 않습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-400 mt-1">•</span>
+                        <span>접속 시 최근 50개의 메시지 히스토리를 배치로 받아 빠르게 로딩됩니다. (기존 개별 로딩 대비 25배 성능 향상)</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-400 mt-1">•</span>
+                        <span>메시지가 전달된 사용자 수가 표시되어, 현재 몇 명이 내 메시지를 받았는지 확인할 수 있습니다.</span>
                     </li>
                 </ul>
             </section>
 
             <!-- Formatting -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    메시지 포맷팅 (마크다운)
-                </h2>
-                <p class="text-gray-400 text-sm mb-4">메시지에 다양한 서식을 적용할 수 있습니다.</p>
+                <h2 class="text-lg font-bold text-white mb-4">메시지 포맷팅 (마크다운)</h2>
+                <p class="text-gray-400 text-sm mb-4">메시지에 다양한 서식을 적용할 수 있습니다. 서버에서는 HTML 이스케이프 처리 후 마크다운이 파싱되어 XSS 공격을 방지합니다.</p>
                 <div class="grid gap-3">
                     <div class="flex items-center justify-between bg-gray-900/50 rounded-lg p-3">
                         <code class="text-pink-300 font-mono text-sm">**볼드**</code>
@@ -90,25 +98,51 @@
                         <span class="border-l-2 border-gray-500 pl-2 text-gray-300 italic">인용구</span>
                     </div>
                     <div class="flex items-center justify-between bg-gray-900/50 rounded-lg p-3">
-                        <code class="text-pink-300 font-mono text-sm">[링크](URL)</code>
-                        <span class="text-blue-400 underline">링크</span>
+                        <code class="text-pink-300 font-mono text-sm">[텍스트](URL)</code>
+                        <span class="text-blue-400 underline">텍스트</span>
                     </div>
                 </div>
+                <p class="text-gray-500 text-xs mt-3">URL은 자동으로 링크로 변환되며, 이미지 URL(jpg, jpeg, png, gif, webp, svg)은 인라인 미리보기가 표시됩니다.</p>
+            </section>
+
+            <!-- Code Blocks -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4">코드 블록</h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-cyan-400 mt-1">•</span>
+                        <span>세 개의 백틱(```)으로 코드 블록을 만들 수 있습니다. 언어를 지정하면 해당 언어의 구문 강조가 적용됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-cyan-400 mt-1">•</span>
+                        <span>언어를 지정하지 않아도 휴리스틱 엔진이 <strong class="text-white">15개 이상의 언어</strong>(JavaScript, Python, C++, Go, Rust, SQL, HTML, Bash, JSON 등)를 자동으로 판별하여 하이라이팅을 적용합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-cyan-400 mt-1">•</span>
+                        <span>코드 블록 헤더에는 감지된 언어명이 표시되며, 우측 상단의 <strong class="text-white">복사</strong> 버튼으로 코드를 클립보드에 복사할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-cyan-400 mt-1">•</span>
+                        <span>Prism.js의 Tomorrow Dark 테마가 적용되며, Autoloader 플러그인으로 필요한 언어 구문 파일을 동적으로 로드합니다.</span>
+                    </li>
+                </ul>
             </section>
 
             <!-- Nickname -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    닉네임 설정
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">닉네임 설정</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-yellow-400 mt-1">•</span>
-                        <span>화면 우측 상단의 닉네임 입력창에서 원하는 이름을 설정할 수 있습니다.</span>
+                        <span>화면 우측 상단의 닉네임 입력창에서 원하는 이름을 설정할 수 있습니다. 최대 12자까지 입력 가능합니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-yellow-400 mt-1">•</span>
-                        <span>닉네임은 세션 동안 유지되며, 자물쇠 아이콘으로 잠글 수 있습니다.</span>
+                        <span>닉네임은 <strong class="text-white">localStorage에 저장</strong>되어 세션이 유지되는 동안 계속 사용됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-yellow-400 mt-1">•</span>
+                        <span>자물쇠 아이콘으로 닉네임을 잠글 수 있습니다. 잠금 해제 시 사칭 방지를 위한 면책 모달이 표시되며, "다시 보지 않기"를 체크하면 이후에는 모달이 뜨지 않습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-yellow-400 mt-1">•</span>
@@ -119,185 +153,320 @@
 
             <!-- File Sharing -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    파일 및 이미지 공유
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">파일 및 이미지 공유</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-pink-400 mt-1">•</span>
-                        <span>이미지, 동영상, 오디오, 일반 파일을 업로드할 수 있습니다. (최대 100MB)</span>
+                        <span>이미지, 동영상, 오디오, 일반 파일을 업로드할 수 있습니다. <strong class="text-white">파일당 최대 100MB</strong>, <strong class="text-white">한 번에 최대 10개</strong>의 파일을 업로드할 수 있습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-pink-400 mt-1">•</span>
-                        <span>파일을 채팅창에 <strong class="text-white">드래그 앤 드롭</strong>하거나, 클립보드에서 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Ctrl+V</kbd>로 붙여넣기 할 수 있습니다.</span>
+                        <span>파일을 채팅창에 <strong class="text-white">드래그 앤 드롭</strong>하거나, 클립보드에서 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Ctrl+V</kbd>로 이미지를 붙여넣을 수 있습니다. 붙여넣기된 이미지는 자동으로 <code class="text-pink-300 font-mono text-sm">pasted-image-타임스탬프</code> 이름으로 업로드됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-pink-400 mt-1">•</span>
-                        <span>이미지와 비디오는 채팅 내에서 바로 미리보기가 가능합니다.</span>
-                    </li>
-                </ul>
-            </section>
-
-            <!-- Code Blocks -->
-            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    코드 블록
-                </h2>
-                <ul class="space-y-3 text-gray-300">
-                    <li class="flex items-start gap-3">
-                        <span class="text-cyan-400 mt-1">•</span>
-                        <span>세 개의 백틱(```)으로 코드 블록을 만들 수 있습니다.</span>
+                        <span>이미지와 비디오는 채팅 내에서 바로 미리보기가 가능하며, 여러 이미지를 업로드하면 <strong class="text-white">갤러리 형태</strong>로 표시됩니다. 이미지를 클릭하면 <strong class="text-white">라이트박스</strong>가 열려 확대해서 볼 수 있습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
-                        <span class="text-cyan-400 mt-1">•</span>
-                        <span>언어를 자동으로 감지하여 구문 강조(Syntax Highlighting)를 적용합니다.</span>
+                        <span class="text-pink-400 mt-1">•</span>
+                        <span>업로드 진행률이 실시간으로 표시되며, 업로드 중에는 전송 버튼이 비활성화됩니다. 업로드 취소도 가능합니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
-                        <span class="text-cyan-400 mt-1">•</span>
-                        <span>코드 블록 우측 상단의 <strong class="text-white">복사</strong> 버튼으로 코드를 클립보드에 복사할 수 있습니다.</span>
+                        <span class="text-pink-400 mt-1">•</span>
+                        <span>파일 업로드는 <code class="text-pink-300 font-mono text-sm">file.xeon.kr</code> API를 통해 처리되며, 동일 출처 프록시(<code class="text-pink-300 font-mono text-sm">/api/upload</code>)를 통해 CORS 문제를 우회합니다.</span>
                     </li>
                 </ul>
             </section>
 
             <!-- Reply -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    메시지 답장
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">메시지 답장</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-orange-400 mt-1">•</span>
-                        <span>답장하고 싶은 메시지를 <strong class="text-white">우클릭</strong>하거나 <strong class="text-white">길게 누르세요</strong>(모바일).</span>
+                        <span>답장하고 싶은 메시지를 <strong class="text-white">우클릭</strong>하거나 <strong class="text-white">길게 누르세요</strong>(모바일). 컨텍스트 메뉴에서 "답장"을 선택하면 됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-orange-400 mt-1">•</span>
-                        <span>"답장"을 선택하면 해당 메시지에 대한 답장이 작성됩니다.</span>
+                        <span>답장 입력 중에는 원본 메시지 미리보기가 입력창 위에 표시되며, X 버튼으로 답장을 취소할 수 있습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-orange-400 mt-1">•</span>
-                        <span>원본 메시지 내용이 50자로 미리보기되어 표시됩니다.</span>
+                        <span>전송된 답장 메시지에는 원본 메시지 내용이 <strong class="text-white">50자로 잘려서</strong> 미리보기로 표시됩니다. 미리보기를 클릭하면 원본 메시지로 스크롤 이동합니다.</span>
                     </li>
                 </ul>
             </section>
 
             <!-- Edit & Delete -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    메시지 수정 및 삭제
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">메시지 수정 및 삭제</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-red-400 mt-1">•</span>
-                        <span>본인이 보낸 메시지는 <strong class="text-white">전송 후 10분 이내</strong>에만 수정/삭제할 수 있습니다.</span>
+                        <span>본인이 보낸 메시지는 <strong class="text-white">전송 후 10분 이내</strong>에만 수정/삭제할 수 있습니다. 시간이 지난 메시지는 수정/삭제 버튼이 표시되지 않습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-red-400 mt-1">•</span>
-                        <span>메시지를 우클릭/길게 눌러 "수정" 또는 "삭제"를 선택하세요.</span>
+                        <span>메시지를 우클릭/길게 눌러 컨텍스트 메뉴에서 "수정" 또는 "삭제"를 선택하세요.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-red-400 mt-1">•</span>
-                        <span>수정된 메시지에는 <strong class="text-white">(수정됨)</strong> 표시가 붙습니다.</span>
+                        <span>수정된 메시지에는 <strong class="text-white">(수정됨)</strong> 표시가 붙으며, 삭제된 메시지는 모든 사용자에게 실시간으로 반영됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-red-400 mt-1">•</span>
+                        <span>파일이 첨부된 메시지를 삭제하면 파일도 함께 삭제됩니다. 삭제 확인 메시지에 파일 삭제 경고가 표시됩니다.</span>
                     </li>
                 </ul>
             </section>
 
             <!-- Secret Message -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    비밀 메시지 (Dead Drop)
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">비밀 메시지 (Dead Drop)</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-indigo-400 mt-1">•</span>
-                        <span>입력창 옆의 <strong class="text-white">비밀 메시지 버튼</strong>을 눌러 비밀 메시지를 작성할 수 있습니다.</span>
+                        <span>입력창 옆의 <strong class="text-white">자물쇠 버튼</strong>을 눌러 비밀 메시지를 작성할 수 있습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-indigo-400 mt-1">•</span>
-                        <span>비밀 메시지는 <strong class="text-white">1회만 열람</strong> 가능하며, 열람 후 즉시 삭제됩니다.</span>
+                        <span>비밀 메시지는 <strong class="text-white">1회만 열람</strong> 가능하며, 열람 후 즉시 서버에서 삭제됩니다. 링크를 받은 사람만 볼 수 있습니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-indigo-400 mt-1">•</span>
-                        <span>링크를 복사해서 특정 상대에게만 공유할 수 있습니다.</span>
+                        <span>전송 후 생성된 링크를 복사해서 특정 상대에게만 공유할 수 있습니다. 링크를 가진 사람은 누구나 1회 열람할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-indigo-400 mt-1">•</span>
+                        <span>비밀 메시지는 Kalpha API(<code class="text-pink-300 font-mono text-sm">api.kalpha.kr</code>)를 통해 저장 및 관리됩니다.</span>
                     </li>
                 </ul>
             </section>
 
             <!-- Search -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    메시지 검색
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">메시지 검색</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-teal-400 mt-1">•</span>
-                        <span>헤더의 검색 버튼이나 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Ctrl+F</kbd>를 눌러 검색할 수 있습니다.</span>
+                        <span>헤더의 검색 버튼이나 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">Ctrl+F</kbd>를 눌러 검색 오버레이를 열 수 있습니다. <kbd class="bg-gray-700 px-2 py-0.5 rounded text-sm text-gray-200">ESC</kbd>를 누르면 닫힙니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-teal-400 mt-1">•</span>
-                        <span>키워드로 메시지 내용, 닉네임, 파일명을 검색할 수 있습니다.</span>
+                        <span><strong class="text-white">최근 12시간 이내</strong>의 모든 메시지에서 내용, 닉네임, 파일명을 검색할 수 있습니다. 공백으로 구분된 여러 키워드는 AND 조건으로 검색됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-teal-400 mt-1">•</span>
-                        <span>태그 검색: <code class="text-pink-300 font-mono text-sm">#images</code> (이미지), <code class="text-pink-300 font-mono text-sm">#files</code> (파일), <code class="text-pink-300 font-mono text-sm">#code</code> (코드)로 유형별 필터링이 가능합니다.</span>
+                        <span>태그 필터링: 검색창 상단의 태그 버튼이나 검색어에 직접 입력하여 유형별로 필터링할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3 pl-6">
+                        <span class="text-teal-400 mt-1">-</span>
+                        <span><code class="text-pink-300 font-mono text-sm">#images</code> — 이미지가 포함된 메시지만 검색</span>
+                    </li>
+                    <li class="flex items-start gap-3 pl-6">
+                        <span class="text-teal-400 mt-1">-</span>
+                        <span><code class="text-pink-300 font-mono text-sm">#files</code> — 파일이 포함된 메시지만 검색</span>
+                    </li>
+                    <li class="flex items-start gap-3 pl-6">
+                        <span class="text-teal-400 mt-1">-</span>
+                        <span><code class="text-pink-300 font-mono text-sm">#code</code> — 코드 블록이 포함된 메시지만 검색</span>
+                    </li>
+                    <li class="flex items-start gap-3 pl-6">
+                        <span class="text-teal-400 mt-1">-</span>
+                        <span><code class="text-pink-300 font-mono text-sm">#url</code> — URL이 포함된 메시지만 검색</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-teal-400 mt-1">•</span>
+                        <span>검색 결과를 클릭하면 해당 메시지로 자동 스크롤 이동하며, 메시지가 하이라이트됩니다.</span>
                     </li>
                 </ul>
             </section>
 
             <!-- Announcements -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    공지사항
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">공지사항</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-amber-400 mt-1">•</span>
-                        <span>헤더의 "공지" 버튼을 눌러 과거 공지사항을 확인할 수 있습니다.</span>
+                        <span>새로운 공지가 등록되면 채팅 상단에 노란색 배너로 표시됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-amber-400 mt-1">•</span>
-                        <span>새로운 공지가 등록되면 채팅 상단에 표시됩니다.</span>
+                        <span>헤더의 "공지" 버튼을 누르면 <code class="text-pink-300 font-mono text-sm">announcements.html</code> 페이지로 이동하여 과거 공지 전체를 열람할 수 있습니다. 버튼 옆의 빨간 점은 읽지 않은 새 공지가 있음을 알립니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-400 mt-1">•</span>
+                        <span>공지 읽음 여부는 localStorage에 저장되며, 새로운 공지가 올라오면 자동으로 뱃지가 표시됩니다.</span>
                     </li>
                 </ul>
             </section>
 
             <!-- Notifications -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    알림 설정
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">알림 설정</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-rose-400 mt-1">•</span>
-                        <span>브라우저 푸시 알림을 받으려면 상단의 종 아이콘을 눌러 구독하세요.</span>
+                        <span>브라우저 푸시 알림을 받으려면 상단의 종 아이콘을 눌러 구독하세요. 구독 시 Service Worker가 등록되고 VAPID 키 기반 푸시 알림이 활성화됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-rose-400 mt-1">•</span>
-                        <span>PWA(홈 화면에 추가)로 설치하면 앱처럼 사용할 수 있습니다.</span>
+                        <span>PWA(Progressive Web App)로 홈 화면에 추가하면 앱처럼 사용할 수 있습니다. <code class="text-pink-300 font-mono text-sm">manifest.json</code>이 제공되며, Android에서는 완전히 종료된 상태에서도 푸시 알림 수신이 가능합니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-rose-400 mt-1">•</span>
-                        <span class="text-yellow-400">현재 일부 플랫폼에서 푸시 알림이 정상 작동하지 않을 수 있습니다.</span>
+                        <span>페이지가 백그라운드에 있을 때 새 메시지가 오면 브라우저 타이틀에 미읽음 메시지 수가 표시됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-rose-400 mt-1">•</span>
+                        <span class="text-yellow-400">현재 일부 플랫폼에서 푸시 알림 기능이 올바르게 작동하지 않을 수 있습니다. 코드는 구현되어 있으나 실제 환경에서 알림이 전송되지 않을 수 있습니다.</span>
                     </li>
                 </ul>
             </section>
 
-            <!-- Security -->
+            <!-- Security Headers -->
             <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    보안 및 익명성
-                </h2>
+                <h2 class="text-lg font-bold text-white mb-4">보안 헤더 분석</h2>
                 <ul class="space-y-3 text-gray-300">
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span>모든 메시지는 <strong class="text-white">익명</strong>으로 전송되며, 개인정보를 수집하지 않습니다.</span>
+                        <span>채팅 내 HTTP/HTTPS URL 옆에 <strong class="text-white">보안 분석</strong> 아이콘(방패 모양)이 표시됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span>URL 옆의 <strong class="text-white">보안 분석</strong> 아이콘을 눌러 해당 사이트의 보안 헤더를 분석할 수 있습니다.</span>
+                        <span>아이콘을 클릭하면 Kalpha Security API(<code class="text-pink-300 font-mono text-sm">api.kalpha.kr/security/headers</code>)를 통해 해당 사이트의 보안 헤더를 분석한 결과가 모달로 표시됩니다.</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="text-emerald-400 mt-1">•</span>
-                        <span>메시지는 12시간 후 자동 삭제되며, 서버에 장기간 저장되지 않습니다.</span>
+                        <span>분석 결과에는 <strong class="text-white">점수, 등급, 프로그레스 바, 헤더 설정 상태, 상세 분석 항목</strong>이 포함됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span>해당 API는 개발 중인 기능으로, 분석 결과의 신뢰성은 참고용으로만 사용하세요.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Security & Privacy -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4">보안 및 익명성</h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span>모든 메시지는 <strong class="text-white">익명</strong>으로 전송되며, 개인정보를 수집하지 않습니다. 세션 ID는 브라우저 localStorage에만 저장됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span><strong class="text-white">Cloudflare Turnstile</strong>을 통해 봇 및 악성 접근을 필터링합니다. 보안 검증은 세션당 4시간 유효합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span><strong class="text-white">Rate Limiting</strong>: IP당 동시 연결을 5개로 제한하고, 초당 1개/분당 30개 메시지 전송을 제한하여 도배를 방지합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span><strong class="text-white">IP/Session 기반 차단</strong>: 관리자가 부적절한 사용자를 IP 또는 Session ID 기반으로 차단(밴)할 수 있으며, 차단 시 localStorage의 세션 ID가 자동 삭제됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span><strong class="text-white">XSS 방어</strong>: 모든 입력은 서버/클라이언트 양측에서 HTML 이스케이프 처리되며, URL은 검증 후 안전한 형태로 변환됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span><strong class="text-white">HMAC 메시지 서명</strong>: 메시지 무결성을 위해 HMAC 서명이 적용되어 위조된 메시지를 차단합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span><strong class="text-white">SSRF 방지</strong>: Worker와 Durable Object 간 내부 통신 시 <code class="text-pink-300 font-mono text-sm">X-Admin-Internal-Token</code> 인증 헤더를 강제하여 내부 라우팅 탈취를 방지합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span><strong class="text-white">Force HTTPS</strong>: 프로덕션 환경에서는 HTTP 요청을 HTTPS로 자동 리다이렉트합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-emerald-400 mt-1">•</span>
+                        <span><strong class="text-white">CORS 보안</strong>: 허용된 도메인만 API에 접근할 수 있도록 CORS 헤더를 제한적으로 설정합니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Admin -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4">관리자 기능</h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-purple-400 mt-1">•</span>
+                        <span><code class="text-pink-300 font-mono text-sm">administrator.html</code> 페이지에서 관리자 로그인 후 다양한 관리 기능을 사용할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-purple-400 mt-1">•</span>
+                        <span><strong class="text-white">메시지 관리</strong>: 모든 메시지 조회, 특정 메시지 수정/삭제, 전체 메시지 일괄 삭제가 가능합니다. 관리자는 시간 제한 없이 삭제할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-purple-400 mt-1">•</span>
+                        <span><strong class="text-white">사용자 관리</strong>: 접속 중인 사용자 목록 조회, IP/Session ID 기반 강퇴(Kick) 및 차단(Ban), 차단 해제가 가능합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-purple-400 mt-1">•</span>
+                        <span><strong class="text-white">공지사항 관리</strong>: 새 공지 등록, 기존 공지 수정/삭제가 가능하며, 등록 즉시 모든 접속자에게 실시간 반영됩니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-purple-400 mt-1">•</span>
+                        <span><strong class="text-white">통계 대시보드</strong>: 활성 연결 수, 총 메시지 수, 총 접속 수, 오류 수 등을 실시간으로 확인할 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-purple-400 mt-1">•</span>
+                        <span><strong class="text-white">감사 로그(Audit Log)</strong>: 관리자의 모든 행위(메시지 수정/삭제, 사용자 차단, 공지 등록 등)가 기록되며, CSV 형식으로 내보내기가 가능합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-purple-400 mt-1">•</span>
+                        <span><strong class="text-white">시스템 오류 로그</strong>: 클라이언트 및 서버에서 발생한 오류를 최대 100개까지 링 버퍼 방식으로 저장하며, JSON 다운로드 및 초기화가 가능합니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Connection -->
+            <section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-lg font-bold text-white mb-4">연결 상태 및 재연결</h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-blue-400 mt-1">•</span>
+                        <span>화면 상단에서 현재 연결 상태를 확인할 수 있습니다: 연결 중(노란색), 연결됨(초록색), 연결 끊김(빨간색), 재연결 중(주황색), 오류 발생(빨간색).</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-blue-400 mt-1">•</span>
+                        <span>연결이 끊어지면 <strong class="text-white">지수 백오프(Exponential Backoff)</strong> 방식으로 자동 재연결을 시도합니다. 기본 1초부터 시작하여 최대 30초 간격으로, 최대 10회까지 시도합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-blue-400 mt-1">•</span>
+                        <span>페이지가 백그라운드(다른 탭)에 있다가 다시 활성화되면, 연결이 끊어져 있을 경우 자동으로 재연결합니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-blue-400 mt-1">•</span>
+                        <span>타자 표시기: 다른 사용자가 입력 중일 때 "익명이 입력 중..." 메시지가 표시됩니다.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Limitations -->
+            <section class="bg-red-900/20 border border-red-700 rounded-xl p-6">
+                <h2 class="text-lg font-bold text-red-300 mb-3">알려진 제한사항</h2>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-red-400 mt-1">•</span>
+                        <span><strong class="text-white">다크 모드만 지원</strong>: 현재 라이트 모드는 제공되지 않습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-red-400 mt-1">•</span>
+                        <span><strong class="text-white">푸시 알림 오류</strong>: 일부 플랫폼(특히 iOS Safari)에서 푸시 알림이 정상 작동하지 않을 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-red-400 mt-1">•</span>
+                        <span><strong class="text-white">무한 스크롤 미지원</strong>: 접속 시 최근 50개 메시지만 로드되며, 이전 메시지는 검색을 통해 찾을 수 있습니다.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-red-400 mt-1">•</span>
+                        <span><strong class="text-white">Ctrl+Enter 미지원</strong>: 메시지 전송은 Enter 키만 지원합니다.</span>
                     </li>
                 </ul>
             </section>
