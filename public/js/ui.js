@@ -1009,11 +1009,14 @@ export class UIManager {
         // 나머지 텍스트를 sanitize
         const sanitized = this.sanitizeInput(processed);
 
+        // 마크다운 링크 [텍스트](URL)를 먼저 처리 (URL 자동 변환과 충돌 방지)
+        let markdownProcessed = sanitized.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">$1</a>');
+
         // URL 패턴 매칭 (프로토콜이 없어도 도메인 형태면 인식)
         const urlPattern = /(https?:\/\/[^\s<]+[^\s<.,)])|(\bwww\.[^\s<]+[^\s<.,)])|(\b[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}(?::[0-9]+)?(?:\/[^\s<]*[^\s<.,)])?)/gi;
 
         // URL을 링크로 변환하고 프리뷰 생성
-        let formatted = sanitized.replace(urlPattern, (match) => {
+        let formatted = markdownProcessed.replace(urlPattern, (match) => {
             // 이미 sanitized된 문자열이므로 다시 디코딩하여 원본 URL 획듍
             const url = this.decodeHtml(match);
 
@@ -1065,6 +1068,18 @@ export class UIManager {
 
             return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline break-all">${match}</a>`;
         });
+
+        // 마크다운 서식 변환 (코드 블록 복원 전에 처리)
+        // Bold
+        formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+        formatted = formatted.replace(/__(.+?)__/g, '<strong class="font-bold text-white">$1</strong>');
+        // Italic
+        formatted = formatted.replace(/\*(.+?)\*/g, '<em class="italic text-gray-200">$1</em>');
+        formatted = formatted.replace(/_(.+?)_/g, '<em class="italic text-gray-200">$1</em>');
+        // Strikethrough
+        formatted = formatted.replace(/~~(.+?)~~/g, '<del class="line-through text-gray-500">$1</del>');
+        // Blockquotes
+        formatted = formatted.replace(/(^|<br>)&gt;\s?([^<]+)/g, '$1<span class="block border-l-2 border-gray-500 pl-2 my-1 text-gray-300 italic">$2</span>');
 
         // 코드 블록 placeholder를 하이라이트된 코드로 교체
         for (let i = 0; i < codeBlocks.length; i++) {
