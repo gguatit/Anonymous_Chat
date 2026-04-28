@@ -27,6 +27,15 @@
 - **레거시 코드 정리**: 사용하지 않는 `public/app.js` (471줄) 제거
 - **lint 경량화**: 28 → 20 problems (신규 에러 0건)
 
+### 🖥️ 관리자 대시보드 개선
+- **관리자 로그인 기록 탭 추가**: KV에 저장된 로그인 성공/실패/차단/로그아웃 내역을 관리자 페이지에서 실시간 확인 가능. 브루트포스 공격 탐지에 활용
+- **감사 로그 필터 버그 수정**: `delete_message` 필터가 실제 로그 `admin_delete_message`와 매칭되지 않던 문제 수정. 누락된 필터 3종(`admin_delete_all_messages`, `edit_announcement`, `delete_announcement`) 추가
+- **감사 로그 CSV 내보내기**: 감사 로그 탭에 CSV 내보내기 버튼 추가
+- **세션 목록 개선**: 실제 WebSocket 연결 상태(`isOnline`), 국가, User-Agent 표시 추가. 기존 heuristics 방식 대체
+- **사용자 상세 정보 개선**: 닉네임, 국가, User-Agent 표시 추가. `lastMessage.timestamp` 버그 수정 (숫자값에서 직접 표시)
+- **에러 로그 필터/검색**: 에러 타입별 필터 드롭다운 + 메시지 내용 텍스트 검색 추가
+- **`errors` 메트릭 이중계산 수정**: `metrics.errors + errorLogs.length` → `errorLogs.length`만 사용
+
 ---
 
 ## 2026-04-15
