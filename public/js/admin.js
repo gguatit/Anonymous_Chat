@@ -1668,12 +1668,13 @@ class AdminDashboard {
                 throw new Error('Failed to load admin logs');
             }
 
-            const logs = await response.json();
+            const data = await response.json();
+            const logs = data.logs || [];
             const container = document.getElementById('admin-login-logs');
 
             if (!container) return;
 
-            if (!logs || logs.length === 0) {
+            if (logs.length === 0) {
                 container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">관리자 로그인 기록이 없습니다.</p>';
                 return;
             }
