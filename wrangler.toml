@@ -32,6 +32,15 @@ class_name = "ChatRoom"
 tag = "v1"
 new_classes = ["ChatRoom"]
 
+# Custom domain routes
+[[routes]]
+pattern = "kalpha.mmv.kr"
+custom_domain = true
+
+[[routes]]
+pattern = "chat.kalpha.kr"
+custom_domain = true
+
 # Pages integration (for hybrid deployment)
 [assets]
 directory = "public"
