@@ -170,7 +170,6 @@ export class FileUploadManager {
             const bugReportBtn = document.getElementById('bug-report-btn');
             if (!bugReportBtn) return;
             
-            const inputArea = document.querySelector('.fixed.bottom-0');
             const previewHeight = this.filePreview.offsetHeight;
             
             // Calculate total height: input area + preview

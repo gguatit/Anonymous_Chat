@@ -81,7 +81,7 @@ function matchRoute(routes, pathname, method) {
 }
 
 export default {
-    async fetch(request, env, ctx) {
+    async fetch(request, env, _ctx) {
         try {
             if (!env.HMAC_SECRET) {
                 console.error('HMAC_SECRET environment variable is not set');

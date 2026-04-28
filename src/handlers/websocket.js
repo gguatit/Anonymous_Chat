@@ -1,4 +1,4 @@
-import { SECURITY, RATE_LIMIT } from '../config/constants.js';
+import { SECURITY } from '../config/constants.js';
 import { isAllowedOrigin } from '../utils/security.js';
 
 export async function handleWebSocket(request, env, HMAC_SECRET) {

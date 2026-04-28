@@ -1730,7 +1730,7 @@ export class ChatRoom {
     containsUrl(content) {
         if (!content || typeof content !== 'string') return false;
         // Match http/https URLs and common URL patterns
-        return /https?:\/\/[^\s<>"{}|\^`\[\]]+/i.test(content) ||
+        return /https?:\/\/[^\s<>"{}|^`[\]]+/i.test(content) ||
                /www\.[a-zA-Z0-9][-a-zA-Z0-9]*[a-zA-Z0-9]*(\.[a-zA-Z]{2,})+/i.test(content);
     }
 

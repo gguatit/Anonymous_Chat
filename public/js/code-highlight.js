@@ -60,7 +60,7 @@ export function detectLanguage(content) {
     if (/^(export\s+\w+=|alias\s+\w+=|source\s+|chmod\s+|echo\s+["'])/m.test(trimmed) && !/;\s*$/.test(trimmed.split('\n')[0])) return 'bash';
 
     // JSON — 유효한 JSON 파싱
-    if (/^\s*[\[{]/.test(trimmed)) {
+    if (/^\s*[{[]/.test(trimmed)) {
         try { JSON.parse(trimmed); return 'json'; } catch { /* not json */ }
     }
 

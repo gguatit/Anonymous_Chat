@@ -1,6 +1,7 @@
 import { sleep, constantTimeCompare } from '../utils/security.js';
 import { logAdminActivity } from '../utils/logger.js';
 import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken } from '../middleware/auth.js';
+import { forwardToDO } from '../utils/do.js';
 
 async function requireAdminAuth(request, env) {
     const authHeader = request.headers.get('Authorization');
@@ -147,15 +148,9 @@ export async function handleAdminMetrics(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
-    // Get metrics from Durable Object
-    const roomId = env.CHAT_ROOM.idFromName('main-room');
-    const room = env.CHAT_ROOM.get(roomId);
-    
-    // 내부 통신용 인증 헤더 추가
-    const checkRequest = new Request('https://dummy/admin/metrics', {
+    const response = await forwardToDO(env, '/admin/metrics', {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
-    const response = await room.fetch(checkRequest);
 
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -166,14 +161,9 @@ export async function handleAdminSessions(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
-    const roomId = env.CHAT_ROOM.idFromName('main-room');
-    const room = env.CHAT_ROOM.get(roomId);
-    
-    // 내부 통신용 인증 헤더 추가
-    const checkRequest = new Request('https://dummy/admin/sessions', {
+    const response = await forwardToDO(env, '/admin/sessions', {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
-    const response = await room.fetch(checkRequest);
 
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -184,13 +174,9 @@ export async function handleAdminMessages(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
-    const roomId = env.CHAT_ROOM.idFromName('main-room');
-    const room = env.CHAT_ROOM.get(roomId);
-    
-    const forward = new Request('https://dummy/admin/messages', {
+    const response = await forwardToDO(env, '/admin/messages', {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
-    const response = await room.fetch(forward);
 
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -206,14 +192,10 @@ export async function handleAdminDeleteErrorLogs(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
-    const roomId = env.CHAT_ROOM.idFromName('main-room');
-    const room = env.CHAT_ROOM.get(roomId);
-    
-    const forward = new Request('https://dummy/admin/delete-error-logs', {
+    const response = await forwardToDO(env, '/admin/delete-error-logs', {
         method: 'POST',
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
-    const response = await room.fetch(forward);
 
     return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -289,19 +271,10 @@ export async function handleAdminBroadcast(request, env, corsHeaders) {
         const content = typeof body.content === 'string' ? body.content : '';
         const file = body.file || null;
 
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
-
-        const forward = new Request('https://dummy/admin/broadcast', {
+        const response = await forwardToDO(env, '/admin/broadcast', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
-            },
-            body: JSON.stringify({ content, file, adminId: 'admin' })
+            json: { content, file, adminId: 'admin' }
         });
-
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -330,19 +303,10 @@ export async function handleAdminEditMessage(request, env, corsHeaders) {
             });
         }
 
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
-
-        const forward = new Request('https://dummy/admin/edit-message', {
+        const response = await forwardToDO(env, '/admin/edit-message', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
-            },
-            body: JSON.stringify({ messageId, newContent })
+            json: { messageId, newContent }
         });
-
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -370,19 +334,10 @@ export async function handleAdminDeleteMessage(request, env, corsHeaders) {
             });
         }
 
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
-
-        const forward = new Request('https://dummy/admin/delete-message', {
+        const response = await forwardToDO(env, '/admin/delete-message', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
-            },
-            body: JSON.stringify({ messageId })
+            json: { messageId }
         });
-
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -410,19 +365,10 @@ export async function handleAdminDeleteAllMessages(request, env, corsHeaders) {
             });
         }
 
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
-
-        const forward = new Request('https://dummy/admin/delete-all-messages', {
+        const response = await forwardToDO(env, '/admin/delete-all-messages', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
-            },
-            body: JSON.stringify({ confirmation })
+            json: { confirmation }
         });
-
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -451,19 +397,10 @@ export async function handleAdminKickUser(request, env, corsHeaders) {
             });
         }
 
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
-
-        const forward = new Request('https://dummy/admin/kick-user', {
+        const response = await forwardToDO(env, '/admin/kick-user', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
-            },
-            body: JSON.stringify({ sessionId, banDuration })
+            json: { sessionId, banDuration }
         });
-
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -499,24 +436,15 @@ export async function handleAdminAnnounce(request, env, corsHeaders) {
             });
         }
 
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
-
         let forwardBody = { content };
         if (request.method === 'PUT' || request.method === 'DELETE') {
             forwardBody.timestamp = timestamp;
         }
 
-        const forward = new Request('https://dummy/admin/announce', {
-            method: request.method, // Forward POST, PUT, or DELETE
-            headers: {
-                'Content-Type': 'application/json',
-                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
-            },
-            body: JSON.stringify(forwardBody)
+        const response = await forwardToDO(env, '/admin/announce', {
+            method: request.method,
+            json: forwardBody
         });
-
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: response.status
@@ -535,14 +463,8 @@ export async function handleAdminBannedIPs(request, env, corsHeaders) {
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
+        const response = await forwardToDO(env, '/admin/banned-ips');
 
-        const forward = new Request('https://dummy/admin/banned-ips', {
-            headers: { 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID() }
-        });
-
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -570,19 +492,11 @@ export async function handleAdminUnbanIP(request, env, corsHeaders) {
             });
         }
 
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
-
-        const forward = new Request('https://dummy/admin/unban-ip', {
+        const response = await forwardToDO(env, '/admin/unban-ip', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID()
-            },
-            body: JSON.stringify({ ip })
+            json: { ip }
         });
 
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -610,14 +524,8 @@ export async function handleAdminUserDetails(request, env, corsHeaders) {
             });
         }
 
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
+        const response = await forwardToDO(env, `/admin/user-details?sessionId=${encodeURIComponent(sessionId)}`);
 
-        const forward = new Request(`https://dummy/admin/user-details?sessionId=${encodeURIComponent(sessionId)}`, {
-            headers: { 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID() }
-        });
-
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -635,14 +543,8 @@ export async function handleAdminAuditLogs(request, env, corsHeaders) {
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
+        const response = await forwardToDO(env, '/admin/audit-logs');
 
-        const forward = new Request('https://dummy/admin/audit-logs', {
-            headers: { 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID() }
-        });
-
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -659,15 +561,10 @@ export async function handleAdminDeleteAuditLogs(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
     try {
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
-        const room = env.CHAT_ROOM.get(roomId);
-
-        const forward = new Request('https://dummy/admin/delete-audit-logs', {
-            method: 'POST',
-            headers: { 'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID() }
+        const response = await forwardToDO(env, '/admin/delete-audit-logs', {
+            method: 'POST'
         });
 
-        const response = await room.fetch(forward);
         return new Response(response.body, {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
