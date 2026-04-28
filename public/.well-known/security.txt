@@ -4,6 +4,7 @@
 Contact: mailto:dev@kalpha.kr
 Preferred-Languages: ko, en
 Canonical: https://kalpha.mmv.kr/.well-known/security.txt
+Canonical: https://chat.kalpha.kr/.well-known/security.txt
 
 Policy: https://kalpha.mmv.kr/privacy.html
 
