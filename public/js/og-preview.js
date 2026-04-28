@@ -130,22 +130,6 @@ export class OGPreviewManager {
         links.forEach(link => this.enrichUrlLink(link));
     }
 
-        this.getPreview(url).then(og => {
-            if (og) {
-                placeholder.innerHTML = this.renderCard(og, url);
-            } else {
-                placeholder.remove();
-            }
-        }).catch(() => {
-            placeholder.remove();
-        });
-    }
-
-    enrichMessage(element) {
-        const links = element.querySelectorAll('a[href^="http"]');
-        links.forEach(link => this.enrichUrlLink(link));
-    }
-
     _esc(text) {
         const div = document.createElement('div');
         div.textContent = String(text || '');
