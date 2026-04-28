@@ -359,9 +359,12 @@
             <!-- Admin Login Logs -->
             <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
                 <div class="p-3 md:p-4 border-b border-gray-700">
-                    <div>
-                        <h2 class="text-base md:text-lg font-semibold text-gray-100">관리자 로그인 기록</h2>
-                        <p class="text-xs md:text-sm text-gray-400">관리자 로그인/로그아웃 내역</p>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-base md:text-lg font-semibold text-gray-100">관리자 로그인 기록</h2>
+                            <p class="text-xs md:text-sm text-gray-400">관리자 로그인/로그아웃 내역</p>
+                        </div>
+                        <button id="delete-admin-logs-btn" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors">로그 초기화</button>
                     </div>
                 </div>
                 <div class="p-3 md:p-4">

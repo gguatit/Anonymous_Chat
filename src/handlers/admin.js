@@ -262,6 +262,35 @@ export async function handleAdminLogs(request, env, corsHeaders) {
     });
 }
 
+export async function handleAdminDeleteLogs(request, env, corsHeaders) {
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
+
+    if (!env?.ADMIN_LOGS) {
+        return new Response(JSON.stringify({ success: true, deletedCount: 0 }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    try {
+        const list = await env.ADMIN_LOGS.list({ prefix: 'log:' });
+        let deletedCount = 0;
+
+        for (const key of list.keys) {
+            await env.ADMIN_LOGS.delete(key.name);
+            deletedCount++;
+        }
+
+        return new Response(JSON.stringify({ success: true, deletedCount }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: 'Failed to delete logs' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 export async function handleAdminBroadcast(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });

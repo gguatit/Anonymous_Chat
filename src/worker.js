@@ -23,6 +23,7 @@ const adminRoutes = [
     ['delete-error-logs', null, admin.handleAdminDeleteErrorLogs],
     ['logout', null, admin.handleAdminLogout],
     ['logs', null, admin.handleAdminLogs],
+    ['delete-logs', 'POST', admin.handleAdminDeleteLogs],
     ['broadcast', null, admin.handleAdminBroadcast],
     ['edit-message', null, admin.handleAdminEditMessage],
     ['delete-message', null, admin.handleAdminDeleteMessage],

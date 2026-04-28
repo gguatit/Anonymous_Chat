@@ -153,6 +153,12 @@ class AdminDashboard {
             clearAuditBtn.addEventListener('click', () => this.clearAuditLogs());
         }
 
+        // Clear admin login logs
+        const deleteAdminLogsBtn = document.getElementById('delete-admin-logs-btn');
+        if (deleteAdminLogsBtn) {
+            deleteAdminLogsBtn.addEventListener('click', () => this.deleteAdminLogs());
+        }
+
         // Error log filter and search
         const errorLogFilter = document.getElementById('error-log-filter');
         const errorLogSearch = document.getElementById('error-log-search');
@@ -1708,6 +1714,33 @@ class AdminDashboard {
 
         } catch (error) {
             console.error('Load admin logs error:', error);
+        }
+    }
+
+    async deleteAdminLogs() {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
+        if (!confirm('모든 관리자 로그인 기록을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/delete-logs', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${this.sessionToken}` }
+            });
+
+            if (!response.ok) throw new Error('Failed to delete admin logs');
+
+            const result = await response.json();
+            this.showNotification(`로그인 기록 ${result.deletedCount}건이 삭제되었습니다.`, 'success');
+            this.loadAdminLogs();
+        } catch (error) {
+            console.error('Delete admin logs error:', error);
+            this.showNotification('로그인 기록 삭제에 실패했습니다.', 'error');
         }
     }
 
