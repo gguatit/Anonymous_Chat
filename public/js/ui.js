@@ -1,5 +1,6 @@
 // UI Manager - handles all DOM interactions
 import { renderCodeBlock, isLikelyCode, CODE_BLOCK_PREFIX, INLINE_CODE_PREFIX, PLACEHOLDER_SUFFIX } from './code-highlight.js';
+import { escapeHtml, isValidUrl as _isValidUrl, sanitizeUrl as _sanitizeUrl, formatFileSize as _formatFileSize } from './utils.js';
 export class UIManager {
     constructor() {
         this.messageForm = document.getElementById('message-form');
@@ -55,42 +56,12 @@ export class UIManager {
         });
     }
 
-    /**
-     * Validate URL to prevent XSS attacks
-     */
     isValidUrl(url) {
-        try {
-            // If it doesn't have a protocol, add a temporary one for validation
-            const urlWithProtocol = url.match(/^https?:\/\//) ? url : 'https://' + url;
-            const parsed = new URL(urlWithProtocol);
-
-            // Basic validation for protocol-less URLs: must have a dot and something after it
-            if (!url.match(/^https?:\/\//)) {
-                const domain = parsed.hostname;
-                if (!domain || !domain.includes('.') || domain.split('.').pop().length < 2) {
-                    return false;
-                }
-            }
-
-            return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-        } catch {
-            return false;
-        }
+        return _isValidUrl(url);
     }
 
-    /**
-     * Sanitize and encode URL for HTML attributes
-     */
     sanitizeUrl(url) {
-        if (!this.isValidUrl(url)) {
-            return '#';
-        }
-
-        // Ensure it has a protocol for the href attribute
-        let safeUrl = url.match(/^https?:\/\//) ? url : 'https://' + url;
-
-        // Encode special characters
-        return safeUrl.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        return _sanitizeUrl(url);
     }
 
     /**
@@ -972,10 +943,7 @@ export class UIManager {
     }
 
     sanitizeInput(input) {
-        // Basic XSS prevention
-        const div = document.createElement('div');
-        div.textContent = input;
-        return div.innerHTML;
+        return escapeHtml(input);
     }
 
     formatMessageContent(content) {
@@ -1353,13 +1321,7 @@ export class UIManager {
     }
 
     formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        return _formatFileSize(bytes);
     }
 
     htmlToPlainText(html) {

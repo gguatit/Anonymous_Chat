@@ -1,4 +1,6 @@
 // File Upload Manager
+import { formatFileSize } from './utils.js';
+
 export class FileUploadManager {
     constructor(apiBaseUrl, uploadEndpoint) {
         this.apiBaseUrl = apiBaseUrl || 'https://file.xeon.kr';
@@ -101,7 +103,7 @@ export class FileUploadManager {
         // Calculate total size
         const totalSize = this.selectedFiles.reduce((sum, f) => sum + f.size, 0);
         this.fileName.textContent = `${this.selectedFiles.length}개 파일`;
-        this.fileSize.textContent = this.formatFileSize(totalSize);
+        this.fileSize.textContent = formatFileSize(totalSize);
 
         // Build gallery preview
         this.previewGallery.innerHTML = '';
@@ -404,16 +406,6 @@ export class FileUploadManager {
             size: file.size,
             type: file.type
         };
-    }
-
-    formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
     }
 
     // Drag and drop support

@@ -2,6 +2,14 @@ import { sleep, constantTimeCompare } from '../utils/security.js';
 import { logAdminActivity } from '../utils/logger.js';
 import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken } from '../middleware/auth.js';
 
+async function requireAdminAuth(request, env) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    const token = authHeader.substring(7);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    return isValid ? token : null;
+}
+
 // Admin Authentication Handlers
 export async function handleAdminLogin(request, env, corsHeaders) {
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -127,37 +135,17 @@ export async function handleAdminLogin(request, env, corsHeaders) {
 }
 
 export async function handleAdminVerify(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-
-    if (isValid) {
-        return new Response(JSON.stringify({ valid: true }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-
-    return new Response(null, { status: 401, headers: corsHeaders });
+    return new Response(JSON.stringify({ valid: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 }
 
 export async function handleAdminMetrics(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     // Get metrics from Durable Object
     const roomId = env.CHAT_ROOM.idFromName('main-room');
@@ -175,18 +163,8 @@ export async function handleAdminMetrics(request, env, corsHeaders) {
 }
 
 export async function handleAdminSessions(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
@@ -203,18 +181,8 @@ export async function handleAdminSessions(request, env, corsHeaders) {
 }
 
 export async function handleAdminMessages(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
@@ -235,18 +203,8 @@ export async function handleAdminDeleteErrorLogs(request, env, corsHeaders) {
         return new Response(null, { status: 405, headers: corsHeaders });
     }
 
-    const authHeader = request.headers.get('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     const roomId = env.CHAT_ROOM.idFromName('main-room');
     const room = env.CHAT_ROOM.get(roomId);
@@ -294,18 +252,8 @@ export async function handleAdminLogout(request, env, corsHeaders) {
 
 // 감사 로그 조회
 export async function handleAdminLogs(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     if (!env?.ADMIN_LOGS) {
         return new Response(JSON.stringify({ logs: [] }), {
@@ -333,16 +281,8 @@ export async function handleAdminLogs(request, env, corsHeaders) {
 }
 
 export async function handleAdminBroadcast(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const body = await request.json();
@@ -375,16 +315,8 @@ export async function handleAdminBroadcast(request, env, corsHeaders) {
 }
 
 export async function handleAdminEditMessage(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const body = await request.json();
@@ -424,16 +356,8 @@ export async function handleAdminEditMessage(request, env, corsHeaders) {
 }
 
 export async function handleAdminDeleteMessage(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const body = await request.json();
@@ -472,16 +396,8 @@ export async function handleAdminDeleteMessage(request, env, corsHeaders) {
 }
 
 export async function handleAdminDeleteAllMessages(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const body = await request.json();
@@ -520,16 +436,8 @@ export async function handleAdminDeleteAllMessages(request, env, corsHeaders) {
 }
 
 export async function handleAdminKickUser(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const body = await request.json();
@@ -569,16 +477,8 @@ export async function handleAdminKickUser(request, env, corsHeaders) {
 }
 
 export async function handleAdminAnnounce(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const body = await request.json();
@@ -631,16 +531,8 @@ export async function handleAdminAnnounce(request, env, corsHeaders) {
 }
 
 export async function handleAdminBannedIPs(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const roomId = env.CHAT_ROOM.idFromName('main-room');
@@ -664,16 +556,8 @@ export async function handleAdminBannedIPs(request, env, corsHeaders) {
 }
 
 export async function handleAdminUnbanIP(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const body = await request.json();
@@ -712,16 +596,8 @@ export async function handleAdminUnbanIP(request, env, corsHeaders) {
 }
 
 export async function handleAdminUserDetails(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const url = new URL(request.url);
@@ -755,16 +631,8 @@ export async function handleAdminUserDetails(request, env, corsHeaders) {
 }
 
 export async function handleAdminAuditLogs(request, env, corsHeaders) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
-
-    const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
-    if (!isValid) {
-        return new Response(null, { status: 401, headers: corsHeaders });
-    }
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     try {
         const roomId = env.CHAT_ROOM.idFromName('main-room');
@@ -788,6 +656,8 @@ export async function handleAdminAuditLogs(request, env, corsHeaders) {
 }
 
 export async function handleAdminDeleteAuditLogs(request, env, corsHeaders) {
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
     try {
         const roomId = env.CHAT_ROOM.idFromName('main-room');
         const room = env.CHAT_ROOM.get(roomId);

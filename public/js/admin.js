@@ -1,4 +1,5 @@
 // Admin Dashboard JavaScript
+import { escapeHtml, isValidUrl as _isValidUrl, sanitizeUrl as _sanitizeUrl, formatFileSize as _formatFileSize } from './utils.js';
 
 class AdminDashboard {
     constructor() {
@@ -906,12 +907,7 @@ class AdminDashboard {
     }
 
     formatFileSize(bytes) {
-        if (bytes === 0) return '0 B';
-        if (!bytes) return '';
-        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(1024));
-        const size = (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2);
-        return `${size} ${units[i]}`;
+        return _formatFileSize(bytes);
     }
 
     updateLastUpdated() {
@@ -939,25 +935,15 @@ class AdminDashboard {
     }
 
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return escapeHtml(text);
     }
 
     isValidUrl(url) {
-        try {
-            const parsed = new URL(url);
-            return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-        } catch {
-            return false;
-        }
+        return _isValidUrl(url);
     }
 
     sanitizeUrl(url) {
-        if (!this.isValidUrl(url)) {
-            return '#';
-        }
-        return url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        return _sanitizeUrl(url);
     }
 
     attachMessageEventListeners() {
@@ -1638,12 +1624,6 @@ class AdminDashboard {
         } catch (err) {
             console.error('showNotification error:', err);
         }
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 }
 

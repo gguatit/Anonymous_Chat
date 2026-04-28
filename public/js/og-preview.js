@@ -1,3 +1,5 @@
+import { escapeHtml } from './utils.js';
+
 const CACHE_MAX = 50;
 const FETCH_TIMEOUT = 5000;
 
@@ -131,8 +133,6 @@ export class OGPreviewManager {
     }
 
     _esc(text) {
-        const div = document.createElement('div');
-        div.textContent = String(text || '');
-        return div.innerHTML;
+        return escapeHtml(text);
     }
 }

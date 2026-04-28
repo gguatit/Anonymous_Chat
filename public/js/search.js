@@ -1,3 +1,5 @@
+import { escapeHtml } from './utils.js';
+
 export class SearchManager {
     constructor(onResultClick) {
         this.onResultClick = onResultClick;
@@ -169,30 +171,6 @@ syncInputFromTags() {
         }
         this.activeTags = foundTags;
         this.updateTagButtons();
-
-        if (foundTags.size > 0) {
-            const hasNonTagText = text.replace(/#\w+/g, '').trim().length > 0;
-            if (hasNonTagText) {
-                const onlyTags = text.replace(/#\w+/g, '').trim();
-                const tagParts = [];
-                for (const tag of foundTags) {
-                    tagParts.push(`#${tag}`);
-                }
-                this.searchInput.value = tagParts.join(' ');
-            }
-        }
-    }
-
-    syncTagsFromInput() {
-        const text = this.searchInput.value;
-        const tagRegex = /#(images|files|code|url)\b/gi;
-        const foundTags = new Set();
-        let match;
-        while ((match = tagRegex.exec(text)) !== null) {
-            foundTags.add(match[1].toLowerCase());
-        }
-        this.activeTags = foundTags;
-        this.updateTagButtons();
     }
 
     attachHeaderButton() {
@@ -302,8 +280,8 @@ syncInputFromTags() {
 
     highlightText(text) {
         const textTerms = this.getQueryWithoutTags();
-        if (!text && !textTerms) return this.escapeHtml(text || '');
-        const escaped = this.escapeHtml(text || '');
+        if (!text && !textTerms) return escapeHtml(text || '');
+        const escaped = escapeHtml(text || '');
         if (!textTerms) return escaped;
         const terms = textTerms.toLowerCase().split(/\s+/).filter(t => t.length > 0);
         let result = escaped;
@@ -328,12 +306,6 @@ syncInputFromTags() {
         }).join(' ');
     }
 
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     renderResults() {
         if (this.results.length === 0) {
             this.resultsContainer.innerHTML = `
@@ -341,7 +313,7 @@ syncInputFromTags() {
                     <svg class="w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <p class="text-sm">"${this.escapeHtml(this.currentQuery)}"에 대한 검색 결과가 없습니다</p>
+                    <p class="text-sm">"${escapeHtml(this.currentQuery)}"에 대한 검색 결과가 없습니다</p>
                     <p class="text-xs text-gray-600 mt-1">다른 검색어를 시도해보세요</p>
                 </div>
             `;
@@ -361,7 +333,7 @@ syncInputFromTags() {
                 hour: '2-digit', minute: '2-digit'
             });
 
-            const senderName = this.escapeHtml(msg.nickname || 'Anonymous');
+            const senderName = escapeHtml(msg.nickname || 'Anonymous');
             const contentPreview = msg.content.length > 200
                 ? msg.content.substring(0, 200) + '...'
                 : msg.content;
@@ -374,12 +346,12 @@ syncInputFromTags() {
                     fileBadge = `<span class="text-xs text-emerald-400 ml-1.5">
                         <svg class="w-3.5 h-3.5 inline-block mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>${this.escapeHtml(msg.fileName || 'image')}</span>`;
+                        </svg>${escapeHtml(msg.fileName || 'image')}</span>`;
                 } else {
                     fileBadge = `<span class="text-xs text-amber-400 ml-1.5">
                         <svg class="w-3.5 h-3.5 inline-block mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-4.586 4.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.586a4 4 0 105.657 5.657l4.585-4.586"/>
-                        </svg>${this.escapeHtml(msg.fileName || 'file')}</span>`;
+                        </svg>${escapeHtml(msg.fileName || 'file')}</span>`;
                 }
             }
 

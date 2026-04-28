@@ -1,3 +1,5 @@
+import { escapeHtml } from './utils.js';
+
 export class SecurityHeadersManager {
     constructor() {
         this.overlay = null;
@@ -204,9 +206,7 @@ export class SecurityHeadersManager {
     }
 
     esc(text) {
-        const div = document.createElement('div');
-        div.textContent = String(text || '');
-        return div.innerHTML;
+        return escapeHtml(text);
     }
 
     open() {
