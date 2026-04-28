@@ -40,6 +40,7 @@ binding = "ASSETS"
 # Environment variables
 [vars]
 ENVIRONMENT = "production"
+TURNSTILE_SITE_KEY = "0x4AAAAAADAY6kk52-ZxU23s"
 # HMAC_SECRET should be set in production via: wrangler secret put HMAC_SECRET
 # ADMIN_ID should be set in production via: wrangler secret put ADMIN_ID
 # ADMIN_PASSWORD should be set in production via: wrangler secret put ADMIN_PASSWORD
@@ -61,3 +62,4 @@ persist = true
 [env.development]
 [env.development.vars]
 ENVIRONMENT = "development"
+TURNSTILE_SITE_KEY = "1x00000000000000000000AA"

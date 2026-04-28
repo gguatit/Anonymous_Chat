@@ -9,10 +9,8 @@ import { SearchManager } from './search.js?v=1.0.3';
 import { SecurityHeadersManager } from './security-headers.js?v=1.0.1';
 import { TurnstileManager } from './turnstile.js?v=1.0.0';
 
-const TURNSTILE_SITE_KEY = '0x4AAAAAADAY6kk52-ZxU23s';
-
 class ChatClient {
-    constructor() {
+    constructor(config = {}) {
         // Initialize managers
         this.sessionManager = new SessionManager();
         this.ui = new UIManager();
@@ -56,7 +54,7 @@ class ChatClient {
         this.initializeUI();
         this.initializeAnnouncementIndicator();
         // WebSocket connection is started after Turnstile verification
-        this.turnstile = new TurnstileManager(TURNSTILE_SITE_KEY, () => this.onTurnstileVerified());
+        this.turnstile = new TurnstileManager(config.turnstileSiteKey, () => this.onTurnstileVerified());
         this.turnstile.init();
     }
 
@@ -766,8 +764,15 @@ class ChatClient {
 }
 
 // Initialize chat client when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.chatClient = new ChatClient();
+document.addEventListener('DOMContentLoaded', async () => {
+    let config = { turnstileSiteKey: '0x4AAAAAADAY6kk52-ZxU23s' };
+    try {
+        const res = await fetch('/api/config');
+        if (res.ok) config = await res.json();
+    } catch {
+        // fallback to hardcoded default
+    }
+    window.chatClient = new ChatClient(config);
 });
 
 // Handle page visibility changes - proactively check and reconnect if needed

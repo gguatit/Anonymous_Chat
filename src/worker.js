@@ -211,6 +211,16 @@ export default {
                 return await handleCheckBan(request, env, corsHeaders);
             }
 
+            // Public config endpoint (serves non-sensitive env vars to client)
+            if (url.pathname === '/api/config') {
+                const config = {
+                    turnstileSiteKey: env.TURNSTILE_SITE_KEY || '0x4AAAAAADAY6kk52-ZxU23s'
+                };
+                return new Response(JSON.stringify(config), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
             // Turnstile verification endpoint
             if (url.pathname === '/api/turnstile/verify' && request.method === 'POST') {
                 return await handleTurnstileVerify(request, env, corsHeaders);
