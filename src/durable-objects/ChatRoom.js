@@ -136,8 +136,7 @@ export class ChatRoom {
                 activeConnections: this.sessions.size,
                 totalMessages: this.messages.length,
                 totalConnections: metrics.totalConnections,
-                // Combine in-memory server error counter with persisted error log count
-                errors: (metrics.errors || 0) + (this.errorLogs ? this.errorLogs.length : 0),
+                errors: this.errorLogs ? this.errorLogs.length : 0,
                 uptime: Date.now() - (this.startTime || Date.now()),
                 errorLogs: this.errorLogs
             }), {
@@ -152,7 +151,11 @@ export class ChatRoom {
                 joinTime: metadata.joinTime,
                 messageCount: metadata.messageCount,
                 lastMessageTime: metadata.lastMessageTime,
-                nickname: metadata.nickname || '익명'
+                lastActivityTime: metadata.lastActivityTime,
+                nickname: metadata.nickname || '익명',
+                isOnline: this.sessions.has(sessionId),
+                country: metadata.environment?.country || '',
+                userAgent: metadata.environment?.userAgent || ''
             }));
 
             return new Response(JSON.stringify(sessions), {

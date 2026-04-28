@@ -313,7 +313,16 @@
                         </h2>
                         <p class="text-xs md:text-sm text-gray-400">최근 서버 및 클라이언트 측 에러 내역 (최대 100건)</p>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex flex-wrap gap-2">
+                        <select id="error-log-filter" class="bg-gray-700 text-gray-300 text-xs border border-gray-600 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">전체 유형</option>
+                            <option value="WS_MESSAGE_PARSE">메시지 파싱</option>
+                            <option value="CLIENT_ERROR">클라이언트 오류</option>
+                            <option value="WS_CONNECTION">연결 오류</option>
+                            <option value="SYSTEM_ERROR">시스템 오류</option>
+                            <option value="SECURITY">보안 오류</option>
+                        </select>
+                        <input type="text" id="error-log-search" placeholder="메시지 검색..." class="bg-gray-700 text-gray-300 text-xs border border-gray-600 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-32 md:w-48">
                         <button id="download-errors-btn" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg whitespace-nowrap transition-colors flex items-center shadow-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -343,6 +352,21 @@
                                 <tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">최근 오류 내역이 없습니다.</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Login Logs -->
+            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
+                <div class="p-3 md:p-4 border-b border-gray-700">
+                    <div>
+                        <h2 class="text-base md:text-lg font-semibold text-gray-100">관리자 로그인 기록</h2>
+                        <p class="text-xs md:text-sm text-gray-400">관리자 로그인/로그아웃 내역</p>
+                    </div>
+                </div>
+                <div class="p-3 md:p-4">
+                    <div id="admin-login-logs" class="space-y-2 max-h-96 overflow-y-auto">
+                        <p class="text-sm text-gray-500 text-center py-8">불러오는 중...</p>
                     </div>
                 </div>
             </div>
@@ -488,7 +512,13 @@
                         <option value="delete_message">메시지 삭제</option>
                         <option value="send_announcement">공지 전송</option>
                         <option value="UNBAN_IP">IP 차단 해제</option>
+                        <option value="admin_delete_all_messages">전체 메시지 삭제</option>
+                        <option value="edit_announcement">공지사항 수정</option>
+                        <option value="delete_announcement">공지사항 삭제</option>
                     </select>
+                    <button id="export-audit-csv-btn" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                        CSV 내보내기
+                    </button>
                     <button id="clear-audit-logs-btn" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">
                         로그 삭제
                     </button>

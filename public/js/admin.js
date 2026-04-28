@@ -141,10 +141,30 @@ class AdminDashboard {
             auditLogFilter.addEventListener('change', () => this.loadAuditLogs());
         }
 
+        // Export audit logs CSV
+        const exportAuditCsvBtn = document.getElementById('export-audit-csv-btn');
+        if (exportAuditCsvBtn) {
+            exportAuditCsvBtn.addEventListener('click', () => this.exportAuditLogCsv());
+        }
+
         // Clear audit logs
         const clearAuditBtn = document.getElementById('clear-audit-logs-btn');
         if (clearAuditBtn) {
             clearAuditBtn.addEventListener('click', () => this.clearAuditLogs());
+        }
+
+        // Error log filter and search
+        const errorLogFilter = document.getElementById('error-log-filter');
+        const errorLogSearch = document.getElementById('error-log-search');
+        if (errorLogFilter) {
+            errorLogFilter.addEventListener('change', () => {
+                if (this._errorLogs) this.renderErrorLogs(this._errorLogs);
+            });
+        }
+        if (errorLogSearch) {
+            errorLogSearch.addEventListener('input', () => {
+                if (this._errorLogs) this.renderErrorLogs(this._errorLogs);
+            });
         }
 
         // User details modal close
@@ -513,6 +533,9 @@ class AdminDashboard {
             // Fetch announcements
             await this.loadAnnouncements();
 
+            // Fetch admin login logs
+            await this.loadAdminLogs();
+
             this.updateLastUpdated();
 
         } catch (error) {
@@ -550,7 +573,30 @@ class AdminDashboard {
 
     renderErrorLogs(logs) {
         const container = document.getElementById('error-logs-list');
-        if (!logs || logs.length === 0) {
+        if (!container) return;
+
+        this._errorLogs = logs || [];
+
+        const filterSelect = document.getElementById('error-log-filter');
+        const searchInput = document.getElementById('error-log-search');
+        const filterType = filterSelect?.value || 'all';
+        const searchText = (searchInput?.value || '').toLowerCase();
+
+        let filteredLogs = this._errorLogs;
+
+        if (filterType !== 'all') {
+            filteredLogs = filteredLogs.filter(log => log.type === filterType);
+        }
+
+        if (searchText) {
+            filteredLogs = filteredLogs.filter(log =>
+                (log.message && log.message.toLowerCase().includes(searchText)) ||
+                (log.location && log.location.toLowerCase().includes(searchText)) ||
+                (log.type && log.type.toLowerCase().includes(searchText))
+            );
+        }
+
+        if (!filteredLogs || filteredLogs.length === 0) {
             container.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">최근 발생한 오류가 없습니다.</td></tr>';
             return;
         }
@@ -558,7 +604,7 @@ class AdminDashboard {
         // Preserve opened details based on ID matching or index
         const currentOpened = Array.from(container.querySelectorAll('tr[id^="error-detail-"]:not(.hidden)')).map(el => el.getAttribute('data-log-id'));
 
-        container.innerHTML = logs.map((log, index) => {
+        container.innerHTML = filteredLogs.map((log, index) => {
             const date = new Date(log.timestamp);
             let badgeClass = 'bg-gray-700 text-gray-300';
             
@@ -680,11 +726,14 @@ class AdminDashboard {
         }
 
         container.innerHTML = sessions.map(session => {
-            const isOnline = session.lastMessageTime > 0 || (Date.now() - session.joinTime) < 60000;
+            const isOnline = session.isOnline;
             const statusColor = isOnline ? 'bg-green-500' : 'bg-gray-500';
             const lastActiveText = session.lastMessageTime > 0
                 ? this.formatDuration(Date.now() - session.lastMessageTime) + ' 전 활동'
-                : '활동 없음';
+                : session.lastActivityTime
+                    ? this.formatDuration(Date.now() - session.lastActivityTime) + ' 전 활동'
+                    : '활동 없음';
+            const userAgent = session.userAgent ? session.userAgent.substring(0, 40) + (session.userAgent.length > 40 ? '...' : '') : '';
 
             return `
                 <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer session-row" data-session-id="${session.sessionId}">
@@ -695,8 +744,9 @@ class AdminDashboard {
                                 ${this.truncateId(session.sessionId)}
                                 ${session.nickname ? `<span class="text-xs ml-2 text-yellow-300">(${this.escapeHtml(session.nickname)})</span>` : ''}
                             </p>
-                            <p class="text-xs text-gray-500 break-all">${session.ip || 'Unknown IP'}</p>
+                            <p class="text-xs text-gray-500 break-all">${session.ip || 'Unknown IP'}${session.country ? ` · ${this.escapeHtml(session.country)}` : ''}</p>
                             <p class="text-xs text-gray-400">${lastActiveText}</p>
+                            ${userAgent ? `<p class="text-xs text-gray-500 truncate">${this.escapeHtml(userAgent)}</p>` : ''}
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1335,8 +1385,20 @@ class AdminDashboard {
                                 <p class="text-gray-200 font-mono break-all">${userDetails.sessionId || 'N/A'}</p>
                             </div>
                             <div>
+                                <p class="text-gray-500">닉네임</p>
+                                <p class="text-gray-200">${userDetails.metadata?.nickname ? this.escapeHtml(userDetails.metadata.nickname) : '익명'}</p>
+                            </div>
+                            <div>
                                 <p class="text-gray-500">IP 주소</p>
                                 <p class="text-gray-200 font-mono break-all">${userDetails.metadata?.ip || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">국가</p>
+                                <p class="text-gray-200">${userDetails.metadata?.environment?.country || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">User-Agent</p>
+                                <p class="text-gray-200 text-xs break-all">${this.escapeHtml(userDetails.metadata?.environment?.userAgent || 'N/A')}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">접속 시각</p>
@@ -1352,7 +1414,7 @@ class AdminDashboard {
                             </div>
                             <div>
                                 <p class="text-gray-500">마지막 활동</p>
-                                <p class="text-gray-200">${userDetails.lastMessage ? new Date(userDetails.lastMessage.timestamp).toLocaleString('ko-KR') : 'N/A'}</p>
+                                <p class="text-gray-200">${userDetails.lastMessage ? new Date(userDetails.lastMessage).toLocaleString('ko-KR') : 'N/A'}</p>
                             </div>
                         </div>
                     </div>
@@ -1520,7 +1582,12 @@ class AdminDashboard {
             const selectedFilter = filterSelect?.value || 'all';
             const filteredLogs = selectedFilter === 'all'
                 ? logs
-                : logs.filter(log => log.action === selectedFilter);
+                : logs.filter(log => {
+                    if (selectedFilter === 'delete_message') {
+                        return log.action === 'delete_message' || log.action === 'admin_delete_message';
+                    }
+                    return log.action === selectedFilter;
+                });
 
             if (!filteredLogs || filteredLogs.length === 0) {
                 container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">감사 로그가 없습니다.</p>';
@@ -1532,7 +1599,11 @@ class AdminDashboard {
                     'kick_user': '유저 강퇴',
                     'edit_message': '메시지 수정',
                     'delete_message': '메시지 삭제',
+                    'admin_delete_message': '메시지 삭제',
+                    'admin_delete_all_messages': '전체 메시지 삭제',
                     'send_announcement': '공지 전송',
+                    'edit_announcement': '공지사항 수정',
+                    'delete_announcement': '공지사항 삭제',
                     'UNBAN_IP': 'IP 차단 해제'
                 }[log.action] || log.action;
 
@@ -1540,7 +1611,11 @@ class AdminDashboard {
                     'kick_user': 'text-red-400',
                     'edit_message': 'text-yellow-400',
                     'delete_message': 'text-orange-400',
+                    'admin_delete_message': 'text-orange-400',
+                    'admin_delete_all_messages': 'text-red-500',
                     'send_announcement': 'text-blue-400',
+                    'edit_announcement': 'text-blue-400',
+                    'delete_announcement': 'text-red-400',
                     'UNBAN_IP': 'text-green-400'
                 }[log.action] || 'text-gray-400';
 
@@ -1580,6 +1655,128 @@ class AdminDashboard {
         } catch (error) {
             console.error('Clear audit logs error:', error);
             this.showNotification('감사 로그 삭제에 실패했습니다.', 'error');
+        }
+    }
+
+    async loadAdminLogs() {
+        try {
+            const response = await fetch('/api/admin/logs', {
+                headers: { 'Authorization': `Bearer ${this.sessionToken}` }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load admin logs');
+            }
+
+            const logs = await response.json();
+            const container = document.getElementById('admin-login-logs');
+
+            if (!container) return;
+
+            if (!logs || logs.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">관리자 로그인 기록이 없습니다.</p>';
+                return;
+            }
+
+            container.innerHTML = logs.map(log => {
+                const typeBadge = {
+                    'login_success': 'bg-green-900/50 text-green-400 border border-green-700',
+                    'login_failed': 'bg-red-900/50 text-red-400 border border-red-700',
+                    'login_blocked': 'bg-orange-900/50 text-orange-400 border border-orange-700',
+                    'logout': 'bg-gray-700 text-gray-300 border border-gray-600'
+                }[log.type] || 'bg-gray-700 text-gray-300';
+
+                const typeText = {
+                    'login_success': '로그인 성공',
+                    'login_failed': '로그인 실패',
+                    'login_blocked': '로그인 차단',
+                    'logout': '로그아웃'
+                }[log.type] || log.type;
+
+                return `
+                    <div class="bg-gray-700 rounded-lg p-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-sm font-medium"><span class="px-2 py-0.5 rounded text-xs font-bold ${typeBadge}">${typeText}</span></span>
+                            <span class="text-xs text-gray-500">${new Date(log.timestamp).toLocaleString('ko-KR')}</span>
+                        </div>
+                        <p class="text-sm text-gray-300 break-all">IP: ${this.escapeHtml(log.ip || 'N/A')}</p>
+                        ${log.details ? `<p class="text-xs text-gray-400 mt-1">${this.escapeHtml(log.details)}</p>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+        } catch (error) {
+            console.error('Load admin logs error:', error);
+        }
+    }
+
+    async exportAuditLogCsv() {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/audit-logs', {
+                headers: { 'Authorization': `Bearer ${this.sessionToken}` }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load audit logs');
+            }
+
+            const logs = await response.json();
+            const filterSelect = document.getElementById('audit-log-filter');
+            const selectedFilter = filterSelect?.value || 'all';
+
+            let filteredLogs = logs;
+            if (selectedFilter !== 'all') {
+                filteredLogs = logs.filter(log => {
+                    if (selectedFilter === 'delete_message') {
+                        return log.action === 'delete_message' || log.action === 'admin_delete_message';
+                    }
+                    return log.action === selectedFilter;
+                });
+            }
+
+            if (!filteredLogs || filteredLogs.length === 0) {
+                this.showNotification('내보낼 감사 로그가 없습니다.', 'error');
+                return;
+            }
+
+            const headers = ['timestamp', 'action', 'details', 'metadata'];
+            const escape = (value) => {
+                if (value == null) return '';
+                const str = String(value);
+                return '"' + str.replace(/"/g, '""') + '"';
+            };
+
+            const rows = filteredLogs.map(log => [
+                new Date(log.timestamp).toISOString(),
+                log.action,
+                log.details || '',
+                log.metadata ? JSON.stringify(log.metadata) : ''
+            ]);
+
+            const csvContent = [headers.map(h => escape(h)).join(',')]
+                .concat(rows.map(r => r.map(cell => escape(cell)).join(',')))
+                .join('\n');
+
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('Export audit CSV error:', error);
+            this.showNotification('CSV 내보내기 중 오류가 발생했습니다.', 'error');
         }
     }
 
