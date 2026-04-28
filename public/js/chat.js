@@ -8,6 +8,7 @@ import { PushNotificationManager } from './push-manager.js?v=1.0.5';
 import { SearchManager } from './search.js?v=1.0.3';
 import { SecurityHeadersManager } from './security-headers.js?v=1.0.1';
 import { TurnstileManager } from './turnstile.js?v=1.0.0';
+import { OGPreviewManager } from './og-preview.js?v=1.0.0';
 
 class ChatClient {
     constructor(config = {}) {
@@ -49,6 +50,7 @@ class ChatClient {
         // Search
         this.search = new SearchManager((messageId) => this.scrollToMessage(messageId));
         this.securityHeaders = new SecurityHeadersManager();
+        this.ogPreview = new OGPreviewManager();
         window.chatClient = this;
 
         this.initializeUI();
@@ -282,6 +284,9 @@ class ChatClient {
                 console.log('[Chat] Received message history:', data.messages?.length || 0, 'messages');
                 if (data.messages && data.messages.length > 0) {
                     this.ui.displayBatchMessages(data.messages, this.sessionManager.getSessionId());
+                    if (this.ogPreview) {
+                        this.ogPreview.enrichMessage(this.ui.messagesContainer);
+                    }
                 }
                 break;
             case 'message':
@@ -290,6 +295,10 @@ class ChatClient {
                     data.sessionId === this.sessionManager.getSessionId(),
                     this.sessionManager.getSessionId()
                 );
+                if (this.ogPreview) {
+                    const lastMsg = this.ui.messagesContainer.querySelector('[data-message]:last-child');
+                    if (lastMsg) this.ogPreview.enrichMessage(lastMsg);
+                }
                 if (document.hidden) {
                     this.unreadCount++;
                     this.updateUnreadTitle();

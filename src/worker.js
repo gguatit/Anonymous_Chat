@@ -30,6 +30,7 @@ import { handleWebSocket, handleCheckBan } from './handlers/websocket.js';
 import { handleGetVapidKey, handlePushSubscribe, handlePushUnsubscribe } from './handlers/push.js';
 import { handleMetrics, handleHealth } from './handlers/health.js';
 import { handleTurnstileVerify } from './handlers/turnstile.js';
+import { handlePreview } from './handlers/preview.js';
 
 // Import Durable Object
 import { ChatRoom } from './durable-objects/ChatRoom.js';
@@ -224,6 +225,11 @@ export default {
             // Turnstile verification endpoint
             if (url.pathname === '/api/turnstile/verify' && request.method === 'POST') {
                 return await handleTurnstileVerify(request, env, corsHeaders);
+            }
+
+            // OG Link Preview endpoint
+            if (url.pathname === '/api/preview') {
+                return await handlePreview(request, env, corsHeaders);
             }
 
             // WebSocket upgrade request
