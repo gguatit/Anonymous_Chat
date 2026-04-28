@@ -12,7 +12,6 @@ export const SECURITY = {
     IP_WHITELIST: null, // null means all IPs allowed
     ALLOWED_ORIGINS: [
         'https://kalpha.mmv.kr',
-        'https://chat.kalpha.kr',
         'http://localhost:8787',
         'http://127.0.0.1:8787'
     ],
