@@ -49,6 +49,30 @@ Cloudflare Workers 기반 서버리스 아키텍처
 
 > 전체 변경 이력은 [CHANGELOG.md](CHANGELOG.md)를 참조하세요.
 
+### 2026년 4월 28일 - OG Link Preview, 코드 품질 개선, 버그 수정
+
+#### 새로운 기능
+- **OG Link Preview**: 채팅 내 URL 아래에 제목·설명·이미지 카드 자동 표시
+  - Worker가 외부 URL fetch → OG 태그 파싱 (`POST /api/preview`)
+  - Cloudflare Edge Cache (1시간), 클라이언트 메모리 캐시 (중복 요청 방지)
+  - Rate limit 적용 (IP당 10초 5회), 5초 타임아웃
+  - 이미지 URL, 비-HTML 리소스는 프리뷰 제외
+
+#### 버그 수정
+- **WebSocket 재연결 시 "입장했습니다" 중복 출력 수정**: 연결 종료 시 세션 메타데이터를 유지하여 재연결을 새 접속으로 오인하지 않음
+- **search.js 메서드 중복 정의 수정**: `syncTagsFromInput()` 2중 선언으로 인한 로직 무효화 버그 제거
+- **delete-audit-logs 관리자 API 인증 누락 패치**
+
+#### 코드 품질 개선
+- **공통 유틸 모듈 통합**: `escapeHtml`/`isValidUrl`/`formatFileSize` 등 5개 파일 중복 제거
+- **Worker 라우트 테이블 도입**: 35개 if-chain을 선언적 배열로 리팩토링
+- **인증 미들웨어 도입**: admin.js 17개 핸들러 auth boilerplate 통합 (140줄 감소)
+- **DO 포워딩 헬퍼 도입**: `forwardToDO()`로 15개 핸들러 DO fetch 패턴 통일
+- **ui.js 메시지 렌더링 중복 제거**: `displayMessage`/`displayBatchMessages` 공유 메서드 추출
+- **레거시 코드 정리**: 사용하지 않는 `public/app.js` 제거
+
+---
+
 ### 2026년 4월 21일 - Cloudflare Turnstile 인증 추가
 
 #### 새로운 기능
@@ -104,6 +128,7 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - **태그 필터** (`#images`, `#files`, `#code`로 유형별 검색)
 - **클립보드 이미지 붙여넣기** (Ctrl+V로 이미지 즉시 첨부)
 - **URL 보안 헤더 분석** (채팅 내 URL 옆 방패 아이콘 클릭 시 Kalpha API로 보안 헤더 등급 산출)
+- **OG Link Preview** (URL 아래 제목·설명·이미지 카드 자동 표시)
 
 ### 파일 공유 시스템
 

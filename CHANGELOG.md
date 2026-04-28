@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-04-28
+
+### 🆕 새로운 기능
+- **OG Link Preview**: 채팅 내 URL 아래에 제목·설명·이미지 카드 자동 표시
+  - `POST /api/preview` Worker 엔드포인트 (외부 URL fetch → OG 태그 파싱)
+  - Cloudflare Edge Cache (1시간) + 클라이언트 메모리 캐시 (최대 50개)
+  - Rate limit 적용 (IP당 10초 5회), 5초 타임아웃
+  - 비-HTML 리소스, 이미지 URL은 프리뷰 제외 (중복 방지)
+
+### 🔧 버그 수정
+- **WebSocket 재연결 시 "입장했습니다" 중복 출력**: `close` 이벤트에서 `userMetadata` 삭제하지 않도록 수정. 재연결을 새 세션으로 오인하는 문제 해결
+- **search.js 메서드 중복 정의**: `syncTagsFromInput()`이 같은 클래스에 2번 선언되어 첫 번째 로직(태그만 남기고 텍스트 제거)이 무효화되던 버그 수정
+- **admin.js `escapeHtml` 중복 정의**: 같은 메서드가 2번 선언된 중복 제거
+- **`delete-audit-logs` 엔드포인트 인증 누락**: 관리자 API에 인증 검증 추가 (보안 패치)
+
+### 🔒 보안 강화
+- **Turnstile Site Key 환경변수화**: 하드코딩된 Site Key를 `wrangler.toml` vars + `/api/config` 엔드포인트로 분리
+- **requireAdminAuth 미들웨어 도입**: 17개 관리자 핸들러의 인증 boilerplate 통합 (140줄 감소)
+
+### 📝 코드 품질 개선
+- **공통 유틸 모듈** (`public/js/utils.js`): `escapeHtml`, `isValidUrl`, `formatFileSize`, `sendErrorReport` 5개 파일 중복 → 단일 모듈 통합
+- **라우트 테이블 도입** (`src/worker.js`): 35개 if-chain → 선언적 라우트 배열 + prefix 매칭
+- **DO 포워딩 헬퍼** (`src/utils/do.js`): `forwardToDO()`로 admin.js 내 15개 DO fetch boilerplate 통일
+- **ui.js 메시지 렌더링 중복 제거**: `displayMessage`/`displayBatchMessages` 공유 렌더링 로직 → `_renderSingleMessage()` 추출
+- **레거시 코드 정리**: 사용하지 않는 `public/app.js` (471줄) 제거
+- **lint 경량화**: 28 → 20 problems (신규 에러 0건)
+
+---
+
 ## 2026-04-15
 
 ### 🆕 새로운 기능
