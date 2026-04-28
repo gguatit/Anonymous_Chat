@@ -1091,7 +1091,6 @@ export class ChatRoom {
         websocket.addEventListener('close', () => {
             if (sessionId) {
                 this.sessions.delete(sessionId);
-                this.userMetadata.delete(sessionId);
                 this.typingUsers.delete(sessionId);
 
                 // Update IP connection count
