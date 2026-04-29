@@ -12,9 +12,20 @@ export class ChannelRegistry {
     async initialize() {
         if (this.initialized) return;
 
-        const storedChannels = await this.state.storage.get('channels');
-        if (storedChannels) {
-            this.channels = new Map(storedChannels);
+        // Try new plain-object format first (more reliable with SQLite-backed DOs)
+        const storedObj = await this.state.storage.get('channelsObj');
+        if (storedObj) {
+            this.channels = new Map();
+            for (const [k, v] of Object.entries(storedObj)) {
+                this.channels.set(Number(k), v);
+            }
+        } else {
+            // Fallback to legacy array format
+            const storedChannels = await this.state.storage.get('channels');
+            if (storedChannels) {
+                const entries = Array.isArray(storedChannels) ? storedChannels : [];
+                this.channels = new Map(entries.map(([k, v]) => [Number(k), v]));
+            }
         }
 
         const storedNext = await this.state.storage.get('nextNumber');
@@ -26,7 +37,12 @@ export class ChannelRegistry {
     }
 
     async persist() {
-        await this.state.storage.put('channels', Array.from(this.channels.entries()));
+        // Save as plain object for reliable key handling
+        const obj = {};
+        for (const [k, v] of this.channels) {
+            obj[k] = v;
+        }
+        await this.state.storage.put('channelsObj', obj);
         await this.state.storage.put('nextNumber', this.nextNumber);
     }
 
@@ -125,7 +141,16 @@ export class ChannelRegistry {
                 });
             }
 
-            const channel = this.channels.get(number);
+            let channel = this.channels.get(number);
+            // Fallback: search by numeric key match (handles string/number key mismatches)
+            if (!channel) {
+                for (const [key, value] of this.channels) {
+                    if (Number(key) === number) {
+                        channel = value;
+                        break;
+                    }
+                }
+            }
             if (!channel) {
                 return new Response(JSON.stringify({ error: 'Channel not found' }), {
                     status: 404, headers: { 'Content-Type': 'application/json' }
@@ -148,7 +173,15 @@ export class ChannelRegistry {
             const data = await request.json();
             const number = parseInt(data.number, 10);
 
-            const channel = this.channels.get(number);
+            let channel = this.channels.get(number);
+            if (!channel) {
+                for (const [key, value] of this.channels) {
+                    if (Number(key) === number) {
+                        channel = value;
+                        break;
+                    }
+                }
+            }
             if (channel) {
                 channel.lastActive = Date.now();
                 await this.persist();
@@ -170,8 +203,19 @@ export class ChannelRegistry {
             const data = await request.json();
             const number = parseInt(data.number, 10);
 
-            this.channels.delete(number);
-            await this.persist();
+            let deleted = this.channels.delete(number);
+            if (!deleted) {
+                for (const key of this.channels.keys()) {
+                    if (Number(key) === number) {
+                        this.channels.delete(key);
+                        deleted = true;
+                        break;
+                    }
+                }
+            }
+            if (deleted) {
+                await this.persist();
+            }
 
             return new Response(JSON.stringify({ success: true }), {
                 headers: { 'Content-Type': 'application/json' }
