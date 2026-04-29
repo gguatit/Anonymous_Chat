@@ -1,7 +1,7 @@
 // Main Chat Client Application
 import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
-import { UIManager } from './ui.js?v=1.0.6';
+import { UIManager } from './ui.js?v=1.0.7';
 import { FileUploadManager } from './file-upload.js?v=1.0.5';
 import { DeadDropClient } from './dead-drop.js?v=1.0.3';
 import { PushNotificationManager } from './push-manager.js?v=1.0.5';
@@ -741,6 +741,7 @@ class ChatClient {
 
     async createChannel(name) {
         console.log('[Channel] createChannel called with name:', name);
+        if (this.ui._channelProcessing) return;
         if (!name) {
             this.ui.showCreateChannelError('채널 이름을 입력해주세요.');
             return;
@@ -750,6 +751,7 @@ class ChatClient {
             return;
         }
 
+        this.ui._channelProcessing = true;
         try {
             const resp = await fetch('/api/channels/create', {
                 method: 'POST',
@@ -770,17 +772,27 @@ class ChatClient {
         } catch (error) {
             console.error('Create channel error:', error);
             this.ui.showCreateChannelError('네트워크 오류가 발생했습니다.');
+        } finally {
+            this.ui._channelProcessing = false;
         }
     }
 
-    async joinChannel(number) {
-        console.log('[Channel] joinChannel called with number:', number);
-        const parsed = parseInt(number, 10);
+    async joinChannel(raw) {
+        console.log('[Channel] joinChannel called with raw:', raw);
+        if (this.ui._channelProcessing) return;
+
+        const trimmed = String(raw || '').trim();
+        if (!trimmed) {
+            this.ui.showJoinChannelError('채널 번호를 입력해주세요.');
+            return;
+        }
+        const parsed = parseInt(trimmed, 10);
         if (!Number.isFinite(parsed) || parsed < 1) {
-            this.ui.showJoinChannelError('올바른 채널 번호를 입력해주세요.');
+            this.ui.showJoinChannelError('숫자(채널 번호)만 입력해주세요. 예: 1');
             return;
         }
 
+        this.ui._channelProcessing = true;
         try {
             const resp = await fetch('/api/channels/join', {
                 method: 'POST',
@@ -801,6 +813,8 @@ class ChatClient {
         } catch (error) {
             console.error('Join channel error:', error);
             this.ui.showJoinChannelError('네트워크 오류가 발생했습니다.');
+        } finally {
+            this.ui._channelProcessing = false;
         }
     }
 

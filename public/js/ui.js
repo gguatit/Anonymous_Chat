@@ -178,8 +178,11 @@ export class UIManager {
         }
 
         // Channel modal events
+        this._channelProcessing = false;
+
         if (this.createChannelConfirm && callbacks.onCreateChannel) {
             this.createChannelConfirm.addEventListener('click', () => {
+                if (this._channelProcessing) return;
                 const name = this.createChannelInput.value.trim();
                 callbacks.onCreateChannel(name);
             });
@@ -189,23 +192,34 @@ export class UIManager {
         }
         if (this.createChannelInput) {
             this.createChannelInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') this.createChannelConfirm.click();
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!this._channelProcessing) this.createChannelConfirm.click();
+                }
                 if (e.key === 'Escape') this.hideCreateChannelModal();
             });
         }
 
         if (this.joinChannelConfirm && callbacks.onJoinChannel) {
             this.joinChannelConfirm.addEventListener('click', () => {
-                const number = this.joinChannelInput.value.trim();
-                callbacks.onJoinChannel(number);
+                if (this._channelProcessing) return;
+                const raw = this.joinChannelInput.value.trim();
+                callbacks.onJoinChannel(raw);
             });
         }
         if (this.joinChannelCancel) {
             this.joinChannelCancel.addEventListener('click', () => this.hideJoinChannelModal());
         }
         if (this.joinChannelInput) {
+            // Allow only numeric input
+            this.joinChannelInput.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            });
             this.joinChannelInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') this.joinChannelConfirm.click();
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!this._channelProcessing) this.joinChannelConfirm.click();
+                }
                 if (e.key === 'Escape') this.hideJoinChannelModal();
             });
         }
