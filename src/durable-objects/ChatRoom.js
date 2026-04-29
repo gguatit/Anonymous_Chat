@@ -1804,7 +1804,8 @@ export class ChatRoom {
         }
 
         // Send push notifications to offline subscribers (fire-and-forget, throttled)
-        if (message.type === 'message' && this.env?.PUSH_SUBSCRIPTIONS) {
+        // Skip push notifications for channel messages (only main room broadcasts push)
+        if (message.type === 'message' && this.channelNumber === 0 && this.env?.PUSH_SUBSCRIPTIONS) {
             this.throttledPushNotification(message);
         }
     }
