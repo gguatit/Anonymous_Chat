@@ -1753,7 +1753,9 @@ class AdminDashboard {
             }
 
             const data = await response.json();
-            const logs = data.logs || [];
+            const logs = (data.logs || []).filter(log =>
+                ['login_success', 'login_failed', 'login_blocked', 'logout'].includes(log.type)
+            );
             const container = document.getElementById('admin-login-logs');
 
             if (!container) return;

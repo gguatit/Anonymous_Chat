@@ -682,9 +682,11 @@ export async function handleAdminChannelDelete(request, env, corsHeaders) {
         }));
 
         // Audit log
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         await logAdminActivity(env, {
             type: 'channel_delete',
             channelSlug: slug,
+            ip: clientIP,
             timestamp: Date.now()
         });
 
