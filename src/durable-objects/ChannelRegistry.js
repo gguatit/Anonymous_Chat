@@ -14,7 +14,16 @@ export class ChannelRegistry {
         const stored = await this.state.storage.get('channels');
         if (stored) {
             const entries = Array.isArray(stored) ? stored : Object.entries(stored);
-            this.channels = new Map(entries);
+            // Filter out old numeric-keyed entries (from previous number-based system)
+            const validEntries = entries.filter(([key]) => {
+                const strKey = String(key);
+                return !/^\d+$/.test(strKey); // Skip pure numeric keys
+            });
+            this.channels = new Map(validEntries);
+            // If we filtered out old entries, save the cleaned data
+            if (validEntries.length !== entries.length) {
+                await this.persist();
+            }
         }
 
         this.initialized = true;
@@ -70,14 +79,16 @@ export class ChannelRegistry {
 
     handleAdminChannels() {
         const now = Date.now();
-        const list = Array.from(this.channels.entries()).map(([slug, info]) => ({
-            slug,
-            name: info.name,
-            createdBy: info.createdBy,
-            createdAt: info.createdAt,
-            lastActive: info.lastActive,
-            age: now - info.createdAt
-        }));
+        const list = Array.from(this.channels.entries())
+            .filter(([slug]) => !/^\d+$/.test(String(slug))) // Defensive: skip numeric keys
+            .map(([slug, info]) => ({
+                slug,
+                name: info.name,
+                createdBy: info.createdBy,
+                createdAt: info.createdAt,
+                lastActive: info.lastActive,
+                age: now - info.createdAt
+            }));
         return new Response(JSON.stringify({ channels: list }), {
             headers: { 'Content-Type': 'application/json' }
         });
@@ -126,10 +137,21 @@ export class ChannelRegistry {
                 });
             }
 
+            // Check by slug key
             if (this.channels.has(slug)) {
                 return new Response(JSON.stringify({ error: '이미 존재하는 채널 이름입니다.' }), {
                     status: 409, headers: { 'Content-Type': 'application/json' }
                 });
+            }
+
+            // Also check by normalized name (defense against stale/corrupt data)
+            const normalizedName = rawName.toLowerCase().trim();
+            for (const [, ch] of this.channels) {
+                if (ch.name.toLowerCase().trim() === normalizedName) {
+                    return new Response(JSON.stringify({ error: '이미 존재하는 채널 이름입니다.' }), {
+                        status: 409, headers: { 'Content-Type': 'application/json' }
+                    });
+                }
             }
 
             const now = Date.now();
@@ -228,13 +250,15 @@ export class ChannelRegistry {
 
     handleList() {
         const now = Date.now();
-        const list = Array.from(this.channels.entries()).map(([slug, info]) => ({
-            slug,
-            name: info.name,
-            createdAt: info.createdAt,
-            lastActive: info.lastActive,
-            age: now - info.createdAt
-        }));
+        const list = Array.from(this.channels.entries())
+            .filter(([slug]) => !/^\d+$/.test(String(slug)))
+            .map(([slug, info]) => ({
+                slug,
+                name: info.name,
+                createdAt: info.createdAt,
+                lastActive: info.lastActive,
+                age: now - info.createdAt
+            }));
 
         return new Response(JSON.stringify(list), {
             headers: { 'Content-Type': 'application/json' }
