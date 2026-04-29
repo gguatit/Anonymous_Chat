@@ -25,7 +25,7 @@ export class ChatRoom {
         this.pushThrottleQueue = [];
 
         // Channel lifecycle
-        this.channelNumber = 0;
+        this.channelSlug = '0'; // '0' = main room
         this.emptySince = null;
 
         // Periodic cleanup of stale data (every 5 minutes)
@@ -124,10 +124,10 @@ export class ChatRoom {
         // Get HMAC_SECRET from request headers
         const HMAC_SECRET = request.headers.get('X-HMAC-Secret') || request.headers.get('X-Admin-Internal-Token');
 
-        // Detect channel number from header
-        const channelHeader = request.headers.get('X-Channel-Number');
+        // Detect channel slug from header
+        const channelHeader = request.headers.get('X-Channel-Slug');
         if (channelHeader) {
-            this.channelNumber = parseInt(channelHeader, 10) || 0;
+            this.channelSlug = channelHeader;
         }
 
         const url = new URL(request.url);
@@ -1118,7 +1118,7 @@ export class ChatRoom {
                 this.broadcastUserCount();
 
                 // Track empty state for channel auto-deletion
-                if (this.channelNumber > 0 && this.sessions.size === 0) {
+                if (this.channelSlug !== '0' && this.sessions.size === 0) {
                     this.emptySince = Date.now();
                 }
             }
@@ -1134,7 +1134,7 @@ export class ChatRoom {
 
     async handleJoin(data, websocket, clientIP, setSession) {
         // Channel revived from empty state
-        if (this.emptySince !== null && this.channelNumber > 0) {
+        if (this.emptySince !== null && this.channelSlug !== '0') {
             this.emptySince = null;
             await this.touchRegistry();
         }
@@ -1805,7 +1805,7 @@ export class ChatRoom {
 
         // Send push notifications to offline subscribers (fire-and-forget, throttled)
         // Skip push notifications for channel messages (only main room broadcasts push)
-        if (message.type === 'message' && this.channelNumber === 0 && this.env?.PUSH_SUBSCRIPTIONS) {
+        if (message.type === 'message' && this.channelSlug === '0' && this.env?.PUSH_SUBSCRIPTIONS) {
             this.throttledPushNotification(message);
         }
     }
@@ -1908,7 +1908,7 @@ export class ChatRoom {
         }
 
         // Auto-delete empty channels after TTL
-        if (this.emptySince !== null && this.channelNumber > 0) {
+        if (this.emptySince !== null && this.channelSlug !== '0') {
             if (now - this.emptySince > CHANNEL.EMPTY_TTL) {
                 this.deleteChannel();
             }
@@ -1922,7 +1922,7 @@ export class ChatRoom {
             await registry.fetch(new Request('https://dummy/touch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Admin-Internal-Token': this.env.HMAC_SECRET },
-                body: JSON.stringify({ number: this.channelNumber })
+                body: JSON.stringify({ slug: this.channelSlug })
             }));
         } catch (error) {
             console.error('Failed to touch registry:', error);
@@ -1930,9 +1930,9 @@ export class ChatRoom {
     }
 
     async deleteChannel() {
-        if (this.channelNumber === 0) return; // Never delete main room
+        if (this.channelSlug === '0') return; // Never delete main room
 
-        console.log(`[Channel ${this.channelNumber}] Auto-deleting after being empty for ${CHANNEL.EMPTY_TTL}ms`);
+        console.log(`[Channel ${this.channelSlug}] Auto-deleting after being empty for ${CHANNEL.EMPTY_TTL}ms`);
 
         // Stop periodic cleanup to prevent further invocations on deleted channel
         if (this.cleanupInterval) {
@@ -1966,13 +1966,13 @@ export class ChatRoom {
             await registry.fetch(new Request('https://dummy/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Admin-Internal-Token': this.env.HMAC_SECRET },
-                body: JSON.stringify({ number: this.channelNumber })
+                body: JSON.stringify({ slug: this.channelSlug })
             }));
         } catch (error) {
             console.error('Failed to notify registry of channel deletion:', error);
         }
 
         this.emptySince = null;
-        this.channelNumber = 0;
+        this.channelSlug = '0';
     }
 }

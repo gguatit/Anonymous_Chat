@@ -557,10 +557,10 @@
         <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-sm overflow-hidden transform transition-all">
             <div class="p-5">
                 <h3 class="text-lg font-bold text-gray-100 mb-3">채널 참가</h3>
-                <p class="text-gray-400 text-sm mb-3">참가할 채널의 <span class="text-emerald-400 font-medium">번호(숫자)</span>를 입력하세요.</p>
-                <input type="text" id="join-channel-input" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                <p class="text-gray-400 text-sm mb-3">참가할 채널의 <span class="text-emerald-400 font-medium">이름</span>을 입력하세요.</p>
+                <input type="text" id="join-channel-input" autocomplete="off"
                     class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                    placeholder="채널 번호 (예: 1)">
+                    placeholder="채널 이름 (예: kalpha)">
                 <div id="join-channel-error" class="text-red-400 text-xs mt-2 hidden"></div>
                 <div class="flex gap-2 mt-4">
                     <button id="join-channel-cancel" class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 py-2 rounded-lg text-sm transition-colors">취소</button>
@@ -576,7 +576,7 @@
     </footer>
 
     <!-- JavaScript Modules -->
-    <script type="module" src="/js/chat.js?v=1.1.2"></script>
+    <script type="module" src="/js/chat.js?v=1.2.0"></script>
     <script>
         // Platform info toggle
         const infoToggle = document.getElementById('info-toggle');

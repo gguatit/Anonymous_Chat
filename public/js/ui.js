@@ -211,10 +211,6 @@ export class UIManager {
             this.joinChannelCancel.addEventListener('click', () => this.hideJoinChannelModal());
         }
         if (this.joinChannelInput) {
-            // Allow only numeric input
-            this.joinChannelInput.addEventListener('input', (e) => {
-                e.target.value = e.target.value.replace(/[^0-9]/g, '');
-            });
             this.joinChannelInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();

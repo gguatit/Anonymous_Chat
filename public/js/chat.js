@@ -1,7 +1,7 @@
 // Main Chat Client Application
 import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
-import { UIManager } from './ui.js?v=1.0.7';
+import { UIManager } from './ui.js?v=1.1.0';
 import { FileUploadManager } from './file-upload.js?v=1.0.5';
 import { DeadDropClient } from './dead-drop.js?v=1.0.3';
 import { PushNotificationManager } from './push-manager.js?v=1.0.5';
@@ -767,8 +767,8 @@ class ChatClient {
             }
 
             this.ui.hideCreateChannelModal();
-            await this.switchChannel(String(data.number), data.name);
-            this.ui.displaySystemMessage(`채널 #${data.number} "${data.name}"에 입장했습니다.`);
+            await this.switchChannel(data.slug, data.name);
+            this.ui.displaySystemMessage(`채널 "${data.name}"에 입장했습니다.`);
         } catch (error) {
             console.error('Create channel error:', error);
             this.ui.showCreateChannelError('네트워크 오류가 발생했습니다.');
@@ -783,12 +783,7 @@ class ChatClient {
 
         const trimmed = String(raw || '').trim();
         if (!trimmed) {
-            this.ui.showJoinChannelError('채널 번호를 입력해주세요.');
-            return;
-        }
-        const parsed = parseInt(trimmed, 10);
-        if (!Number.isFinite(parsed) || parsed < 1) {
-            this.ui.showJoinChannelError('숫자(채널 번호)만 입력해주세요. 예: 1');
+            this.ui.showJoinChannelError('채널 이름을 입력해주세요.');
             return;
         }
 
@@ -797,7 +792,7 @@ class ChatClient {
             const resp = await fetch('/api/channels/join', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ number: parsed })
+                body: JSON.stringify({ name: trimmed })
             });
             const data = await resp.json();
             console.log('[Channel] join response:', resp.status, data);
@@ -808,8 +803,8 @@ class ChatClient {
             }
 
             this.ui.hideJoinChannelModal();
-            await this.switchChannel(String(data.number), data.name);
-            this.ui.displaySystemMessage(`채널 #${data.number} "${data.name}"에 입장했습니다.`);
+            await this.switchChannel(data.slug, data.name);
+            this.ui.displaySystemMessage(`채널 "${data.name}"에 입장했습니다.`);
         } catch (error) {
             console.error('Join channel error:', error);
             this.ui.showJoinChannelError('네트워크 오류가 발생했습니다.');

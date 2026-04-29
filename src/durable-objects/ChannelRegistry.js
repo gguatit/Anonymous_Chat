@@ -4,53 +4,34 @@ export class ChannelRegistry {
     constructor(state, env) {
         this.state = state;
         this.env = env;
-        this.channels = new Map(); // number -> { name, createdBy, createdAt, lastActive }
-        this.nextNumber = 1;
+        this.channels = new Map(); // slug -> { name, createdBy, createdAt, lastActive }
         this.initialized = false;
     }
 
     async initialize() {
         if (this.initialized) return;
 
-        // Try new plain-object format first (more reliable with SQLite-backed DOs)
-        const storedObj = await this.state.storage.get('channelsObj');
-        if (storedObj) {
-            this.channels = new Map();
-            for (const [k, v] of Object.entries(storedObj)) {
-                this.channels.set(Number(k), v);
-            }
-        } else {
-            // Fallback to legacy array format
-            const storedChannels = await this.state.storage.get('channels');
-            if (storedChannels) {
-                const entries = Array.isArray(storedChannels) ? storedChannels : [];
-                this.channels = new Map(entries.map(([k, v]) => [Number(k), v]));
-            }
-        }
-
-        const storedNext = await this.state.storage.get('nextNumber');
-        if (storedNext) {
-            this.nextNumber = storedNext;
+        const stored = await this.state.storage.get('channels');
+        if (stored) {
+            const entries = Array.isArray(stored) ? stored : Object.entries(stored);
+            this.channels = new Map(entries);
         }
 
         this.initialized = true;
     }
 
     async persist() {
-        // Save as plain object for reliable key handling
-        const obj = {};
-        for (const [k, v] of this.channels) {
-            obj[k] = v;
-        }
-        await this.state.storage.put('channelsObj', obj);
-        await this.state.storage.put('nextNumber', this.nextNumber);
+        await this.state.storage.put('channels', Array.from(this.channels.entries()));
+    }
+
+    toSlug(name) {
+        return name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9가-힣_-]/g, '').substring(0, CHANNEL.MAX_NAME_LENGTH);
     }
 
     async fetch(request) {
         await this.initialize();
         const url = new URL(request.url);
 
-        // Internal security check
         const internalToken = request.headers.get('X-Admin-Internal-Token');
         if (internalToken && internalToken !== this.env.HMAC_SECRET) {
             return new Response('Forbidden', { status: 403 });
@@ -82,36 +63,31 @@ export class ChannelRegistry {
     async handleCreate(request) {
         try {
             const data = await request.json();
-            const name = typeof data.name === 'string' ? data.name.trim() : '';
+            const rawName = typeof data.name === 'string' ? data.name.trim() : '';
             const createdBy = data.sessionId || 'anonymous';
 
-            if (!name) {
-                return new Response(JSON.stringify({ error: 'Channel name is required' }), {
+            if (!rawName) {
+                return new Response(JSON.stringify({ error: '채널 이름을 입력해주세요.' }), {
                     status: 400, headers: { 'Content-Type': 'application/json' }
                 });
             }
 
-            if (name.length > CHANNEL.MAX_NAME_LENGTH) {
-                return new Response(JSON.stringify({ error: `Channel name too long (max ${CHANNEL.MAX_NAME_LENGTH})` }), {
+            const slug = this.toSlug(rawName);
+            if (!slug) {
+                return new Response(JSON.stringify({ error: '사용할 수 없는 채널 이름입니다.' }), {
                     status: 400, headers: { 'Content-Type': 'application/json' }
                 });
             }
 
-            // Check for duplicate name
-            const normalizedName = name.toLowerCase().trim();
-            for (const [, ch] of this.channels) {
-                if (ch.name.toLowerCase().trim() === normalizedName) {
-                    return new Response(JSON.stringify({ error: '이미 존재하는 채널 이름입니다.' }), {
-                        status: 409, headers: { 'Content-Type': 'application/json' }
-                    });
-                }
+            if (this.channels.has(slug)) {
+                return new Response(JSON.stringify({ error: '이미 존재하는 채널 이름입니다.' }), {
+                    status: 409, headers: { 'Content-Type': 'application/json' }
+                });
             }
 
-            const number = this.nextNumber++;
             const now = Date.now();
-
-            this.channels.set(number, {
-                name: this.sanitizeInput(name),
+            this.channels.set(slug, {
+                name: this.sanitizeInput(rawName),
                 createdBy,
                 createdAt: now,
                 lastActive: now
@@ -119,12 +95,12 @@ export class ChannelRegistry {
 
             await this.persist();
 
-            return new Response(JSON.stringify({ number, name: this.sanitizeInput(name) }), {
+            return new Response(JSON.stringify({ slug, name: this.sanitizeInput(rawName) }), {
                 headers: { 'Content-Type': 'application/json' }
             });
         } catch (error) {
             console.error('ChannelRegistry create error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to create channel' }), {
+            return new Response(JSON.stringify({ error: '채널 생성에 실패했습니다.' }), {
                 status: 500, headers: { 'Content-Type': 'application/json' }
             });
         }
@@ -133,36 +109,29 @@ export class ChannelRegistry {
     async handleJoin(request) {
         try {
             const data = await request.json();
-            const number = parseInt(data.number, 10);
+            const rawName = typeof data.name === 'string' ? data.name.trim() : '';
 
-            if (!Number.isFinite(number) || number < 1) {
-                return new Response(JSON.stringify({ error: 'Invalid channel number' }), {
+            if (!rawName) {
+                return new Response(JSON.stringify({ error: '채널 이름을 입력해주세요.' }), {
                     status: 400, headers: { 'Content-Type': 'application/json' }
                 });
             }
 
-            let channel = this.channels.get(number);
-            // Fallback: search by numeric key match (handles string/number key mismatches)
+            const slug = this.toSlug(rawName);
+            const channel = this.channels.get(slug);
+
             if (!channel) {
-                for (const [key, value] of this.channels) {
-                    if (Number(key) === number) {
-                        channel = value;
-                        break;
-                    }
-                }
-            }
-            if (!channel) {
-                return new Response(JSON.stringify({ error: 'Channel not found' }), {
+                return new Response(JSON.stringify({ error: '채널을 찾을 수 없습니다.' }), {
                     status: 404, headers: { 'Content-Type': 'application/json' }
                 });
             }
 
-            return new Response(JSON.stringify({ ok: true, number, name: channel.name }), {
+            return new Response(JSON.stringify({ ok: true, slug, name: channel.name }), {
                 headers: { 'Content-Type': 'application/json' }
             });
         } catch (error) {
             console.error('ChannelRegistry join error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to join channel' }), {
+            return new Response(JSON.stringify({ error: '채널 참가에 실패했습니다.' }), {
                 status: 500, headers: { 'Content-Type': 'application/json' }
             });
         }
@@ -171,17 +140,9 @@ export class ChannelRegistry {
     async handleTouch(request) {
         try {
             const data = await request.json();
-            const number = parseInt(data.number, 10);
+            const slug = this.toSlug(data.slug || '');
 
-            let channel = this.channels.get(number);
-            if (!channel) {
-                for (const [key, value] of this.channels) {
-                    if (Number(key) === number) {
-                        channel = value;
-                        break;
-                    }
-                }
-            }
+            const channel = this.channels.get(slug);
             if (channel) {
                 channel.lastActive = Date.now();
                 await this.persist();
@@ -201,19 +162,9 @@ export class ChannelRegistry {
     async handleDelete(request) {
         try {
             const data = await request.json();
-            const number = parseInt(data.number, 10);
+            const slug = this.toSlug(data.slug || '');
 
-            let deleted = this.channels.delete(number);
-            if (!deleted) {
-                for (const key of this.channels.keys()) {
-                    if (Number(key) === number) {
-                        this.channels.delete(key);
-                        deleted = true;
-                        break;
-                    }
-                }
-            }
-            if (deleted) {
+            if (this.channels.delete(slug)) {
                 await this.persist();
             }
 
@@ -230,8 +181,8 @@ export class ChannelRegistry {
 
     handleList() {
         const now = Date.now();
-        const list = Array.from(this.channels.entries()).map(([number, info]) => ({
-            number,
+        const list = Array.from(this.channels.entries()).map(([slug, info]) => ({
+            slug,
             name: info.name,
             createdAt: info.createdAt,
             lastActive: info.lastActive,
@@ -245,7 +196,6 @@ export class ChannelRegistry {
 
     sanitizeInput(input) {
         if (typeof input !== 'string') return '';
-        // Remove control characters except newlines
         // eslint-disable-next-line no-control-regex
         return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
     }

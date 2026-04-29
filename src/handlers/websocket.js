@@ -82,7 +82,7 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
         headers: {
             ...Object.fromEntries(request.headers),
             'X-HMAC-Secret': HMAC_SECRET,
-            'X-Channel-Number': channelParam
+            'X-Channel-Slug': channelParam
         }
     });
     return room.fetch(modifiedRequest);
