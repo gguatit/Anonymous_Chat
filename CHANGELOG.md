@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-04-29
+
+### 🆕 새로운 기능
+- **채널 시스템 (Channel System)**: 메인 채팅방 외에 독립된 채널 생성/참가 가능
+  - 빈 공간 우클릭 → "채널 추가" / "채널 참가" 컨텍스트 메뉴
+  - 이름(slug) 기반: `kalpha` 입력으로 생성 → 동일 이름으로 참가
+  - 채널별 독립된 ChatRoom Durable Object (메시지/세션/밴 완전 분리)
+  - 접속자 0명 상태 10분 지속 시 자동 삭제
+  - 채널 메시지는 푸시 알림 발송 제외 (메인룸만 알림)
+  - 관리자 삭제 시 해당 채널 사용자 자동 메인 채널 이동 (`channel_deleted` → `switchChannel('0')`)
+
+### 🏗️ 아키텍처 변경
+- `ChannelRegistry` Durable Object 신규 (`src/durable-objects/ChannelRegistry.js`)
+  - 채널 메타데이터 관리 (slug → name, createdBy, createdAt, lastActive)
+  - `/create`, `/join`, `/touch`, `/delete`, `/list` API
+  - 관리자용 `/admin/channels`, `/admin/channel-delete`
+- `ChatRoom` DO 채널 지원
+  - `X-Channel-Slug` 헤더로 채널 식별
+  - `channelSlug` 필드, `emptySince` TTL 추적, 자동 삭제 로직
+  - `/admin/info` 엔드포인트: metrics + sessions + messages 통합
+  - `/admin/force-delete`: 관리자 강제 삭제 (confirmation 검증 + 메인룸 보호)
+- `getChannelRoom()` / `forwardToChannelDO()` 유틸 추가 (`src/utils/do.js`)
+
+### 🖥️ 관리자 대시보드 - 채널 관리
+- **채널 목록 패널**: 활성 채널 테이블 (이름, 생성자, 생성일, 실시간 접속자/메시지 수)
+- **상세 보기 모달**: 채널별 접속자 목록 + 최근 메시지 20개
+- **강제 삭제**: confirm 확인 후 DO 데이터 전부 삭제 + Registry에서 제거
+- 채널 삭제 감사 로그 기록 (`type: channel_delete`)
+
+### 🔧 버그 수정
+- **채널 중복 생성**: 구 버전 number key 데이터와 신 버전 slug key 데이터가 공존하던 문제 해결
+  - `initialize()`에서 숫자 key 항목 자동 필터링
+  - 생성 시 slug key + name 이중 중복 체크
+  - 목록 조회 시 숫자 key 제외
+- **채널 참가 모달 입력 문제**: `type="number"` → `type="text" inputmode="numeric"` 변경 후 문자 입력 가능하도록 수정
+- **메시지 textarea 스크롤**: `#message-input`에 `scrollbar-width: none` 적용
+- **채널 참가/생성 모달 겹침**: 모달 열 때 반대 모달 강제 닫기
+- **관리자 로그인 기록 섞임**: `channel_delete` 등 비로그인 로그가 로그인 기록에 표시되던 문제 → 타입 필터링 적용
+- **채널 삭제 IP 누락**: `logAdminActivity` 호출 시 `CF-Connecting-IP` 추가
+
+---
+
 ## 2026-04-28
 
 ### 🆕 새로운 기능
