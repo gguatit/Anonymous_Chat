@@ -222,6 +222,10 @@ export class ChatRoom {
             return await this.handleAdminDeleteAllMessages(request);
         }
 
+        if (url.pathname === '/admin/force-delete' && request.method === 'POST') {
+            return await this.handleAdminForceDelete(request);
+        }
+
         if (url.pathname === '/admin/kick-user' && request.method === 'POST') {
             return await this.handleAdminKickUser(request);
         }
@@ -590,6 +594,68 @@ export class ChatRoom {
             return new Response(JSON.stringify({ error: 'Failed to delete all messages' }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }
+            });
+        }
+    }
+
+    async handleAdminForceDelete(request) {
+        try {
+            // Security: require confirmation phrase
+            const data = await request.json();
+            if (data.confirmation !== 'FORCE_DELETE_CHANNEL') {
+                return new Response(JSON.stringify({ error: 'Invalid confirmation' }), {
+                    status: 400, headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            // Prevent deleting main room
+            if (this.channelSlug === '0') {
+                return new Response(JSON.stringify({ error: 'Cannot delete main room' }), {
+                    status: 403, headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            console.log(`[Channel ${this.channelSlug}] Admin force delete requested`);
+
+            // Close all WebSocket connections gracefully
+            for (const [, websocket] of this.sessions) {
+                try {
+                    websocket.send(JSON.stringify({ type: 'system', content: '채널이 관리자에 의해 삭제되었습니다.' }));
+                    websocket.close(1000, 'Channel deleted by admin');
+                } catch (e) {
+                    console.error('Error closing websocket:', e);
+                }
+            }
+
+            // Stop cleanup interval
+            if (this.cleanupInterval) {
+                clearInterval(this.cleanupInterval);
+                this.cleanupInterval = null;
+            }
+
+            // Clear all state
+            this.sessions.clear();
+            this.ipConnections.clear();
+            this.userMetadata.clear();
+            this.typingUsers.clear();
+            this.messages = [];
+            this.bannedIPs.clear();
+            this.bannedSessions.clear();
+            this.auditLogs = [];
+            this.errorLogs = [];
+            this.currentAnnouncement = null;
+            this.emptySince = null;
+
+            // Delete persistent storage
+            await this.state.storage.deleteAll();
+
+            return new Response(JSON.stringify({ success: true, slug: this.channelSlug }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('admin force delete error:', error);
+            return new Response(JSON.stringify({ error: 'Failed to delete channel' }), {
+                status: 500, headers: { 'Content-Type': 'application/json' }
             });
         }
     }

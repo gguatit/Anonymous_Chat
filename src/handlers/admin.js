@@ -662,11 +662,14 @@ export async function handleAdminChannelDelete(request, env, corsHeaders) {
             });
         }
 
-        // Step 1: Clear the channel DO (delete all messages, sessions, etc.)
+        // Step 1: Force delete the channel DO (clear all data, close connections)
         try {
-            await forwardToChannelDO(env, slug, '/admin/delete-all-messages', { method: 'POST' });
+            await forwardToChannelDO(env, slug, '/admin/force-delete', {
+                method: 'POST',
+                json: { confirmation: 'FORCE_DELETE_CHANNEL' }
+            });
         } catch (e) {
-            console.warn('Channel DO clear warning:', e);
+            console.warn('Channel DO force delete warning:', e);
         }
 
         // Step 2: Remove from registry
