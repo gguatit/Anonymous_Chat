@@ -72,7 +72,7 @@
         <div class="max-w-5xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <h1 class="text-xl font-bold text-gray-100">익명 채팅</h1>
-                <span id="channel-badge" class="hidden text-xs bg-purple-700 px-2 py-0.5 rounded-full font-medium text-white">
+                <span id="channel-badge" class="hidden text-xs bg-emerald-700 px-2 py-0.5 rounded-full font-medium text-white">
                     #<span id="channel-number"></span> <span id="channel-name"></span>
                 </span>
                 <button id="back-to-main-btn" type="button" class="hidden text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-0.5 rounded transition-colors">
@@ -540,13 +540,13 @@
             <div class="p-5">
                 <h3 class="text-lg font-bold text-gray-100 mb-3">채널 추가</h3>
                 <p class="text-gray-400 text-sm mb-3">새로운 채널을 생성합니다.</p>
-                <input type="text" id="create-channel-input" maxlength="20"
-                    class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-400"
+                <input type="text" id="create-channel-input" maxlength="20" autocomplete="off"
+                    class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                     placeholder="채널 이름 (최대 20자)">
                 <div id="create-channel-error" class="text-red-400 text-xs mt-2 hidden"></div>
                 <div class="flex gap-2 mt-4">
                     <button id="create-channel-cancel" class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 py-2 rounded-lg text-sm transition-colors">취소</button>
-                    <button id="create-channel-confirm" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg text-sm font-medium transition-colors">생성</button>
+                    <button id="create-channel-confirm" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-sm font-medium transition-colors">생성</button>
                 </div>
             </div>
         </div>
@@ -558,13 +558,13 @@
             <div class="p-5">
                 <h3 class="text-lg font-bold text-gray-100 mb-3">채널 참가</h3>
                 <p class="text-gray-400 text-sm mb-3">참가할 채널 번호를 입력하세요.</p>
-                <input type="number" id="join-channel-input" min="1"
-                    class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-400"
+                <input type="text" id="join-channel-input" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                    class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                     placeholder="채널 번호">
                 <div id="join-channel-error" class="text-red-400 text-xs mt-2 hidden"></div>
                 <div class="flex gap-2 mt-4">
                     <button id="join-channel-cancel" class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 py-2 rounded-lg text-sm transition-colors">취소</button>
-                    <button id="join-channel-confirm" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg text-sm font-medium transition-colors">참가</button>
+                    <button id="join-channel-confirm" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-sm font-medium transition-colors">참가</button>
                 </div>
             </div>
         </div>

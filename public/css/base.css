@@ -16,6 +16,19 @@ body {
     /* Chrome, Safari, Opera */
 }
 
+/* Hide scrollbar for message input textarea */
+#message-input {
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+}
+
+#message-input::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
+}
+
 /* Scroll to bottom button mobile optimization */
 #scroll-to-bottom {
     transition: opacity 0.3s ease, transform 0.3s ease;
