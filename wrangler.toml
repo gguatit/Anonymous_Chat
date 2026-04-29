@@ -38,7 +38,7 @@ new_classes = ["ChatRoom"]
 
 [[migrations]]
 tag = "v2"
-new_classes = ["ChannelRegistry"]
+new_sqlite_classes = ["ChannelRegistry"]
 
 # Pages integration (for hybrid deployment)
 [assets]
