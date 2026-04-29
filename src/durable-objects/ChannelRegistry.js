@@ -57,7 +57,54 @@ export class ChannelRegistry {
             return this.handleList();
         }
 
+        if (url.pathname === '/admin/channels' && request.method === 'GET') {
+            return this.handleAdminChannels();
+        }
+
+        if (url.pathname === '/admin/channel-delete' && request.method === 'POST') {
+            return this.handleAdminDelete(request);
+        }
+
         return new Response('Not Found', { status: 404 });
+    }
+
+    handleAdminChannels() {
+        const now = Date.now();
+        const list = Array.from(this.channels.entries()).map(([slug, info]) => ({
+            slug,
+            name: info.name,
+            createdBy: info.createdBy,
+            createdAt: info.createdAt,
+            lastActive: info.lastActive,
+            age: now - info.createdAt
+        }));
+        return new Response(JSON.stringify({ channels: list }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    async handleAdminDelete(request) {
+        try {
+            const data = await request.json();
+            const slug = this.toSlug(data.slug || '');
+            if (!slug) {
+                return new Response(JSON.stringify({ error: 'Invalid channel slug' }), {
+                    status: 400, headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            const existed = this.channels.delete(slug);
+            if (existed) {
+                await this.persist();
+            }
+            return new Response(JSON.stringify({ success: true, existed }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('ChannelRegistry admin delete error:', error);
+            return new Response(JSON.stringify({ error: 'Failed to delete channel' }), {
+                status: 500, headers: { 'Content-Type': 'application/json' }
+            });
+        }
     }
 
     async handleCreate(request) {

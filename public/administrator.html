@@ -356,6 +356,57 @@
                 </div>
             </div>
 
+            <!-- Channels Panel -->
+            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
+                <div class="p-3 md:p-4 border-b border-gray-700 flex flex-col md:flex-row justify-between md:items-center gap-3">
+                    <div>
+                        <h2 class="text-base md:text-lg font-semibold text-emerald-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                            </svg>채널 관리
+                        </h2>
+                        <p class="text-xs md:text-sm text-gray-400">현재 활성 채널 목록 및 상세 정보</p>
+                    </div>
+                    <button id="refresh-channels-btn" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg transition-colors">
+                        새로고침
+                    </button>
+                </div>
+                <div class="p-0">
+                    <div id="channels-list-container" class="overflow-x-auto table-card-mobile">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="text-gray-400 bg-gray-700/50">
+                                <tr>
+                                    <th class="px-2 py-2 md:px-4 md:py-3">채널 이름</th>
+                                    <th class="px-2 py-2 md:px-4 md:py-3">생성자</th>
+                                    <th class="px-2 py-2 md:px-4 md:py-3">생성일</th>
+                                    <th class="px-2 py-2 md:px-4 md:py-3">접속자</th>
+                                    <th class="px-2 py-2 md:px-4 md:py-3">메시지</th>
+                                    <th class="px-2 py-2 md:px-4 md:py-3 text-right">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="channels-list" class="divide-y divide-gray-700 text-gray-300">
+                                <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">채널 정보를 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Channel Detail Modal -->
+            <div id="channel-detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
+                <div class="bg-gray-800 rounded-lg shadow-xl border border-gray-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <div class="p-4 md:p-6 border-b border-gray-700 flex justify-between items-center">
+                        <h3 id="channel-detail-title" class="text-lg font-semibold text-emerald-400">채널 상세 정보</h3>
+                        <button id="close-channel-detail" class="text-gray-400 hover:text-gray-200 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <div id="channel-detail-content" class="p-4 md:p-6 space-y-4">
+                        <!-- Content injected by JS -->
+                    </div>
+                </div>
+            </div>
+
             <!-- Admin Login Logs -->
             <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
                 <div class="p-3 md:p-4 border-b border-gray-700">

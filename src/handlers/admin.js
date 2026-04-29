@@ -1,7 +1,7 @@
 import { sleep, constantTimeCompare } from '../utils/security.js';
 import { logAdminActivity } from '../utils/logger.js';
 import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken } from '../middleware/auth.js';
-import { forwardToDO } from '../utils/do.js';
+import { forwardToDO, forwardToChannelDO } from '../utils/do.js';
 
 async function requireAdminAuth(request, env) {
     const authHeader = request.headers.get('Authorization');
@@ -602,6 +602,94 @@ export async function handleAdminDeleteAuditLogs(request, env, corsHeaders) {
         return new Response(JSON.stringify({ error: 'Failed to delete audit logs' }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+// Channel Management Handlers
+export async function handleAdminChannels(request, env, corsHeaders) {
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
+
+    try {
+        const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
+        const registry = env.CHANNEL_REGISTRY.get(registryId);
+        const resp = await registry.fetch(new Request('https://dummy/admin/channels', {
+            headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
+        }));
+        return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('handleAdminChannels error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch channels' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+export async function handleAdminChannelDetails(request, env, corsHeaders) {
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
+
+    try {
+        const url = new URL(request.url);
+        const slug = url.searchParams.get('slug');
+        if (!slug) {
+            return new Response(JSON.stringify({ error: 'Missing channel slug' }), {
+                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const response = await forwardToChannelDO(env, slug, '/admin/info');
+        return new Response(response.body, { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('handleAdminChannelDetails error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch channel details' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+export async function handleAdminChannelDelete(request, env, corsHeaders) {
+    const token = await requireAdminAuth(request, env);
+    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
+
+    try {
+        const body = await request.json();
+        const slug = body.slug;
+        if (!slug) {
+            return new Response(JSON.stringify({ error: 'Missing channel slug' }), {
+                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Step 1: Clear the channel DO (delete all messages, sessions, etc.)
+        try {
+            await forwardToChannelDO(env, slug, '/admin/delete-all-messages', { method: 'POST' });
+        } catch (e) {
+            console.warn('Channel DO clear warning:', e);
+        }
+
+        // Step 2: Remove from registry
+        const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
+        const registry = env.CHANNEL_REGISTRY.get(registryId);
+        const resp = await registry.fetch(new Request('https://dummy/admin/channel-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Internal-Token': env.HMAC_SECRET },
+            body: JSON.stringify({ slug })
+        }));
+
+        // Audit log
+        await logAdminActivity(env, {
+            type: 'channel_delete',
+            channelSlug: slug,
+            timestamp: Date.now()
+        });
+
+        return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('handleAdminChannelDelete error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to delete channel' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
 }

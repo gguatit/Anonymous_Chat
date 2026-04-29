@@ -154,6 +154,33 @@ export class ChatRoom {
             });
         }
 
+        if (url.pathname === '/admin/info') {
+            const sessions = Array.from(this.userMetadata.entries()).map(([sessionId, metadata]) => ({
+                sessionId,
+                ip: metadata.ip,
+                joinTime: metadata.joinTime,
+                messageCount: metadata.messageCount,
+                lastMessageTime: metadata.lastMessageTime,
+                lastActivityTime: metadata.lastActivityTime,
+                nickname: metadata.nickname || '익명',
+                isOnline: this.sessions.has(sessionId),
+                country: metadata.environment?.country || '',
+                userAgent: metadata.environment?.userAgent || ''
+            }));
+            return new Response(JSON.stringify({
+                slug: this.channelSlug || '0',
+                activeConnections: this.sessions.size,
+                totalMessages: this.messages.length,
+                totalConnections: metrics.totalConnections,
+                errors: this.errorLogs ? this.errorLogs.length : 0,
+                uptime: Date.now() - (this.startTime || Date.now()),
+                sessions,
+                messages: this.messages.slice(-20)
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         if (url.pathname === '/admin/sessions') {
             const sessions = Array.from(this.userMetadata.entries()).map(([sessionId, metadata]) => ({
                 sessionId,

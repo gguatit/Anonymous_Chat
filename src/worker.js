@@ -36,6 +36,9 @@ const adminRoutes = [
     ['user-details', null, admin.handleAdminUserDetails],
     ['audit-logs', null, admin.handleAdminAuditLogs],
     ['delete-audit-logs', 'POST', admin.handleAdminDeleteAuditLogs],
+    ['channels', null, admin.handleAdminChannels],
+    ['channel-details', null, admin.handleAdminChannelDetails],
+    ['channel-delete', 'POST', admin.handleAdminChannelDelete],
 ];
 
 async function handleChannelCreate(request, env, corsHeaders) {
