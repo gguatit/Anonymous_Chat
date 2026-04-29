@@ -72,14 +72,17 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
     }
 
     // Get or create the Durable Object for the chat room
-    const roomId = env.CHAT_ROOM.idFromName('main-room');
+    const channelParam = url.searchParams.get('channel') || '0';
+    const roomName = channelParam === '0' ? 'main-room' : 'channel:' + channelParam;
+    const roomId = env.CHAT_ROOM.idFromName(roomName);
     const room = env.CHAT_ROOM.get(roomId);
 
     // Forward the request to the Durable Object with HMAC_SECRET in headers
     const modifiedRequest = new Request(request, {
         headers: {
             ...Object.fromEntries(request.headers),
-            'X-HMAC-Secret': HMAC_SECRET
+            'X-HMAC-Secret': HMAC_SECRET,
+            'X-Channel-Number': channelParam
         }
     });
     return room.fetch(modifiedRequest);

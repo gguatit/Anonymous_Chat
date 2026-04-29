@@ -17,6 +17,12 @@ export const SECURITY = {
     ],
 };
 
+// Channel configuration
+export const CHANNEL = {
+    EMPTY_TTL: 10 * 60 * 1000, // 10 minutes
+    MAX_NAME_LENGTH: 20,
+};
+
 // Metrics storage (in-memory, per-worker instance)
 export const metrics = {
     totalConnections: 0,

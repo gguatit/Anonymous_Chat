@@ -28,9 +28,17 @@ id = "52dc3235581a4b2789625b4b0a837fda"
 name = "CHAT_ROOM"
 class_name = "ChatRoom"
 
+[[durable_objects.bindings]]
+name = "CHANNEL_REGISTRY"
+class_name = "ChannelRegistry"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["ChatRoom"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["ChannelRegistry"]
 
 # Pages integration (for hybrid deployment)
 [assets]

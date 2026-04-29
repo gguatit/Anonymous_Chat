@@ -12,6 +12,7 @@ export class WebSocketManager {
         this.isReconnecting = false;
         this.hasConnectedBefore = false;
         this.manualClose = false;
+        this.channelId = '0'; // '0' = main room
         // Heartbeat timing (visible vs hidden)
         this.visibleHeartbeatInterval = 25000;
         this.visibleHeartbeatTimeout = 10000;
@@ -35,7 +36,10 @@ export class WebSocketManager {
 
             // Force WSS in production for security (encrypted WebSocket)
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws?sessionId=${encodeURIComponent(this.sessionId)}`;
+            let wsUrl = `${protocol}//${window.location.host}/ws?sessionId=${encodeURIComponent(this.sessionId)}`;
+            if (this.channelId && this.channelId !== '0') {
+                wsUrl += `&channel=${encodeURIComponent(this.channelId)}`;
+            }
 
             this.ws = new WebSocket(wsUrl);
 

@@ -71,17 +71,13 @@
     <header class="bg-gray-800 border-b border-gray-700 py-3 px-4 shadow-lg sticky top-0 z-50">
         <div class="max-w-5xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <button id="info-toggle"
-                    class="text-gray-400 hover:text-gray-200 transition-colors cursor-pointer z-50 p-2" type="button"
-                    aria-label="플랫폼 정보 토글">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20"
-                        fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                            clip-rule="evenodd" />
-                    </svg>
-                </button>
                 <h1 class="text-xl font-bold text-gray-100">익명 채팅</h1>
+                <span id="channel-badge" class="hidden text-xs bg-purple-700 px-2 py-0.5 rounded-full font-medium text-white">
+                    #<span id="channel-number"></span> <span id="channel-name"></span>
+                </span>
+                <button id="back-to-main-btn" type="button" class="hidden text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-0.5 rounded transition-colors">
+                    메인으로
+                </button>
             </div>
             <div class="flex items-center gap-3">
                 <div class="relative flex items-center">
@@ -538,13 +534,49 @@
         </div>
     </div>
 
+    <!-- Create Channel Modal -->
+    <div id="create-channel-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-sm overflow-hidden transform transition-all">
+            <div class="p-5">
+                <h3 class="text-lg font-bold text-gray-100 mb-3">채널 추가</h3>
+                <p class="text-gray-400 text-sm mb-3">새로운 채널을 생성합니다.</p>
+                <input type="text" id="create-channel-input" maxlength="20"
+                    class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-400"
+                    placeholder="채널 이름 (최대 20자)">
+                <div id="create-channel-error" class="text-red-400 text-xs mt-2 hidden"></div>
+                <div class="flex gap-2 mt-4">
+                    <button id="create-channel-cancel" class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 py-2 rounded-lg text-sm transition-colors">취소</button>
+                    <button id="create-channel-confirm" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg text-sm font-medium transition-colors">생성</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Channel Modal -->
+    <div id="join-channel-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-sm overflow-hidden transform transition-all">
+            <div class="p-5">
+                <h3 class="text-lg font-bold text-gray-100 mb-3">채널 참가</h3>
+                <p class="text-gray-400 text-sm mb-3">참가할 채널 번호를 입력하세요.</p>
+                <input type="number" id="join-channel-input" min="1"
+                    class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-400"
+                    placeholder="채널 번호">
+                <div id="join-channel-error" class="text-red-400 text-xs mt-2 hidden"></div>
+                <div class="flex gap-2 mt-4">
+                    <button id="join-channel-cancel" class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 py-2 rounded-lg text-sm transition-colors">취소</button>
+                    <button id="join-channel-confirm" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg text-sm font-medium transition-colors">참가</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-gray-800 border-t border-gray-700 py-2 px-4 text-center text-xs text-gray-500">
         <p>Cloudflare Workers 기반 익명 채팅</p>
     </footer>
 
     <!-- JavaScript Modules -->
-    <script type="module" src="/js/chat.js?v=1.0.6"></script>
+    <script type="module" src="/js/chat.js?v=1.1.0"></script>
     <script>
         // Platform info toggle
         const infoToggle = document.getElementById('info-toggle');

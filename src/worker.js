@@ -10,7 +10,8 @@ import { handleTurnstileVerify } from './handlers/turnstile.js';
 import { handlePreview } from './handlers/preview.js';
 
 import { ChatRoom } from './durable-objects/ChatRoom.js';
-export { ChatRoom };
+import { ChannelRegistry } from './durable-objects/ChannelRegistry.js';
+export { ChatRoom, ChannelRegistry };
 
 const API_PREFIX = '/api/admin/';
 
@@ -37,11 +38,69 @@ const adminRoutes = [
     ['delete-audit-logs', 'POST', admin.handleAdminDeleteAuditLogs],
 ];
 
+async function handleChannelCreate(request, env, corsHeaders) {
+    try {
+        const body = await request.json();
+        const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
+        const registry = env.CHANNEL_REGISTRY.get(registryId);
+        const resp = await registry.fetch(new Request('https://dummy/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Internal-Token': env.HMAC_SECRET },
+            body: JSON.stringify(body)
+        }));
+        return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('Channel create error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to create channel' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+async function handleChannelJoin(request, env, corsHeaders) {
+    try {
+        const body = await request.json();
+        const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
+        const registry = env.CHANNEL_REGISTRY.get(registryId);
+        const resp = await registry.fetch(new Request('https://dummy/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Internal-Token': env.HMAC_SECRET },
+            body: JSON.stringify(body)
+        }));
+        return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('Channel join error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to join channel' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+async function handleChannelList(request, env, corsHeaders) {
+    try {
+        const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
+        const registry = env.CHANNEL_REGISTRY.get(registryId);
+        const resp = await registry.fetch(new Request('https://dummy/list', {
+            method: 'GET',
+            headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
+        }));
+        return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('Channel list error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to list channels' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 const publicRoutes = [
     ['/api/announcements', 'GET', async (req, env, cors) => {
         const resp = await forwardToDO(env, '/announcement-history');
         return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
     }],
+    ['/api/channels/create', 'POST', handleChannelCreate],
+    ['/api/channels/join', 'POST', handleChannelJoin],
+    ['/api/channels/list', 'GET', handleChannelList],
     ['/api/push/vapid-key', null, handleGetVapidKey],
     ['/api/push/subscribe', 'POST', handlePushSubscribe],
     ['/api/push/unsubscribe', 'POST', handlePushUnsubscribe],

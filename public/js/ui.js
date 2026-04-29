@@ -31,6 +31,25 @@ export class UIManager {
         this.announcementTime = document.getElementById('announcement-time');
         this.announcementClose = document.getElementById('announcement-close');
 
+        // Channel UI elements
+        this.channelBadge = document.getElementById('channel-badge');
+        this.channelNumberEl = document.getElementById('channel-number');
+        this.channelNameEl = document.getElementById('channel-name');
+        this.backToMainBtn = document.getElementById('back-to-main-btn');
+
+        // Channel modals
+        this.createChannelModal = document.getElementById('create-channel-modal');
+        this.createChannelInput = document.getElementById('create-channel-input');
+        this.createChannelError = document.getElementById('create-channel-error');
+        this.createChannelConfirm = document.getElementById('create-channel-confirm');
+        this.createChannelCancel = document.getElementById('create-channel-cancel');
+
+        this.joinChannelModal = document.getElementById('join-channel-modal');
+        this.joinChannelInput = document.getElementById('join-channel-input');
+        this.joinChannelError = document.getElementById('join-channel-error');
+        this.joinChannelConfirm = document.getElementById('join-channel-confirm');
+        this.joinChannelCancel = document.getElementById('join-channel-cancel');
+
         // Setup announcement close button
         if (this.announcementClose) {
             this.announcementClose.addEventListener('click', () => {
@@ -52,6 +71,14 @@ export class UIManager {
                 } catch (err) {
                     console.error('[Gallery] Failed to open lightbox:', err);
                 }
+            }
+        });
+
+        // Empty space right-click for channel menu
+        this.messagesContainer.addEventListener('contextmenu', (e) => {
+            if (!e.target.closest('[data-message]')) {
+                e.preventDefault();
+                this.showChannelContextMenu(e);
             }
         });
     }
@@ -147,6 +174,55 @@ export class UIManager {
                 const dontShowAgain = this.noticeDontShowAgain ? this.noticeDontShowAgain.checked : false;
                 callbacks.onAcceptNotice(dontShowAgain);
                 this.hideNoticeModal();
+            });
+        }
+
+        // Channel modal events
+        if (this.createChannelConfirm && callbacks.onCreateChannel) {
+            this.createChannelConfirm.addEventListener('click', () => {
+                const name = this.createChannelInput.value.trim();
+                callbacks.onCreateChannel(name);
+            });
+        }
+        if (this.createChannelCancel) {
+            this.createChannelCancel.addEventListener('click', () => this.hideCreateChannelModal());
+        }
+        if (this.createChannelInput) {
+            this.createChannelInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.createChannelConfirm.click();
+                if (e.key === 'Escape') this.hideCreateChannelModal();
+            });
+        }
+
+        if (this.joinChannelConfirm && callbacks.onJoinChannel) {
+            this.joinChannelConfirm.addEventListener('click', () => {
+                const number = this.joinChannelInput.value.trim();
+                callbacks.onJoinChannel(number);
+            });
+        }
+        if (this.joinChannelCancel) {
+            this.joinChannelCancel.addEventListener('click', () => this.hideJoinChannelModal());
+        }
+        if (this.joinChannelInput) {
+            this.joinChannelInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.joinChannelConfirm.click();
+                if (e.key === 'Escape') this.hideJoinChannelModal();
+            });
+        }
+
+        if (this.backToMainBtn && callbacks.onBackToMain) {
+            this.backToMainBtn.addEventListener('click', () => callbacks.onBackToMain());
+        }
+
+        // Close modals on backdrop click
+        if (this.createChannelModal) {
+            this.createChannelModal.addEventListener('click', (e) => {
+                if (e.target === this.createChannelModal) this.hideCreateChannelModal();
+            });
+        }
+        if (this.joinChannelModal) {
+            this.joinChannelModal.addEventListener('click', (e) => {
+                if (e.target === this.joinChannelModal) this.hideJoinChannelModal();
             });
         }
 
@@ -555,6 +631,127 @@ export class UIManager {
         // Directly delete without confirmation
         if (this.onDelete) {
             this.onDelete(messageId);
+        }
+    }
+
+    // ========== Channel Context Menu ==========
+    showChannelContextMenu(event) {
+        const existingMenu = document.getElementById('channel-context-menu');
+        if (existingMenu) existingMenu.remove();
+
+        const menu = document.createElement('div');
+        menu.id = 'channel-context-menu';
+        menu.className = 'fixed bg-gray-800 border border-gray-600 rounded-lg shadow-lg py-1 z-50';
+        menu.style.minWidth = '140px';
+
+        menu.innerHTML = `
+            <button class="create-channel-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
+                채널 추가
+            </button>
+            <button class="join-channel-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
+                채널 참가
+            </button>
+        `;
+
+        const x = event.touches ? event.touches[0].clientX : event.clientX;
+        const y = event.touches ? event.touches[0].clientY : event.clientY;
+
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+
+        document.body.appendChild(menu);
+
+        const rect = menu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            menu.style.left = `${window.innerWidth - rect.width - 10}px`;
+        }
+        if (rect.bottom > window.innerHeight) {
+            menu.style.top = `${y - rect.height}px`;
+        }
+
+        const createBtn = menu.querySelector('.create-channel-btn');
+        const joinBtn = menu.querySelector('.join-channel-btn');
+
+        createBtn.addEventListener('click', () => {
+            menu.remove();
+            this.showCreateChannelModal();
+        });
+
+        joinBtn.addEventListener('click', () => {
+            menu.remove();
+            this.showJoinChannelModal();
+        });
+
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+                document.removeEventListener('touchstart', closeMenu);
+            }
+        };
+
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+            document.addEventListener('touchstart', closeMenu);
+        }, 100);
+    }
+
+    // ========== Channel Modals ==========
+    showCreateChannelModal() {
+        if (this.createChannelModal) {
+            this.createChannelModal.classList.remove('hidden');
+            this.createChannelInput.value = '';
+            this.createChannelError.classList.add('hidden');
+            this.createChannelInput.focus();
+        }
+    }
+
+    hideCreateChannelModal() {
+        if (this.createChannelModal) {
+            this.createChannelModal.classList.add('hidden');
+        }
+    }
+
+    showCreateChannelError(message) {
+        if (this.createChannelError) {
+            this.createChannelError.textContent = message;
+            this.createChannelError.classList.remove('hidden');
+        }
+    }
+
+    showJoinChannelModal() {
+        if (this.joinChannelModal) {
+            this.joinChannelModal.classList.remove('hidden');
+            this.joinChannelInput.value = '';
+            this.joinChannelError.classList.add('hidden');
+            this.joinChannelInput.focus();
+        }
+    }
+
+    hideJoinChannelModal() {
+        if (this.joinChannelModal) {
+            this.joinChannelModal.classList.add('hidden');
+        }
+    }
+
+    showJoinChannelError(message) {
+        if (this.joinChannelError) {
+            this.joinChannelError.textContent = message;
+            this.joinChannelError.classList.remove('hidden');
+        }
+    }
+
+    updateChannelIndicator(number, name) {
+        if (this.channelBadge) {
+            if (number && number !== '0' && number !== 0) {
+                this.channelBadge.classList.remove('hidden');
+                this.channelNumberEl.textContent = number;
+                this.channelNameEl.textContent = name || '';
+                if (this.backToMainBtn) this.backToMainBtn.classList.remove('hidden');
+            } else {
+                this.channelBadge.classList.add('hidden');
+                if (this.backToMainBtn) this.backToMainBtn.classList.add('hidden');
+            }
         }
     }
 

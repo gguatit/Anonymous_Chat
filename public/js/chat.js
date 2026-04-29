@@ -34,6 +34,19 @@ class ChatClient {
         this.announcementTooltip = document.getElementById('announcement-tooltip');
         this.latestAnnouncementTimestamp = 0;
         this.announcementSeenStorageKey = 'chatLastSeenAnnouncementTs';
+        this.currentChannel = '0';
+        this.currentChannelName = '';
+
+        // Restore saved channel
+        try {
+            const savedChannel = localStorage.getItem('chatCurrentChannel');
+            if (savedChannel && savedChannel !== '0') {
+                this.currentChannel = savedChannel;
+                this.currentChannelName = localStorage.getItem('chatCurrentChannelName') || '';
+            }
+        } catch {
+            // ignore storage errors
+        }
 
         // Initialize WebSocket with message handler
         this.wsManager = new WebSocketManager(
@@ -44,6 +57,7 @@ class ChatClient {
                 onError: (message) => this.ui.displayError(message)
             }
         );
+        this.wsManager.channelId = this.currentChannel;
 
         // Push notifications
         this.pushManager = new PushNotificationManager();
@@ -235,10 +249,14 @@ class ChatClient {
             onRevealSecret: (secretId, container) => this.revealSecretMessage(secretId, container),
             onSetNickname: (newName) => this.handleSetNickname(newName),
             onToggleNicknameLock: () => this.handleToggleNicknameLock(),
-            onAcceptNotice: (dontShowAgain) => this.handleAcceptNotice(dontShowAgain)
+            onAcceptNotice: (dontShowAgain) => this.handleAcceptNotice(dontShowAgain),
+            onCreateChannel: (name) => this.createChannel(name),
+            onJoinChannel: (number) => this.joinChannel(number),
+            onBackToMain: () => this.switchChannel('0')
         });
         this.ui.updateNicknameDisplay(this.sessionManager.getNickname());
         this.ui.setNicknameLockState(this.isNicknameLocked);
+        this.ui.updateChannelIndicator(this.currentChannel, this.currentChannelName);
     }
 
     handleSetNickname(newName) {
@@ -681,6 +699,105 @@ class ChatClient {
 
         // Send delete request to server
         this.wsManager.send(deleteData);
+    }
+
+    // ========== Channel Management ==========
+    async switchChannel(channelId, channelName = '') {
+        channelId = String(channelId || '0');
+        if (this.currentChannel === channelId) return;
+
+        console.log(`[Channel] Switching to ${channelId}`);
+
+        // Update state
+        this.currentChannel = channelId;
+        this.currentChannelName = channelName;
+
+        try {
+            localStorage.setItem('chatCurrentChannel', channelId);
+            if (channelName) {
+                localStorage.setItem('chatCurrentChannelName', channelName);
+            } else {
+                localStorage.removeItem('chatCurrentChannelName');
+            }
+        } catch {
+            /* ignore storage errors */
+        }
+
+        // Update UI
+        this.ui.updateChannelIndicator(channelId, channelName);
+        this.ui.clearAllMessages();
+
+        // Reconnect WebSocket
+        this.wsManager.channelId = channelId;
+        this.wsManager.manualClose = true;
+        this.wsManager.disconnect();
+        this.wsManager.manualClose = false;
+
+        // Allow disconnect to settle then reconnect
+        setTimeout(() => {
+            this.wsManager.connect();
+        }, 300);
+    }
+
+    async createChannel(name) {
+        if (!name) {
+            this.ui.showCreateChannelError('채널 이름을 입력해주세요.');
+            return;
+        }
+        if (name.length > 20) {
+            this.ui.showCreateChannelError('채널 이름은 최대 20자입니다.');
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/channels/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, sessionId: this.sessionManager.getSessionId() })
+            });
+            const data = await resp.json();
+
+            if (!resp.ok) {
+                this.ui.showCreateChannelError(data.error || '채널 생성에 실패했습니다.');
+                return;
+            }
+
+            this.ui.hideCreateChannelModal();
+            await this.switchChannel(String(data.number), data.name);
+            this.ui.displaySystemMessage(`채널 #${data.number} "${data.name}"에 입장했습니다.`);
+        } catch (error) {
+            console.error('Create channel error:', error);
+            this.ui.showCreateChannelError('네트워크 오류가 발생했습니다.');
+        }
+    }
+
+    async joinChannel(number) {
+        const parsed = parseInt(number, 10);
+        if (!Number.isFinite(parsed) || parsed < 1) {
+            this.ui.showJoinChannelError('올바른 채널 번호를 입력해주세요.');
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/channels/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ number: parsed })
+            });
+            const data = await resp.json();
+
+            if (!resp.ok) {
+                this.ui.showJoinChannelError(data.error || '채널을 찾을 수 없습니다.');
+                return;
+            }
+
+            this.ui.hideJoinChannelModal();
+            await this.switchChannel(String(data.number), data.name);
+            this.ui.displaySystemMessage(`채널 #${data.number} "${data.name}"에 입장했습니다.`);
+        } catch (error) {
+            console.error('Join channel error:', error);
+            this.ui.showJoinChannelError('네트워크 오류가 발생했습니다.');
+        }
     }
 
     scrollToMessage(messageId) {

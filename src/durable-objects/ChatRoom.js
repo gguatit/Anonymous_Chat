@@ -1,4 +1,4 @@
-import { RATE_LIMIT, SECURITY, metrics } from '../config/constants.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, metrics } from '../config/constants.js';
 import { generateMessageSignature, verifyMessageSignature } from '../utils/helpers.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
 
@@ -23,6 +23,10 @@ export class ChatRoom {
         this.MAX_ERROR_LOGS = 100;
         this.pushThrottleTimer = null;
         this.pushThrottleQueue = [];
+
+        // Channel lifecycle
+        this.channelNumber = 0;
+        this.emptySince = null;
 
         // Periodic cleanup of stale data (every 5 minutes)
         this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
@@ -119,6 +123,12 @@ export class ChatRoom {
     async fetch(request) {
         // Get HMAC_SECRET from request headers
         const HMAC_SECRET = request.headers.get('X-HMAC-Secret') || request.headers.get('X-Admin-Internal-Token');
+
+        // Detect channel number from header
+        const channelHeader = request.headers.get('X-Channel-Number');
+        if (channelHeader) {
+            this.channelNumber = parseInt(channelHeader, 10) || 0;
+        }
 
         const url = new URL(request.url);
 
@@ -1106,6 +1116,11 @@ export class ChatRoom {
 
                 metrics.activeConnections--;
                 this.broadcastUserCount();
+
+                // Track empty state for channel auto-deletion
+                if (this.channelNumber > 0 && this.sessions.size === 0) {
+                    this.emptySince = Date.now();
+                }
             }
         });
 
@@ -1118,6 +1133,12 @@ export class ChatRoom {
     }
 
     async handleJoin(data, websocket, clientIP, setSession) {
+        // Channel revived from empty state
+        if (this.emptySince !== null && this.channelNumber > 0) {
+            this.emptySince = null;
+            await this.touchRegistry();
+        }
+
         const sessionId = data.sessionId || this.generateSessionId();
 
         // Check if session is banned
@@ -1884,5 +1905,73 @@ export class ChatRoom {
         if (this.messages.length !== initialLength) {
             this.state.storage.put('messages', this.messages);
         }
+
+        // Auto-delete empty channels after TTL
+        if (this.emptySince !== null && this.channelNumber > 0) {
+            if (now - this.emptySince > CHANNEL.EMPTY_TTL) {
+                this.deleteChannel();
+            }
+        }
+    }
+
+    async touchRegistry() {
+        try {
+            const registryId = this.env.CHANNEL_REGISTRY.idFromName('registry');
+            const registry = this.env.CHANNEL_REGISTRY.get(registryId);
+            await registry.fetch(new Request('https://dummy/touch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Admin-Internal-Token': this.env.HMAC_SECRET },
+                body: JSON.stringify({ number: this.channelNumber })
+            }));
+        } catch (error) {
+            console.error('Failed to touch registry:', error);
+        }
+    }
+
+    async deleteChannel() {
+        if (this.channelNumber === 0) return; // Never delete main room
+
+        console.log(`[Channel ${this.channelNumber}] Auto-deleting after being empty for ${CHANNEL.EMPTY_TTL}ms`);
+
+        // Stop periodic cleanup to prevent further invocations on deleted channel
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
+        }
+
+        // Clear all state
+        this.sessions.clear();
+        this.ipConnections.clear();
+        this.userMetadata.clear();
+        this.typingUsers.clear();
+        this.messages = [];
+        this.bannedIPs.clear();
+        this.bannedSessions.clear();
+        this.auditLogs = [];
+        this.errorLogs = [];
+        this.currentAnnouncement = null;
+
+        // Delete persistent storage
+        try {
+            await this.state.storage.deleteAll();
+        } catch (error) {
+            console.error('Failed to delete channel storage:', error);
+        }
+
+        // Notify registry
+        try {
+            const registryId = this.env.CHANNEL_REGISTRY.idFromName('registry');
+            const registry = this.env.CHANNEL_REGISTRY.get(registryId);
+            await registry.fetch(new Request('https://dummy/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Admin-Internal-Token': this.env.HMAC_SECRET },
+                body: JSON.stringify({ number: this.channelNumber })
+            }));
+        } catch (error) {
+            console.error('Failed to notify registry of channel deletion:', error);
+        }
+
+        this.emptySince = null;
+        this.channelNumber = 0;
     }
 }
