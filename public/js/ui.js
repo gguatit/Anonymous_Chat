@@ -699,6 +699,7 @@ export class UIManager {
     // ========== Channel Modals ==========
     showCreateChannelModal() {
         if (this.createChannelModal) {
+            this.hideJoinChannelModal();
             this.createChannelModal.classList.remove('hidden');
             this.createChannelInput.value = '';
             this.createChannelError.classList.add('hidden');
@@ -721,6 +722,7 @@ export class UIManager {
 
     showJoinChannelModal() {
         if (this.joinChannelModal) {
+            this.hideCreateChannelModal();
             this.joinChannelModal.classList.remove('hidden');
             this.joinChannelInput.value = '';
             this.joinChannelError.classList.add('hidden');

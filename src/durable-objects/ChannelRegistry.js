@@ -101,7 +101,7 @@ export class ChannelRegistry {
             const normalizedName = name.toLowerCase().trim();
             for (const [, ch] of this.channels) {
                 if (ch.name.toLowerCase().trim() === normalizedName) {
-                    return new Response(JSON.stringify({ error: 'A channel with this name already exists' }), {
+                    return new Response(JSON.stringify({ error: '이미 존재하는 채널 이름입니다.' }), {
                         status: 409, headers: { 'Content-Type': 'application/json' }
                     });
                 }

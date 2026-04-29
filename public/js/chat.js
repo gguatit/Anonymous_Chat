@@ -740,6 +740,7 @@ class ChatClient {
     }
 
     async createChannel(name) {
+        console.log('[Channel] createChannel called with name:', name);
         if (!name) {
             this.ui.showCreateChannelError('채널 이름을 입력해주세요.');
             return;
@@ -756,6 +757,7 @@ class ChatClient {
                 body: JSON.stringify({ name, sessionId: this.sessionManager.getSessionId() })
             });
             const data = await resp.json();
+            console.log('[Channel] create response:', resp.status, data);
 
             if (!resp.ok) {
                 this.ui.showCreateChannelError(data.error || '채널 생성에 실패했습니다.');
@@ -772,6 +774,7 @@ class ChatClient {
     }
 
     async joinChannel(number) {
+        console.log('[Channel] joinChannel called with number:', number);
         const parsed = parseInt(number, 10);
         if (!Number.isFinite(parsed) || parsed < 1) {
             this.ui.showJoinChannelError('올바른 채널 번호를 입력해주세요.');
@@ -785,6 +788,7 @@ class ChatClient {
                 body: JSON.stringify({ number: parsed })
             });
             const data = await resp.json();
+            console.log('[Channel] join response:', resp.status, data);
 
             if (!resp.ok) {
                 this.ui.showJoinChannelError(data.error || '채널을 찾을 수 없습니다.');
