@@ -702,7 +702,7 @@ export class UIManager {
             this.createChannelModal.classList.remove('hidden');
             this.createChannelInput.value = '';
             this.createChannelError.classList.add('hidden');
-            this.createChannelInput.focus();
+            setTimeout(() => this.createChannelInput.focus(), 50);
         }
     }
 
@@ -724,7 +724,7 @@ export class UIManager {
             this.joinChannelModal.classList.remove('hidden');
             this.joinChannelInput.value = '';
             this.joinChannelError.classList.add('hidden');
-            this.joinChannelInput.focus();
+            setTimeout(() => this.joinChannelInput.focus(), 50);
         }
     }
 

@@ -81,6 +81,16 @@ export class ChannelRegistry {
                 });
             }
 
+            // Check for duplicate name
+            const normalizedName = name.toLowerCase().trim();
+            for (const [, ch] of this.channels) {
+                if (ch.name.toLowerCase().trim() === normalizedName) {
+                    return new Response(JSON.stringify({ error: 'A channel with this name already exists' }), {
+                        status: 409, headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+            }
+
             const number = this.nextNumber++;
             const now = Date.now();
 
