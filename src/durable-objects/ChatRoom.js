@@ -647,7 +647,7 @@ export class ChatRoom {
                 this.cleanupInterval = null;
             }
 
-            // Clear all state
+            // Clear all state completely
             this.sessions.clear();
             this.ipConnections.clear();
             this.userMetadata.clear();
@@ -659,6 +659,7 @@ export class ChatRoom {
             this.errorLogs = [];
             this.currentAnnouncement = null;
             this.emptySince = null;
+            this.channelSlug = '0';
 
             // Delete persistent storage
             await this.state.storage.deleteAll();
@@ -1240,6 +1241,11 @@ export class ChatRoom {
     }
 
     async handleJoin(data, websocket, clientIP, setSession) {
+        // Restart cleanup interval if it was stopped (e.g. after admin force-delete)
+        if (!this.cleanupInterval) {
+            this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
+        }
+
         // Channel revived from empty state
         if (this.emptySince !== null && this.channelSlug !== '0') {
             this.emptySince = null;
@@ -1990,6 +1996,7 @@ export class ChatRoom {
             this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
         }
 
+        let sessionsRemoved = false;
         for (const [sessionId, metadata] of this.userMetadata) {
             const lastActivity = metadata.lastActivityTime || metadata.lastMessageTime || metadata.joinTime;
             if (now - lastActivity > sessionTimeout && now - metadata.joinTime > sessionTimeout) {
@@ -2003,7 +2010,12 @@ export class ChatRoom {
                 }
                 this.sessions.delete(sessionId);
                 this.userMetadata.delete(sessionId);
+                sessionsRemoved = true;
             }
+        }
+        // Track empty state if cleanup removed the last session
+        if (sessionsRemoved && this.channelSlug !== '0' && this.sessions.size === 0 && this.emptySince === null) {
+            this.emptySince = Date.now();
         }
 
         const twelveHoursAgo = now - messageRetention;
