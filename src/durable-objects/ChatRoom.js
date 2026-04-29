@@ -617,13 +617,27 @@ export class ChatRoom {
 
             console.log(`[Channel ${this.channelSlug}] Admin force delete requested`);
 
-            // Close all WebSocket connections gracefully
+            // Step 1: Notify all users to redirect to main channel
             for (const [, websocket] of this.sessions) {
                 try {
-                    websocket.send(JSON.stringify({ type: 'system', content: '채널이 관리자에 의해 삭제되었습니다.' }));
+                    websocket.send(JSON.stringify({
+                        type: 'channel_deleted',
+                        content: '채널이 관리자에 의해 삭제되었습니다. 메인 채널로 이동합니다.'
+                    }));
+                } catch (e) {
+                    console.error('Error sending channel_deleted:', e);
+                }
+            }
+
+            // Give clients time to process and switch channels
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Step 2: Close all connections
+            for (const [, websocket] of this.sessions) {
+                try {
                     websocket.close(1000, 'Channel deleted by admin');
                 } catch (e) {
-                    console.error('Error closing websocket:', e);
+                    // ignore
                 }
             }
 

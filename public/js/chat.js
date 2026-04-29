@@ -344,6 +344,10 @@ class ChatClient {
                     this.handleTypingEvent(data.sessionId, data.nickname, data.typing);
                 }
                 break;
+            case 'channel_deleted':
+                this.ui.displaySystemMessage(data.content);
+                this.switchChannel('0');
+                break;
             case 'system':
                 this.ui.displaySystemMessage(data.content);
                 break;
