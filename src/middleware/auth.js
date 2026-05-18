@@ -1,3 +1,5 @@
+import { AUTH } from '../config/constants.js';
+
 // Rate Limit 체크 (IP당 5회 실패 시 5분간 차단)
 export async function checkRateLimit(env, key) {
     if (!env?.ADMIN_TOKENS) return false;
@@ -9,9 +11,8 @@ export async function checkRateLimit(env, key) {
         const attempts = JSON.parse(data);
         const now = Date.now();
         
-        // 5분 이내에 5회 이상 실패
-        const recentAttempts = attempts.filter(t => now - t < 5 * 60 * 1000);
-        return recentAttempts.length >= 5;
+        const recentAttempts = attempts.filter(t => now - t < AUTH.RATE_LIMIT_EXPIRE);
+        return recentAttempts.length >= AUTH.MAX_FAILED_ATTEMPTS;
     } catch {
         return false;
     }
@@ -27,23 +28,22 @@ export async function incrementRateLimit(env, key) {
         const now = Date.now();
         
         // 5분 이내의 시도만 유지
-        const recentAttempts = attempts.filter(t => now - t < 5 * 60 * 1000);
+        const recentAttempts = attempts.filter(t => now - t < AUTH.RATE_LIMIT_EXPIRE);
         recentAttempts.push(now);
         
-        // 10분간 보관 (5분 차단 + 여유), 토큰 유효기간도 2시간으로 단축
         await env.ADMIN_TOKENS.put(key, JSON.stringify(recentAttempts), {
-            expirationTtl: 10 * 60
+            expirationTtl: AUTH.KV_TTL_SECONDS
         });
     } catch (error) {
         console.error('Rate limit error:', error);
     }
 }
 
-// Revoke token with 2-hour TTL to match token expiration
+// Revoke token with matching TTL to token expiration
 export async function revokeToken(env, token) {
     if (!env?.ADMIN_TOKENS) return;
     await env.ADMIN_TOKENS.put(`revoked:${token}`, 'true', {
-        expirationTtl: 2 * 60 * 60
+        expirationTtl: AUTH.TOKEN_EXPIRY_MS / 1000
     });
 }
 
@@ -86,8 +86,8 @@ export async function verifyAdminToken(token, secret, env) {
         const data = atob(dataPart);
         const [password, timestamp] = data.split(':');
         
-        // Token expires after 2 hours
-        if (Date.now() - parseInt(timestamp) > 2 * 60 * 60 * 1000) {
+        // Token expires
+        if (Date.now() - parseInt(timestamp) > AUTH.TOKEN_EXPIRY_MS) {
             return false;
         }
         

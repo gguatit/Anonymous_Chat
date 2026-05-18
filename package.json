@@ -7,7 +7,8 @@
     "dev": "wrangler pages dev public --compatibility-date=2024-11-01",
     "build": "echo 'No build step required - deploying public directory'",
     "deploy": "wrangler pages deploy public",
-    "lint": "eslint src/**/*.js public/**/*.js"
+    "lint": "eslint src/**/*.js public/**/*.js",
+    "test": "echo 'No tests yet - run: npm run lint' && npm run lint"
   },
   "keywords": [
     "cloudflare",

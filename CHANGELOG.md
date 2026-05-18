@@ -2,6 +2,45 @@
 
 ## 2026-05-18
 
+### 🐛 버그 수정 (Critical)
+- **Storage 쓰기 누락 방지**: `ChatRoom.js` 메시지 전송/수정/삭제/어드민 broadcast 등 6곳의 `storage.put()`에 `await` 추가 → DO eviction 시 메시지 데이터 소실 방지
+- **재접속 close-race 수정**: WebSocket close 핸들러에 `sessions.get(sessionId) !== websocket` 가드 추가 → 재접속 시 새 WebSocket이 삭제되는 버그 수정
+- **분당 메시지 레이트 리밋 무력화 수정**: `joinTime` 기반 윈도우 → 슬라이딩 1분 윈도우(`_minuteWindowStart`, `_minuteMessageCount`)로 교체 → 입장 1분 후 레이트 리밋 영구 해제 버그 수정
+- **Broadcast 죽은 세션 정리 ipConnections 키 오류 수정**: `ipConnections.get(sid)` → sessionId 대신 `userMetadata`에서 IP를 조회하여 올바르게 `ipConnections.get(ip)` 사용
+
+### 🔒 보안 강화
+- **메시지 서명 검증 강제화**: `handleMessage`, `handleEdit`에서 서명 생략 시 거부 (기존: 서명 필드 없으면 검증 생략)
+- **API 레이트 리밋 추가**: `/api/config`, `/api/upload`, `/api/push/*`, `/api/turnstile/verify`, `/metrics`, `/health`, `/api/logs/error` 등 취약했던 엔드포인트에 레이트 리밋 적용
+- **클라이언트 XSS 방지**: `file-upload.js` 파일명에 `escapeHtml()` 적용 → 악의적 파일명으로 인한 XSS 방지
+- **Error forward 헤더 필터링**: client error 로그 전달 시 `content-type` 등 safe header만 전달 (기존: 모든 요청 헤더 전체 전달)
+- **sessionId 검증**: WebSocket 연결 전 sessionId 길이 제한(100자) 및 허용 문자 검증 추가
+- **HMAC_SECRET fallback 제거**: `admin.js`, `websocket.js`에서 `env.HMAC_SECRET || crypto.randomUUID()` 패턴 제거 → 실패 시 silent fallback 대신 명시적 오류
+
+### 🧹 코드 품질 개선
+- **Magic number 상수화**: `MESSAGE_RETENTION_MS`, `MAX_STORED_MESSAGES`, `MESSAGE_EDIT_WINDOW_MS`, `SESSION_TIMEOUT_MS`, `CLEANUP_INTERVAL_MS`, `PUSH_THROTTLE_MS`, `DEFAULT_NICKNAME`, `MAX_NICKNAME_LENGTH`, `ROOM_NAME`, `CHANNEL_PREFIX`, `AUTH.*`, `PUSH_SUBSCRIPTION_TTL` 등 25개 상수 도입
+- **`sanitizeInput` 통합**: `ChatRoom.js`와 `ChannelRegistry.js`의 중복 구현 제거 → `utils/helpers.js` 단일 구현으로 통일
+- **채널 핸들러 중복 제거**: `worker.js` 3개 채널 핸들러를 `channelRequest()` 하나로 통합 (~60줄 감소)
+- **Admin 핸들러 response status 전달**: `handleAdminMetrics`, `handleAdminSessions`, `handleAdminMessages`에서 DO 응답 status 코드 누락 수정
+- **세션 목록 빌더 중복 제거**: `/admin/info`와 `/admin/sessions`의 동일 코드를 `getSessionList()` 메서드로 추출
+- **죽은 WebSocket 정리**: `broadcast()`와 `sendToSession()`에서 send 실패 시 세션 자동 정리
+- **Dead code 제거**: `getFilesInfo()`, `getFileInfo()` (file-upload.js), `getReadUrl()` (dead-drop.js), `SECURITY.BANNED_IPS`, `SECURITY.IP_WHITELIST` (constants.js / websocket.js)
+- **`auth.js`, `push.js` 상수화**: 하드코딩된 시간/횟수 → `AUTH.*`, `PUSH_SUBSCRIPTION_TTL` 상수 사용
+- **파일 업로드 URL 환경변수화**: `FILE_UPLOAD_URL` 환경변수 추가 (기본값: `https://file.xeon.kr/upload`)
+
+### ⚙️ 인프라
+- **ESLint 강화**: `no-unused-vars` → error, `no-console` → warn, `no-eval`/`no-implied-eval` 추가, `prefer-const` → error, 복잡도 경고 추가
+- **`.dev.vars.example` 완성**: `ADMIN_ID`, `ADMIN_PASSWORD`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `TURNSTILE_SECRET_KEY`, `FCM_SERVICE_ACCOUNT`, `FILE_UPLOAD_URL` 문서화
+- **`wrangler.toml`**: `FILE_UPLOAD_URL`, `FCM_SERVICE_ACCOUNT` 시크릿 주석 추가
+- **`package.json`**: `test` 스크립트 추가 (`npm run lint` 기반)
+
+### 📝 개선 사항
+- Client-side document event listener 정리 (lightbox keydown handler 참조 저장 → 재등록 시 이전 리스너 제거)
+- Unknown WebSocket message type 시 클라이언트에 오류 전송
+- JSON parse 실패 시 sessionId 없어도 WebSocket 통해 오류 전송 시도
+- 클라이언트 `console.log` → `console.error`/`console.warn`으로 전환 불필요 (ESLint `no-console: warn` 유지)
+
+---
+
 ### ⚙️ 인프라 변경
 - **관리자 로그 저장소 KV → D1 마이그레이션**: `KV.list()` 일일 호출 한도(1,000회/일) 초과 문제 해결
   - `ADMIN_LOGS` KV → `anonymous-chat-db` D1 데이터베이스로 전환

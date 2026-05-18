@@ -56,6 +56,8 @@ TURNSTILE_SITE_KEY = "0x4AAAAAADAY6kk52-ZxU23s"
 # VAPID_PUBLIC_KEY should be set via: wrangler secret put VAPID_PUBLIC_KEY
 # VAPID_PRIVATE_KEY should be set via: wrangler secret put VAPID_PRIVATE_KEY
 # TURNSTILE_SECRET_KEY should be set via: wrangler secret put TURNSTILE_SECRET_KEY
+# FCM_SERVICE_ACCOUNT should be set via: wrangler secret put FCM_SERVICE_ACCOUNT
+# FILE_UPLOAD_URL is optional; defaults to https://file.xeon.kr/upload
 
 # Observability configuration
 [observability]

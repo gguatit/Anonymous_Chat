@@ -3,3 +3,20 @@
 
 # HMAC Secret for message signing (generate with: openssl rand -hex 32)
 HMAC_SECRET=your-random-secret-key-here-use-openssl-rand-hex-32
+
+# Admin credentials
+ADMIN_ID=admin
+ADMIN_PASSWORD=change-me-in-production
+
+# Turnstile (bot protection)
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+
+# Web Push (VAPID) keys (generate with: npx web-push generate-vapid-keys)
+VAPID_PUBLIC_KEY=your-vapid-public-key
+VAPID_PRIVATE_KEY=your-vapid-private-key
+
+# Firebase Cloud Messaging (for push notifications)
+FCM_SERVICE_ACCOUNT={"type":"service_account","project_id":"..."}
+
+# External service URLs (optional, defaults are used if not set)
+# FILE_UPLOAD_URL=https://file.xeon.kr/upload

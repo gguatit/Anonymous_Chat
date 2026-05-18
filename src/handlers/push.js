@@ -1,4 +1,5 @@
 // Push notification subscription handlers
+import { PUSH_SUBSCRIPTION_TTL } from '../config/constants.js';
 import { sendPushNotification } from '../utils/web-push.js';
 import { getFCMAccessToken } from '../utils/fcm-auth.js';
 
@@ -60,7 +61,7 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
                 const parsed = parseSubscriptionData(rawData);
                 if (parsed && parsed.type === 'web' && parsed.data?.endpoint === subscription.endpoint) {
                     const dataToSave = { type: 'web', data: subscription };
-                    await env.PUSH_SUBSCRIPTIONS.put(key.name, JSON.stringify(dataToSave), { expirationTtl: 30 * 24 * 60 * 60 });
+                    await env.PUSH_SUBSCRIPTIONS.put(key.name, JSON.stringify(dataToSave), { expirationTtl: PUSH_SUBSCRIPTION_TTL });
                     console.log(`[Push API] Updated subscription for ${key.name}`);
                     return new Response(JSON.stringify({ success: true }), {
                         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -98,7 +99,7 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
             await env.PUSH_SUBSCRIPTIONS.put(
                 `sub:${sessionId}`,
                 JSON.stringify(dataToSave),
-                { expirationTtl: 30 * 24 * 60 * 60 } // 30 days TTL
+                { expirationTtl: PUSH_SUBSCRIPTION_TTL } // 30 days TTL
             );
             console.log(`[Push API] Saved ${dataToSave.type} subscription for ${sessionId}`);
         }

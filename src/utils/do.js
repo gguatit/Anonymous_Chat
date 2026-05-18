@@ -1,4 +1,4 @@
-const ROOM_NAME = 'main-room';
+import { ROOM_NAME, CHANNEL_PREFIX } from '../config/constants.js';
 
 export function getChatRoom(env) {
     const id = env.CHAT_ROOM.idFromName(ROOM_NAME);
@@ -6,7 +6,7 @@ export function getChatRoom(env) {
 }
 
 export function getChannelRoom(env, slug) {
-    const roomName = slug === '0' || slug === 'main-room' ? 'main-room' : 'channel:' + slug;
+    const roomName = slug === '0' || slug === ROOM_NAME ? ROOM_NAME : CHANNEL_PREFIX + slug;
     const id = env.CHAT_ROOM.idFromName(roomName);
     return env.CHAT_ROOM.get(id);
 }

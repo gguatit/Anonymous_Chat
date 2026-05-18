@@ -95,7 +95,7 @@ export class SearchManager {
             if (e.target === this.overlay) this.close();
         });
 
-        document.addEventListener('keydown', (e) => {
+        document.addEventListener('keydown', this._searchKeyHandler = (e) => {
             if (e.key === 'Escape' && this.isOpen) {
                 const galleryOverlay = document.getElementById('gallery-overlay');
                 const galleryLightbox = document.getElementById('gallery-lightbox');

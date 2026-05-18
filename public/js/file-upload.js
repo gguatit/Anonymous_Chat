@@ -1,5 +1,5 @@
 // File Upload Manager
-import { formatFileSize } from './utils.js';
+import { formatFileSize, escapeHtml } from './utils.js';
 
 export class FileUploadManager {
     constructor(apiBaseUrl, uploadEndpoint) {
@@ -115,7 +115,7 @@ export class FileUploadManager {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     item.innerHTML = `
-                        <img src="${e.target.result}" alt="${file.name}" class="w-full h-full object-cover">
+                        <img src="${e.target.result}" alt="${escapeHtml(file.name)}" class="w-full h-full object-cover">
                         <button class="remove-file-btn absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-xs"
                             data-index="${index}">×</button>
                     `;
@@ -127,7 +127,7 @@ export class FileUploadManager {
                         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        <span class="text-[10px] px-1 truncate w-full text-center">${file.name}</span>
+                        <span class="text-[10px] px-1 truncate w-full text-center">${escapeHtml(file.name)}</span>
                     </div>
                     <button class="remove-file-btn absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-xs"
                         data-index="${index}">×</button>
@@ -386,25 +386,6 @@ export class FileUploadManager {
 
     hasFile() {
         return this.selectedFiles.length > 0;
-    }
-
-    getFilesInfo() {
-        return this.selectedFiles.map(file => ({
-            name: file.name,
-            size: file.size,
-            type: file.type
-        }));
-    }
-
-    // Backward compatibility
-    getFileInfo() {
-        if (this.selectedFiles.length === 0) return null;
-        const file = this.selectedFiles[0];
-        return {
-            name: file.name,
-            size: file.size,
-            type: file.type
-        };
     }
 
     // Drag and drop support

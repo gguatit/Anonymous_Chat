@@ -72,13 +72,4 @@ export class DeadDropClient {
             throw error;
         }
     }
-
-    /**
-     * Generate a read URL for a message
-     * @param {string} id - The message ID
-     * @returns {string} - Full URL to read the message
-     */
-    getReadUrl(id) {
-        return `${this.apiUrl}/read/${id}`;
-    }
 }

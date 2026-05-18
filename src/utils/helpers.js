@@ -32,3 +32,11 @@ export function arrayBufferToHex(buffer) {
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 }
+
+// Shared input sanitizer: strips control characters + normalizes line breaks
+export function sanitizeInput(input) {
+    if (typeof input !== 'string') return '';
+    // eslint-disable-next-line no-control-regex
+    return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+        .replace(/\r\n?/g, '\n');
+}

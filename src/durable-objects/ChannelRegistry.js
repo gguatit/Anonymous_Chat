@@ -1,4 +1,5 @@
 import { CHANNEL } from '../config/constants.js';
+import { sanitizeInput } from '../utils/helpers.js';
 
 export class ChannelRegistry {
     constructor(state, env) {
@@ -156,7 +157,7 @@ export class ChannelRegistry {
 
             const now = Date.now();
             this.channels.set(slug, {
-                name: this.sanitizeInput(rawName),
+                name: sanitizeInput(rawName),
                 createdBy,
                 createdAt: now,
                 lastActive: now
@@ -164,7 +165,7 @@ export class ChannelRegistry {
 
             await this.persist();
 
-            return new Response(JSON.stringify({ slug, name: this.sanitizeInput(rawName) }), {
+            return new Response(JSON.stringify({ slug, name: sanitizeInput(rawName) }), {
                 headers: { 'Content-Type': 'application/json' }
             });
         } catch (error) {
@@ -265,9 +266,4 @@ export class ChannelRegistry {
         });
     }
 
-    sanitizeInput(input) {
-        if (typeof input !== 'string') return '';
-        // eslint-disable-next-line no-control-regex
-        return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-    }
 }

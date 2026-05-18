@@ -1,5 +1,5 @@
-import { RATE_LIMIT, SECURITY, CHANNEL, metrics } from '../config/constants.js';
-import { generateMessageSignature, verifyMessageSignature } from '../utils/helpers.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH } from '../config/constants.js';
+import { generateMessageSignature, verifyMessageSignature, sanitizeInput } from '../utils/helpers.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
 
 // Durable Object for managing chat room state
@@ -28,8 +28,8 @@ export class ChatRoom {
         this.channelSlug = '0'; // '0' = main room
         this.emptySince = null;
 
-        // Periodic cleanup of stale data (every 5 minutes)
-        this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
+        // Periodic cleanup of stale data
+        this.cleanupInterval = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
     }
 
     addErrorLog(type, error, environment = {}, context = '') {
@@ -72,7 +72,7 @@ export class ChatRoom {
         const stored = await this.state.storage.get('messages');
         if (stored) {
             // Filter out messages older than 12 hours
-            const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+            const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
             this.messages = stored.filter(msg => msg.timestamp > twelveHoursAgo);
 
             // Save cleaned messages back if any were removed
@@ -120,6 +120,21 @@ export class ChatRoom {
         this.initialized = true;
     }
 
+    getSessionList() {
+        return Array.from(this.userMetadata.entries()).map(([sessionId, metadata]) => ({
+            sessionId,
+            ip: metadata.ip,
+            joinTime: metadata.joinTime,
+            messageCount: metadata.messageCount,
+            lastMessageTime: metadata.lastMessageTime,
+            lastActivityTime: metadata.lastActivityTime,
+            nickname: metadata.nickname || DEFAULT_NICKNAME,
+            isOnline: this.sessions.has(sessionId),
+            country: metadata.environment?.country || '',
+            userAgent: metadata.environment?.userAgent || ''
+        }));
+    }
+
     async fetch(request) {
         // Get HMAC_SECRET from request headers
         const HMAC_SECRET = request.headers.get('X-HMAC-Secret') || request.headers.get('X-Admin-Internal-Token');
@@ -155,18 +170,7 @@ export class ChatRoom {
         }
 
         if (url.pathname === '/admin/info') {
-            const sessions = Array.from(this.userMetadata.entries()).map(([sessionId, metadata]) => ({
-                sessionId,
-                ip: metadata.ip,
-                joinTime: metadata.joinTime,
-                messageCount: metadata.messageCount,
-                lastMessageTime: metadata.lastMessageTime,
-                lastActivityTime: metadata.lastActivityTime,
-                nickname: metadata.nickname || '익명',
-                isOnline: this.sessions.has(sessionId),
-                country: metadata.environment?.country || '',
-                userAgent: metadata.environment?.userAgent || ''
-            }));
+            const sessions = this.getSessionList();
             return new Response(JSON.stringify({
                 slug: this.channelSlug || '0',
                 activeConnections: this.sessions.size,
@@ -182,18 +186,7 @@ export class ChatRoom {
         }
 
         if (url.pathname === '/admin/sessions') {
-            const sessions = Array.from(this.userMetadata.entries()).map(([sessionId, metadata]) => ({
-                sessionId,
-                ip: metadata.ip,
-                joinTime: metadata.joinTime,
-                messageCount: metadata.messageCount,
-                lastMessageTime: metadata.lastMessageTime,
-                lastActivityTime: metadata.lastActivityTime,
-                nickname: metadata.nickname || '익명',
-                isOnline: this.sessions.has(sessionId),
-                country: metadata.environment?.country || '',
-                userAgent: metadata.environment?.userAgent || ''
-            }));
+            const sessions = this.getSessionList();
 
             return new Response(JSON.stringify(sessions), {
                 headers: { 'Content-Type': 'application/json' }
@@ -375,7 +368,7 @@ export class ChatRoom {
             const message = {
                 type: 'message',
                 messageId: messageId,
-                content: this.sanitizeInput(content || ''),
+                content: sanitizeInput(content || ''),
                 sessionId: `admin_${adminId}`,
                 timestamp: Date.now(),
                 editedAt: null
@@ -398,14 +391,14 @@ export class ChatRoom {
 
             this.messages.push(message);
 
-            // Clean up messages older than 12 hours and limit to 500 messages
-            const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+            // Clean up messages older than MESSAGE_RETENTION_MS and limit messages
+            const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
             this.messages = this.messages
                 .filter(msg => msg.timestamp > twelveHoursAgo)
-                .slice(-500);
+                .slice(-MAX_STORED_MESSAGES);
 
             // Persist to Durable Object storage
-            this.state.storage.put('messages', this.messages);
+            await this.state.storage.put('messages', this.messages);
 
             // Broadcast message to all users
             this.broadcast(message);
@@ -457,7 +450,7 @@ export class ChatRoom {
             // Update message
             const editedMessage = {
                 ...originalMessage,
-                content: this.sanitizeInput(newContent),
+                content: sanitizeInput(newContent),
                 editedAt: now
             };
 
@@ -470,7 +463,7 @@ export class ChatRoom {
             this.messages[messageIndex] = editedMessage;
 
             // Persist to storage
-            this.state.storage.put('messages', this.messages);
+            await this.state.storage.put('messages', this.messages);
 
             // Broadcast edited message to all users
             this.broadcast({
@@ -525,7 +518,7 @@ export class ChatRoom {
             this.messages.splice(messageIndex, 1);
 
             // Persist to storage
-            this.state.storage.put('messages', this.messages);
+            await this.state.storage.put('messages', this.messages);
 
             // Broadcast deletion to all users
             this.broadcast({
@@ -865,7 +858,7 @@ export class ChatRoom {
                 });
             }
 
-            this.announcementHistory[announcementIndex].content = this.sanitizeInput(content);
+            this.announcementHistory[announcementIndex].content = sanitizeInput(content);
             await this.state.storage.put('announcementHistory', this.announcementHistory);
 
             // Update currentAnnouncement if it matches
@@ -956,7 +949,7 @@ export class ChatRoom {
 
             // Save new announcement (replaces old one)
             this.currentAnnouncement = {
-                content: this.sanitizeInput(content),
+                content: sanitizeInput(content),
                 timestamp: Date.now()
             };
             await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
@@ -1193,6 +1186,12 @@ export class ChatRoom {
 
                     default:
                         console.log('Unknown message type:', data.type);
+                        if (sessionId) {
+                            this.sendToSession(sessionId, {
+                                type: 'error',
+                                content: '알 수 없는 메시지 타입입니다.'
+                            });
+                        }
                 }
 
             } catch (error) {
@@ -1205,12 +1204,23 @@ export class ChatRoom {
                         type: 'error',
                         content: '메시지 처리 중 오류가 발생했습니다.'
                     });
+                } else {
+                    try {
+                        websocket.send(JSON.stringify({
+                            type: 'error',
+                            content: '메시지 처리 중 오류가 발생했습니다. 다시 연결해주세요.'
+                        }));
+                    } catch (e) {
+                        // ignore
+                    }
                 }
             }
         });
 
         websocket.addEventListener('close', () => {
             if (sessionId) {
+                if (this.sessions.get(sessionId) !== websocket) return;
+
                 this.sessions.delete(sessionId);
                 this.typingUsers.delete(sessionId);
 
@@ -1243,7 +1253,7 @@ export class ChatRoom {
     async handleJoin(data, websocket, clientIP, setSession) {
         // Restart cleanup interval if it was stopped (e.g. after admin force-delete)
         if (!this.cleanupInterval) {
-            this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
+            this.cleanupInterval = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
         }
 
         // Channel revived from empty state
@@ -1314,7 +1324,7 @@ export class ChatRoom {
             this.userMetadata.set(sessionId, metadata);
 
             // Send recent messages as a batch for better performance
-            const recentMessages = this.messages.slice(-50);
+            const recentMessages = this.messages.slice(-RECENT_MESSAGES_BATCH);
             if (recentMessages.length > 0) {
                 this.sendToSession(sessionId, {
                     type: 'history',
@@ -1361,7 +1371,7 @@ export class ChatRoom {
             }
 
             // Send recent messages as a batch for better performance
-            const recentMessages = this.messages.slice(-50);
+            const recentMessages = this.messages.slice(-RECENT_MESSAGES_BATCH);
             if (recentMessages.length > 0) {
                 this.sendToSession(sessionId, {
                     type: 'history',
@@ -1390,26 +1400,32 @@ export class ChatRoom {
             return;
         }
 
-        // Verify message signature if provided
-        if (data.signature) {
-            const isValid = await verifyMessageSignature(
-                {
-                    content: data.content,
-                    sessionId: data.sessionId,
-                    timestamp: data.timestamp
-                },
-                data.signature,
-                HMAC_SECRET
-            );
+        // Verify message signature
+        if (!data.signature) {
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '메시지 서명이 필요합니다.'
+            });
+            return;
+        }
 
-            if (!isValid) {
-                this.sendToSession(sessionId, {
-                    type: 'error',
-                    content: '메시지 무결성 검증 실패'
-                });
-                console.warn('Invalid message signature from session:', sessionId);
-                return;
-            }
+        const isValid = await verifyMessageSignature(
+            {
+                content: data.content,
+                sessionId: data.sessionId,
+                timestamp: data.timestamp
+            },
+            data.signature,
+            HMAC_SECRET
+        );
+
+        if (!isValid) {
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '메시지 무결성 검증 실패'
+            });
+            console.warn('Invalid message signature from session:', sessionId);
+            return;
         }
 
         if (data.sessionId !== sessionId) {
@@ -1423,7 +1439,7 @@ export class ChatRoom {
 
         // Track the user's current nickname in metadata for admin view
         try {
-            const nick = this.sanitizeInput(data.nickname || metadata.nickname || '익명').substring(0, 12);
+            const nick = sanitizeInput(data.nickname || metadata.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH);
             metadata.nickname = nick;
             this.userMetadata.set(sessionId, metadata);
         } catch (e) {
@@ -1440,6 +1456,7 @@ export class ChatRoom {
         }
 
         metadata.messageCount++;
+        metadata._minuteMessageCount = (metadata._minuteMessageCount || 0) + 1;
         metadata.lastMessageTime = Date.now();
         metrics.totalMessages++;
 
@@ -1448,9 +1465,9 @@ export class ChatRoom {
         const message = {
             type: 'message',
             messageId: messageId,
-            content: this.sanitizeInput(data.content),
+            content: sanitizeInput(data.content),
             sessionId: sessionId,
-            nickname: this.sanitizeInput(data.nickname || '익명').substring(0, 12),
+            nickname: sanitizeInput(data.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH),
             timestamp: Date.now(),
             editedAt: null
         };
@@ -1459,7 +1476,7 @@ export class ChatRoom {
         if (data.replyTo) {
             message.replyTo = {
                 messageId: data.replyTo.messageId,
-                content: this.sanitizeInput(data.replyTo.content),
+                content: sanitizeInput(data.replyTo.content),
                 isOwnMessage: data.replyTo.isOwnMessage
             };
 
@@ -1495,12 +1512,12 @@ export class ChatRoom {
 
         this.messages.push(message);
 
-        const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+        const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
         this.messages = this.messages
             .filter(msg => msg.timestamp > twelveHoursAgo)
-            .slice(-500);
+            .slice(-MAX_STORED_MESSAGES);
 
-        this.state.storage.put('messages', this.messages);
+        await this.state.storage.put('messages', this.messages);
 
         this.broadcast(message);
     }
@@ -1514,25 +1531,31 @@ export class ChatRoom {
             return;
         }
 
-        if (data.signature) {
-            const isValid = await verifyMessageSignature(
-                {
-                    content: data.newContent,
-                    sessionId: data.sessionId,
-                    timestamp: data.timestamp
-                },
-                data.signature,
-                HMAC_SECRET
-            );
+        if (!data.signature) {
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '메시지 서명이 필요합니다.'
+            });
+            return;
+        }
 
-            if (!isValid) {
-                this.sendToSession(sessionId, {
-                    type: 'error',
-                    content: '메시지 수정 요청 검증 실패'
-                });
-                console.warn('Invalid edit signature from session:', sessionId);
-                return;
-            }
+        const isValid = await verifyMessageSignature(
+            {
+                content: data.newContent,
+                sessionId: data.sessionId,
+                timestamp: data.timestamp
+            },
+            data.signature,
+            HMAC_SECRET
+        );
+
+        if (!isValid) {
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '메시지 수정 요청 검증 실패'
+            });
+            console.warn('Invalid edit signature from session:', sessionId);
+            return;
         }
 
         if (data.sessionId !== sessionId) {
@@ -1565,8 +1588,7 @@ export class ChatRoom {
         }
 
         const now = Date.now();
-        const tenMinutes = 10 * 60 * 1000;
-        if (now - originalMessage.timestamp > tenMinutes) {
+        if (now - originalMessage.timestamp > MESSAGE_EDIT_WINDOW_MS) {
             this.sendToSession(sessionId, {
                 type: 'error',
                 content: '메시지는 작성 후 10분 이내에만 수정할 수 있습니다.'
@@ -1592,7 +1614,7 @@ export class ChatRoom {
 
         const editedMessage = {
             ...originalMessage,
-            content: this.sanitizeInput(data.newContent),
+            content: sanitizeInput(data.newContent),
             editedAt: now
         };
 
@@ -1600,7 +1622,7 @@ export class ChatRoom {
 
         this.messages[messageIndex] = editedMessage;
 
-        this.state.storage.put('messages', this.messages);
+        await this.state.storage.put('messages', this.messages);
 
         this.broadcast({
             type: 'message_edited',
@@ -1643,8 +1665,7 @@ export class ChatRoom {
         }
 
         const now = Date.now();
-        const tenMinutes = 10 * 60 * 1000;
-        if (now - messageToDelete.timestamp > tenMinutes) {
+        if (now - messageToDelete.timestamp > MESSAGE_EDIT_WINDOW_MS) {
             this.sendToSession(sessionId, {
                 type: 'error',
                 content: '메시지는 작성 후 10분 이내에만 삭제할 수 있습니다.'
@@ -1654,7 +1675,7 @@ export class ChatRoom {
 
         this.messages.splice(messageIndex, 1);
 
-        this.state.storage.put('messages', this.messages);
+        await this.state.storage.put('messages', this.messages);
 
         this.broadcast({
             type: 'message_deleted',
@@ -1675,7 +1696,7 @@ export class ChatRoom {
         try {
             const meta = this.userMetadata.get(sessionId);
             if (meta) {
-                const nick = this.sanitizeInput(data.nickname || meta.nickname || '익명').substring(0, 12);
+                const nick = sanitizeInput(data.nickname || meta.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH);
                 meta.nickname = nick;
                 this.userMetadata.set(sessionId, meta);
             }
@@ -1686,7 +1707,7 @@ export class ChatRoom {
         this.broadcast({
             type: 'typing',
             sessionId: sessionId,
-            nickname: this.sanitizeInput(data.nickname || '익명').substring(0, 12),
+            nickname: sanitizeInput(data.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH),
             typing: data.typing
         }, sessionId);
     }
@@ -1710,8 +1731,11 @@ export class ChatRoom {
         }
 
         const oneMinuteAgo = now - 60000;
-        if (metadata.messageCount > RATE_LIMIT.MAX_MESSAGES_PER_MINUTE &&
-            metadata.joinTime > oneMinuteAgo) {
+        if (!metadata._minuteWindowStart || metadata._minuteWindowStart < oneMinuteAgo) {
+            metadata._minuteWindowStart = now;
+            metadata._minuteMessageCount = 0;
+        }
+        if (metadata._minuteMessageCount >= RATE_LIMIT.MAX_MESSAGES_PER_MINUTE) {
             return '분당 메시지 전송 한도를 초과했습니다.';
         }
 
@@ -1747,7 +1771,7 @@ export class ChatRoom {
         }
 
         const results = [];
-        const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+        const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
         const recentMessages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
 
         for (const msg of recentMessages) {
@@ -1868,15 +1892,7 @@ export class ChatRoom {
         if (!content || typeof content !== 'string') return false;
         // Match http/https URLs and common URL patterns
         return /https?:\/\/[^\s<>"{}|^`[\]]+/i.test(content) ||
-               /www\.[a-zA-Z0-9][-a-zA-Z0-9]*[a-zA-Z0-9]*(\.[a-zA-Z]{2,})+/i.test(content);
-    }
-
-    sanitizeInput(input) {
-        if (typeof input !== 'string') return '';
-        // Remove control characters
-        let cleaned = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-        // Normalize line breaks (HTML escaping is handled client-side at render time)
-        return cleaned.replace(/\r\n?/g, '\n');
+                /www\.[a-zA-Z0-9][-a-zA-Z0-9]*[a-zA-Z0-9]*(\.[a-zA-Z]{2,})+/i.test(content);
     }
 
     generateSessionId() {
@@ -1896,8 +1912,8 @@ export class ChatRoom {
 
         this.auditLogs.push(log);
 
-        if (this.auditLogs.length > 500) {
-            this.auditLogs = this.auditLogs.slice(-500);
+        if (this.auditLogs.length > MAX_AUDIT_LOGS) {
+            this.auditLogs = this.auditLogs.slice(-MAX_AUDIT_LOGS);
         }
 
         await this.state.storage.put('auditLogs', this.auditLogs);
@@ -1906,12 +1922,28 @@ export class ChatRoom {
     }
 
     broadcast(message, excludeSessionId = null) {
+        const deadSessions = [];
         for (const [sessionId, websocket] of this.sessions) {
             if (sessionId !== excludeSessionId) {
                 try {
                     websocket.send(JSON.stringify(message));
                 } catch (error) {
                     console.error('Broadcast error:', error);
+                    deadSessions.push(sessionId);
+                }
+            }
+        }
+        for (const sid of deadSessions) {
+            this.sessions.delete(sid);
+            this.typingUsers.delete(sid);
+            const meta = this.userMetadata.get(sid);
+            if (meta) {
+                const ip = meta.ip;
+                const currentCount = this.ipConnections.get(ip) || 0;
+                if (currentCount > 1) {
+                    this.ipConnections.set(ip, currentCount - 1);
+                } else {
+                    this.ipConnections.delete(ip);
                 }
             }
         }
@@ -1937,7 +1969,7 @@ export class ChatRoom {
             this.sendPushNotifications(latest).catch(err => {
                 console.error('[Push] Background push error:', err);
             });
-        }, 1500);
+        }, PUSH_THROTTLE_MS);
     }
 
     async sendPushNotifications(message) {
@@ -1952,6 +1984,8 @@ export class ChatRoom {
                 websocket.send(JSON.stringify(message));
             } catch (error) {
                 console.error('Send error:', error);
+                this.sessions.delete(sessionId);
+                this.typingUsers.delete(sessionId);
             }
         }
     }
@@ -1963,7 +1997,7 @@ export class ChatRoom {
         });
     }
 
-    cleanup() {
+    async cleanup() {
         if (this.pushThrottleTimer) {
             clearTimeout(this.pushThrottleTimer);
             this.pushThrottleTimer = null;
@@ -1971,8 +2005,6 @@ export class ChatRoom {
         }
 
         const now = Date.now();
-        const sessionTimeout = 1800000; // 30 minutes
-        const messageRetention = 12 * 60 * 60 * 1000;
 
         let bansChanged = false;
         for (const [ip, banInfo] of this.bannedIPs.entries()) {
@@ -1982,7 +2014,7 @@ export class ChatRoom {
             }
         }
         if (bansChanged) {
-            this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+            await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
         }
 
         let sessionBansChanged = false;
@@ -1993,13 +2025,13 @@ export class ChatRoom {
             }
         }
         if (sessionBansChanged) {
-            this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
+            await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
         }
 
         let sessionsRemoved = false;
         for (const [sessionId, metadata] of this.userMetadata) {
             const lastActivity = metadata.lastActivityTime || metadata.lastMessageTime || metadata.joinTime;
-            if (now - lastActivity > sessionTimeout && now - metadata.joinTime > sessionTimeout) {
+            if (now - lastActivity > SESSION_TIMEOUT_MS && now - metadata.joinTime > SESSION_TIMEOUT_MS) {
                 const websocket = this.sessions.get(sessionId);
                 if (websocket) {
                     try {
@@ -2018,12 +2050,12 @@ export class ChatRoom {
             this.emptySince = Date.now();
         }
 
-        const twelveHoursAgo = now - messageRetention;
+        const twelveHoursAgo = now - MESSAGE_RETENTION_MS;
         const initialLength = this.messages.length;
         this.messages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
 
         if (this.messages.length !== initialLength) {
-            this.state.storage.put('messages', this.messages);
+        await this.state.storage.put('messages', this.messages);
         }
 
         // Auto-delete empty channels after TTL

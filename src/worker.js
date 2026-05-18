@@ -1,4 +1,4 @@
-import { metrics } from './config/constants.js';
+import { metrics, API_RATE_LIMIT } from './config/constants.js';
 import { getCorsHeaders, handleCorsPreflightResponse } from './config/cors.js';
 import { forwardToDO } from './utils/do.js';
 
@@ -12,6 +12,24 @@ import { handlePreview } from './handlers/preview.js';
 import { ChatRoom } from './durable-objects/ChatRoom.js';
 import { ChannelRegistry } from './durable-objects/ChannelRegistry.js';
 export { ChatRoom, ChannelRegistry };
+
+const rateLimitMap = new Map();
+
+function checkRateLimit(ip, config) {
+    const now = Date.now();
+    const entry = rateLimitMap.get(ip);
+    if (!entry || now - entry.windowStart > config.windowMs) {
+        rateLimitMap.set(ip, { windowStart: now, count: 1 });
+        return true;
+    }
+    if (entry.count >= config.max) {
+        return false;
+    }
+    entry.count++;
+    return true;
+}
+
+const SAFE_HEADERS = ['content-type', 'content-length', 'user-agent', 'accept-language'];
 
 const API_PREFIX = '/api/admin/';
 
@@ -41,59 +59,39 @@ const adminRoutes = [
     ['channel-delete', 'POST', admin.handleAdminChannelDelete],
 ];
 
-async function handleChannelCreate(request, env, corsHeaders) {
+async function channelRequest(request, env, corsHeaders, endpoint, method, errorMsg) {
     try {
-        const body = await request.json();
+        const body = method === 'GET' ? undefined : await request.json();
         const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
         const registry = env.CHANNEL_REGISTRY.get(registryId);
-        const resp = await registry.fetch(new Request('https://dummy/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Admin-Internal-Token': env.HMAC_SECRET },
-            body: JSON.stringify(body)
-        }));
+        const fetchOptions = {
+            method,
+            headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET },
+        };
+        if (body) {
+            fetchOptions.headers['Content-Type'] = 'application/json';
+            fetchOptions.body = JSON.stringify(body);
+        }
+        const resp = await registry.fetch(new Request(`https://dummy${endpoint}`, fetchOptions));
         return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (error) {
-        console.error('Channel create error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to create channel' }), {
+        console.error(`Channel ${endpoint} error:`, error);
+        return new Response(JSON.stringify({ error: errorMsg }), {
             status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
+}
+
+async function handleChannelCreate(request, env, corsHeaders) {
+    return channelRequest(request, env, corsHeaders, '/create', 'POST', 'Failed to create channel');
 }
 
 async function handleChannelJoin(request, env, corsHeaders) {
-    try {
-        const body = await request.json();
-        const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
-        const registry = env.CHANNEL_REGISTRY.get(registryId);
-        const resp = await registry.fetch(new Request('https://dummy/join', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Admin-Internal-Token': env.HMAC_SECRET },
-            body: JSON.stringify(body)
-        }));
-        return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    } catch (error) {
-        console.error('Channel join error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to join channel' }), {
-            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
+    return channelRequest(request, env, corsHeaders, '/join', 'POST', 'Failed to join channel');
 }
 
 async function handleChannelList(request, env, corsHeaders) {
-    try {
-        const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
-        const registry = env.CHANNEL_REGISTRY.get(registryId);
-        const resp = await registry.fetch(new Request('https://dummy/list', {
-            method: 'GET',
-            headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
-        }));
-        return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    } catch (error) {
-        console.error('Channel list error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to list channels' }), {
-            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
+    return channelRequest(request, env, corsHeaders, '/list', 'GET', 'Failed to list channels');
 }
 
 const publicRoutes = [
@@ -105,18 +103,43 @@ const publicRoutes = [
     ['/api/channels/join', 'POST', handleChannelJoin],
     ['/api/channels/list', 'GET', handleChannelList],
     ['/api/push/vapid-key', null, handleGetVapidKey],
-    ['/api/push/subscribe', 'POST', handlePushSubscribe],
-    ['/api/push/unsubscribe', 'POST', handlePushUnsubscribe],
+    ['/api/push/subscribe', 'POST', async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.PUSH)) {
+            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+        }
+        return await handlePushSubscribe(req, env, cors);
+    }],
+    ['/api/push/unsubscribe', 'POST', async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.PUSH)) {
+            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+        }
+        return await handlePushUnsubscribe(req, env, cors);
+    }],
     ['/api/search', null, async (req, env, cors) => {
         const searchPath = '/search' + new URL(req.url).search;
         const resp = await forwardToDO(env, searchPath);
         return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
     }],
     ['/api/check-ban', null, handleCheckBan],
-    ['/api/turnstile/verify', 'POST', handleTurnstileVerify],
+    ['/api/turnstile/verify', 'POST', async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.TURNSTILE)) {
+            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+        }
+        return await handleTurnstileVerify(req, env, cors);
+    }],
     ['/api/preview', 'POST', handlePreview],
-    ['/metrics', null, handleMetrics],
-    ['/health', null, handleHealth],
+    ['/metrics', null, async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.HEALTH)) {
+            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+        }
+        return handleMetrics(cors);
+    }],
+    ['/health', null, async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.HEALTH)) {
+            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+        }
+        return handleHealth(cors);
+    }],
 ];
 
 async function serveStaticAssets(request, env, url) {
@@ -177,9 +200,13 @@ export default {
 
             // File upload proxy
             if (url.pathname === '/api/upload' && request.method === 'POST') {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD)) {
+                    return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
+                }
                 try {
                     const formData = await request.formData();
-                    const upstreamResponse = await fetch('https://file.xeon.kr/upload', { method: 'POST', body: formData });
+                    const uploadUrl = env.FILE_UPLOAD_URL || 'https://file.xeon.kr/upload';
+                    const upstreamResponse = await fetch(uploadUrl, { method: 'POST', body: formData });
                     const contentType = upstreamResponse.headers.get('content-type') || 'application/json';
                     return new Response(upstreamResponse.body, {
                         status: upstreamResponse.status,
@@ -195,15 +222,26 @@ export default {
 
             // Client error log forwarding
             if (url.pathname === '/api/logs/error' && request.method === 'POST') {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHECK_BAN)) {
+                    return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
+                }
                 const body = await request.text();
+                const filteredHeaders = {};
+                for (const h of SAFE_HEADERS) {
+                    const val = request.headers.get(h);
+                    if (val) filteredHeaders[h] = val;
+                }
                 const resp = await forwardToDO(env, '/api/logs/error', {
-                    method: 'POST', headers: { ...Object.fromEntries(request.headers) }, body
+                    method: 'POST', headers: filteredHeaders, body
                 });
                 return new Response(resp.body, { status: resp.status, headers: corsHeaders });
             }
 
             // Config endpoint
             if (url.pathname === '/api/config') {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CONFIG)) {
+                    return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
+                }
                 return new Response(JSON.stringify({
                     turnstileSiteKey: env.TURNSTILE_SITE_KEY || '0x4AAAAAADAY6kk52-ZxU23s'
                 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

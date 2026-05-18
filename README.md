@@ -18,7 +18,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/agpl-3.0)
 
-완전 익명 실시간 채팅 애플리케이션  
+실시간 익명채팅 애플리케이션  
 Cloudflare Workers 기반 서버리스 아키텍처
 
 [문서](#목차) · [버그 제보](https://github.com/gguatit/Anonymous_Chat/issues)
@@ -48,6 +48,31 @@ Cloudflare Workers 기반 서버리스 아키텍처
 ## 최근 업데이트
 
 > 전체 변경 이력은 [CHANGELOG.md](CHANGELOG.md)를 참조하세요.
+
+### 2026년 5월 18일 - 코드 안정화 및 보안 강화
+
+#### 버그 수정 (Critical)
+- **Storage 쓰기 누락 방지**: 메시지 전송/수정/삭제 시 DO storage에 `await` 추가 → eviction 시 데이터 소실 방지
+- **재접속 close-race 수정**: reconnect 시 이전 WebSocket close 이벤트가 새 세션을 삭제하는 버그 수정
+- **레이트 리밋 윈도우 버그 수정**: 입장 1분 경과 후 분당 메시지 제한이 영구 해제되는 버그 수정 (슬라이딩 윈도우 방식으로 교체)
+
+#### 보안 강화
+- **메시지 서명 검증 강제화**: 서명 없는 메시지 거부 (기존: 서명 필드 없으면 검증 생략)
+- **API 레이트 리밋 확대**: `/api/config`, `/api/upload`, `/api/push/*`, `/metrics`, `/health` 등 취약 엔드포인트 보호
+- **클라이언트 XSS 방지**: 파일 업로드 미리보기에서 파일명 HTML escaping 적용
+- **Error forward 헤더 필터링**: client error 전달 시 safe header만 전송
+- **sessionId 검증**: WebSocket 연결 전 길이 및 허용 문자 검증 추가
+
+#### 코드 품질 개선
+- **Magic number 상수화**: 25개 하드코딩 값 → `constants.js` 중앙화
+- **중복 코드 제거**: `sanitizeInput` 통합, 채널 핸들러 통합, 세션 목록 빌더 추출
+- **죽은 WebSocket 정리**: `broadcast()`/`sendToSession()` send 실패 시 세션 자동 정리
+- **Dead code 제거**: 사용되지 않는 함수 및 상수 제거
+- **ESLint 강화**: `no-unused-vars` → error, `no-eval` 추가, 복잡도 경고 도입
+
+#### 인프라
+- **`.dev.vars.example` 완성**: 누락된 환경변수 6종 문서화
+- **파일 업로드 URL 환경변수화**: `FILE_UPLOAD_URL` 추가
 
 ### 2026년 4월 29일 - 채널 시스템 추가
 
@@ -404,7 +429,7 @@ npm install
 wrangler login
 
 # 4. 필수 환경변수 설정 (프로덕션)
-# 프로덕션 환경에서는 3개 환경변수 필수
+# 프로덕션 환경에서는 다음 환경변수 필수
 npx wrangler secret put HMAC_SECRET
 # 프롬프트에서 HMAC 시크릿 키 입력 (32자 이상 랜덤 문자열)
 # 생성 방법: openssl rand -base64 32
@@ -415,13 +440,23 @@ npx wrangler secret put ADMIN_ID
 npx wrangler secret put ADMIN_PASSWORD
 # 프롬프트에서 관리자 비밀번호 입력 (강력한 비밀번호 권장)
 
-# 5. 로컬 개발 환경 설정 (선택)
-# .dev.vars 파일 생성 (로컬 개발용)
-cat > .dev.vars << EOF
-HMAC_SECRET=your-dev-secret-key-here
-ADMIN_ID=admin
-ADMIN_PASSWORD=admin123
-EOF
+# 웹 푸시 알림 (선택)
+npx wrangler secret put VAPID_PUBLIC_KEY
+npx wrangler secret put VAPID_PRIVATE_KEY
+# 생성 방법: npx web-push generate-vapid-keys
+
+# Turnstile 봇 방지 (선택)
+npx wrangler secret put TURNSTILE_SECRET_KEY
+
+# Firebase Cloud Messaging (선택)
+npx wrangler secret put FCM_SERVICE_ACCOUNT
+
+# 파일 업로드 URL (선택, 기본값: https://file.xeon.kr/upload)
+npx wrangler secret put FILE_UPLOAD_URL
+
+# 5. 로컬 개발 환경 설정
+# .dev.vars.example 파일을 복사하여 .dev.vars 생성
+cp .dev.vars.example .dev.vars
 
 # 6. 로컬 개발 서버 시작
 npm run dev

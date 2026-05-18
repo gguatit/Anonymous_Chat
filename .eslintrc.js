@@ -10,10 +10,13 @@ module.exports = {
         sourceType: 'module',
     },
     rules: {
-        'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-        'no-console': 'off',
-        'prefer-const': 'warn',
+        'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+        'no-console': 'warn',
+        'prefer-const': 'error',
         'no-var': 'error',
+        'no-eval': 'error',
+        'no-implied-eval': 'error',
+        'complexity': ['warn', 15],
     },
     globals: {
         WebSocketPair: 'readonly',

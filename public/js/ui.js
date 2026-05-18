@@ -1359,12 +1359,16 @@ export class UIManager {
         });
 
         // Keyboard navigation
-        document.addEventListener('keydown', (e) => {
+        if (this._lightboxKeyHandler) {
+            document.removeEventListener('keydown', this._lightboxKeyHandler);
+        }
+        this._lightboxKeyHandler = (e) => {
             if (lightbox.classList.contains('hidden')) return;
             if (e.key === 'Escape') this.closeLightbox();
             if (e.key === 'ArrowLeft') this.navigateLightbox(-1);
             if (e.key === 'ArrowRight') this.navigateLightbox(1);
-        });
+        };
+        document.addEventListener('keydown', this._lightboxKeyHandler);
     }
 
     openLightbox(images, startIndex) {

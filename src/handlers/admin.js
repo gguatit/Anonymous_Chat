@@ -7,7 +7,7 @@ async function requireAdminAuth(request, env) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
     const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET || crypto.randomUUID(), env);
+    const isValid = await verifyAdminToken(token, env.HMAC_SECRET, env);
     return isValid ? token : null;
 }
 
@@ -75,7 +75,7 @@ export async function handleAdminLogin(request, env, corsHeaders) {
             }
 
             // Generate JWT-like token
-            const token = await generateAdminToken(id + ':' + password, env.HMAC_SECRET || crypto.randomUUID());
+            const token = await generateAdminToken(id + ':' + password, env.HMAC_SECRET);
 
             // 감사 로그: 성공한 로그인
             await logAdminActivity(env, {
@@ -153,6 +153,7 @@ export async function handleAdminMetrics(request, env, corsHeaders) {
     });
 
     return new Response(response.body, {
+        status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 }
@@ -166,6 +167,7 @@ export async function handleAdminSessions(request, env, corsHeaders) {
     });
 
     return new Response(response.body, {
+        status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 }
@@ -179,6 +181,7 @@ export async function handleAdminMessages(request, env, corsHeaders) {
     });
 
     return new Response(response.body, {
+        status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 }

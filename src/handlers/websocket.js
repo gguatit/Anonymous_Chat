@@ -1,4 +1,4 @@
-import { SECURITY } from '../config/constants.js';
+import { ROOM_NAME, SECURITY, CHANNEL_PREFIX } from '../config/constants.js';
 import { isAllowedOrigin } from '../utils/security.js';
 
 export async function handleWebSocket(request, env, HMAC_SECRET) {
@@ -21,23 +21,18 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
         console.warn('CF-Connecting-IP header missing');
         return new Response('Invalid request', { status: 400 });
     }
-    
-    // IP-based access control
-    if (SECURITY.BANNED_IPS.has(clientIP)) {
-        return new Response('Access Denied', { status: 403 });
-    }
-
-    if (SECURITY.IP_WHITELIST && !SECURITY.IP_WHITELIST.has(clientIP)) {
-        return new Response('Access Denied', { status: 403 });
-    }
 
     // Extract sessionId from URL query parameters
     const url = new URL(request.url);
     const sessionId = url.searchParams.get('sessionId');
 
+    if (sessionId && (sessionId.length > 100 || !/^[a-zA-Z0-9_-]+$/.test(sessionId))) {
+        return new Response('Invalid sessionId', { status: 400 });
+    }
+
     // Check ban status BEFORE allowing WebSocket connection
     if (sessionId || clientIP !== 'unknown') {
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const roomId = env.CHAT_ROOM.idFromName(ROOM_NAME);
         const room = env.CHAT_ROOM.get(roomId);
         
         // Build check URL
@@ -73,7 +68,7 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
 
     // Get or create the Durable Object for the chat room
     const channelParam = url.searchParams.get('channel') || '0';
-    const roomName = channelParam === '0' ? 'main-room' : 'channel:' + channelParam;
+    const roomName = channelParam === '0' ? ROOM_NAME : CHANNEL_PREFIX + channelParam;
     const roomId = env.CHAT_ROOM.idFromName(roomName);
     const room = env.CHAT_ROOM.get(roomId);
 
@@ -95,7 +90,7 @@ export async function handleCheckBan(request, env, corsHeaders) {
         const sessionId = url.searchParams.get('sessionId');
         
         // Get the Durable Object
-        const roomId = env.CHAT_ROOM.idFromName('main-room');
+        const roomId = env.CHAT_ROOM.idFromName(ROOM_NAME);
         const room = env.CHAT_ROOM.get(roomId);
         
         // Build check URL with both IP and sessionId
@@ -107,7 +102,7 @@ export async function handleCheckBan(request, env, corsHeaders) {
         // Check ban status
         const checkRequest = new Request(checkUrl, {
             headers: {
-                'X-HMAC-Secret': env.HMAC_SECRET || crypto.randomUUID(),
+                'X-HMAC-Secret': env.HMAC_SECRET,
                 'CF-Connecting-IP': clientIP
             }
         });
