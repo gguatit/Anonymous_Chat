@@ -237,25 +237,19 @@ export async function handleAdminLogs(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
-    if (!env?.ADMIN_LOGS) {
+    if (!env?.DB_ADMIN) {
         return new Response(JSON.stringify({ logs: [] }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
 
-    // 최근 100개 로그 가져오기
-    const list = await env.ADMIN_LOGS.list({ prefix: 'log:', limit: 100 });
-    const logs = [];
+    const { results } = await env.DB_ADMIN.prepare(
+        'SELECT data FROM admin_logs ORDER BY timestamp DESC LIMIT 100'
+    ).all();
 
-    for (const key of list.keys) {
-        const logData = await env.ADMIN_LOGS.get(key.name);
-        if (logData) {
-            logs.push(JSON.parse(logData));
-        }
-    }
-
-    // 시간 역순 정렬
-    logs.sort((a, b) => b.timestamp - a.timestamp);
+    const logs = (results || []).map(row => {
+        try { return JSON.parse(row.data); } catch { return null; }
+    }).filter(Boolean);
 
     return new Response(JSON.stringify({ logs }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -266,22 +260,18 @@ export async function handleAdminDeleteLogs(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
-    if (!env?.ADMIN_LOGS) {
+    if (!env?.DB_ADMIN) {
         return new Response(JSON.stringify({ success: true, deletedCount: 0 }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
 
     try {
-        const list = await env.ADMIN_LOGS.list({ prefix: 'log:' });
-        let deletedCount = 0;
+        const { meta } = await env.DB_ADMIN.prepare(
+            'DELETE FROM admin_logs'
+        ).run();
 
-        for (const key of list.keys) {
-            await env.ADMIN_LOGS.delete(key.name);
-            deletedCount++;
-        }
-
-        return new Response(JSON.stringify({ success: true, deletedCount }), {
+        return new Response(JSON.stringify({ success: true, deletedCount: meta?.changes || 0 }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     } catch (error) {

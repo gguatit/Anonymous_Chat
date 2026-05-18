@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-05-18
+
+### ⚙️ 인프라 변경
+- **관리자 로그 저장소 KV → D1 마이그레이션**: `KV.list()` 일일 호출 한도(1,000회/일) 초과 문제 해결
+  - `ADMIN_LOGS` KV → `anonymous-chat-db` D1 데이터베이스로 전환
+  - 읽기: `KV.list()`+`KV.get()` N회 → `SELECT ... LIMIT 100` 단일 쿼리
+  - 쓰기: `KV.put()` 개별 키 → `INSERT` 파라미터화 쿼리 (SQL injection 방지)
+  - 삭제: `KV.list()`+`KV.delete()` N회 → `DELETE FROM admin_logs` 단일 쿼리
+  - 30일 자동 정리: 쓰기 시 10% 확률로 오래된 로그 정리 (D1 연산 최적화)
+- **GitHub Actions 배포 워크플로 제거**: Cloudflare Pages Git 연동으로 대체
+
+### 🔒 보안
+- 모든 D1 쿼리 `?` 파라미터 바인딩 → SQL injection 완전 방지
+- 입력값 `String()`/`Number()` 강제 형변환으로 타입 안전성 확보
+
+---
+
 ## 2026-04-29
 
 ### 🆕 새로운 기능
