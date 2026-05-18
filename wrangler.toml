@@ -12,11 +12,6 @@ compatibility_date = "2024-11-01"
 binding = "ADMIN_TOKENS"
 id = "31c6551451f6466bb1ad33fbe10bf966"
 
-# 감사 로그용 KV (관리자 활동 기록)
-[[kv_namespaces]]
-binding = "ADMIN_LOGS"
-id = "5eba46ff86454bf0a6dfb6791789e4f2"
-
 # 푸시 알림 구독 정보 KV
 # wrangler kv:namespace create PUSH_SUBSCRIPTIONS 후 id 업데이트 필요
 [[kv_namespaces]]
