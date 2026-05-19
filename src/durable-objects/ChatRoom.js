@@ -1,6 +1,7 @@
 import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH } from '../config/constants.js';
 import { generateMessageSignature, verifyMessageSignature, sanitizeInput } from '../utils/helpers.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
+import { logAuditLog, logErrorLog } from '../utils/logger.js';
 
 // Durable Object for managing chat room state
 export class ChatRoom {
@@ -48,9 +49,8 @@ export class ChatRoom {
             this.errorLogs.pop();
         }
 
-        // Save to persistent storage without awaiting to prevent blocking
-        this.state.storage.put('errorLogs', this.errorLogs).catch(err => {
-            console.error('Failed to save error logs to storage', err);
+        logErrorLog(this.env?.DB_ADMIN, type, log.message, log.stackTrace, log.location, log.environment, log.context).catch(err => {
+            console.error('Failed to save error log to D1', err);
         });
     }
 
@@ -93,10 +93,45 @@ export class ChatRoom {
             this.bannedSessions = new Map(bannedSessions);
         }
 
-        // Load audit logs from storage
-        const auditLogs = await this.state.storage.get('auditLogs');
-        if (auditLogs) {
-            this.auditLogs = auditLogs;
+        // Load audit logs from D1
+        if (this.env?.DB_ADMIN) {
+            try {
+                const { results } = await this.env.DB_ADMIN.prepare(
+                    'SELECT action, details, timestamp, metadata FROM audit_logs ORDER BY timestamp DESC LIMIT ?'
+                ).bind(MAX_AUDIT_LOGS).all();
+                if (results && results.length > 0) {
+                    this.auditLogs = results.map(r => ({
+                        timestamp: r.timestamp,
+                        action: r.action,
+                        details: r.details,
+                        metadata: r.metadata ? JSON.parse(r.metadata) : {}
+                    })).reverse();
+                }
+            } catch (e) {
+                console.error('Failed to load audit logs from D1:', e);
+            }
+        }
+
+        // Load error logs from D1
+        if (this.env?.DB_ADMIN) {
+            try {
+                const { results } = await this.env.DB_ADMIN.prepare(
+                    'SELECT type, message, stack_trace, location, environment, context, timestamp FROM error_logs ORDER BY timestamp DESC LIMIT ?'
+                ).bind(this.MAX_ERROR_LOGS).all();
+                if (results && results.length > 0) {
+                    this.errorLogs = results.map(r => ({
+                        timestamp: r.timestamp,
+                        type: r.type,
+                        message: r.message,
+                        stackTrace: r.stack_trace,
+                        location: r.location,
+                        environment: r.environment ? JSON.parse(r.environment) : {},
+                        context: r.context
+                    }));
+                }
+            } catch (e) {
+                console.error('Failed to load error logs from D1:', e);
+            }
         }
 
         // Load current announcement from storage
@@ -109,12 +144,6 @@ export class ChatRoom {
         const announcementHistory = await this.state.storage.get('announcementHistory');
         if (announcementHistory) {
             this.announcementHistory = announcementHistory;
-        }
-
-        // Load error logs from storage
-        const errorLogs = await this.state.storage.get('errorLogs');
-        if (errorLogs) {
-            this.errorLogs = errorLogs;
         }
 
         this.initialized = true;
@@ -242,6 +271,23 @@ export class ChatRoom {
             });
         }
 
+        if (url.pathname === '/emergency-announcement') {
+            await this.initializeMessages();
+            const now = Date.now();
+            const ann = this.currentAnnouncement;
+            if (ann && ann.isEmergency && (!ann.emergencyUntil || now < ann.emergencyUntil)) {
+                return new Response(JSON.stringify({
+                    isEmergency: true,
+                    content: ann.content,
+                    timestamp: ann.timestamp,
+                    emergencyUntil: ann.emergencyUntil || null
+                }), { headers: { 'Content-Type': 'application/json' } });
+            }
+            return new Response(JSON.stringify({ isEmergency: false }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         if (url.pathname === '/search') {
             await this.initializeMessages();
             const query = url.searchParams.get('q') || '';
@@ -267,7 +313,13 @@ export class ChatRoom {
 
         if (url.pathname === '/admin/delete-audit-logs' && request.method === 'POST') {
             this.auditLogs = [];
-            await this.state.storage.delete('auditLogs');
+            if (this.env?.DB_ADMIN) {
+                try {
+                    await this.env.DB_ADMIN.prepare('DELETE FROM audit_logs').run();
+                } catch (e) {
+                    console.error('Failed to delete audit logs from D1:', e);
+                }
+            }
             return new Response(JSON.stringify({ success: true }), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -279,7 +331,13 @@ export class ChatRoom {
 
         if (url.pathname === '/admin/delete-error-logs' && request.method === 'POST') {
             this.errorLogs = [];
-            await this.state.storage.delete('errorLogs');
+            if (this.env?.DB_ADMIN) {
+                try {
+                    await this.env.DB_ADMIN.prepare('DELETE FROM error_logs').run();
+                } catch (e) {
+                    console.error('Failed to delete error logs from D1:', e);
+                }
+            }
             return new Response(JSON.stringify({ success: true }), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -842,6 +900,8 @@ export class ChatRoom {
             const data = await request.json();
             const timestamp = Number(data.timestamp);
             const content = typeof data.content === 'string' ? data.content : '';
+            const isEmergency = data.hasOwnProperty('isEmergency') ? !!data.isEmergency : undefined;
+            const emergencyUntil = data.hasOwnProperty('emergencyUntil') ? (data.emergencyUntil ? Number(data.emergencyUntil) : null) : undefined;
 
             if (!timestamp || !content) {
                 return new Response(JSON.stringify({ error: 'Missing timestamp or content' }), {
@@ -858,17 +918,32 @@ export class ChatRoom {
                 });
             }
 
+            const wasEmergency = this.announcementHistory[announcementIndex].isEmergency;
             this.announcementHistory[announcementIndex].content = sanitizeInput(content);
+            if (isEmergency !== undefined) {
+                this.announcementHistory[announcementIndex].isEmergency = isEmergency;
+                this.announcementHistory[announcementIndex].emergencyUntil = emergencyUntil;
+            }
             await this.state.storage.put('announcementHistory', this.announcementHistory);
 
             // Update currentAnnouncement if it matches
             if (this.currentAnnouncement && this.currentAnnouncement.timestamp === timestamp) {
                 this.currentAnnouncement.content = this.announcementHistory[announcementIndex].content;
+                if (isEmergency !== undefined) {
+                    this.currentAnnouncement.isEmergency = isEmergency;
+                    this.currentAnnouncement.emergencyUntil = emergencyUntil;
+                }
                 await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+
+                // If emergency was explicitly cleared, broadcast to all clients
+                if (wasEmergency && isEmergency === false && (!this.currentAnnouncement || !this.currentAnnouncement.isEmergency)) {
+                    this.broadcast({ type: 'emergency_cleared' });
+                }
             }
 
             await this.addAuditLog('edit_announcement', `Edited announcement from timestamp ${timestamp}: ${content.substring(0, 50)}...`, {
-                timestamp
+                timestamp,
+                isEmergency
             });
 
             return new Response(JSON.stringify({ success: true }), {
@@ -906,6 +981,8 @@ export class ChatRoom {
             this.announcementHistory.splice(announcementIndex, 1);
             await this.state.storage.put('announcementHistory', this.announcementHistory);
 
+            const wasEmergency = this.currentAnnouncement && this.currentAnnouncement.timestamp === timestamp && this.currentAnnouncement.isEmergency;
+
             // Update currentAnnouncement if it matches
             if (this.currentAnnouncement && this.currentAnnouncement.timestamp === timestamp) {
                 if (this.announcementHistory.length > 0) {
@@ -914,6 +991,10 @@ export class ChatRoom {
                 } else {
                     this.currentAnnouncement = null;
                     await this.state.storage.delete('currentAnnouncement');
+                }
+                // If deleted announcement was emergency, notify clients
+                if (wasEmergency && (!this.currentAnnouncement || !this.currentAnnouncement.isEmergency)) {
+                    this.broadcast({ type: 'emergency_cleared' });
                 }
             }
 
@@ -937,6 +1018,8 @@ export class ChatRoom {
         try {
             const data = await request.json();
             const content = typeof data.content === 'string' ? data.content : '';
+            const isEmergency = !!data.isEmergency;
+            const emergencyUntil = isEmergency && data.emergencyUntil ? Number(data.emergencyUntil) : null;
 
             if (!content) {
                 return new Response(JSON.stringify({ error: 'Empty content' }), {
@@ -945,12 +1028,14 @@ export class ChatRoom {
                 });
             }
 
-            console.log('Broadcasting announcement:', content.substring(0, 50));
+            console.log('Broadcasting announcement:', content.substring(0, 50), isEmergency ? '[EMERGENCY]' : '');
 
             // Save new announcement (replaces old one)
             this.currentAnnouncement = {
                 content: sanitizeInput(content),
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                isEmergency,
+                emergencyUntil
             };
             await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
 
@@ -965,16 +1050,19 @@ export class ChatRoom {
             const announcementMessage = {
                 type: 'announcement',
                 content: this.currentAnnouncement.content,
-                timestamp: this.currentAnnouncement.timestamp
+                timestamp: this.currentAnnouncement.timestamp,
+                isEmergency: this.currentAnnouncement.isEmergency,
+                emergencyUntil: this.currentAnnouncement.emergencyUntil
             };
 
             console.log('Active sessions:', this.sessions.size);
             this.broadcast(announcementMessage);
 
             // Add audit log
-            await this.addAuditLog('send_announcement', `Sent announcement: ${content.substring(0, 50)}...`, {
+            await this.addAuditLog('send_announcement', `Sent announcement: ${content.substring(0, 50)}...${isEmergency ? ' [EMERGENCY]' : ''}`, {
                 contentLength: content.length,
-                sessionsNotified: this.sessions.size
+                sessionsNotified: this.sessions.size,
+                isEmergency
             });
 
             return new Response(JSON.stringify({
@@ -1336,7 +1424,8 @@ export class ChatRoom {
                 this.sendToSession(sessionId, {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
-                    timestamp: this.currentAnnouncement.timestamp
+                    timestamp: this.currentAnnouncement.timestamp,
+                    isEmergency: this.currentAnnouncement.isEmergency || false
                 });
             }
 
@@ -1383,7 +1472,8 @@ export class ChatRoom {
                 this.sendToSession(sessionId, {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
-                    timestamp: this.currentAnnouncement.timestamp
+                    timestamp: this.currentAnnouncement.timestamp,
+                    isEmergency: this.currentAnnouncement.isEmergency || false
                 });
             }
         }
@@ -1904,7 +1994,9 @@ export class ChatRoom {
             this.auditLogs = this.auditLogs.slice(-MAX_AUDIT_LOGS);
         }
 
-        await this.state.storage.put('auditLogs', this.auditLogs);
+        logAuditLog(this.env?.DB_ADMIN, action, details, metadata).catch(err => {
+            console.error('Failed to save audit log to D1', err);
+        });
 
         return log;
     }

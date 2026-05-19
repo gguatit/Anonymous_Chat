@@ -99,6 +99,10 @@ const publicRoutes = [
         const resp = await forwardToDO(env, '/announcement-history');
         return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
     }],
+    ['/api/emergency-announcement', 'GET', async (req, env, cors) => {
+        const resp = await forwardToDO(env, '/emergency-announcement');
+        return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }],
     ['/api/channels/create', 'POST', handleChannelCreate],
     ['/api/channels/join', 'POST', handleChannelJoin],
     ['/api/channels/list', 'GET', handleChannelList],

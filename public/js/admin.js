@@ -95,18 +95,23 @@ class AdminDashboard {
         this.adminSendBtn = document.getElementById('admin-send-btn');
         this.adminAnnounceBtn = document.getElementById('admin-announce-btn');
         this.adminMessageInput = document.getElementById('admin-message-input');
-        this.adminSendBtn?.addEventListener('click', () => this.sendAdminMessage(false));
-        this.adminAnnounceBtn?.addEventListener('click', () => this.sendAdminMessage(true));
+        this.adminAnnounceInput = document.getElementById('admin-announce-input');
+        this.emergencyCheckbox = document.getElementById('emergency-checkbox');
+        this.emergencyDuration = document.getElementById('emergency-duration');
+        this.adminSendBtn?.addEventListener('click', () => this.sendAdminBroadcast());
+        this.adminAnnounceBtn?.addEventListener('click', () => this.sendAdminAnnounce());
+        this.emergencyCheckbox?.addEventListener('change', () => {
+            this.emergencyDuration.classList.toggle('hidden', !this.emergencyCheckbox.checked);
+        });
 
         this.deleteAllMessagesBtn = document.getElementById('delete-all-messages-btn');
         this.deleteAllMessagesBtn?.addEventListener('click', () => this.deleteAllMessages());
 
-        // Enter = send, Shift+Enter = newline for textarea
         if (this.adminMessageInput) {
             this.adminMessageInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    this.sendAdminMessage(false);
+                    this.sendAdminBroadcast();
                 }
             });
         }
@@ -307,7 +312,7 @@ class AdminDashboard {
         }
     }
 
-    async sendAdminMessage(isAnnouncement = false) {
+    async sendAdminBroadcast() {
         if (!this.sessionToken) {
             alert('관리자 인증이 필요합니다.');
             return;
@@ -326,10 +331,7 @@ class AdminDashboard {
         }
 
         try {
-            const endpoint = isAnnouncement ? '/api/admin/announce' : '/api/admin/broadcast';
-            console.log('Sending to endpoint:', endpoint, 'Content:', content);
-
-            const response = await fetch(endpoint, {
+            const response = await fetch('/api/admin/broadcast', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -338,33 +340,81 @@ class AdminDashboard {
                 body: JSON.stringify({ content: raw })
             });
 
-            console.log('Response status:', response.status);
-
             if (!response.ok) {
                 const err = await response.json().catch(() => null);
-                console.error('Message send failed', err);
-                alert('메시지 전송에 실패했습니다. 콘솔을 확인하세요.');
+                console.error('Broadcast failed', err);
+                alert('메시지 전송에 실패했습니다.');
                 return;
             }
 
-            const result = await response.json();
-            console.log('Message sent successfully:', result);
-
-            if (isAnnouncement) {
-                if (result.sessionsNotified !== undefined) {
-                    alert(`공지가 ${result.sessionsNotified}명의 사용자에게 전송되었습니다.`);
-                } else {
-                    alert('공지가 전송되었습니다.');
-                }
-            }
-
-            // Clear input and refresh recent messages
             if (this.adminMessageInput) this.adminMessageInput.value = '';
             this.refreshData();
 
         } catch (error) {
-            console.error('sendAdminMessage error:', error);
+            console.error('sendAdminBroadcast error:', error);
             alert('메시지 전송 중 오류가 발생했습니다.');
+        }
+    }
+
+    async sendAdminAnnounce() {
+        if (!this.sessionToken) {
+            alert('관리자 인증이 필요합니다.');
+            return;
+        }
+
+        const raw = (this.adminAnnounceInput?.value || '');
+        const content = raw.trim();
+        if (!content) {
+            alert('공지 내용을 입력하세요.');
+            return;
+        }
+
+        if (raw.length > 5000) {
+            alert('공지사항은 최대 5000자까지 가능합니다.');
+            return;
+        }
+
+        const isEmergency = this.emergencyCheckbox?.checked || false;
+        const body = { content: raw, isEmergency };
+        if (isEmergency) {
+            const duration = parseInt(this.emergencyDuration?.value || '0');
+            if (duration > 0) {
+                body.emergencyUntil = Date.now() + duration;
+            }
+        }
+
+        try {
+            const response = await fetch('/api/admin/announce', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.sessionToken}`
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => null);
+                console.error('Announce failed', err);
+                alert('공지 전송에 실패했습니다.');
+                return;
+            }
+
+            const result = await response.json();
+            if (result.sessionsNotified !== undefined) {
+                alert(`공지가 ${result.sessionsNotified}명의 사용자에게 전송되었습니다.`);
+            } else {
+                alert('공지가 전송되었습니다.');
+            }
+
+            if (this.adminAnnounceInput) this.adminAnnounceInput.value = '';
+            if (this.emergencyCheckbox) this.emergencyCheckbox.checked = false;
+            if (this.emergencyDuration) this.emergencyDuration.classList.add('hidden');
+            this.refreshData();
+
+        } catch (error) {
+            console.error('sendAdminAnnounce error:', error);
+            alert('공지 전송 중 오류가 발생했습니다.');
         }
     }
 
@@ -1564,11 +1614,14 @@ class AdminDashboard {
         container.innerHTML = announcements.map(acc => {
             const timeStr = new Date(acc.timestamp).toLocaleString('ko-KR');
             const content = this.escapeHtml(acc.content).replace(/\n/g, '<br>');
-            
+            const emergencyBadge = acc.isEmergency
+                ? '<span class="text-xs bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded-full font-medium ml-1">긴급</span>'
+                : '';
+
             return `
-                <div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4">
+                <div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4 ${acc.isEmergency ? 'border border-red-700/50' : ''}">
                     <div class="flex-1">
-                        <div class="text-xs text-gray-400 mb-1">${timeStr}</div>
+                        <div class="text-xs text-gray-400 mb-1">${timeStr}${emergencyBadge}</div>
                         <div class="text-sm text-gray-200">${content}</div>
                     </div>
                     <div class="flex flex-col gap-2">
@@ -1584,12 +1637,17 @@ class AdminDashboard {
         const item = this.lastAnnouncements?.find(a => a.timestamp === timestamp);
         if (!item) return;
 
+        const isEmergency = item.isEmergency || false;
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
         modal.innerHTML = `
             <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-lg w-full mx-4 border border-gray-700">
                 <h3 class="text-lg font-bold text-gray-100 mb-4">공지사항 수정</h3>
-                <textarea id="edit-announce-input" rows="5" class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none resize-none mb-4">${item.content}</textarea>
+                <textarea id="edit-announce-input" rows="5" class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none resize-none mb-3">${item.content}</textarea>
+                <label class="flex items-center gap-1.5 text-sm text-gray-300 mb-4 cursor-pointer">
+                    <input type="checkbox" id="edit-emergency-checkbox" class="rounded bg-gray-700 border-gray-600 text-red-500 focus:ring-red-500" ${isEmergency ? 'checked' : ''}>
+                    긴급공지
+                </label>
                 <div class="flex justify-end gap-2">
                     <button id="cancel-edit-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded text-sm transition-colors">취소</button>
                     <button id="save-edit-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors">저장</button>
@@ -1605,16 +1663,21 @@ class AdminDashboard {
                 this.showNotification('내용을 입력하세요.', 'error');
                 return;
             }
+            const newEmergency = modal.querySelector('#edit-emergency-checkbox').checked;
             modal.remove();
 
             try {
+                const body = { timestamp, content: newContent, isEmergency: newEmergency };
+                if (newEmergency && item.emergencyUntil) {
+                    body.emergencyUntil = item.emergencyUntil;
+                }
                 const response = await fetch('/api/admin/announce', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${this.sessionToken}`
                     },
-                    body: JSON.stringify({ timestamp, content: newContent })
+                    body: JSON.stringify(body)
                 });
 
                 if (!response.ok) throw new Error('Failed to edit announcement');

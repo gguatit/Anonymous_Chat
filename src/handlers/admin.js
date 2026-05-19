@@ -195,6 +195,14 @@ export async function handleAdminDeleteErrorLogs(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
+    if (env?.DB_ADMIN) {
+        try {
+            await env.DB_ADMIN.prepare('DELETE FROM error_logs').run();
+        } catch (e) {
+            console.error('Failed to delete error logs from D1:', e);
+        }
+    }
+
     const response = await forwardToDO(env, '/admin/delete-error-logs', {
         method: 'POST',
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
@@ -247,7 +255,7 @@ export async function handleAdminLogs(request, env, corsHeaders) {
     }
 
     const { results } = await env.DB_ADMIN.prepare(
-        'SELECT data FROM admin_logs ORDER BY timestamp DESC LIMIT 100'
+        'SELECT data FROM admin_activity_logs ORDER BY timestamp DESC LIMIT 100'
     ).all();
 
     const logs = (results || []).map(row => {
@@ -271,7 +279,7 @@ export async function handleAdminDeleteLogs(request, env, corsHeaders) {
 
     try {
         const { meta } = await env.DB_ADMIN.prepare(
-            'DELETE FROM admin_logs'
+            'DELETE FROM admin_activity_logs'
         ).run();
 
         return new Response(JSON.stringify({ success: true, deletedCount: meta?.changes || 0 }), {
@@ -462,6 +470,14 @@ export async function handleAdminAnnounce(request, env, corsHeaders) {
         if (request.method === 'PUT' || request.method === 'DELETE') {
             forwardBody.timestamp = timestamp;
         }
+        if (request.method === 'POST' || request.method === 'PUT') {
+            if (body.hasOwnProperty('isEmergency')) {
+                forwardBody.isEmergency = !!body.isEmergency;
+            }
+            if (body.hasOwnProperty('emergencyUntil')) {
+                forwardBody.emergencyUntil = body.emergencyUntil ? Number(body.emergencyUntil) : null;
+            }
+        }
 
         const response = await forwardToDO(env, '/admin/announce', {
             method: request.method,
@@ -564,10 +580,25 @@ export async function handleAdminAuditLogs(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
-    try {
-        const response = await forwardToDO(env, '/admin/audit-logs');
+    if (!env?.DB_ADMIN) {
+        return new Response(JSON.stringify([]), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
 
-        return new Response(response.body, {
+    try {
+        const { results } = await env.DB_ADMIN.prepare(
+            'SELECT action, details, timestamp, metadata FROM audit_logs ORDER BY timestamp DESC LIMIT 100'
+        ).all();
+
+        const logs = (results || []).map(r => ({
+            timestamp: r.timestamp,
+            action: r.action,
+            details: r.details,
+            metadata: r.metadata ? JSON.parse(r.metadata) : {}
+        }));
+
+        return new Response(JSON.stringify(logs), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     } catch (error) {
@@ -582,12 +613,15 @@ export async function handleAdminAuditLogs(request, env, corsHeaders) {
 export async function handleAdminDeleteAuditLogs(request, env, corsHeaders) {
     const token = await requireAdminAuth(request, env);
     if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-    try {
-        const response = await forwardToDO(env, '/admin/delete-audit-logs', {
-            method: 'POST'
-        });
 
-        return new Response(response.body, {
+    try {
+        if (env?.DB_ADMIN) {
+            await env.DB_ADMIN.prepare('DELETE FROM audit_logs').run();
+        }
+        // Also clear in-memory in the DO
+        await forwardToDO(env, '/admin/delete-audit-logs', { method: 'POST' });
+
+        return new Response(JSON.stringify({ success: true }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     } catch (error) {

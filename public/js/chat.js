@@ -360,6 +360,12 @@ class ChatClient {
                 );
                 this.ui.displayAnnouncement(data.content, data.timestamp);
                 this.updateAnnouncementBadgeVisibility();
+                if (data.isEmergency) {
+                    location.href = '/announcements.html?from=emergency';
+                }
+                break;
+            case 'emergency_cleared':
+                console.log('Emergency announcement cleared');
                 break;
             case 'kicked':
                 // User was kicked by admin
@@ -875,6 +881,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch {
         // fallback to hardcoded default
     }
+
+    const emergency = await fetch('/api/emergency-announcement').then(r => r.json()).catch(() => ({ isEmergency: false }));
+    if (emergency.isEmergency) {
+        location.href = '/announcements.html?from=emergency';
+        return;
+    }
+
     window.chatClient = new ChatClient(config);
 });
 

@@ -462,13 +462,26 @@
                         <div class="mb-3">
                             <label for="admin-message-input" class="block text-sm font-medium text-gray-300 mb-2">관리자 메시지 전송</label>
                             <div class="flex flex-col md:flex-row gap-2">
-                                <textarea id="admin-message-input" rows="3" maxlength="5000" class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" placeholder="관리자 메시지 입력 (Shift+Enter: 줄바꿈, Enter: 전송, 최대 5000자)"></textarea>
-                                <div class="flex flex-col gap-2">
-                                    <button id="admin-send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">일반 전송</button>
-                                    <button id="admin-announce-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">공지 전송</button>
-                                </div>
+                                <textarea id="admin-message-input" rows="2" maxlength="5000" class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" placeholder="관리자 메시지 입력 (최대 5000자)"></textarea>
+                                <button id="admin-send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap self-start">메시지 전송</button>
                             </div>
-                            <p class="text-xs text-gray-400 mt-1">일반: 관리자 메시지로 전송 / 공지: 시스템 공지사항으로 전송</p>
+                        </div>
+                        <div class="mb-3 pb-3 border-b border-gray-700">
+                            <label for="admin-announce-input" class="block text-sm font-medium text-yellow-300 mb-2">공지사항 전송</label>
+                            <textarea id="admin-announce-input" rows="2" maxlength="5000" class="w-full bg-gray-700 text-yellow-100 border border-yellow-600/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-yellow-500 resize-none mb-2" placeholder="공지사항 내용 입력 (최대 5000자)"></textarea>
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <label class="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer">
+                                    <input type="checkbox" id="emergency-checkbox" class="rounded bg-gray-700 border-gray-600 text-red-500 focus:ring-red-500">
+                                    긴급공지로 발송
+                                </label>
+                                <select id="emergency-duration" class="hidden bg-gray-700 text-gray-200 border border-gray-600 rounded px-2 py-1 text-xs focus:outline-none">
+                                    <option value="3600000">1시간</option>
+                                    <option value="21600000">6시간</option>
+                                    <option value="86400000">24시간</option>
+                                    <option value="0">무기한</option>
+                                </select>
+                                <button id="admin-announce-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">공지 전송</button>
+                            </div>
                         </div>
                         <div class="mb-3 pb-3 border-b border-gray-700">
                             <button id="delete-all-messages-btn" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">
