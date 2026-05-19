@@ -2,7 +2,20 @@
 
 ## 2026-05-18
 
-### 🐛 버그 수정 (Critical)
+### 🚀 신규 기능
+- **긴급공지 시스템**: 관리자가 긴급공지 발송 → 모든 사용자 공지사항 페이지로 강제 리다이렉션
+  - 공지 발송 시 긴급공지 체크박스 + 만료시간(1h/6h/24h/무기한) 설정
+  - 긴급공지 수신 시 `announcements.html`로 자동 이동, 10초 최소 체류 후 채팅 복귀 가능
+  - 동일 긴급공지 재접속 시 리다이렉션 미발생 (localStorage 기반 1회 제한)
+  - 긴급공지 해제 시 WebSocket `emergency_cleared` broadcast → 폴링 감지 후 자동 채팅 복귀
+  - 관리자 메시지/공지 입력 구역 완전 분리, 수정 모달에 긴급 토글 추가
+
+### ⚙️ 인프라 변경
+- **D1 로그 테이블 3개 분리**: 단일 `admin_logs` → `admin_activity_logs` + `audit_logs` + `error_logs`
+  - 감사 로그(audit_logs)와 오류 로그(error_logs)를 DO Storage → D1으로 이전
+  - 로그 삭제 시 D1 테이블 각각 DELETE + DO in-memory 정리
+
+### 🐛 버그 수정
 - **Storage 쓰기 누락 방지**: `ChatRoom.js` 메시지 전송/수정/삭제/어드민 broadcast 등 6곳의 `storage.put()`에 `await` 추가 → DO eviction 시 메시지 데이터 소실 방지
 - **재접속 close-race 수정**: WebSocket close 핸들러에 `sessions.get(sessionId) !== websocket` 가드 추가 → 재접속 시 새 WebSocket이 삭제되는 버그 수정
 - **분당 메시지 레이트 리밋 무력화 수정**: `joinTime` 기반 윈도우 → 슬라이딩 1분 윈도우(`_minuteWindowStart`, `_minuteMessageCount`)로 교체 → 입장 1분 후 레이트 리밋 영구 해제 버그 수정

@@ -361,11 +361,18 @@ class ChatClient {
                 this.ui.displayAnnouncement(data.content, data.timestamp);
                 this.updateAnnouncementBadgeVisibility();
                 if (data.isEmergency) {
-                    location.href = '/announcements.html?from=emergency';
+                    const seenTs = localStorage.getItem('chatEmergencySeenTs');
+                    if (String(data.timestamp) !== seenTs) {
+                        localStorage.setItem('chatEmergencySeenTs', String(data.timestamp));
+                        localStorage.setItem('chatEmergencyRedirectTime', String(Date.now()));
+                        location.href = '/announcements.html?from=emergency';
+                    }
                 }
                 break;
             case 'emergency_cleared':
                 console.log('Emergency announcement cleared');
+                localStorage.removeItem('chatEmergencySeenTs');
+                localStorage.removeItem('chatEmergencyRedirectTime');
                 break;
             case 'kicked':
                 // User was kicked by admin
@@ -884,8 +891,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const emergency = await fetch('/api/emergency-announcement').then(r => r.json()).catch(() => ({ isEmergency: false }));
     if (emergency.isEmergency) {
-        location.href = '/announcements.html?from=emergency';
-        return;
+        const seenTs = localStorage.getItem('chatEmergencySeenTs');
+        if (String(emergency.timestamp) !== seenTs) {
+            localStorage.setItem('chatEmergencySeenTs', String(emergency.timestamp));
+            localStorage.setItem('chatEmergencyRedirectTime', String(Date.now()));
+            location.href = '/announcements.html?from=emergency';
+            return;
+        }
+        localStorage.removeItem('chatEmergencyRedirectTime');
+    } else {
+        localStorage.removeItem('chatEmergencySeenTs');
+        localStorage.removeItem('chatEmergencyRedirectTime');
     }
 
     window.chatClient = new ChatClient(config);

@@ -255,7 +255,7 @@
         // Load on page start
         loadAnnouncements();
 
-        // Emergency polling and auto-redirect
+        // Emergency polling, countdown, and auto-redirect
         (function initEmergencyPolling() {
             const params = new URLSearchParams(location.search);
             if (params.get('from') !== 'emergency') return;
@@ -263,6 +263,37 @@
             const banner = document.getElementById('emergency-banner');
             const resolved = document.getElementById('emergency-resolved');
             banner.classList.remove('hidden');
+
+            // 10-second minimum stay enforcement
+            const backLink = document.querySelector('header a[href="/"]');
+            const redirectTime = parseInt(localStorage.getItem('chatEmergencyRedirectTime') || '0');
+            const minStay = 10000;
+            const elapsed = Date.now() - redirectTime;
+            const remaining = Math.max(0, Math.ceil((minStay - elapsed) / 1000));
+
+            if (remaining > 0) {
+                backLink.removeAttribute('href');
+                backLink.classList.add('pointer-events-none', 'opacity-40');
+                const countdownEl = document.createElement('span');
+                countdownEl.id = 'emergency-countdown';
+                countdownEl.className = 'text-xs text-red-300 ml-2';
+                countdownEl.textContent = remaining + '초 후 이동 가능';
+                backLink.parentElement.appendChild(countdownEl);
+
+                const countdownInterval = setInterval(() => {
+                    const nowRemaining = Math.max(0, Math.ceil((minStay - (Date.now() - redirectTime)) / 1000));
+                    if (nowRemaining <= 0) {
+                        clearInterval(countdownInterval);
+                        backLink.href = '/';
+                        backLink.classList.remove('pointer-events-none', 'opacity-40');
+                        backLink.classList.add('hover:bg-gray-700');
+                        countdownEl.textContent = '채팅으로 이동';
+                        countdownEl.className = 'text-xs text-green-300 ml-2';
+                    } else {
+                        countdownEl.textContent = nowRemaining + '초 후 이동 가능';
+                    }
+                }, 1000);
+            }
 
             let pollCount = 0;
             const maxPolls = 120; // 10 minutes at 5s intervals
@@ -275,6 +306,8 @@
                         clearInterval(pollInterval);
                         banner.classList.add('hidden');
                         resolved.classList.remove('hidden');
+                        localStorage.removeItem('chatEmergencySeenTs');
+                        localStorage.removeItem('chatEmergencyRedirectTime');
                         setTimeout(() => { location.href = '/'; }, 3000);
                     }
                 } catch {
