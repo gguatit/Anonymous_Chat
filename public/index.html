@@ -372,7 +372,7 @@
     </div>
 
     <!-- Main Chat Area -->
-    <main class="relative flex flex-col max-w-5xl w-full mx-auto" style="height: calc(100vh - 120px); padding-bottom: 8rem;">
+    <main class="flex flex-col max-w-5xl w-full mx-auto" style="height: calc(100vh - 120px); padding-bottom: 8rem;">
         <!-- Messages Container -->
         <div id="messages-container" class="overflow-y-auto space-y-2 p-3 bg-gray-800"
             style="height: 100%; max-height: 100%;" role="log" aria-label="채팅 메시지" aria-live="polite">
@@ -391,9 +391,9 @@
             </div>
         </div>
 
-        <!-- Scroll to Bottom Button (outside messages-container, absolute within main) -->
+        <!-- Scroll to Bottom Button -->
         <button id="scroll-to-bottom"
-            class="absolute bottom-4 right-4 bg-gray-800/90 hover:bg-gray-700 text-gray-200 border border-gray-600 rounded-full px-4 py-2 shadow-lg transition-all duration-300 opacity-0 pointer-events-none z-10 flex items-center gap-1.5 text-sm"
+            class="fixed bottom-20 right-4 bg-gray-800/90 hover:bg-gray-700 text-gray-200 border border-gray-600 rounded-full px-4 py-2 shadow-lg transition-all duration-300 opacity-0 pointer-events-none z-30 flex items-center gap-1.5 text-sm"
             aria-label="최신 메시지로 이동" title="최신 메시지로 이동">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd"
