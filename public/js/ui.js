@@ -506,6 +506,17 @@ export class UIManager {
             this.showContextMenu(e, messageId, canEdit);
         });
 
+        // Double-click for quick 👍 reaction
+        messageDiv.addEventListener('dblclick', (e) => {
+            const interactive = e.target.closest('a, button, input, textarea, [role="button"], .reaction-pill');
+            if (interactive) return;
+            if (!this.onReaction) return;
+            const bar = messageDiv.querySelector('.reaction-bar');
+            const existingPill = bar && bar.querySelector('[data-emoji="👍"]');
+            const hasReacted = existingPill && existingPill.classList.contains('bg-blue-600');
+            this.onReaction(messageId, '👍', hasReacted);
+        });
+
         // Add visual feedback
         messageDiv.style.cursor = 'pointer';
         messageDiv.style.userSelect = 'text';
@@ -993,7 +1004,9 @@ export class UIManager {
         }
 
         let pill = bar.querySelector(`[data-emoji="${emoji}"]`);
+        let isNewPill = false;
         if (!pill) {
+            isNewPill = true;
             pill = document.createElement('button');
             pill.className = 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-600 text-gray-200 hover:bg-gray-500';
             pill.setAttribute('data-emoji', emoji);
@@ -1013,6 +1026,11 @@ export class UIManager {
             ? 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-600 text-white ring-1 ring-blue-400'
             : 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-600 text-gray-200 hover:bg-gray-500';
         pill.innerHTML = `${emoji} ${count}`;
+
+        if (isNewPill) {
+            pill.classList.add('reaction-just-added');
+            pill.addEventListener('animationend', () => pill.classList.remove('reaction-just-added'), { once: true });
+        }
     }
 
     clearAllMessages() {

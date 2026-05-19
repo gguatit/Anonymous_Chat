@@ -36,7 +36,6 @@ class ChatClient {
         this.announcementSeenStorageKey = 'chatLastSeenAnnouncementTs';
         this.currentChannel = '0';
         this.currentChannelName = '';
-        this.lastReactionTime = 0;
 
         // Restore saved channel
         try {
@@ -724,20 +723,13 @@ class ChatClient {
     }
 
     sendReaction(messageId, emoji, hasReacted) {
-        const now = Date.now();
-        if (now - this.lastReactionTime < 3000) {
-            this.ui.displayError('반응을 너무 빠르게 보내고 있습니다.');
-            return;
-        }
-        this.lastReactionTime = now;
-
         this.wsManager.send({
             type: 'reaction',
             messageId,
             emoji,
             action: hasReacted ? 'remove' : 'add',
             sessionId: this.sessionManager.getSessionId(),
-            timestamp: now
+            timestamp: Date.now()
         });
     }
 
