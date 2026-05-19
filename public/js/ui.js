@@ -24,6 +24,7 @@ export class UIManager {
 
         // 답장 상태
         this.replyingTo = null; // { messageId, content, isOwnMessage, isSecret }
+        this.onReaction = null;
 
         // Announcement banner elements
         this.announcementBanner = document.getElementById('announcement-banner');
@@ -443,6 +444,35 @@ export class UIManager {
             ${contentHtml}
         `;
 
+        if (data.reactions && Object.keys(data.reactions).length > 0) {
+            const reactionBar = document.createElement('div');
+            reactionBar.className = 'reaction-bar flex flex-wrap gap-1 mt-2';
+            for (const [emoji, count] of Object.entries(data.reactions)) {
+                if (count > 0) {
+                    const userReacted = data.reactionSessions &&
+                        data.reactionSessions[emoji] &&
+                        data.reactionSessions[emoji].includes(sessionId);
+                    const pill = document.createElement('button');
+                    pill.className = 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ' +
+                        (userReacted
+                            ? 'bg-blue-600 text-white ring-1 ring-blue-400'
+                            : 'bg-gray-600 text-gray-200 hover:bg-gray-500');
+                    pill.setAttribute('data-emoji', emoji);
+                    pill.setAttribute('data-message-id', data.messageId);
+                    pill.innerHTML = `${emoji} ${count}`;
+                    pill.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (this.onReaction) {
+                            const hasReacted = pill.classList.contains('bg-blue-600');
+                            this.onReaction(data.messageId, emoji, hasReacted);
+                        }
+                    });
+                    reactionBar.appendChild(pill);
+                }
+            }
+            messageDiv.appendChild(reactionBar);
+        }
+
         this.addMessageInteractions(messageDiv, data.messageId, canEdit, data.replyTo?.messageId);
 
         return messageDiv;
@@ -526,6 +556,9 @@ export class UIManager {
             <button class="reply-message-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
                 답장하기
             </button>
+            <button class="react-message-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
+                반응 추가
+            </button>
             ${canEdit ? `
             <button class="edit-message-btn w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
                 메시지 수정
@@ -559,6 +592,7 @@ export class UIManager {
         const replyButton = menu.querySelector('.reply-message-btn');
         const editButton = menu.querySelector('.edit-message-btn');
         const deleteButton = menu.querySelector('.delete-message-btn');
+        const reactButton = menu.querySelector('.react-message-btn');
 
         copyButton.addEventListener('click', () => {
             menu.remove();
@@ -622,6 +656,13 @@ export class UIManager {
             });
         }
 
+        reactButton.addEventListener('click', () => {
+            menu.remove();
+            const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageDiv) return;
+            this.showReactionPicker(messageDiv, messageId);
+        });
+
         // Close menu when clicking outside
         const closeMenu = (e) => {
             if (!menu.contains(e.target)) {
@@ -642,6 +683,54 @@ export class UIManager {
         if (this.onDelete) {
             this.onDelete(messageId);
         }
+    }
+
+    showReactionPicker(messageDiv, messageId) {
+        this.removeReactionPicker();
+
+        const picker = document.createElement('div');
+        picker.id = 'reaction-picker';
+        picker.className = 'fixed bg-gray-800 border border-gray-600 rounded-lg shadow-lg py-1 px-2 z-50 flex gap-1';
+
+        const emojis = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+        picker.innerHTML = emojis.map(emoji => {
+            const existingBar = messageDiv.querySelector('.reaction-bar');
+            const existingPill = existingBar && existingBar.querySelector(`[data-emoji="${emoji}"]`);
+            const hasReacted = existingPill && existingPill.classList.contains('bg-blue-600');
+            return `<button class="reaction-option text-lg px-1.5 py-0.5 rounded hover:bg-gray-600 transition-colors ${hasReacted ? 'ring-1 ring-blue-400 bg-gray-600' : ''}" data-emoji="${emoji}">${emoji}</button>`;
+        }).join('');
+
+        const rect = messageDiv.getBoundingClientRect();
+        picker.style.left = `${rect.left}px`;
+        picker.style.top = `${rect.top - 40}px`;
+
+        picker.addEventListener('click', (e) => {
+            const btn = e.target.closest('.reaction-option');
+            if (!btn) return;
+            const emoji = btn.dataset.emoji;
+            const existingBar = messageDiv.querySelector('.reaction-bar');
+            const existingPill = existingBar && existingBar.querySelector(`[data-emoji="${emoji}"]`);
+            const hasReacted = existingPill && existingPill.classList.contains('bg-blue-600');
+            if (this.onReaction) {
+                this.onReaction(messageId, emoji, hasReacted);
+            }
+            this.removeReactionPicker();
+        });
+
+        document.body.appendChild(picker);
+
+        const closePicker = (e) => {
+            if (!picker.contains(e.target)) {
+                this.removeReactionPicker();
+                document.removeEventListener('click', closePicker);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closePicker), 100);
+    }
+
+    removeReactionPicker() {
+        const picker = document.getElementById('reaction-picker');
+        if (picker) picker.remove();
     }
 
     // ========== Channel Context Menu ==========
@@ -882,6 +971,47 @@ export class UIManager {
         if (messageDiv) {
             messageDiv.remove();
         }
+    }
+
+    updateReaction(messageId, emoji, count, reactionSessions, currentSessionId) {
+        const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+        if (!messageDiv) return;
+
+        let bar = messageDiv.querySelector('.reaction-bar');
+        if (count === 0) {
+            const pill = bar && bar.querySelector(`[data-emoji="${emoji}"]`);
+            if (pill) pill.remove();
+            if (bar && bar.children.length === 0) bar.remove();
+            return;
+        }
+
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.className = 'reaction-bar flex flex-wrap gap-1 mt-2';
+            messageDiv.appendChild(bar);
+        }
+
+        let pill = bar.querySelector(`[data-emoji="${emoji}"]`);
+        if (!pill) {
+            pill = document.createElement('button');
+            pill.className = 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-600 text-gray-200 hover:bg-gray-500';
+            pill.setAttribute('data-emoji', emoji);
+            pill.setAttribute('data-message-id', messageId);
+            pill.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.onReaction) {
+                    const hasReacted = pill.classList.contains('bg-blue-600');
+                    this.onReaction(messageId, emoji, hasReacted);
+                }
+            });
+            bar.appendChild(pill);
+        }
+
+        const userReacted = reactionSessions && reactionSessions.includes(currentSessionId);
+        pill.className = userReacted
+            ? 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-600 text-white ring-1 ring-blue-400'
+            : 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-600 text-gray-200 hover:bg-gray-500';
+        pill.innerHTML = `${emoji} ${count}`;
     }
 
     clearAllMessages() {

@@ -36,6 +36,7 @@ class ChatClient {
         this.announcementSeenStorageKey = 'chatLastSeenAnnouncementTs';
         this.currentChannel = '0';
         this.currentChannelName = '';
+        this.lastReactionTime = 0;
 
         // Restore saved channel
         try {
@@ -252,7 +253,8 @@ class ChatClient {
             onAcceptNotice: (dontShowAgain) => this.handleAcceptNotice(dontShowAgain),
             onCreateChannel: (name) => this.createChannel(name),
             onJoinChannel: (number) => this.joinChannel(number),
-            onBackToMain: () => this.switchChannel('0')
+            onBackToMain: () => this.switchChannel('0'),
+            onReaction: (messageId, emoji, hasReacted) => this.sendReaction(messageId, emoji, hasReacted),
         });
         this.ui.updateNicknameDisplay(this.sessionManager.getNickname());
         this.ui.setNicknameLockState(this.isNicknameLocked);
@@ -330,6 +332,9 @@ class ChatClient {
             case 'message_deleted':
                 // Remove message from UI
                 this.ui.removeMessage(data.messageId);
+                break;
+            case 'message_reaction':
+                this.ui.updateReaction(data.messageId, data.emoji, data.count, data.reactionSessions, this.sessionManager.getSessionId());
                 break;
             case 'all_messages_deleted':
                 // Clear all messages from UI
@@ -716,6 +721,24 @@ class ChatClient {
 
         // Send delete request to server
         this.wsManager.send(deleteData);
+    }
+
+    sendReaction(messageId, emoji, hasReacted) {
+        const now = Date.now();
+        if (now - this.lastReactionTime < 3000) {
+            this.ui.displayError('반응을 너무 빠르게 보내고 있습니다.');
+            return;
+        }
+        this.lastReactionTime = now;
+
+        this.wsManager.send({
+            type: 'reaction',
+            messageId,
+            emoji,
+            action: hasReacted ? 'remove' : 'add',
+            sessionId: this.sessionManager.getSessionId(),
+            timestamp: now
+        });
     }
 
     // ========== Channel Management ==========

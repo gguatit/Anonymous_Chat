@@ -40,3 +40,18 @@
 [data-message-id].ring-blue-500 {
     transition: box-shadow 0.3s ease;
 }
+
+/* Reaction pill animations */
+.reaction-pill {
+    transition: transform 0.15s ease, background-color 0.2s ease;
+}
+.reaction-pill:active {
+    transform: scale(1.15);
+}
+.reaction-bar {
+    animation: reactionFadeIn 0.2s ease;
+}
+@keyframes reactionFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}

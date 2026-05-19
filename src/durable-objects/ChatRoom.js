@@ -1,4 +1,4 @@
-import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH } from '../config/constants.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI } from '../config/constants.js';
 import { generateMessageSignature, verifyMessageSignature, sanitizeInput } from '../utils/helpers.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
 import { logAuditLog, logErrorLog } from '../utils/logger.js';
@@ -1279,6 +1279,11 @@ export class ChatRoom {
                         this.handleTyping(data, sessionId);
                         break;
 
+                    case 'reaction': {
+                        await this.handleReaction(data, sessionId, HMAC_SECRET);
+                        break;
+                    }
+
                     default:
                         console.log('Unknown message type:', data.type);
                         if (sessionId) {
@@ -1765,6 +1770,64 @@ export class ChatRoom {
         this.broadcast({
             type: 'message_deleted',
             messageId: data.messageId
+        });
+    }
+
+    async handleReaction(data, sessionId, HMAC_SECRET) {
+        if (!sessionId) return;
+
+        if (data.sessionId !== sessionId) {
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '세션 ID가 일치하지 않습니다.'
+            });
+            return;
+        }
+
+        if (!data.messageId || !data.emoji) return;
+        if (!REACTION_EMOJIS.includes(data.emoji)) return;
+
+        const messageIndex = this.messages.findIndex(msg => msg.messageId === data.messageId);
+        if (messageIndex === -1) return;
+
+        const message = this.messages[messageIndex];
+        if (!message.reactions) message.reactions = {};
+        if (!message.reactionSessions) message.reactionSessions = {};
+
+        if (!message.reactionSessions[data.emoji]) {
+            message.reactionSessions[data.emoji] = [];
+        }
+        const sessions = message.reactionSessions[data.emoji];
+
+        if (data.action === 'add') {
+            if (sessions.includes(sessionId)) return;
+            if (sessions.length >= MAX_REACTIONS_PER_EMOJI) return;
+            sessions.push(sessionId);
+        } else if (data.action === 'remove') {
+            const idx = sessions.indexOf(sessionId);
+            if (idx === -1) return;
+            sessions.splice(idx, 1);
+        } else {
+            return;
+        }
+
+        message.reactions[data.emoji] = sessions.length;
+
+        if (message.reactions[data.emoji] === 0) {
+            delete message.reactions[data.emoji];
+            delete message.reactionSessions[data.emoji];
+        }
+
+        message.signature = await generateMessageSignature(message, HMAC_SECRET);
+        await this.state.storage.put('messages', this.messages);
+
+        this.broadcast({
+            type: 'message_reaction',
+            messageId: data.messageId,
+            emoji: data.emoji,
+            count: message.reactions[data.emoji] || 0,
+            sessionId: sessionId,
+            reactionSessions: message.reactionSessions[data.emoji] || []
         });
     }
 

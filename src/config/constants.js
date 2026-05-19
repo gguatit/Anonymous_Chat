@@ -62,6 +62,11 @@ export const API_RATE_LIMIT = {
     CHECK_BAN: { windowMs: 10000, max: 10 },
 };
 
+// Reaction constants
+export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+export const MAX_REACTIONS_PER_EMOJI = 100;
+export const REACTION_RATE_LIMIT_MS = 3000;
+
 // Metrics storage (in-memory, per-worker instance)
 export const metrics = {
     totalConnections: 0,
