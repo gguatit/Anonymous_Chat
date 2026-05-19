@@ -149,6 +149,13 @@ export class ChatRoom {
         this.initialized = true;
     }
 
+    isEmergencyActive() {
+        const ann = this.currentAnnouncement;
+        if (!ann || !ann.isEmergency) return false;
+        if (!ann.emergencyUntil) return true;
+        return Date.now() < ann.emergencyUntil;
+    }
+
     getSessionList() {
         return Array.from(this.userMetadata.entries()).map(([sessionId, metadata]) => ({
             sessionId,
@@ -1051,7 +1058,7 @@ export class ChatRoom {
                 type: 'announcement',
                 content: this.currentAnnouncement.content,
                 timestamp: this.currentAnnouncement.timestamp,
-                isEmergency: this.currentAnnouncement.isEmergency,
+                isEmergency: this.isEmergencyActive(),
                 emergencyUntil: this.currentAnnouncement.emergencyUntil
             };
 
@@ -1425,7 +1432,7 @@ export class ChatRoom {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
                     timestamp: this.currentAnnouncement.timestamp,
-                    isEmergency: this.currentAnnouncement.isEmergency || false
+                    isEmergency: this.isEmergencyActive()
                 });
             }
 
@@ -1473,7 +1480,7 @@ export class ChatRoom {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
                     timestamp: this.currentAnnouncement.timestamp,
-                    isEmergency: this.currentAnnouncement.isEmergency || false
+                    isEmergency: this.isEmergencyActive()
                 });
             }
         }
@@ -2133,6 +2140,14 @@ export class ChatRoom {
         const twelveHoursAgo = now - MESSAGE_RETENTION_MS;
         const initialLength = this.messages.length;
         this.messages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
+
+        // Clear expired emergency announcement
+        if (this.currentAnnouncement && this.currentAnnouncement.isEmergency && this.currentAnnouncement.emergencyUntil && now >= this.currentAnnouncement.emergencyUntil) {
+            this.currentAnnouncement.isEmergency = false;
+            this.currentAnnouncement.emergencyUntil = null;
+            await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+            this.broadcast({ type: 'emergency_cleared' });
+        }
 
         if (this.messages.length !== initialLength) {
         await this.state.storage.put('messages', this.messages);
