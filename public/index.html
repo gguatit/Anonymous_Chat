@@ -374,7 +374,7 @@
     <!-- Main Chat Area -->
     <main class="flex flex-col max-w-5xl w-full mx-auto" style="height: calc(100vh - 120px); padding-bottom: 8rem;">
         <!-- Messages Container -->
-        <div id="messages-container" class="overflow-y-auto space-y-2 p-3 bg-gray-800"
+        <div id="messages-container" class="overflow-y-auto space-y-2 p-3 bg-gray-800 relative"
             style="height: 100%; max-height: 100%;" role="log" aria-label="채팅 메시지" aria-live="polite">
             <!-- Welcome message -->
             <div class="text-center py-2">
@@ -389,6 +389,17 @@
                 익명 채팅에 오신 것을 환영합니다<br>
                 <span class="text-xs text-gray-600">모든 메시지는 세션 동안만 유지됩니다</span>
             </div>
+            <!-- Scroll to Bottom Button -->
+            <button id="scroll-to-bottom"
+                class="absolute bottom-4 right-4 bg-gray-800/90 hover:bg-gray-700 text-gray-200 border border-gray-600 rounded-full px-4 py-2 shadow-lg transition-all duration-300 opacity-0 pointer-events-none z-10 flex items-center gap-1.5 text-sm"
+                aria-label="최신 메시지로 이동" title="최신 메시지로 이동">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z"
+                        clip-rule="evenodd" />
+                </svg>
+                <span>최신</span>
+            </button>
         </div>
 
         <!-- Typing Indicator -->
@@ -396,17 +407,6 @@
             aria-live="polite">
             <span>●</span><span>●</span><span>●</span> 입력 중
         </div>
-
-        <!-- Scroll to Bottom Button -->
-        <button id="scroll-to-bottom"
-            class="fixed bottom-24 right-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg transition-all duration-300 opacity-0 pointer-events-none z-30"
-            aria-label="최신 메시지로 이동" title="최신 메시지로 이동">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                    d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z"
-                    clip-rule="evenodd" />
-            </svg>
-        </button>
     </main>
 
     <!-- Input Area - Fixed at bottom -->

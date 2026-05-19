@@ -29,9 +29,26 @@ body {
     /* Chrome, Safari, Opera */
 }
 
-/* Scroll to bottom button mobile optimization */
+/* Scroll to bottom button */
 #scroll-to-bottom {
     transition: opacity 0.3s ease, transform 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Mobile: Better touch targets */
+@media (max-width: 640px) {
+    #scroll-to-bottom {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+        bottom: 1rem;
+        right: 0.75rem;
+    }
+
+    #scroll-to-bottom svg {
+        width: 1rem;
+        height: 1rem;
+    }
 }
 
 /* Search overlay scrollbar */
@@ -56,21 +73,6 @@ body {
 /* Message highlight for search navigation */
 [data-message-id].ring-blue-500 {
     transition: box-shadow 0.3s ease;
-}
-
-/* Mobile: Better touch targets */
-@media (max-width: 640px) {
-    #scroll-to-bottom {
-        right: 0.75rem;
-        bottom: 5.5rem;
-        /* Adjust for mobile keyboard */
-        padding: 0.625rem;
-    }
-
-    #scroll-to-bottom svg {
-        width: 1.125rem;
-        height: 1.125rem;
-    }
 }
 
 /* Mobile: Adjust input area for keyboard */
