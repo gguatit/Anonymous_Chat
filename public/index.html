@@ -390,16 +390,18 @@
                 <span class="text-xs text-gray-600">모든 메시지는 세션 동안만 유지됩니다</span>
             </div>
             <!-- Scroll to Bottom Button -->
-            <button id="scroll-to-bottom"
-                class="absolute bottom-4 right-4 bg-gray-800/90 hover:bg-gray-700 text-gray-200 border border-gray-600 rounded-full px-4 py-2 shadow-lg transition-all duration-300 opacity-0 pointer-events-none z-10 flex items-center gap-1.5 text-sm"
-                aria-label="최신 메시지로 이동" title="최신 메시지로 이동">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                        d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z"
-                        clip-rule="evenodd" />
-                </svg>
-                <span>최신</span>
-            </button>
+            <div class="sticky bottom-3 flex justify-end pointer-events-none z-10">
+                <button id="scroll-to-bottom"
+                    class="bg-gray-800/90 hover:bg-gray-700 text-gray-200 border border-gray-600 rounded-full px-4 py-2 shadow-lg transition-all duration-300 opacity-0 pointer-events-auto flex items-center gap-1.5 text-sm"
+                    aria-label="최신 메시지로 이동" title="최신 메시지로 이동">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    <span>최신</span>
+                </button>
+            </div>
         </div>
 
         <!-- Typing Indicator -->
