@@ -240,6 +240,7 @@ export class UIManager {
         // Store callbacks
         this.onDelete = callbacks.onDelete;
         this.onRevealSecret = callbacks.onRevealSecret;
+        this.onReaction = callbacks.onReaction;
     }
 
     updateNicknameDisplay(name) {
