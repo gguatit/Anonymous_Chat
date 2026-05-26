@@ -48,8 +48,8 @@
             </p>
             <div class="mt-4 text-xs text-gray-500 space-y-1">
                 <p>시행일: 2026-04-09</p>
-                <p>최종 수정일: 2026-04-09</p>
-                <p>버전: v1.1</p>
+                <p>최종 수정일: 2026-05-20</p>
+                <p>버전: v1.2</p>
             </div>
         </section>
 
@@ -86,18 +86,33 @@
                         </tr>
                         <tr>
                             <td class="py-2 pr-3">이용자 입력 정보</td>
-                            <td class="py-2 pr-3">닉네임, 메시지 내용, 답장 메타데이터</td>
+                            <td class="py-2 pr-3">닉네임, 메시지 내용, 답장 메타데이터, 메시지 반응(이모지)</td>
                             <td class="py-2">채팅 입력 및 전송</td>
                         </tr>
                         <tr>
                             <td class="py-2 pr-3">첨부 파일 정보</td>
-                            <td class="py-2 pr-3">파일 URL, 파일명, 크기, 형식</td>
+                            <td class="py-2 pr-3">파일 URL, 파일명, 크기, 형식 (파일 내용은 file.xeon.kr로 직접 전송)</td>
                             <td class="py-2">파일 업로드/메시지 전송</td>
                         </tr>
                         <tr>
+                            <td class="py-2 pr-3">봇 방지 검증 정보</td>
+                            <td class="py-2 pr-3">Cloudflare Turnstile 토큰, 검증 결과</td>
+                            <td class="py-2">Cloudflare Turnstile 위젯</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">링크 미리보기 정보</td>
+                            <td class="py-2 pr-3">공유된 URL, OG 메타데이터(제목, 설명, 이미지)</td>
+                            <td class="py-2">링크 공유 시 서버 측 조회</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">채널 참여 정보</td>
+                            <td class="py-2 pr-3">참여 중인 채널 slug, 참여 시각</td>
+                            <td class="py-2">채널 생성/참가 시</td>
+                        </tr>
+                        <tr>
                             <td class="py-2 pr-3">운영/보안 로그</td>
-                            <td class="py-2 pr-3">차단 정보(IP, sessionId), 감사 로그, 오류 로그</td>
-                            <td class="py-2">운영 관리 및 보안 처리</td>
+                            <td class="py-2 pr-3">오류 로그, 차단 정보(IP, sessionId 기준)</td>
+                            <td class="py-2">오류 발생 및 보안 처리</td>
                         </tr>
                         <tr>
                             <td class="py-2 pr-3">푸시 알림 정보</td>
@@ -117,11 +132,11 @@
         <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
             <h2 class="text-base font-semibold text-gray-100 mb-3">3. 개인정보 처리 목적 및 처리 근거</h2>
             <ul class="text-sm text-gray-300 space-y-2 list-disc list-inside">
-                <li>서비스 제공 및 계약 이행: 실시간 채팅 제공, 메시지 동기화, 세션 유지</li>
-                <li>정당한 이익 및 보안 보호: 스팸/남용 방지, 접속 제한, 차단 정책 운영, 사고 대응</li>
+                <li>서비스 제공 및 계약 이행: 실시간 채팅 제공, 메시지 동기화, 세션 유지, 채널 기능 운영</li>
+                <li>정당한 이익 및 보안 보호: 스팸/남용 방지, 봇 자동 접근 차단(Turnstile), 접속 제한, 차단 정책 운영, 사고 대응</li>
                 <li>운영 안정성 확보: 오류 분석, 장애 복구, 성능/품질 개선</li>
-                <li>선택 기능 제공(동의 기반): 웹/모바일 푸시 알림</li>
-                <li>법령 또는 분쟁 대응: 권리 침해, 보안 사고, 운영 상 필요한 기록 유지</li>
+                <li>부가 기능 제공: 메시지 반응, URL 링크 미리보기(OG 태그 파싱)</li>
+                <li>선택 기능 제공(동의 기반): 웹/모바일 푸시 알림, PWA 오프라인 캐싱</li>
             </ul>
         </section>
 
@@ -138,14 +153,19 @@
                     </thead>
                     <tbody class="divide-y divide-gray-700">
                         <tr>
-                            <td class="py-2 pr-3">채팅 메시지</td>
+                            <td class="py-2 pr-3">채팅 메시지 (반응 포함)</td>
                             <td class="py-2 pr-3">최대 12시간</td>
                             <td class="py-2">주기적 정리(5분 단위) 및 처리 시점 정리</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">관리자 감사 로그</td>
-                            <td class="py-2 pr-3">최대 30일</td>
-                            <td class="py-2">KV TTL 만료 기반 자동 삭제</td>
+                            <td class="py-2 pr-3">링크 미리보기 캐시</td>
+                            <td class="py-2 pr-3">최대 1시간</td>
+                            <td class="py-2">Cloudflare 엣지 캐시 TTL 만료</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">Turnstile 검증 기록</td>
+                            <td class="py-2 pr-3">세션 유지 기간</td>
+                            <td class="py-2">Cloudflare 측 정책에 따라 관리</td>
                         </tr>
                         <tr>
                             <td class="py-2 pr-3">푸시 구독 정보</td>
@@ -153,24 +173,24 @@
                             <td class="py-2">KV TTL 만료 또는 구독 해제 시 삭제</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">로그인 시도 제한 데이터</td>
-                            <td class="py-2 pr-3">최대 10분</td>
-                            <td class="py-2">브루트포스 방지 목적 기간 경과 시 삭제</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 pr-3">무효화 토큰 정보</td>
-                            <td class="py-2 pr-3">최대 2시간</td>
-                            <td class="py-2">관리자 세션 보안 목적 기간 경과 시 삭제</td>
-                        </tr>
-                        <tr>
                             <td class="py-2 pr-3">오류 로그</td>
                             <td class="py-2 pr-3">최대 100건</td>
                             <td class="py-2">링 버퍼 순환(초과분 자동 제거)</td>
                         </tr>
                         <tr>
+                            <td class="py-2 pr-3">채널 임시 데이터</td>
+                            <td class="py-2 pr-3">채널 비활성화 후 10분</td>
+                            <td class="py-2">빈 채널 자동 삭제</td>
+                        </tr>
+                        <tr>
                             <td class="py-2 pr-3">브라우저 로컬스토리지</td>
                             <td class="py-2 pr-3">이용자 삭제 전까지</td>
                             <td class="py-2">이용자가 브라우저 설정에서 직접 삭제</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">서비스 워커 캐시 (PWA)</td>
+                            <td class="py-2 pr-3">브라우저 캐시 정책 따름</td>
+                            <td class="py-2">오프라인 지원용 정적 리소스</td>
                         </tr>
                     </tbody>
                 </table>
@@ -196,12 +216,17 @@
                         <tr>
                             <td class="py-2 pr-3">Cloudflare</td>
                             <td class="py-2 pr-3">네트워크/요청 처리에 필요한 접속 정보</td>
-                            <td class="py-2">서비스 호스팅 및 보안/트래픽 처리</td>
+                            <td class="py-2">서비스 호스팅, 보안/트래픽 처리</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">Cloudflare Turnstile</td>
+                            <td class="py-2 pr-3">봇 검증 토큰 및 행동 분석 데이터</td>
+                            <td class="py-2">자동 봇 접근 차단</td>
                         </tr>
                         <tr>
                             <td class="py-2 pr-3">file.xeon.kr</td>
-                            <td class="py-2 pr-3">업로드 파일 및 메타데이터</td>
-                            <td class="py-2">파일 업로드/다운로드 기능 제공</td>
+                            <td class="py-2 pr-3">업로드 파일 내용 및 메타데이터</td>
+                            <td class="py-2">파일 저장 및 다운로드 기능 제공</td>
                         </tr>
                         <tr>
                             <td class="py-2 pr-3">api.kalpha.kr</td>
@@ -209,7 +234,7 @@
                             <td class="py-2">Dead Drop 비밀 메시지 기능 제공</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">브라우저 Push 인프라/FCM</td>
+                            <td class="py-2 pr-3">브라우저 Push 인프라 / FCM</td>
                             <td class="py-2 pr-3">푸시 구독 정보 또는 토큰</td>
                             <td class="py-2">푸시 알림 전송</td>
                         </tr>
@@ -230,19 +255,22 @@
         <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
             <h2 class="text-base font-semibold text-gray-100 mb-3">7. 이용자 권리 및 행사 방법</h2>
             <ul class="text-sm text-gray-300 space-y-2 list-disc list-inside">
-                <li>이용자는 언제든지 로컬스토리지 데이터(세션/닉네임/토큰)를 브라우저 설정에서 삭제할 수 있습니다.</li>
-                <li>푸시 알림은 서비스 내 토글 또는 브라우저 권한 설정을 통해 철회할 수 있습니다.</li>
-                <li>개인정보 처리 관련 문의 시, 합리적인 범위 내에서 열람/정정/삭제/처리정지 요청에 대해 안내합니다.</li>
+                <li>이용자는 언제든지 브라우저 설정에서 로컬스토리지 데이터(세션, 닉네임, 테마 설정, 토큰 등)를 삭제할 수 있습니다.</li>
+                <li>푸시 알림은 서비스 내 토글 또는 브라우저 권한 설정을 통해 언제든지 철회할 수 있습니다.</li>
+                <li>메시지 반응은 메시지 수명(최대 12시간)에 따라 함께 삭제됩니다.</li>
+                <li>개인정보 처리 관련 문의 시, 열람/정정/삭제/처리정지 요청에 대해 합리적인 범위 내에서 안내합니다.</li>
             </ul>
         </section>
 
         <section class="bg-gray-800 border border-gray-700 rounded-xl p-5">
             <h2 class="text-base font-semibold text-gray-100 mb-3">8. 개인정보 보호를 위한 기술적/관리적 조치</h2>
             <ul class="text-sm text-gray-300 space-y-2 list-disc list-inside">
-                <li>전송 구간 보호(HTTPS/WSS), 접근 통제, 인증 토큰 검증</li>
-                <li>Rate limiting 및 차단 정책을 통한 비정상 접근 방지</li>
+                <li>전송 구간 보호(HTTPS/WSS), 접근 통제, 메시지 서명(HMAC-SHA256) 검증</li>
+                <li>Cloudflare Turnstile 봇 방지 및 Rate limiting을 통한 비정상 접근 차단</li>
+                <li>XSS/CSRF 방어, CSP(Content Security Policy) 헤더 적용</li>
                 <li>로그 최소화 및 보관 기간 제한, 자동 만료/정리 정책 운영</li>
-                <li>오류 로그 순환 보관(최대 건수 제한) 및 관리자 접근 통제</li>
+                <li>오류 로그 순환 보관(최대 100건) 및 민감 정보 필터링</li>
+                <li>파일 업로드 시 서버 측 프록시를 통한 간접 전송으로 이용자 IP 보호</li>
             </ul>
         </section>
 
