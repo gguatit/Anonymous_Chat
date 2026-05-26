@@ -223,12 +223,12 @@
 }
 /* ---- Theme: sakura ---- */
 [data-theme="sakura"] {
-  --c-bg-900: #FFFBFD; --c-bg-800: #FFFFFF; --c-bg-700: #FFF4F8;
-  --c-bg-600: #FBE8F0; --c-bg-500: #F0D4E0;
+  --c-bg-900: #FFF2F6; --c-bg-800: #FFF8FA; --c-bg-700: #FFECF3;
+  --c-bg-600: #F8E0EC; --c-bg-500: #ECC8D8;
   --c-tx-100: #3D1828; --c-tx-200: #4E2438; --c-tx-300: #603448;
   --c-tx-400: #98707C; --c-tx-500: #BC98A4;
-  --c-bd-700: #F0D8E4; --c-bd-600: #E8CCD8;
-  --c-hv-700: #FFF4F8; --c-hv-600: #FBE8F0; --c-hv-500: #F0D0DC;
+  --c-bd-700: #F4DCE8; --c-bd-600: #ECC8D8;
+  --c-hv-700: #FFECF3; --c-hv-600: #F8E0EC; --c-hv-500: #ECC4D4;
   --c-blue-600: #6E5E92; --c-blue-400: #9E8ED0; --c-blue-300: #C0B0E8;
   --c-blue-bg-o: rgba(238,230,252,0.85); --c-blue-ring: #7E6CB8;
   --c-red-600: #CC5058; --c-red-400: #EC9098; --c-red-300: #F4B8C0;
@@ -248,9 +248,9 @@
   --c-sk-400: #64B4CC;
   --c-vi-400: #B494E4;
   --c-white: #3D1828; --c-black-bg: #1C0A12; --c-black-o80: rgba(28,10,18,0.85); --c-black-o70: rgba(28,10,18,0.75); --c-black-o60: rgba(28,10,18,0.65);
-  --c-code-bg: #FFF4F8; --c-code-bd: #F0D8E4; --c-code-header: #FBE8F0; --c-code-lang: #98707C; --c-code-code: #3D1828;
-  --c-inline-bg: rgba(240,216,228,0.6); --c-inline-code: #3D1828; --c-code-copy: #98707C; --c-code-copy-bd: #F0D8E4; --c-code-copy-hv: #3D1828; --c-code-copy-bg-hv: #FBE8F0; --c-code-copy-bd-hv: #BC98A4;
-  --c-scrollbar: #F0D8E4;
+  --c-code-bg: #FFECF3; --c-code-bd: #F4DCE8; --c-code-header: #F8E0EC; --c-code-lang: #98707C; --c-code-code: #3D1828;
+  --c-inline-bg: rgba(244,220,232,0.65); --c-inline-code: #3D1828; --c-code-copy: #98707C; --c-code-copy-bd: #F4DCE8; --c-code-copy-hv: #3D1828; --c-code-copy-bg-hv: #F8E0EC; --c-code-copy-bd-hv: #BC98A4;
+  --c-scrollbar: #F4DCE8;
 }
 /* ============================================================
    Class Mappings — one rule per class, all themes auto-applied
