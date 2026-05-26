@@ -366,12 +366,20 @@ export class ChatRoom {
                 return new Response('Forbidden', { status: 403 });
             }
             await this.initializeMessages();
-            const recent = this.messages.filter(msg => msg.sessionId !== '_ai_summary').slice(-50).map(msg => ({
-                nickname: msg.nickname,
-                content: msg.content,
-                timestamp: msg.timestamp,
-                messageId: msg.messageId
-            }));
+            const recent = this.messages
+                .filter(msg => msg.sessionId !== '_ai_summary')
+                .slice(-50)
+                .map(msg => {
+                    const sanitized = this._sanitizeContentForAI(msg.content || '');
+                    if (sanitized === null) return null;
+                    return {
+                        nickname: msg.nickname,
+                        content: sanitized,
+                        timestamp: msg.timestamp,
+                        messageId: msg.messageId
+                    };
+                })
+                .filter(msg => msg !== null);
             return new Response(JSON.stringify(recent), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -1905,6 +1913,30 @@ export class ChatRoom {
             sessionId: sessionId,
             reactionSessions: message.reactionSessions[data.emoji] || []
         });
+    }
+
+    _sanitizeContentForAI(content) {
+        if (!content || !content.trim()) return null;
+        const trimmed = content.trim();
+
+        // 2글자 이하 → 잡음
+        if (trimmed.length <= 2) return null;
+
+        // 한글 자음/모음 비율 80% 이상 → 키보드 난타
+        const jamo = (trimmed.match(/[\u1100-\u11FF\u3130-\u318F]/g) || []).length;
+        const syllables = (trimmed.match(/[\uAC00-\uD7AF]/g) || []).length;
+        if (jamo > 0 && (jamo / Math.max(1, jamo + syllables)) >= 0.8) return null;
+
+        // 코드 메시지 → 첫 줄 + [코드]로 축약
+        if (/^```|^(import |export |function |class |const |let |var |async function)/m.test(trimmed)) {
+            const firstLine = trimmed.split('\n')[0].substring(0, 60);
+            return firstLine + ' [코드]';
+        }
+
+        // 순수 기호/공백만 → 잡음
+        if (/^[\s\W_]+$/.test(trimmed) && trimmed.length < 10) return null;
+
+        return trimmed;
     }
 
     handleTyping(data, sessionId) {
