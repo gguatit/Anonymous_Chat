@@ -347,6 +347,25 @@ export class UIManager {
     }
 
     _renderSingleMessage(data, sessionId) {
+        if (data.type === 'summary') {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'bg-indigo-900/40 border border-indigo-700/50 rounded-lg p-3 mx-2 my-3';
+            wrapper.setAttribute('data-message', 'true');
+            wrapper.setAttribute('data-message-id', data.messageId);
+
+            const title = document.createElement('div');
+            title.className = 'text-xs font-semibold text-indigo-300 mb-2';
+            title.textContent = 'AI \uB300\uD654 \uC694\uC57D';
+
+            const content = document.createElement('div');
+            content.className = 'text-sm text-gray-200 leading-relaxed';
+            content.textContent = data.content;
+
+            wrapper.appendChild(title);
+            wrapper.appendChild(content);
+            return wrapper;
+        }
+
         const isOwnMessage = data.sessionId === sessionId;
         const isAdmin = !!(data.sessionId && String(data.sessionId).startsWith('admin_'));
 
