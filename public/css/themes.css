@@ -190,7 +190,68 @@
   --c-inline-bg: rgba(80,74,68,0.5); --c-inline-code: #F5E6D3; --c-code-copy: #A89880; --c-code-copy-bd: #504A44; --c-code-copy-hv: #F5E6D3; --c-code-copy-bg-hv: #27221E; --c-code-copy-bd-hv: #786E64;
   --c-scrollbar: transparent;
 }
-
+/* ---- Theme: amethyst ---- */
+[data-theme="amethyst"] {
+  --c-bg-900: #1A0A2E; --c-bg-800: #2D1B4E; --c-bg-700: #3B2470;
+  --c-bg-600: #4C3690; --c-bg-500: #6B56A8;
+  --c-tx-100: #F5F0FF; --c-tx-200: #E4D9FF; --c-tx-300: #C9B8F5;
+  --c-tx-400: #A78BFA; --c-tx-500: #8B5CF6;
+  --c-bd-700: #3B2470; --c-bd-600: #4C3690;
+  --c-hv-700: #3B2470; --c-hv-600: #4C3690; --c-hv-500: #6B56A8;
+  --c-blue-600: #4F5EA0; --c-blue-400: #7B8FD4; --c-blue-300: #A3B8F0;
+  --c-blue-bg-o: rgba(35,40,80,0.6); --c-blue-ring: #6B7FC0;
+  --c-red-600: #A84850; --c-red-400: #E09098; --c-red-300: #F0B8C0;
+  --c-red-bg-o: rgba(100,30,35,0.25); --c-red-bd: #8A383E;
+  --c-gr-600: #4A9050; --c-gr-400: #78C880; --c-gr-300: #A0E0A8; --c-gr-bd-o: rgba(74,144,80,0.4);
+  --c-ye-600: #9A8820; --c-ye-400: #D4C048; --c-ye-300: #E8D870;
+  --c-ye-bg-o: rgba(96,84,20,0.25);
+  --c-em-600: #5A9A60; --c-em-400: #8AD090; --c-em-300: #B0E8B8; --c-em-bd: #72B878;
+  --c-pur-600: #8B5CF6; --c-pur-400: #C084FC; --c-pur-300: #D8B4FE;
+  --c-te-600: #4B8A84; --c-te-400: #78C0B8;
+  --c-in-600: #5B58C8; --c-in-400: #8E8AEE;
+  --c-or-600: #C07030; --c-or-400: #EDA068;
+  --c-cy-600: #4B8A90; --c-cy-400: #78C8D0; --c-cy-bd-o: rgba(75,138,144,0.4);
+  --c-am-600: #B88820; --c-am-400: #E8B850; --c-am-300: #F8D878;
+  --c-pi-400: #E898C0; --c-pi-300: #F5C0DC;
+  --c-ro-400: #E898A0;
+  --c-sk-400: #60A8C0;
+  --c-vi-400: #A88BF0;
+  --c-white: #F5F0FF; --c-black-bg: #0D0518; --c-black-o80: rgba(13,5,24,0.85); --c-black-o70: rgba(13,5,24,0.75); --c-black-o60: rgba(13,5,24,0.65);
+  --c-code-bg: #221440; --c-code-bd: #3B2470; --c-code-header: #1A0A30; --c-code-lang: #8B6FC8; --c-code-code: #E4D9FF;
+  --c-inline-bg: rgba(59,36,112,0.5); --c-inline-code: #E4D9FF; --c-code-copy: #8B6FC8; --c-code-copy-bd: #3B2470; --c-code-copy-hv: #E4D9FF; --c-code-copy-bg-hv: #221440; --c-code-copy-bd-hv: #6B56A8;
+  --c-scrollbar: transparent;
+}
+/* ---- Theme: sakura ---- */
+[data-theme="sakura"] {
+  --c-bg-900: #FFF5F7; --c-bg-800: #FFFFFF; --c-bg-700: #FFF0F3;
+  --c-bg-600: #FDE8ED; --c-bg-500: #F5D6DE;
+  --c-tx-100: #3A2028; --c-tx-200: #4A2835; --c-tx-300: #5C3845;
+  --c-tx-400: #8B6B75; --c-tx-500: #AA8892;
+  --c-bd-700: #F0DCE2; --c-bd-600: #E5CED5;
+  --c-hv-700: #FDE8ED; --c-hv-600: #F5D6DE; --c-hv-500: #E8C8D2;
+  --c-blue-600: #5B65A8; --c-blue-400: #828FCC; --c-blue-300: #A8B5E8;
+  --c-blue-bg-o: rgba(219,225,245,0.85); --c-blue-ring: #6878B8;
+  --c-red-600: #C04850; --c-red-400: #E88090; --c-red-300: #F0B0B8;
+  --c-red-bg-o: rgba(254,220,225,0.75); --c-red-bd: #A83845;
+  --c-gr-600: #4A8A50; --c-gr-400: #78C080; --c-gr-300: #A0D8A8; --c-gr-bd-o: rgba(74,138,80,0.4);
+  --c-ye-600: #9A8818; --c-ye-400: #D0B838; --c-ye-300: #E4D068;
+  --c-ye-bg-o: rgba(250,245,220,0.7);
+  --c-em-600: #5A9A60; --c-em-400: #8AD090; --c-em-300: #B0E8B8; --c-em-bd: #72B878;
+  --c-pur-600: #8858C0; --c-pur-400: #B890E8; --c-pur-300: #D5B8F5;
+  --c-te-600: #4B8880; --c-te-400: #78BEB4;
+  --c-in-600: #5858B8; --c-in-400: #8888E0;
+  --c-or-600: #C06828; --c-or-400: #ECA060;
+  --c-cy-600: #4B8890; --c-cy-400: #78C0C8; --c-cy-bd-o: rgba(75,136,144,0.4);
+  --c-am-600: #B88820; --c-am-400: #E8B848; --c-am-300: #F8D075;
+  --c-pi-400: #D86898; --c-pi-300: #F098C0;
+  --c-ro-400: #E88890;
+  --c-sk-400: #58A8C0;
+  --c-vi-400: #A480E0;
+  --c-white: #FFFFFF; --c-black-bg: #000000; --c-black-o80: rgba(0,0,0,0.35); --c-black-o70: rgba(0,0,0,0.25); --c-black-o60: rgba(0,0,0,0.2);
+  --c-code-bg: #FFF0F3; --c-code-bd: #F0DCE2; --c-code-header: #FDE8ED; --c-code-lang: #8B6B75; --c-code-code: #3A2028;
+  --c-inline-bg: rgba(240,220,226,0.6); --c-inline-code: #3A2028; --c-code-copy: #8B6B75; --c-code-copy-bd: #F0DCE2; --c-code-copy-hv: #3A2028; --c-code-copy-bg-hv: #FDE8ED; --c-code-copy-bd-hv: #AA8892;
+  --c-scrollbar: #F0DCE2;
+}
 /* ============================================================
    Class Mappings — one rule per class, all themes auto-applied
    ============================================================ */

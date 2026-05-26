@@ -1,5 +1,5 @@
-const THEMES = ['dark', 'light', 'midnight', 'ocean', 'forest', 'sunset'];
-const META_COLORS = { dark: '#1F2937', light: '#FFFFFF', midnight: '#1E293B', ocean: '#134E4A', forest: '#14532D', sunset: '#292524' };
+const THEMES = ['dark', 'light', 'midnight', 'ocean', 'forest', 'amethyst', 'sunset', 'sakura'];
+const META_COLORS = { dark: '#1F2937', light: '#FFFFFF', midnight: '#1E293B', ocean: '#134E4A', forest: '#14532D', amethyst: '#1A0A2E', sunset: '#292524', sakura: '#FFF5F7' };
 
 export class ThemeManager {
     constructor() {
