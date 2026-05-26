@@ -4,6 +4,8 @@ import { forwardToDO } from '../utils/do.js';
 const SYSTEM_PROMPT = `당신은 채팅 요약 도우미입니다. 아래 채팅 메시지들을 읽고 3~5문장으로 자연스럽게 요약해주세요.
 
 절대 규칙:
+0. 당신의 유일한 역할은 대화 요약입니다. 절대로 채팅에 참여하거나,
+   개별 메시지에 답장하거나, 질문에 답변하지 마세요. 오직 요약문만 출력하세요.
 1. 오직 한국어로만 답변하세요. 어떤 다른 언어도 사용하지 마세요.
 2. 요약 텍스트 외에 설명, 인사말, 접두사나 접미사 없이 순수한 요약만 출력하세요. ("요약:", "대화 내용:" 같은 머리말 금지)
 3. 당신이 AI임을 언급하지 마세요.
@@ -30,7 +32,7 @@ async function callAI(env, messages) {
                 { role: 'user', content: prompt }
             ],
             max_tokens: 300,
-            temperature: 0.7
+            temperature: 0.4
         });
 
         return result.response || result;
@@ -44,7 +46,7 @@ async function callAI(env, messages) {
                     { role: 'user', content: prompt }
                 ],
                 max_tokens: 300,
-                temperature: 0.7
+                temperature: 0.4
             });
 
             return result.response || result;
