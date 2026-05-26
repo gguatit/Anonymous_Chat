@@ -192,6 +192,9 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - **URL 보안 헤더 분석** (채팅 내 URL 옆 방패 아이콘 클릭 시 Kalpha API로 보안 헤더 등급 산출)
 - **OG Link Preview** (URL 아래 제목·설명·이미지 카드 자동 표시)
 
+- **메시지 반응**: 6가지 이모지(👍❤️😂😮😢😡) 토글식 반응, 더블클릭으로 자동 👍 반응, 실시간 업데이트
+- **AI 대화 요약**: `/summary` 또는 `/요약` 명령어로 Workers AI(llama-3-8b)가 최근 대화를 3~5문장으로 요약 (30초 레이트 리밋, 세션ID 제거 후 처리)
+
 ### 채널 시스템 (Channel)
 
 - **채널 생성/참가**: 채팅창 빈 공간 우클릭 → "채널 추가" / "채널 참가"
@@ -245,6 +248,7 @@ Cloudflare Workers 기반 서버리스 아키텍처
 ### 현대적인 UI/UX
 
 - 다크 테마 (눈의 피로 감소)
+- **8가지 테마** (다크/라이트/미드나잇/오션/포레스트/아메시스트/선셋/사쿠라, 사쿠라 테마 벚꽃 파티클 효과)
 - 반응형 디자인 (모바일/데스크톱)
 - Tailwind CSS 기반
 - 접근성 (ARIA) 준수
@@ -911,6 +915,7 @@ Anonymous_Chat/
 | `/metrics` | GET | 익명 메트릭 (연결 수, 메시지 수) |
 | `/api/announcements` | GET | 공지사항 히스토리 조회 (인증 불필요) |
 | `/api/search` | GET | 메시지 검색 (q: 검색어, limit: 결과 수, `#images`/`#files`/`#code` 태그 지원) |
+| `/api/summary` | POST | AI 대화 요약 (Workers AI llama-3-8b, 레이트 리밋 30초 1회) |
 | `/` | GET | 정적 파일 (HTML) |
 | `/administrator.html` | GET | 관리자 대시보드 |
 | `/announcements.html` | GET | 공지사항 히스토리 페이지 |

@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-05-25
+
+### 🚀 신규 기능
+- **AI 대화 요약**: `/summary` 또는 `/요약` 명령어로 Workers AI가 최근 대화를 요약
+  - `@cf/meta/llama-3-8b-instruct` 모델 사용 (실패 시 qwen 1.5b fallback)
+  - 직전 50개 메시지 수집, 세션ID 제거 후 AI에 전송 (개인정보 보호)
+  - 한국어 3~5문장 자연스러운 요약 출력
+  - 30초 레이트 리밋, 8초 타임아웃, indigo 스타일 카드 표시
+- **`wrangler.toml` AI 바인딩**: `[ai] binding = "AI"` 추가
+
+### ⚙️ 인프라 변경
+- **ChatRoom DO `/messages/recent` 엔드포인트 추가**: Worker→DO 내부 메시지 조회 (HMAC 인증, sessionId 제거)
+
+### 📝 문서화
+- **`help.html`**: AI 대화 요약 섹션 추가
+- **`privacy.html`**: AI 대화 요약 정보 수집 항목, Cloudflare Workers AI 제3자 제공사 추가
+- **`FEATURE_IDEAS.md`**: #1 다크/라이트 모드, #15 메시지 반응, #31 AI 대화 요약 완료(✅) 표시
+
+## 2026-05-20
+
+### 🚀 신규 기능
+- **8가지 테마 시스템**: 다크(기본), 라이트, 미드나잇, 오션, 포레스트, 아메시스트, 선셋, 사쿠라
+  - CSS custom properties 기반 아키텍처 (~70개 변수/테마, 300+ 클래스 매핑)
+  - platform-info 패널에서 컬러 닷 + 라벨 선택, 1클릭 즉시 전환
+  - localStorage 저장으로 새로고침 후 유지
+  - meta theme-color 동기화
+  - 사쿠라 테마 특별 효과: 35개 벚꽃 파티클 애니메이션 (4색상, 4중 드리프트)
+- **메시지 반응**: 6가지 이모지(👍❤️😂😮😢😡) 토글 방식
+  - 우클릭 컨텍스트 메뉴 "반응 추가" 또는 더블클릭으로 자동 👍
+  - 반응한 이모지는 파란색 하이라이트, 자신의 반응 토글 가능
+  - 실시간 WebSocket 브로드캐스트, DO Storage 저장
+  - 반응 추가 시 팝 애니메이션 효과
+
+### 📝 문서화
+- **`help.html`**: 테마 변경, 메시지 반응 섹션 추가, 관리자 전용 문구 삭제(채널 강제 삭제, 차단), 제한사항 업데이트
+- **`privacy.html` (v1.2)**: Turnstile, OG Preview, 반응, 채널, PWA 캐시 데이터 수집 항목 추가, 시행일 2026-04-09 유지
+- **`announcements.html`**: 테마 지원 (`data-theme`, `themes.css`, `theme-color-meta`)
+- **`administrator.html`**: 테마 지원
+
+### 🎨 디자인
+- **CSS themes.css (568줄)**: 모든 Tailwind 컬러 클래스 완전 오버라이드, 전체 테마에서 색감 조화 최적화
+
 ## 2026-05-18
 
 ### 🚀 신규 기능

@@ -110,6 +110,11 @@
                             <td class="py-2">채널 생성/참가 시</td>
                         </tr>
                         <tr>
+                            <td class="py-2 pr-3">AI 대화 요약 정보</td>
+                            <td class="py-2 pr-3">명령어 입력 시 최근 메시지 내용 (sessionId 제거 후 전송)</td>
+                            <td class="py-2">/summary 또는 /요약 명령어 사용 시</td>
+                        </tr>
+                        <tr>
                             <td class="py-2 pr-3">운영/보안 로그</td>
                             <td class="py-2 pr-3">오류 로그, 차단 정보(IP, sessionId 기준)</td>
                             <td class="py-2">오류 발생 및 보안 처리</td>
@@ -135,8 +140,8 @@
                 <li>서비스 제공 및 계약 이행: 실시간 채팅 제공, 메시지 동기화, 세션 유지, 채널 기능 운영</li>
                 <li>정당한 이익 및 보안 보호: 스팸/남용 방지, 봇 자동 접근 차단(Turnstile), 접속 제한, 차단 정책 운영, 사고 대응</li>
                 <li>운영 안정성 확보: 오류 분석, 장애 복구, 성능/품질 개선</li>
-                <li>부가 기능 제공: 메시지 반응, URL 링크 미리보기(OG 태그 파싱)</li>
-                <li>선택 기능 제공(동의 기반): 웹/모바일 푸시 알림, PWA 오프라인 캐싱</li>
+                <li>부가 기능 제공: 메시지 반응, URL 링크 미리보기(OG 태그 파싱), AI 대화 요약 (Cloudflare Workers AI)</li>
+                <li>선택 기능 제공(동의 기반): 웹/모바일 푸시 알림, PWA 오프라인 캐싱, 테마 설정 (로컬스토리지)</li>
             </ul>
         </section>
 
@@ -232,6 +237,11 @@
                             <td class="py-2 pr-3">api.kalpha.kr</td>
                             <td class="py-2 pr-3">비밀 메시지 데이터(일회성)</td>
                             <td class="py-2">Dead Drop 비밀 메시지 기능 제공</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">Cloudflare Workers AI</td>
+                            <td class="py-2 pr-3">최근 메시지 내용 (sessionId 제외, 명령어 입력 시만)</td>
+                            <td class="py-2">AI 대화 요약 기능 (/summary, /요약)</td>
                         </tr>
                         <tr>
                             <td class="py-2 pr-3">브라우저 Push 인프라 / FCM</td>
