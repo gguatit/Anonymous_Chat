@@ -34,3 +34,13 @@ When a vulnerability is reported, we will handle it with the following process:
 4. Notify the reporter when the patch is ready for review.
 5. Deploy the patch and release a new version.
 6. Publicly acknowledge the vulnerability and the reporter (if desired) in the release notes or a security advisory.
+
+## AI Data Handling
+
+The AI chat summary feature (`/api/summary`) follows these privacy protections:
+
+- Session IDs are stripped from messages before being sent to the AI model (Cloudflare Workers AI)
+- AI model output is not stored externally — summary results are kept only in Durable Object storage along with regular messages
+- Summary requests are rate-limited (15 seconds between requests)
+- No user-identifying information is included in AI prompts
+- The AI system prompt explicitly prohibits including personal information (names, phone numbers, emails, addresses) in outputs

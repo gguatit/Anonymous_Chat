@@ -193,7 +193,7 @@ Cloudflare Workers 기반 서버리스 아키텍처
 - **OG Link Preview** (URL 아래 제목·설명·이미지 카드 자동 표시)
 
 - **메시지 반응**: 6가지 이모지(👍❤️😂😮😢😡) 토글식 반응, 더블클릭으로 자동 👍 반응, 실시간 업데이트
-- **AI 대화 요약**: `/summary` 또는 `/요약` 명령어로 Workers AI(llama-3-8b)가 최근 대화를 3~5문장으로 요약 (30초 레이트 리밋, 세션ID 제거 후 처리)
+- **AI 대화 요약**: `/summary`, `/topic`, `/mood`, `/conflict` 명령어로 Workers AI(llama-3-8b)가 대화를 분석 (4가지 모드: 종합요약/주제/분위기/논쟁, 15초 레이트 리밋, 세션ID 제거 후 처리)
 
 ### 채널 시스템 (Channel)
 
@@ -915,7 +915,7 @@ Anonymous_Chat/
 | `/metrics` | GET | 익명 메트릭 (연결 수, 메시지 수) |
 | `/api/announcements` | GET | 공지사항 히스토리 조회 (인증 불필요) |
 | `/api/search` | GET | 메시지 검색 (q: 검색어, limit: 결과 수, `#images`/`#files`/`#code` 태그 지원) |
-| `/api/summary` | POST | AI 대화 요약 (Workers AI llama-3-8b, 레이트 리밋 30초 1회) |
+| `/api/summary` | POST | AI 대화 요약 (Workers AI llama-3-8b, mode 파라미터로 종합/주제/분위기/논쟁 선택, 15초 레이트 리밋) |
 | `/` | GET | 정적 파일 (HTML) |
 | `/administrator.html` | GET | 관리자 대시보드 |
 | `/announcements.html` | GET | 공지사항 히스토리 페이지 |
