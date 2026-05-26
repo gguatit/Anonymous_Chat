@@ -38,6 +38,10 @@ class ChatClient {
         this.currentChannel = '0';
         this.currentChannelName = '';
 
+        this._messageHistory = [];
+        this._historyIndex = -1;
+        this._historySavedInput = '';
+
         // Restore saved channel
         try {
             const savedChannel = localStorage.getItem('chatCurrentChannel');
@@ -663,6 +667,10 @@ class ChatClient {
         // Send message with or without file
         try {
             this.wsManager.send(messageData);
+            if (trimmedMessage && !trimmedMessage.startsWith('/')) {
+                this._messageHistory.push(trimmedMessage);
+                this._historyIndex = this._messageHistory.length;
+            }
             if (!this.wsManager.isConnected()) {
                 sendErrorReport('Message send attempted while WebSocket not connected', 'ChatClient.sendMessage - ws not connected');
                 this.ui.displayError('메시지 전송 실패: 연결되어 있지 않습니다.');
@@ -684,6 +692,10 @@ class ChatClient {
     handleInput() {
         if (this.typingTimeout) {
             clearTimeout(this.typingTimeout);
+        }
+        if (this._historyIndex < this._messageHistory.length) {
+            this._historyIndex = this._messageHistory.length;
+            this._historySavedInput = '';
         }
         this.updateCommandPopup();
     }
@@ -950,12 +962,37 @@ class ChatClient {
         if (!input) return;
 
         input.addEventListener('keydown', (e) => {
-            if (!this.isCommandPopupOpen()) return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); this.selectCommandPopup(this._cmdSelected + 1); }
-            if (e.key === 'ArrowUp') { e.preventDefault(); this.selectCommandPopup(this._cmdSelected - 1); }
-            if (e.key === 'Enter') { e.preventDefault(); this.applyCommandPopup(); }
-            if (e.key === 'Tab') { e.preventDefault(); this.applyCommandPopup(); }
-            if (e.key === 'Escape') { e.preventDefault(); this.hideCommandPopup(); }
+            if (this.isCommandPopupOpen()) {
+                if (e.key === 'ArrowDown') { e.preventDefault(); this.selectCommandPopup(this._cmdSelected + 1); }
+                if (e.key === 'ArrowUp') { e.preventDefault(); this.selectCommandPopup(this._cmdSelected - 1); }
+                if (e.key === 'Enter') { e.preventDefault(); this.applyCommandPopup(); }
+                if (e.key === 'Tab') { e.preventDefault(); this.applyCommandPopup(); }
+                if (e.key === 'Escape') { e.preventDefault(); this.hideCommandPopup(); }
+                return;
+            }
+
+            if (e.key === 'ArrowUp' && this._messageHistory.length > 0) {
+                e.preventDefault();
+                if (this._historyIndex === this._messageHistory.length) {
+                    this._historySavedInput = this.ui.getInputValue();
+                }
+                if (this._historyIndex > 0) {
+                    this._historyIndex--;
+                    this.ui.messageInput.value = this._messageHistory[this._historyIndex];
+                    this.ui.messageInput.focus();
+                }
+            }
+            if (e.key === 'ArrowDown' && this._historyIndex < this._messageHistory.length) {
+                e.preventDefault();
+                if (this._historyIndex < this._messageHistory.length - 1) {
+                    this._historyIndex++;
+                    this.ui.messageInput.value = this._messageHistory[this._historyIndex];
+                } else {
+                    this._historyIndex = this._messageHistory.length;
+                    this.ui.messageInput.value = this._historySavedInput;
+                }
+                this.ui.messageInput.focus();
+            }
         });
 
         const popup = document.getElementById('command-popup');
