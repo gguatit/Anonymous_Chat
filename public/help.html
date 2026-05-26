@@ -465,21 +465,38 @@
                 <h2 class="text-lg font-bold text-gray-100 mb-4">AI 대화 요약</h2>
                 <div class="space-y-3 text-sm text-gray-300">
                     <div>
-                        <p class="font-semibold text-gray-200 mb-1">사용 방법</p>
-                        <p>채팅 입력창에 <code class="inline-code">/summary</code> 또는 <code class="inline-code">/요약</code>을 입력하면 최근 대화 내용을 AI가 자동으로 요약해 줍니다.</p>
+                        <p class="font-semibold text-gray-200 mb-2">사용 가능한 명령어</p>
+                        <div class="space-y-2">
+                            <div class="flex items-start gap-2">
+                                <code class="inline-code text-indigo-400 shrink-0">/summary</code>
+                                <span class="text-gray-400">최근 대화를 3~5문장으로 종합 요약합니다. (기본 모드)</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <code class="inline-code text-emerald-400 shrink-0">/topic</code>
+                                <span class="text-gray-400">대화에서 다뤄진 주제들을 글머리 형식으로 정리하고, 각 주제별 참여자 수를 표시합니다.</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <code class="inline-code text-amber-400 shrink-0">/mood</code>
+                                <span class="text-gray-400">대화의 전체적인 분위기와 감정 톤을 분석합니다. 유머/진지함/긍정/부정 수치와 대표 발언을 보여줍니다.</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <code class="inline-code text-red-400 shrink-0">/conflict</code>
+                                <span class="text-gray-400">대화 속 의견 충돌이나 논쟁 지점을 중립적으로 정리합니다. 논쟁이 없으면 없다고 표시합니다.</span>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <p class="font-semibold text-gray-200 mb-1">작동 방식</p>
                         <ul class="list-disc list-inside space-y-1 text-gray-400">
-                            <li>최근 50개의 메시지를 수집</li>
+                            <li>최근 50개의 메시지를 수집 (AI 요약 메시지는 제외)</li>
                             <li>발신자 정보(sessionId)를 제거한 후 AI 모델에 전달</li>
-                            <li>한국어로 3~5문장 분량의 대화 요약을 생성</li>
+                            <li>요약 결과는 모든 사용자에게 공유됩니다</li>
                         </ul>
                     </div>
                     <div>
                         <p class="font-semibold text-gray-200 mb-1">제한 사항</p>
                         <ul class="list-disc list-inside space-y-1 text-gray-400">
-                            <li>30초에 1회만 요청 가능 (서버 과부하 방지)</li>
+                            <li>15초에 1회만 요청 가능 (서버 과부하 방지)</li>
                             <li>충분한 대화가 없으면 요약 품질이 낮을 수 있음</li>
                             <li>AI 답변은 항상 정확하지 않을 수 있음</li>
                         </ul>
