@@ -137,7 +137,7 @@ const publicRoutes = [
     ['/api/preview', 'POST', handlePreview],
     ['/api/summary', null, async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', AI_SUMMARY.RATE_LIMIT, 'summary')) {
-            return new Response(JSON.stringify({ error: '잠시 후 다시 시도해주세요. (30초에 1회 제한)' }), {
+            return new Response(JSON.stringify({ error: '잠시 후 다시 시도해주세요. (15초에 1회 제한)' }), {
                 status: 429, headers: { ...cors, 'Content-Type': 'application/json' }
             });
         }

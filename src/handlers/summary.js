@@ -14,13 +14,15 @@ const BASE_RULES = `절대 규칙:
 7. 말투는 한국 인터넷 채팅 말투(반말, 구어체)로 자연스럽게 작성하세요.`;
 
 const PROMPTS = {
-    default: `당신은 채팅 대화 요약 도우미입니다. 아래 채팅 메시지들을 읽고 3~5문장으로 자연스럽게 요약해주세요.
+    default: `당신은 채팅 대화 요약 도우미입니다. 아래 채팅 메시지들을 읽고 대화 내용을 요약해주세요.
 
 ${BASE_RULES}
 
 8. 대화가 적더라도 "아직 대화가 충분하지 않아요" 같은 말은 하지 말고, 주어진 내용으로 최대한 요약하세요.
-9. 대화 흐름을 시간순으로 정리하고, 핵심 키워드나 주제를 자연스럽게 포함하세요.
-10. 농담, 논쟁, 정보 공유 등 대화의 성격이 드러나도록 작성하세요.`,
+9. 대화의 흐름을 자연스럽게 정리하고, 무슨 이야기를 했는지 구체적으로 써주세요.
+   예를 들면: "00에 대해 이야기하다가 00로 화제가 바뀌었고, 00이 00를 추천했어" 같은 식으로.
+10. 농담, 논쟁, 정보 공유 등 대화의 성격과 분위기가 드러나도록 생생하게 작성하세요.
+11. 4~6문장으로 충분히 자세하게 요약하세요. 너무 짧게 끝내지 마세요.`,
 
     topic: `당신은 채팅 대화 주제 분석 도우미입니다. 아래 채팅 메시지들을 읽고 어떤 주제들이 오갔는지 정리해주세요.
 
@@ -81,7 +83,7 @@ async function callAI(env, messages, mode) {
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: prompt }
             ],
-            max_tokens: 400,
+            max_tokens: 600,
             temperature: 0.4
         });
 
@@ -95,7 +97,7 @@ async function callAI(env, messages, mode) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: prompt }
                 ],
-                max_tokens: 400,
+                max_tokens: 600,
                 temperature: 0.4
             });
 

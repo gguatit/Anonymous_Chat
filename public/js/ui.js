@@ -1071,16 +1071,31 @@ export class UIManager {
         messageDiv.className = 'text-center text-xs text-gray-500 py-1.5';
         messageDiv.textContent = content;
 
-        // 시스템 메시지 표식 추가
         messageDiv.setAttribute('data-message', 'true');
+        messageDiv.setAttribute('data-system-message', 'true');
 
         this.messagesContainer.appendChild(messageDiv);
+
+        // Remove any previous loading-summary markers
+        const prevLoading = this.messagesContainer.querySelectorAll('[data-loading-summary]');
+        prevLoading.forEach(el => el.remove());
+
+        if (content.includes('AI가 대화 요약을 생성 중입니다')) {
+            messageDiv.setAttribute('data-loading-summary', 'true');
+        }
+    }
+
+    _clearLoadingSummary() {
+        const loading = this.messagesContainer.querySelector('[data-loading-summary]');
+        if (loading) loading.remove();
     }
 
     displaySummary(summaryText, messageId, mode = 'default') {
         if (messageId && this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`)) {
             return;
         }
+
+        this._clearLoadingSummary();
 
         const MODE_STYLES = {
             default: { bg: 'bg-indigo-900/40', border: 'border-indigo-700/50', title: 'text-indigo-300', label: 'AI \uB300\uD654 \uC694\uC57D' },

@@ -563,6 +563,12 @@ class ChatClient {
             return;
         }
 
+        // /로 시작하는 미인식 명령어는 전송하지 않음
+        if (trimmedMessage.startsWith('/')) {
+            this.ui.clearInput();
+            return;
+        }
+
         // Rate limiting check
         const now = Date.now();
         if (now - this.lastMessageTime < this.messageRateLimit) {
