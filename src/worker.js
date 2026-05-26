@@ -17,11 +17,12 @@ export { ChatRoom, ChannelRegistry };
 
 const rateLimitMap = new Map();
 
-function checkRateLimit(ip, config) {
+function checkRateLimit(ip, config, tag = '') {
+    const key = tag ? `${ip}:${tag}` : ip;
     const now = Date.now();
-    const entry = rateLimitMap.get(ip);
+    const entry = rateLimitMap.get(key);
     if (!entry || now - entry.windowStart > config.windowMs) {
-        rateLimitMap.set(ip, { windowStart: now, count: 1 });
+        rateLimitMap.set(key, { windowStart: now, count: 1 });
         return true;
     }
     if (entry.count >= config.max) {
@@ -110,13 +111,13 @@ const publicRoutes = [
     ['/api/channels/list', 'GET', handleChannelList],
     ['/api/push/vapid-key', null, handleGetVapidKey],
     ['/api/push/subscribe', 'POST', async (req, env, cors) => {
-        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.PUSH)) {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.PUSH, 'push:sub')) {
             return new Response('Rate limit exceeded', { status: 429, headers: cors });
         }
         return await handlePushSubscribe(req, env, cors);
     }],
     ['/api/push/unsubscribe', 'POST', async (req, env, cors) => {
-        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.PUSH)) {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.PUSH, 'push:unsub')) {
             return new Response('Rate limit exceeded', { status: 429, headers: cors });
         }
         return await handlePushUnsubscribe(req, env, cors);
@@ -128,14 +129,14 @@ const publicRoutes = [
     }],
     ['/api/check-ban', null, handleCheckBan],
     ['/api/turnstile/verify', 'POST', async (req, env, cors) => {
-        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.TURNSTILE)) {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.TURNSTILE, 'turnstile')) {
             return new Response('Rate limit exceeded', { status: 429, headers: cors });
         }
         return await handleTurnstileVerify(req, env, cors);
     }],
     ['/api/preview', 'POST', handlePreview],
     ['/api/summary', null, async (req, env, cors) => {
-        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', AI_SUMMARY.RATE_LIMIT)) {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', AI_SUMMARY.RATE_LIMIT, 'summary')) {
             return new Response(JSON.stringify({ error: '잠시 후 다시 시도해주세요. (30초에 1회 제한)' }), {
                 status: 429, headers: { ...cors, 'Content-Type': 'application/json' }
             });
@@ -143,13 +144,13 @@ const publicRoutes = [
         return await handleSummary(req, env, cors);
     }],
     ['/metrics', null, async (req, env, cors) => {
-        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.HEALTH)) {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.HEALTH, 'metrics')) {
             return new Response('Rate limit exceeded', { status: 429, headers: cors });
         }
         return handleMetrics(cors);
     }],
     ['/health', null, async (req, env, cors) => {
-        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.HEALTH)) {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.HEALTH, 'health')) {
             return new Response('Rate limit exceeded', { status: 429, headers: cors });
         }
         return handleHealth(cors);
@@ -214,7 +215,7 @@ export default {
 
             // File upload proxy
             if (url.pathname === '/api/upload' && request.method === 'POST') {
-                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD)) {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
                     return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
                 }
                 try {
@@ -236,7 +237,7 @@ export default {
 
             // Client error log forwarding
             if (url.pathname === '/api/logs/error' && request.method === 'POST') {
-                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHECK_BAN)) {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHECK_BAN, 'errorlog')) {
                     return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
                 }
                 const body = await request.text();
@@ -253,7 +254,7 @@ export default {
 
             // Config endpoint
             if (url.pathname === '/api/config') {
-                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CONFIG)) {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CONFIG, 'config')) {
                     return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
                 }
                 return new Response(JSON.stringify({
