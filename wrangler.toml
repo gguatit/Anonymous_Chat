@@ -41,6 +41,10 @@ binding = "DB_ADMIN"
 database_name = "anonymous-chat-db"
 database_id = "e01628fd-3e3b-4dde-8d57-38779feb1d92"
 
+# Workers AI binding
+[ai]
+binding = "AI"
+
 # Pages integration (for hybrid deployment)
 [assets]
 directory = "public"

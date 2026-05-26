@@ -360,6 +360,23 @@ export class ChatRoom {
             }
         }
 
+        // Internal API: get recent messages for AI summary (HMAC-secured)
+        if (url.pathname === '/messages/recent') {
+            if (request.headers.get('X-HMAC-Secret') !== this.env.HMAC_SECRET) {
+                return new Response('Forbidden', { status: 403 });
+            }
+            await this.initializeMessages();
+            const recent = this.messages.slice(-50).map(msg => ({
+                nickname: msg.nickname,
+                content: msg.content,
+                timestamp: msg.timestamp,
+                messageId: msg.messageId
+            }));
+            return new Response(JSON.stringify(recent), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         // Initialize messages from storage on first request
         await this.initializeMessages();
 

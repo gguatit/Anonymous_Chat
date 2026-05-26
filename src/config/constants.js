@@ -67,6 +67,15 @@ export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡'
 export const MAX_REACTIONS_PER_EMOJI = 100;
 export const REACTION_RATE_LIMIT_MS = 3000;
 
+// AI summary constants
+export const AI_SUMMARY = {
+    RECENT_MESSAGES_COUNT: 50,
+    TIMEOUT_MS: 8000,
+    RATE_LIMIT: { windowMs: 30000, max: 1 },
+    MODEL_PRIMARY: '@cf/meta/llama-3-8b-instruct',
+    MODEL_FALLBACK: '@cf/qwen/qwen1.5-7b-chat',
+};
+
 // Metrics storage (in-memory, per-worker instance)
 export const metrics = {
     totalConnections: 0,

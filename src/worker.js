@@ -1,5 +1,6 @@
 import { metrics, API_RATE_LIMIT } from './config/constants.js';
 import { getCorsHeaders, handleCorsPreflightResponse } from './config/cors.js';
+import { AI_SUMMARY } from './config/constants.js';
 import { forwardToDO } from './utils/do.js';
 
 import * as admin from './handlers/admin.js';
@@ -8,6 +9,7 @@ import { handleGetVapidKey, handlePushSubscribe, handlePushUnsubscribe } from '.
 import { handleMetrics, handleHealth } from './handlers/health.js';
 import { handleTurnstileVerify } from './handlers/turnstile.js';
 import { handlePreview } from './handlers/preview.js';
+import { handleSummary } from './handlers/summary.js';
 
 import { ChatRoom } from './durable-objects/ChatRoom.js';
 import { ChannelRegistry } from './durable-objects/ChannelRegistry.js';
@@ -132,6 +134,14 @@ const publicRoutes = [
         return await handleTurnstileVerify(req, env, cors);
     }],
     ['/api/preview', 'POST', handlePreview],
+    ['/api/summary', null, async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', AI_SUMMARY.RATE_LIMIT)) {
+            return new Response(JSON.stringify({ error: '잠시 후 다시 시도해주세요. (30초에 1회 제한)' }), {
+                status: 429, headers: { ...cors, 'Content-Type': 'application/json' }
+            });
+        }
+        return await handleSummary(req, env, cors);
+    }],
     ['/metrics', null, async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.HEALTH)) {
             return new Response('Rate limit exceeded', { status: 429, headers: cors });

@@ -1050,6 +1050,24 @@ export class UIManager {
         this.messagesContainer.appendChild(messageDiv);
     }
 
+    displaySummary(summaryText) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bg-indigo-900/40 border border-indigo-700/50 rounded-lg p-3 mx-2 my-3';
+        wrapper.setAttribute('data-message', 'true');
+
+        const title = document.createElement('div');
+        title.className = 'text-xs font-semibold text-indigo-300 mb-2';
+        title.textContent = 'AI 대화 요약';
+
+        const content = document.createElement('div');
+        content.className = 'text-sm text-gray-200 leading-relaxed';
+        content.textContent = summaryText;
+
+        wrapper.appendChild(title);
+        wrapper.appendChild(content);
+        this.messagesContainer.appendChild(wrapper);
+    }
+
     displayAnnouncement(content, timestamp) {
         // 공지사항은 채팅에 표시하지 않습니다.
         // 사용자는 헤더의 공지사항 버튼(확성기 아이콘)을 통해 /announcements.html에서 확인할 수 있습니다.

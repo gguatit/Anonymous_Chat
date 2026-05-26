@@ -537,6 +537,13 @@ class ChatClient {
         // 메시지나 파일 중 하나는 있어야 함
         if (!trimmedMessage && !hasFile) return;
 
+        // /summary 또는 /요약 명령어 처리
+        if (trimmedMessage === '/summary' || trimmedMessage === '/요약') {
+            this.ui.clearInput();
+            await this.requestSummary();
+            return;
+        }
+
         // Rate limiting check
         const now = Date.now();
         if (now - this.lastMessageTime < this.messageRateLimit) {
@@ -892,6 +899,26 @@ class ChatClient {
                     ❌ ${error.message}
                 </div>
             `;
+        }
+    }
+
+    async requestSummary() {
+        this.ui.displaySystemMessage('AI가 대화 요약을 생성 중입니다...');
+        try {
+            const res = await fetch('/api/summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+
+            const data = await res.json();
+            if (res.ok && data.summary) {
+                this.ui.displaySummary(data.summary);
+            } else {
+                this.ui.displayError(data.error || '요약 생성에 실패했습니다.');
+            }
+        } catch (err) {
+            this.ui.displayError('요약 요청 중 오류가 발생했습니다.');
         }
     }
 }
