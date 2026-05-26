@@ -73,7 +73,7 @@ export async function handleSummary(request, env, corsHeaders) {
         const messages = await doResp.json();
 
         let summary;
-        if (!messages || messages.length < 3) {
+        if (!messages || messages.length === 0) {
             summary = '아직 대화가 충분하지 않아요. 조금 더 채팅한 후에 요약을 요청해주세요.';
         } else {
             summary = await callAI(env, messages);
