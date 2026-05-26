@@ -366,7 +366,7 @@ export class ChatRoom {
                 return new Response('Forbidden', { status: 403 });
             }
             await this.initializeMessages();
-            const recent = this.messages.slice(-50).map(msg => ({
+            const recent = this.messages.filter(msg => msg.sessionId !== '_ai_summary').slice(-50).map(msg => ({
                 nickname: msg.nickname,
                 content: msg.content,
                 timestamp: msg.timestamp,
