@@ -9,6 +9,7 @@ import { SearchManager } from './search.js?v=1.0.3';
 import { SecurityHeadersManager } from './security-headers.js?v=1.0.1';
 import { TurnstileManager } from './turnstile.js?v=1.0.0';
 import { OGPreviewManager } from './og-preview.js?v=1.0.0';
+import { ThemeManager } from './theme.js?v=1.0.0';
 import { sendErrorReport } from './utils.js';
 
 class ChatClient {
@@ -66,6 +67,7 @@ class ChatClient {
         this.search = new SearchManager((messageId) => this.scrollToMessage(messageId));
         this.securityHeaders = new SecurityHeadersManager();
         this.ogPreview = new OGPreviewManager();
+        this.theme = new ThemeManager();
         window.chatClient = this;
 
         this.initializeUI();
