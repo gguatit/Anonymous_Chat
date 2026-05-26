@@ -359,7 +359,7 @@ class ChatClient {
                 this.ui.displaySystemMessage(data.content);
                 break;
             case 'summary':
-                this.ui.displaySummary(data.content, data.messageId);
+                this.ui.displaySummary(data.content, data.messageId, data.summaryMode);
                 break;
             case 'announcement':
                 // Display system announcement with special styling
@@ -541,10 +541,25 @@ class ChatClient {
         // 메시지나 파일 중 하나는 있어야 함
         if (!trimmedMessage && !hasFile) return;
 
-        // /summary 명령어 처리
+        // /summary, /topic, /mood, /conflict 명령어 처리
         if (trimmedMessage === '/summary') {
             this.ui.clearInput();
-            await this.requestSummary();
+            await this.requestSummary('default');
+            return;
+        }
+        if (trimmedMessage === '/topic') {
+            this.ui.clearInput();
+            await this.requestSummary('topic');
+            return;
+        }
+        if (trimmedMessage === '/mood') {
+            this.ui.clearInput();
+            await this.requestSummary('mood');
+            return;
+        }
+        if (trimmedMessage === '/conflict') {
+            this.ui.clearInput();
+            await this.requestSummary('conflict');
             return;
         }
 
@@ -906,11 +921,15 @@ class ChatClient {
         }
     }
 
-    async requestSummary() {
+    async requestSummary(mode = 'default') {
         this.ui.clearInput();
         this.ui.displaySystemMessage('AI가 대화 요약을 생성 중입니다...');
         try {
-            const res = await fetch('/api/summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+            const res = await fetch('/api/summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode })
+            });
             if (res.status !== 204 && !res.ok) {
                 const data = await res.json().catch(() => ({}));
                 this.ui.displayError(data.error || '요약 생성에 실패했습니다.');

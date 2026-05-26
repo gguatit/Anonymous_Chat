@@ -525,8 +525,20 @@
                     </button>
                     <div id="command-popup" class="hidden absolute bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-50 overflow-hidden" style="bottom: calc(100% + 8px); left: 0; right: 0;">
                         <button data-cmd="/summary" class="cmd-item w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3">
-                            <span class="text-blue-400 font-mono text-xs shrink-0">/summary</span>
-                            <span class="text-gray-400 text-xs">AI로 최근 대화 요약하기</span>
+                            <span class="text-indigo-400 font-mono text-xs shrink-0">/summary</span>
+                            <span class="text-gray-400 text-xs">AI로 최근 대화 종합 요약</span>
+                        </button>
+                        <button data-cmd="/topic" class="cmd-item w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3">
+                            <span class="text-emerald-400 font-mono text-xs shrink-0">/topic</span>
+                            <span class="text-gray-400 text-xs">대화 주제 목록 분석</span>
+                        </button>
+                        <button data-cmd="/mood" class="cmd-item w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3">
+                            <span class="text-amber-400 font-mono text-xs shrink-0">/mood</span>
+                            <span class="text-gray-400 text-xs">대화 분위기 / 감정 분석</span>
+                        </button>
+                        <button data-cmd="/conflict" class="cmd-item w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3">
+                            <span class="text-red-400 font-mono text-xs shrink-0">/conflict</span>
+                            <span class="text-gray-400 text-xs">의견 충돌 / 논쟁 분석</span>
                         </button>
                     </div>
                 </form>

@@ -348,14 +348,22 @@ export class UIManager {
 
     _renderSingleMessage(data, sessionId) {
         if (data.type === 'summary') {
+            const MODE_STYLES = {
+                default: { bg: 'bg-indigo-900/40', border: 'border-indigo-700/50', title: 'text-indigo-300', label: 'AI \uB300\uD654 \uC694\uC57D' },
+                topic: { bg: 'bg-emerald-900/40', border: 'border-emerald-700/50', title: 'text-emerald-300', label: '\uB300\uD654 \uC8FC\uC81C' },
+                mood: { bg: 'bg-amber-900/40', border: 'border-amber-700/50', title: 'text-amber-300', label: '\uB300\uD654 \uBD84\uC704\uAE30' },
+                conflict: { bg: 'bg-red-900/40', border: 'border-red-700/50', title: 'text-red-300', label: '\uC758\uACAC \uCDA9\uB3CC' },
+            };
+            const s = MODE_STYLES[data.summaryMode] || MODE_STYLES.default;
+
             const wrapper = document.createElement('div');
-            wrapper.className = 'bg-indigo-900/40 border border-indigo-700/50 rounded-lg p-3 mx-2 my-3';
+            wrapper.className = `${s.bg} ${s.border} border rounded-lg p-3 mx-2 my-3`;
             wrapper.setAttribute('data-message', 'true');
             wrapper.setAttribute('data-message-id', data.messageId);
 
             const title = document.createElement('div');
-            title.className = 'text-xs font-semibold text-indigo-300 mb-2';
-            title.textContent = 'AI \uB300\uD654 \uC694\uC57D';
+            title.className = `text-xs font-semibold mb-2 ${s.title}`;
+            title.textContent = s.label;
 
             const content = document.createElement('div');
             content.className = 'text-sm text-gray-200 leading-relaxed';
@@ -1069,21 +1077,29 @@ export class UIManager {
         this.messagesContainer.appendChild(messageDiv);
     }
 
-    displaySummary(summaryText, messageId) {
+    displaySummary(summaryText, messageId, mode = 'default') {
         if (messageId && this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`)) {
             return;
         }
 
+        const MODE_STYLES = {
+            default: { bg: 'bg-indigo-900/40', border: 'border-indigo-700/50', title: 'text-indigo-300', label: 'AI \uB300\uD654 \uC694\uC57D' },
+            topic: { bg: 'bg-emerald-900/40', border: 'border-emerald-700/50', title: 'text-emerald-300', label: '\uB300\uD654 \uC8FC\uC81C' },
+            mood: { bg: 'bg-amber-900/40', border: 'border-amber-700/50', title: 'text-amber-300', label: '\uB300\uD654 \uBD84\uC704\uAE30' },
+            conflict: { bg: 'bg-red-900/40', border: 'border-red-700/50', title: 'text-red-300', label: '\uC758\uACAC \uCDA9\uB3CC' },
+        };
+        const s = MODE_STYLES[mode] || MODE_STYLES.default;
+
         const wrapper = document.createElement('div');
-        wrapper.className = 'bg-indigo-900/40 border border-indigo-700/50 rounded-lg p-3 mx-2 my-3';
+        wrapper.className = `${s.bg} ${s.border} border rounded-lg p-3 mx-2 my-3`;
         wrapper.setAttribute('data-message', 'true');
         if (messageId) {
             wrapper.setAttribute('data-message-id', messageId);
         }
 
         const title = document.createElement('div');
-        title.className = 'text-xs font-semibold text-indigo-300 mb-2';
-        title.textContent = 'AI \uB300\uD654 \uC694\uC57D';
+        title.className = `text-xs font-semibold mb-2 ${s.title}`;
+        title.textContent = s.label;
 
         const content = document.createElement('div');
         content.className = 'text-sm text-gray-200 leading-relaxed';

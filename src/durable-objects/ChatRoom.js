@@ -444,6 +444,7 @@ export class ChatRoom {
         try {
             const data = await request.json();
             const content = typeof data.content === 'string' ? data.content : '';
+            const summaryMode = typeof data.mode === 'string' ? data.mode : '_default';
 
             if (!content) {
                 return new Response(JSON.stringify({ error: 'Empty summary' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
@@ -459,7 +460,8 @@ export class ChatRoom {
                 sessionId: '_ai_summary',
                 nickname: 'AI',
                 timestamp: Date.now(),
-                editedAt: null
+                editedAt: null,
+                summaryMode: summaryMode
             };
 
             if (HMAC_SECRET) {
