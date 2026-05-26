@@ -377,6 +377,13 @@ export class ChatRoom {
             });
         }
 
+        if (url.pathname === '/broadcast-summary' && request.method === 'POST') {
+            if (request.headers.get('X-HMAC-Secret') !== this.env.HMAC_SECRET) {
+                return new Response('Forbidden', { status: 403 });
+            }
+            return await this.handleBroadcastSummary(request, HMAC_SECRET);
+        }
+
         // Initialize messages from storage on first request
         await this.initializeMessages();
 
@@ -431,6 +438,56 @@ export class ChatRoom {
             status: 101,
             webSocket: client,
         });
+    }
+
+    async handleBroadcastSummary(request, HMAC_SECRET) {
+        try {
+            const data = await request.json();
+            const content = typeof data.content === 'string' ? data.content : '';
+
+            if (!content) {
+                return new Response(JSON.stringify({ error: 'Empty summary' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+            }
+
+            await this.initializeMessages();
+
+            const messageId = `msg_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+            const message = {
+                type: 'summary',
+                messageId,
+                content: sanitizeInput(content),
+                sessionId: '_ai_summary',
+                nickname: 'AI',
+                timestamp: Date.now(),
+                editedAt: null
+            };
+
+            if (HMAC_SECRET) {
+                message.signature = await generateMessageSignature(message, HMAC_SECRET);
+            } else {
+                message.signature = '';
+            }
+
+            this.messages.push(message);
+
+            const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
+            this.messages = this.messages
+                .filter(msg => msg.timestamp > twelveHoursAgo)
+                .slice(-MAX_STORED_MESSAGES);
+
+            await this.state.storage.put('messages', this.messages);
+
+            this.broadcast(message);
+
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            this.addErrorLog('BROADCAST_SUMMARY', error);
+            return new Response(JSON.stringify({ error: 'Internal error' }), {
+                status: 500, headers: { 'Content-Type': 'application/json' }
+            });
+        }
     }
 
     async handleAdminBroadcast(request, HMAC_SECRET) {

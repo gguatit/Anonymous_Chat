@@ -359,7 +359,7 @@ class ChatClient {
                 this.ui.displaySystemMessage(data.content);
                 break;
             case 'summary':
-                this.ui.displaySummary(data.content);
+                this.ui.displaySummary(data.content, data.messageId);
                 break;
             case 'announcement':
                 // Display system announcement with special styling

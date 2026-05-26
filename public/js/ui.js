@@ -1069,14 +1069,21 @@ export class UIManager {
         this.messagesContainer.appendChild(messageDiv);
     }
 
-    displaySummary(summaryText) {
+    displaySummary(summaryText, messageId) {
+        if (messageId && this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`)) {
+            return;
+        }
+
         const wrapper = document.createElement('div');
         wrapper.className = 'bg-indigo-900/40 border border-indigo-700/50 rounded-lg p-3 mx-2 my-3';
         wrapper.setAttribute('data-message', 'true');
+        if (messageId) {
+            wrapper.setAttribute('data-message-id', messageId);
+        }
 
         const title = document.createElement('div');
         title.className = 'text-xs font-semibold text-indigo-300 mb-2';
-        title.textContent = 'AI 대화 요약';
+        title.textContent = 'AI \uB300\uD654 \uC694\uC57D';
 
         const content = document.createElement('div');
         content.className = 'text-sm text-gray-200 leading-relaxed';
