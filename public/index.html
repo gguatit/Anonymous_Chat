@@ -487,7 +487,7 @@
                     </div>
                 </div>
 
-                <form id="message-form" class="flex gap-2">
+                <form id="message-form" class="flex gap-2" style="position: relative;">
                     <label for="message-input" class="sr-only">메시지 입력</label>
                     <textarea id="message-input" rows="2"
                         class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 resize-none"
@@ -523,6 +523,16 @@
                         aria-label="메시지 전송">
                         전송
                     </button>
+                    <div id="command-popup" class="hidden absolute bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-50 overflow-hidden" style="bottom: calc(100% + 8px); left: 0; right: 0;">
+                        <button data-cmd="/summary" class="cmd-item w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3 border-b border-gray-700/50">
+                            <span class="text-blue-400 font-mono text-xs shrink-0">/summary</span>
+                            <span class="text-gray-400 text-xs">AI로 최근 대화 요약하기</span>
+                        </button>
+                        <button data-cmd="/요약" class="cmd-item w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3">
+                            <span class="text-blue-400 font-mono text-xs shrink-0">/요약</span>
+                            <span class="text-gray-400 text-xs">AI로 최근 대화 요약하기</span>
+                        </button>
+                    </div>
                 </form>
                 <div class="mt-1.5 text-xs text-gray-500 text-right" role="status" aria-live="polite">
                     <span id="char-count">0</span>/5000

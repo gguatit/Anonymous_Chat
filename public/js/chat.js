@@ -71,6 +71,7 @@ class ChatClient {
         window.chatClient = this;
 
         this.initializeUI();
+        this.initializeCommandPopup();
         this.initializeAnnouncementIndicator();
         // WebSocket connection is started after Turnstile verification
         this.turnstile = new TurnstileManager(config.turnstileSiteKey, () => this.onTurnstileVerified());
@@ -657,10 +658,10 @@ class ChatClient {
     // 클라이언트는 서명 없이 메시지를 전송하고, 서버가 검증 후 서명을 추가함
 
     handleInput() {
-        // Clear typing indicator timeout
         if (this.typingTimeout) {
             clearTimeout(this.typingTimeout);
         }
+        this.updateCommandPopup();
     }
 
     handleTyping() {
@@ -920,6 +921,112 @@ class ChatClient {
         } catch (err) {
             this.ui.displayError('요약 요청 중 오류가 발생했습니다.');
         }
+    }
+
+    initializeCommandPopup() {
+        const input = this.ui.messageInput;
+        if (!input) return;
+
+        input.addEventListener('keydown', (e) => {
+            if (!this.isCommandPopupOpen()) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); this.selectCommandPopup(this._cmdSelected + 1); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); this.selectCommandPopup(this._cmdSelected - 1); }
+            if (e.key === 'Enter') { e.preventDefault(); this.applyCommandPopup(); }
+            if (e.key === 'Escape') { e.preventDefault(); this.hideCommandPopup(); }
+        });
+
+        const popup = document.getElementById('command-popup');
+        if (popup) {
+            popup.addEventListener('click', (e) => {
+                const item = e.target.closest('.cmd-item');
+                if (item) {
+                    this.ui.clearInput();
+                    this.ui.messageInput.value = item.dataset.cmd;
+                    this.ui.messageInput.focus();
+                    this.hideCommandPopup();
+                }
+            });
+        }
+    }
+
+    updateCommandPopup() {
+        const popup = document.getElementById('command-popup');
+        if (!popup) return;
+
+        const value = this.ui.getInputValue();
+        if (!value.startsWith('/') || value.includes(' ')) {
+            popup.classList.add('hidden');
+            this._cmdSelected = -1;
+            return;
+        }
+
+        const filter = value.toLowerCase();
+        const items = popup.querySelectorAll('.cmd-item');
+        let visible = 0;
+        this._cmdSelected = -1;
+
+        items.forEach((item, i) => {
+            item.classList.remove('selected');
+            const cmd = item.dataset.cmd.toLowerCase();
+            if (cmd.startsWith(filter)) {
+                item.classList.remove('hidden');
+                visible++;
+            } else {
+                item.classList.add('hidden');
+            }
+        });
+
+        if (visible > 0) {
+            popup.classList.remove('hidden');
+        } else {
+            popup.classList.add('hidden');
+        }
+    }
+
+    selectCommandPopup(index) {
+        const popup = document.getElementById('command-popup');
+        if (!popup || popup.classList.contains('hidden')) return;
+        const items = popup.querySelectorAll('.cmd-item:not(.hidden)');
+        if (items.length === 0) return;
+
+        items.forEach(item => item.classList.remove('selected'));
+
+        if (index < 0) {
+            this._cmdSelected = -1;
+            return;
+        }
+        if (index >= items.length) index = 0;
+        if (index < 0) index = items.length - 1;
+
+        items[index].classList.add('selected');
+        items[index].scrollIntoView({ block: 'nearest' });
+        this._cmdSelected = index;
+    }
+
+    applyCommandPopup() {
+        const popup = document.getElementById('command-popup');
+        if (!popup || popup.classList.contains('hidden')) return;
+        const items = popup.querySelectorAll('.cmd-item:not(.hidden)');
+        const idx = this._cmdSelected >= 0 ? this._cmdSelected : 0;
+        if (idx < items.length) {
+            const cmd = items[idx].dataset.cmd;
+            this.ui.clearInput();
+            this.ui.messageInput.value = cmd;
+            this.ui.messageInput.focus();
+        }
+        popup.classList.add('hidden');
+        this._cmdSelected = -1;
+    }
+
+    hideCommandPopup() {
+        const popup = document.getElementById('command-popup');
+        if (popup) popup.classList.add('hidden');
+        this._cmdSelected = -1;
+    }
+
+    isCommandPopupOpen() {
+        const popup = document.getElementById('command-popup');
+        return popup && !popup.classList.contains('hidden');
     }
 }
 
