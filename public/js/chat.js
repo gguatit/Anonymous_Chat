@@ -358,6 +358,9 @@ class ChatClient {
             case 'system':
                 this.ui.displaySystemMessage(data.content);
                 break;
+            case 'summary':
+                this.ui.displaySummary(data.content);
+                break;
             case 'announcement':
                 // Display system announcement with special styling
                 console.log('Received announcement:', data.content);
@@ -538,8 +541,8 @@ class ChatClient {
         // 메시지나 파일 중 하나는 있어야 함
         if (!trimmedMessage && !hasFile) return;
 
-        // /summary 또는 /요약 명령어 처리
-        if (trimmedMessage === '/summary' || trimmedMessage === '/요약') {
+        // /summary 명령어 처리
+        if (trimmedMessage === '/summary') {
             this.ui.clearInput();
             await this.requestSummary();
             return;
@@ -904,18 +907,12 @@ class ChatClient {
     }
 
     async requestSummary() {
+        this.ui.clearInput();
         this.ui.displaySystemMessage('AI가 대화 요약을 생성 중입니다...');
         try {
-            const res = await fetch('/api/summary', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            });
-
-            const data = await res.json();
-            if (res.ok && data.summary) {
-                this.ui.displaySummary(data.summary);
-            } else {
+            const res = await fetch('/api/summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+            if (res.status !== 204 && !res.ok) {
+                const data = await res.json().catch(() => ({}));
                 this.ui.displayError(data.error || '요약 생성에 실패했습니다.');
             }
         } catch (err) {
@@ -932,6 +929,7 @@ class ChatClient {
             if (e.key === 'ArrowDown') { e.preventDefault(); this.selectCommandPopup(this._cmdSelected + 1); }
             if (e.key === 'ArrowUp') { e.preventDefault(); this.selectCommandPopup(this._cmdSelected - 1); }
             if (e.key === 'Enter') { e.preventDefault(); this.applyCommandPopup(); }
+            if (e.key === 'Tab') { e.preventDefault(); this.applyCommandPopup(); }
             if (e.key === 'Escape') { e.preventDefault(); this.hideCommandPopup(); }
         });
 
@@ -965,7 +963,7 @@ class ChatClient {
         let visible = 0;
         this._cmdSelected = -1;
 
-        items.forEach((item, i) => {
+        items.forEach((item, _i) => {
             item.classList.remove('selected');
             const cmd = item.dataset.cmd.toLowerCase();
             if (cmd.startsWith(filter)) {
