@@ -653,6 +653,15 @@
             }
         });
 
+        // Close platform info when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!platformInfo.classList.contains('-translate-x-full') &&
+                !platformInfo.contains(e.target) &&
+                e.target !== infoToggle && !infoToggle.contains(e.target)) {
+                platformInfo.classList.add('-translate-x-full');
+            }
+        });
+
         // Mobile Nickname Layout Logic
         function adjustNicknamePosition() {
             const nicknameContainer = document.getElementById('nickname-container');
