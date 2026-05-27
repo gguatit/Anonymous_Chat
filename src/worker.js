@@ -2,6 +2,7 @@ import { metrics, API_RATE_LIMIT } from './config/constants.js';
 import { getCorsHeaders, handleCorsPreflightResponse } from './config/cors.js';
 import { AI_SUMMARY } from './config/constants.js';
 import { forwardToDO } from './utils/do.js';
+import { safeJson } from './utils/helpers.js';
 
 import * as admin from './handlers/admin.js';
 import { handleWebSocket, handleCheckBan } from './handlers/websocket.js';
@@ -64,7 +65,7 @@ const adminRoutes = [
 
 async function channelRequest(request, env, corsHeaders, endpoint, method, errorMsg) {
     try {
-        const body = method === 'GET' ? undefined : await request.json();
+        const body = method === 'GET' ? undefined : await safeJson(request);
         const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
         const registry = env.CHANNEL_REGISTRY.get(registryId);
         const fetchOptions = {
@@ -167,9 +168,7 @@ async function serveStaticAssets(request, env, url) {
             return await env.ASSETS.fetch(indexRequest);
         }
         return assetResponse;
-    } catch {
-        return null;
-    }
+    } catch (_e) { /* expected: asset fetch failures */ }
 }
 
 function matchRoute(routes, pathname, method) {
@@ -213,14 +212,30 @@ export default {
             const handler = matchRoute(publicRoutes, url.pathname, request.method);
             if (handler) return await handler(request, env, corsHeaders);
 
-            // File upload proxy
             if (url.pathname === '/api/upload' && request.method === 'POST') {
                 if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
                     return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
                 }
                 try {
+                    const contentLength = parseInt(request.headers.get('content-length') || '0');
+                    if (contentLength > 50 * 1024 * 1024) {
+                        return new Response(JSON.stringify({ error: 'File too large (max 50MB)' }), {
+                            status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                        });
+                    }
                     const formData = await request.formData();
-                    const uploadUrl = env.FILE_UPLOAD_URL || 'https://file.xeon.kr/upload';
+                    const file = formData.get('file');
+                    if (file && file.size > 50 * 1024 * 1024) {
+                        return new Response(JSON.stringify({ error: 'File too large (max 50MB)' }), {
+                            status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                        });
+                    }
+                    const uploadUrl = env.FILE_UPLOAD_URL;
+                    if (!uploadUrl) {
+                        return new Response(JSON.stringify({ error: 'Upload service not configured' }), {
+                            status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                        });
+                    }
                     const upstreamResponse = await fetch(uploadUrl, { method: 'POST', body: formData });
                     const contentType = upstreamResponse.headers.get('content-type') || 'application/json';
                     return new Response(upstreamResponse.body, {
@@ -257,8 +272,15 @@ export default {
                 if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CONFIG, 'config')) {
                     return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
                 }
+                if (!env.TURNSTILE_SITE_KEY) {
+                    return new Response(JSON.stringify({ error: 'Turnstile not configured' }), {
+                        status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    });
+                }
                 return new Response(JSON.stringify({
-                    turnstileSiteKey: env.TURNSTILE_SITE_KEY || '0x4AAAAAADAY6kk52-ZxU23s'
+                    turnstileSiteKey: env.TURNSTILE_SITE_KEY,
+                    fileUploadUrl: env.FILE_UPLOAD_URL || null,
+                    kalphaApiUrl: env.KALPHA_API_URL || null
                 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
             }
 

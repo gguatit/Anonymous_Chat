@@ -1320,7 +1320,7 @@ chore: 빌드/설정 변경
 
 ### 코드 스타일
 
-- **JavaScript**: ESLint + Prettier
+- **JavaScript**: ESLint (v9 flat config)
 - **들여쓰기**: 4 spaces
 - **세미콜론**: 사용
 - **따옴표**: 작은따옴표 (')

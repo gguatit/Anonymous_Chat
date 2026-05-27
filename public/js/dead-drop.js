@@ -1,6 +1,6 @@
 // Dead Drop API Client - 일회성 비밀 메시지 저장소
 export class DeadDropClient {
-    constructor(apiUrl = 'https://api.kalpha.kr') {
+    constructor(apiUrl = null) {
         this.apiUrl = apiUrl;
         this.apiKey = null; // Optional bearer token
     }
@@ -11,6 +11,7 @@ export class DeadDropClient {
      * @returns {Promise<{id: string}>} - The ID to retrieve the message
      */
     async store(message) {
+        if (!this.apiUrl) throw new Error('Dead Drop API not configured');
         try {
             const headers = {
                 'Content-Type': 'application/json'
@@ -45,6 +46,7 @@ export class DeadDropClient {
      * @returns {Promise<{message: string}>} - The secret message
      */
     async read(id) {
+        if (!this.apiUrl) throw new Error('Dead Drop API not configured');
         try {
             const headers = {};
 

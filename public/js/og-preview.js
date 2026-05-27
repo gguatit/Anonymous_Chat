@@ -50,7 +50,7 @@ export class OGPreviewManager {
             const og = data.og;
             if (!og.title && !og.description && !og.image) return null;
             return og;
-        } catch {
+        } catch (_e) {
             return null;
         }
     }

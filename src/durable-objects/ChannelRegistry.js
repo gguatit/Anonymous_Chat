@@ -1,5 +1,5 @@
 import { CHANNEL } from '../config/constants.js';
-import { sanitizeInput } from '../utils/helpers.js';
+import { sanitizeInput, safeJson } from '../utils/helpers.js';
 
 export class ChannelRegistry {
     constructor(state, env) {
@@ -43,7 +43,7 @@ export class ChannelRegistry {
         const url = new URL(request.url);
 
         const internalToken = request.headers.get('X-Admin-Internal-Token');
-        if (internalToken && internalToken !== this.env.HMAC_SECRET) {
+        if (!internalToken || internalToken !== this.env.HMAC_SECRET) {
             return new Response('Forbidden', { status: 403 });
         }
 
@@ -97,7 +97,7 @@ export class ChannelRegistry {
 
     async handleAdminDelete(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const slug = this.toSlug(data.slug || '');
             if (!slug) {
                 return new Response(JSON.stringify({ error: 'Invalid channel slug' }), {
@@ -121,7 +121,7 @@ export class ChannelRegistry {
 
     async handleCreate(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const rawName = typeof data.name === 'string' ? data.name.trim() : '';
             const createdBy = data.sessionId || 'anonymous';
 
@@ -178,7 +178,7 @@ export class ChannelRegistry {
 
     async handleJoin(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const rawName = typeof data.name === 'string' ? data.name.trim() : '';
 
             if (!rawName) {
@@ -209,7 +209,7 @@ export class ChannelRegistry {
 
     async handleTouch(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const slug = this.toSlug(data.slug || '');
 
             const channel = this.channels.get(slug);
@@ -231,7 +231,7 @@ export class ChannelRegistry {
 
     async handleDelete(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const slug = this.toSlug(data.slug || '');
 
             if (this.channels.delete(slug)) {

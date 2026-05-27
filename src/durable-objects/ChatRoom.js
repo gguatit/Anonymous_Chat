@@ -1,5 +1,5 @@
 import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI } from '../config/constants.js';
-import { generateMessageSignature, verifyMessageSignature, sanitizeInput } from '../utils/helpers.js';
+import { generateMessageSignature, verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl } from '../utils/helpers.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
 import { logAuditLog, logErrorLog } from '../utils/logger.js';
 
@@ -352,10 +352,10 @@ export class ChatRoom {
 
         if (url.pathname === '/api/logs/error' && request.method === 'POST') {
             try {
-                const logData = await request.json();
+                const logData = await safeJson(request);
                 this.addErrorLog('CLIENT_ERROR', new Error(logData.message), logData.environment, logData.context);
                 return new Response('OK', { status: 200 });
-            } catch (e) {
+            } catch (_e) {
                 return new Response('Error', { status: 400 });
             }
         }
@@ -450,7 +450,7 @@ export class ChatRoom {
 
     async handleBroadcastSummary(request, HMAC_SECRET) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const content = typeof data.content === 'string' ? data.content : '';
             const summaryMode = typeof data.mode === 'string' ? data.mode : '_default';
 
@@ -502,7 +502,7 @@ export class ChatRoom {
 
     async handleAdminBroadcast(request, HMAC_SECRET) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const content = typeof data.content === 'string' ? data.content : '';
             const file = data.file || null;
             const adminId = data.adminId || 'admin';
@@ -563,7 +563,7 @@ export class ChatRoom {
 
     async handleAdminEditMessage(request, HMAC_SECRET) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const messageId = data.messageId;
             const newContent = data.newContent;
 
@@ -641,7 +641,7 @@ export class ChatRoom {
 
     async handleAdminDeleteMessage(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const messageId = data.messageId;
 
             if (!messageId) {
@@ -697,7 +697,7 @@ export class ChatRoom {
 
     async handleAdminDeleteAllMessages(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const confirmation = data.confirmation;
 
             if (confirmation !== 'DELETE_ALL_MESSAGES') {
@@ -743,7 +743,7 @@ export class ChatRoom {
     async handleAdminForceDelete(request) {
         try {
             // Security: require confirmation phrase
-            const data = await request.json();
+            const data = await safeJson(request);
             if (data.confirmation !== 'FORCE_DELETE_CHANNEL') {
                 return new Response(JSON.stringify({ error: 'Invalid confirmation' }), {
                     status: 400, headers: { 'Content-Type': 'application/json' }
@@ -756,8 +756,6 @@ export class ChatRoom {
                     status: 403, headers: { 'Content-Type': 'application/json' }
                 });
             }
-
-            console.log(`[Channel ${this.channelSlug}] Admin force delete requested`);
 
             // Step 1: Notify all users to redirect to main channel
             for (const [, websocket] of this.sessions) {
@@ -778,7 +776,7 @@ export class ChatRoom {
             for (const [, websocket] of this.sessions) {
                 try {
                     websocket.close(1000, 'Channel deleted by admin');
-                } catch (e) {
+                } catch (_e) {
                     // ignore
                 }
             }
@@ -819,7 +817,7 @@ export class ChatRoom {
 
     async handleAdminKickUser(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const sessionId = data.sessionId;
             const banDuration = data.banDuration || 0;
 
@@ -988,11 +986,11 @@ export class ChatRoom {
 
     async handleAdminEditAnnounce(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const timestamp = Number(data.timestamp);
             const content = typeof data.content === 'string' ? data.content : '';
-            const isEmergency = data.hasOwnProperty('isEmergency') ? !!data.isEmergency : undefined;
-            const emergencyUntil = data.hasOwnProperty('emergencyUntil') ? (data.emergencyUntil ? Number(data.emergencyUntil) : null) : undefined;
+            const isEmergency = Object.hasOwn(data, 'isEmergency') ? !!data.isEmergency : undefined;
+            const emergencyUntil = Object.hasOwn(data, 'emergencyUntil') ? (data.emergencyUntil ? Number(data.emergencyUntil) : null) : undefined;
 
             if (!timestamp || !content) {
                 return new Response(JSON.stringify({ error: 'Missing timestamp or content' }), {
@@ -1051,7 +1049,7 @@ export class ChatRoom {
 
     async handleAdminDeleteAnnounce(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const timestamp = Number(data.timestamp);
 
             if (!timestamp) {
@@ -1107,7 +1105,7 @@ export class ChatRoom {
 
     async handleAdminAnnounce(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const content = typeof data.content === 'string' ? data.content : '';
             const isEmergency = !!data.isEmergency;
             const emergencyUntil = isEmergency && data.emergencyUntil ? Number(data.emergencyUntil) : null;
@@ -1118,8 +1116,6 @@ export class ChatRoom {
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
-
-            console.log('Broadcasting announcement:', content.substring(0, 50), isEmergency ? '[EMERGENCY]' : '');
 
             // Save new announcement (replaces old one)
             this.currentAnnouncement = {
@@ -1146,7 +1142,6 @@ export class ChatRoom {
                 emergencyUntil: this.currentAnnouncement.emergencyUntil
             };
 
-            console.log('Active sessions:', this.sessions.size);
             this.broadcast(announcementMessage);
 
             // Add audit log
@@ -1194,7 +1189,7 @@ export class ChatRoom {
 
     async handleAdminUnbanIP(request) {
         try {
-            const data = await request.json();
+            const data = await safeJson(request);
             const ip = data.ip;
 
             if (!ip) {
@@ -1369,7 +1364,6 @@ export class ChatRoom {
                     }
 
                     default:
-                        console.log('Unknown message type:', data.type);
                         if (sessionId) {
                             this.sendToSession(sessionId, {
                                 type: 'error',
@@ -1394,7 +1388,7 @@ export class ChatRoom {
                             type: 'error',
                             content: '메시지 처리 중 오류가 발생했습니다. 다시 연결해주세요.'
                         }));
-                    } catch (e) {
+                    } catch (_e) {
                         // ignore
                     }
                 }
@@ -1495,7 +1489,6 @@ export class ChatRoom {
 
         let metadata;
         if (wasAlreadyConnected || existingMetadata) {
-            console.log('Session reconnecting:', sessionId);
             this.sessions.set(sessionId, websocket);
 
             metadata = existingMetadata || {
@@ -1527,8 +1520,6 @@ export class ChatRoom {
 
             this.broadcastUserCount();
         } else {
-            console.log('New session joining:', sessionId);
-
             metadata = {
                 ip: clientIP,
                 joinTime: Date.now(),
@@ -1622,7 +1613,7 @@ export class ChatRoom {
             const nick = sanitizeInput(data.nickname || metadata.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH);
             metadata.nickname = nick;
             this.userMetadata.set(sessionId, metadata);
-        } catch (e) {
+        } catch (_e) {
             // ignore nickname sanitization errors
         }
 
@@ -1668,24 +1659,34 @@ export class ChatRoom {
             }
         }
 
-        // Handle single file (backward compatibility)
         if (data.file && data.file.url) {
+            if (!isValidFileUrl(data.file.url)) {
+                return new Response(JSON.stringify({ error: 'Invalid file URL' }), {
+                    status: 400, headers: { 'Content-Type': 'application/json' }
+                });
+            }
             message.file = {
                 url: data.file.url,
-                filename: data.file.filename,
-                filesize: data.file.filesize,
-                filetype: data.file.filetype
+                filename: sanitizeInput(String(data.file.filename || '')).substring(0, 255),
+                filesize: typeof data.file.filesize === 'number' ? data.file.filesize : null,
+                filetype: sanitizeInput(String(data.file.filetype || '')).substring(0, 100)
             };
         }
 
-        // Handle multiple files
         if (data.files && Array.isArray(data.files) && data.files.length > 0) {
-            message.files = data.files.map(f => ({
-                url: f.url,
-                filename: f.filename || '',
-                filesize: f.filesize || null,
-                filetype: f.filetype || ''
-            }));
+            const validFiles = [];
+            for (const f of data.files) {
+                if (!f.url || !isValidFileUrl(f.url)) continue;
+                validFiles.push({
+                    url: f.url,
+                    filename: sanitizeInput(String(f.filename || '')).substring(0, 255),
+                    filesize: typeof f.filesize === 'number' ? f.filesize : null,
+                    filetype: sanitizeInput(String(f.filetype || '')).substring(0, 100)
+                });
+            }
+            if (validFiles.length > 0) {
+                message.files = validFiles;
+            }
         }
 
         message.signature = await generateMessageSignature(message, HMAC_SECRET);
@@ -1956,7 +1957,7 @@ export class ChatRoom {
                 meta.nickname = nick;
                 this.userMetadata.set(sessionId, meta);
             }
-        } catch (e) {
+        } catch (_e) {
             // ignore
         }
 
@@ -2080,7 +2081,7 @@ export class ChatRoom {
                 if (!matchesAllTerms) continue;
             }
 
-            let tagList = [];
+            const tagList = [];
             // Check single file
             if (msg.file && msg.file.filetype) {
                 if (msg.file.filetype.startsWith('image/')) {
@@ -2348,8 +2349,6 @@ export class ChatRoom {
 
     async deleteChannel() {
         if (this.channelSlug === '0') return; // Never delete main room
-
-        console.log(`[Channel ${this.channelSlug}] Auto-deleting after being empty for ${CHANNEL.EMPTY_TTL}ms`);
 
         // Stop periodic cleanup to prevent further invocations on deleted channel
         if (this.cleanupInterval) {

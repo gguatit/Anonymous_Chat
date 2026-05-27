@@ -465,8 +465,8 @@ class AdminDashboard {
                 const original = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
                 setTimeout(() => copyBtn.innerHTML = original, 1500);
-            } catch {
-                // fallback
+            } catch (_e) {
+                // fallback for older browsers
                 const ta = document.createElement('textarea');
                 ta.value = 'DELETE_ALL_MESSAGES';
                 ta.style.position = 'fixed';
@@ -576,7 +576,7 @@ class AdminDashboard {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             return response.ok;
-        } catch (error) {
+        } catch (_error) {
             return false;
         }
     }
@@ -1214,8 +1214,7 @@ class AdminDashboard {
                 return;
             }
 
-            const result = await response.json();
-            console.log('Message deleted successfully:', result);
+            await response.json();
             this.refreshData();
         } catch (error) {
             console.error('deleteMessage error:', error);
@@ -1308,10 +1307,11 @@ class AdminDashboard {
             const todayStart = new Date().setHours(0, 0, 0, 0);
 
             switch (filterOptions) {
-                case '2': // 활성 세션만
+                case '2': { // 활성 세션만
                     const activeSessions = new Set(sessions.map(s => s.sessionId));
                     messages = messages.filter(m => activeSessions.has(m.sessionId));
                     break;
+                }
                 case '3': // 오늘 메시지
                     messages = messages.filter(m => m.timestamp >= todayStart);
                     break;
@@ -1407,14 +1407,12 @@ class AdminDashboard {
             clearInterval(this.autoRefreshInterval);
         }
         this.autoRefreshInterval = setInterval(() => this.refreshData(), interval);
-        console.log(`Auto-refresh started with ${interval}ms interval`);
     }
 
     stopAutoRefresh() {
         if (this.autoRefreshInterval) {
             clearInterval(this.autoRefreshInterval);
             this.autoRefreshInterval = null;
-            console.log('Auto-refresh stopped');
         }
     }
 
@@ -1683,7 +1681,7 @@ class AdminDashboard {
                 if (!response.ok) throw new Error('Failed to edit announcement');
                 this.showNotification('공지사항이 수정되었습니다.', 'success');
                 this.refreshData();
-            } catch (error) {
+            } catch (_error) {
                 this.showNotification('공지사항 수정에 실패했습니다.', 'error');
             }
         });
@@ -1705,7 +1703,7 @@ class AdminDashboard {
             if (!response.ok) throw new Error('Failed to delete announcement');
             this.showNotification('공지사항이 삭제되었습니다.', 'success');
             this.refreshData();
-        } catch (error) {
+        } catch (_error) {
             this.showNotification('공지사항 삭제에 실패했습니다.', 'error');
         }
     }

@@ -1,5 +1,6 @@
 import { AI_SUMMARY } from '../config/constants.js';
 import { forwardToDO } from '../utils/do.js';
+import { safeJson } from '../utils/helpers.js';
 
 const BASE_RULES = `절대 규칙:
 0. 당신의 유일한 역할은 대화 요약입니다. 절대로 채팅에 참여하거나,
@@ -117,11 +118,11 @@ export async function handleSummary(request, env, corsHeaders) {
     try {
         let mode = 'default';
         try {
-            const body = await request.json();
+            const body = await safeJson(request);
             if (body && ['default', 'topic', 'mood', 'conflict'].includes(body.mode)) {
                 mode = body.mode;
             }
-        } catch (e) { /* ignore invalid JSON, use default */ }
+        } catch (_e) { /* expected: invalid JSON body, fall back to default mode */ }
 
         const doResp = await forwardToDO(env, '/messages/recent', { method: 'GET' });
 

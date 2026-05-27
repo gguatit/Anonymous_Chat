@@ -40,3 +40,27 @@ export function sanitizeInput(input) {
     return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
         .replace(/\r\n?/g, '\n');
 }
+
+const MAX_BODY_BYTES = 1024 * 1024;
+
+export async function safeJson(request) {
+    const contentLength = parseInt(request.headers.get('content-length') || '0');
+    if (contentLength > MAX_BODY_BYTES) {
+        throw new Error('Request body too large');
+    }
+    return request.json();
+}
+
+export function isValidFileUrl(url, allowedOrigins = []) {
+    if (typeof url !== 'string' || !url) return false;
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'https:') return false;
+        if (allowedOrigins.length > 0) {
+            return allowedOrigins.some(origin => url.startsWith(origin));
+        }
+        return true;
+    } catch (_e) { /* expected: invalid URL */
+        return false;
+    }
+}

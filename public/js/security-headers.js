@@ -1,7 +1,8 @@
 import { escapeHtml } from './utils.js';
 
 export class SecurityHeadersManager {
-    constructor() {
+    constructor(apiUrl) {
+        this.apiUrl = apiUrl || null;
         this.overlay = null;
         this.createOverlay();
     }
@@ -59,7 +60,10 @@ export class SecurityHeadersManager {
         `;
 
         try {
-            const apiUrl = `https://api.kalpha.kr/security/headers?url=${encodeURIComponent(url)}`;
+            if (!this.apiUrl) {
+                throw new Error('Security headers API not configured');
+            }
+            const apiUrl = `${this.apiUrl}/security/headers?url=${encodeURIComponent(url)}`;
             const response = await fetch(apiUrl);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);

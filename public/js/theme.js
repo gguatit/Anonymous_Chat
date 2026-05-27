@@ -14,12 +14,12 @@ export class ThemeManager {
         try {
             const saved = localStorage.getItem('chatTheme');
             if (saved && THEMES.includes(saved)) return saved;
-        } catch (e) { /* ignore */ }
+        } catch (_e) { /* ignore storage errors */ }
         return 'dark';
     }
 
     save(theme) {
-        try { localStorage.setItem('chatTheme', theme); } catch (e) { /* ignore */ }
+        try { localStorage.setItem('chatTheme', theme); } catch (_e) { /* ignore storage errors */ }
     }
 
     apply(theme) {

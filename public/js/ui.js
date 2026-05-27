@@ -303,8 +303,6 @@ export class UIManager {
     displayBatchMessages(messages, sessionId) {
         if (!messages || messages.length === 0) return;
 
-        console.log(`[UI] Rendering ${messages.length} messages in batch`);
-
         const fragment = document.createDocumentFragment();
 
         for (const data of messages) {
@@ -326,8 +324,6 @@ export class UIManager {
             this.scrollButton.classList.remove('opacity-0', 'pointer-events-none');
             this.scrollButton.classList.add('opacity-100', 'pointer-events-auto');
         }
-
-        console.log(`[UI] Batch rendering complete`);
 
         const revealBtns = this.messagesContainer.querySelectorAll('.reveal-secret-btn');
         revealBtns.forEach(btn => {
@@ -508,15 +504,11 @@ export class UIManager {
 
     addMessageInteractions(messageDiv, messageId, canEdit, replyToMessageId) {
         let longPressTimer;
-        let isLongPress = false;
 
-        // Long press for mobile
         messageDiv.addEventListener('touchstart', (e) => {
-            isLongPress = false;
             longPressTimer = setTimeout(() => {
-                isLongPress = true;
                 this.showContextMenu(e, messageId, canEdit);
-            }, 500); // 500ms long press
+            }, 500);
         }, { passive: true });
 
         messageDiv.addEventListener('touchend', () => {
@@ -1125,10 +1117,9 @@ export class UIManager {
         this.messagesContainer.appendChild(wrapper);
     }
 
-    displayAnnouncement(content, timestamp) {
+    displayAnnouncement(_content, _timestamp) {
         // 공지사항은 채팅에 표시하지 않습니다.
         // 사용자는 헤더의 공지사항 버튼(확성기 아이콘)을 통해 /announcements.html에서 확인할 수 있습니다.
-        console.log('[UI] Announcement received (not displayed in chat):', content?.substring(0, 50));
     }
 
     hideAnnouncement() {
@@ -1483,10 +1474,8 @@ export class UIManager {
     formatFileGallery(files) {
         if (!files || files.length === 0) return '';
 
-        console.log('[Gallery] Files:', files);
         const images = files.filter(f => f.filetype && f.filetype.startsWith('image/'));
         const others = files.filter(f => !f.filetype || !f.filetype.startsWith('image/'));
-        console.log('[Gallery] Images:', images.length, 'Others:', others.length);
 
         let html = '';
 
@@ -1641,7 +1630,7 @@ export class UIManager {
     htmlToPlainText(html) {
         // Convert HTML to plain text while preserving line breaks
         // Replace <br> and <br/> tags with newlines
-        let text = html.replace(/<br\s*\/?>/gi, '\n');
+        const text = html.replace(/<br\s*\/?>/gi, '\n');
         // Create a temporary div to decode HTML entities and strip other tags
         const div = document.createElement('div');
         div.innerHTML = text;

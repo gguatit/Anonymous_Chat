@@ -13,7 +13,7 @@ export async function checkRateLimit(env, key) {
         
         const recentAttempts = attempts.filter(t => now - t < AUTH.RATE_LIMIT_EXPIRE);
         return recentAttempts.length >= AUTH.MAX_FAILED_ATTEMPTS;
-    } catch {
+    } catch (_e) { /* expected: corrupt KV data */
         return false;
     }
 }
@@ -84,7 +84,7 @@ export async function verifyAdminToken(token, secret, env) {
         if (!dataPart || !sigPart) return false;
         
         const data = atob(dataPart);
-        const [password, timestamp] = data.split(':');
+        const [_password, timestamp] = data.split(':');
         
         // Token expires
         if (Date.now() - parseInt(timestamp) > AUTH.TOKEN_EXPIRY_MS) {
@@ -108,7 +108,7 @@ export async function verifyAdminToken(token, secret, env) {
         const expectedSig = btoa(String.fromCharCode(...new Uint8Array(signature)));
         
         return sigPart === expectedSig;
-    } catch {
+    } catch (_e) { /* expected: malformed token */
         return false;
     }
 }

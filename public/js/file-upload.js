@@ -3,7 +3,7 @@ import { formatFileSize, escapeHtml } from './utils.js';
 
 export class FileUploadManager {
     constructor(apiBaseUrl, uploadEndpoint) {
-        this.apiBaseUrl = apiBaseUrl || 'https://file.xeon.kr';
+        this.apiBaseUrl = apiBaseUrl || null;
         this.uploadEndpoint = uploadEndpoint || '/api/upload';
         this.fileInput = document.getElementById('file-input');
         this.fileButton = document.getElementById('file-button');
@@ -303,13 +303,9 @@ export class FileUploadManager {
     async uploadSingleFile(file, onProgress) {
         return new Promise((resolve, reject) => {
             try {
-                console.log('Starting file upload:', file.name, file.type, file.size);
-                
                 const formData = new FormData();
                 formData.append('file', file);
 
-                console.log('Uploading to:', this.uploadEndpoint);
-                
                 const xhr = new XMLHttpRequest();
                 this.uploadXhr = xhr;
                 
@@ -323,12 +319,9 @@ export class FileUploadManager {
                 
                 // Server response received
                 xhr.addEventListener('load', () => {
-                    console.log('Server response received:', xhr.status, xhr.statusText);
-                    
                     if (xhr.status >= 200 && xhr.status < 300) {
                         try {
                             const result = JSON.parse(xhr.responseText);
-                            console.log('Upload result:', result);
             
                             let uploadedFileUrl;
                             if (result.full_url) {
@@ -336,8 +329,10 @@ export class FileUploadManager {
                             } else if (result.url && result.url.startsWith('http')) {
                                 uploadedFileUrl = result.url;
                             } else if (result.url) {
+                                if (!this.apiBaseUrl) { reject(new Error('Upload not configured')); return; }
                                 uploadedFileUrl = `${this.apiBaseUrl}${result.url}`;
                             } else if (result.id && result.name) {
+                                if (!this.apiBaseUrl) { reject(new Error('Upload not configured')); return; }
                                 uploadedFileUrl = `${this.apiBaseUrl}/${result.id}/${result.name}`;
                             } else {
                                 reject(new Error('Invalid upload response'));
@@ -369,7 +364,6 @@ export class FileUploadManager {
                 
                 // Upload aborted
                 xhr.addEventListener('abort', () => {
-                    console.log('Upload aborted');
                     reject(new Error('Upload cancelled'));
                 });
                 

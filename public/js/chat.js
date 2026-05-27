@@ -17,8 +17,8 @@ class ChatClient {
         // Initialize managers
         this.sessionManager = new SessionManager();
         this.ui = new UIManager();
-        this.fileUpload = new FileUploadManager('https://file.xeon.kr', '/api/upload');
-        this.deadDrop = new DeadDropClient('https://api.kalpha.kr');
+        this.fileUpload = new FileUploadManager(config.fileUploadUrl || null, '/api/upload');
+        this.deadDrop = new DeadDropClient(config.kalphaApiUrl || null);
 
         // State
         this.typingTimeout = null;
@@ -49,7 +49,7 @@ class ChatClient {
                 this.currentChannel = savedChannel;
                 this.currentChannelName = localStorage.getItem('chatCurrentChannelName') || '';
             }
-        } catch {
+        } catch (_e) {
             // ignore storage errors
         }
 
@@ -69,7 +69,7 @@ class ChatClient {
 
         // Search
         this.search = new SearchManager((messageId) => this.scrollToMessage(messageId));
-        this.securityHeaders = new SecurityHeadersManager();
+        this.securityHeaders = new SecurityHeadersManager(config.kalphaApiUrl || null);
         this.ogPreview = new OGPreviewManager();
         this.theme = new ThemeManager();
         window.chatClient = this;
@@ -102,7 +102,7 @@ class ChatClient {
             const stored = localStorage.getItem(this.announcementSeenStorageKey);
             const ts = Number(stored);
             return Number.isFinite(ts) && ts > 0 ? ts : 0;
-        } catch {
+        } catch (_e) {
             return 0;
         }
     }
@@ -114,7 +114,7 @@ class ChatClient {
 
         try {
             localStorage.setItem(this.announcementSeenStorageKey, String(Math.floor(timestamp)));
-        } catch {
+        } catch (_e) {
             // Ignore storage failures (e.g. private mode restrictions)
         }
     }
@@ -193,7 +193,6 @@ class ChatClient {
 
         if (!result.supported || !bellBtn) {
             if (result.error) {
-                console.log('[Push] Notifications unavailable:', result.error);
                 if (result.error.includes('not configured')) {
                     console.warn('[Push] Server push notifications not configured. Contact administrator.');
                 }
@@ -205,7 +204,6 @@ class ChatClient {
         this.updateBellIcon(bellBtn);
 
         if (Notification.permission === 'granted' && !result.subscribed && this.pushManager._sessionSubscribed) {
-            console.log('[Push] Re-subscribing — subscription lost but permission granted');
             const resubscribed = await this.pushManager.subscribe(this.sessionManager.getSessionId());
             if (resubscribed) {
                 this.updateBellIcon(bellBtn);
@@ -214,12 +212,10 @@ class ChatClient {
 
         bellBtn.addEventListener('click', async () => {
             try {
-                console.log('[Chat] User clicked notification toggle');
                 const success = await this.pushManager.toggle(this.sessionManager.getSessionId());
 
                 if (success !== undefined) {
                     this.updateBellIcon(bellBtn);
-                    console.log('[Chat] Notification toggle successful:', success);
                 } else {
                     console.error('[Chat] Notification toggle returned undefined');
                     this.ui.displayError('알림 설정을 변경할 수 없습니다. 브라우저 권한을 확인하거나 페이지를 새로고침 해주세요.');
@@ -307,8 +303,6 @@ class ChatClient {
     handleMessage(data) {
         switch (data.type) {
             case 'history':
-                // Batch render historical messages for better performance
-                console.log('[Chat] Received message history:', data.messages?.length || 0, 'messages');
                 if (data.messages && data.messages.length > 0) {
                     this.ui.displayBatchMessages(data.messages, this.sessionManager.getSessionId());
                     if (this.ogPreview) {
@@ -366,8 +360,6 @@ class ChatClient {
                 this.ui.displaySummary(data.content, data.messageId, data.summaryMode);
                 break;
             case 'announcement':
-                // Display system announcement with special styling
-                console.log('Received announcement:', data.content);
                 this.latestAnnouncementTimestamp = Math.max(
                     this.latestAnnouncementTimestamp,
                     this.toTimestamp(data.timestamp)
@@ -384,18 +376,15 @@ class ChatClient {
                 }
                 break;
             case 'emergency_cleared':
-                console.log('Emergency announcement cleared');
                 localStorage.removeItem('chatEmergencySeenTs');
                 localStorage.removeItem('chatEmergencyRedirectTime');
                 break;
-            case 'kicked':
-                // User was kicked by admin
+            case 'kicked': {
                 const banDuration = data.banDuration || 0;
                 const isPermanent = data.permanent === true;
                 const isSessionBan = data.sessionBan === true;
 
                 if (isPermanent && banDuration > 0) {
-                    // 차단 - 재접속 금지
                     const minutes = Math.floor(banDuration / 60);
                     const seconds = banDuration % 60;
                     const timeStr = minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
@@ -405,13 +394,10 @@ class ChatClient {
 
                     if (isSessionBan) {
                         // 세션 밴: 세션 ID를 유지하여 재접속 시 같은 (밴된) ID로 거부되도록 함
-                        // localStorage.removeItem 하지 않음!
                     } else {
-                        // IP 밴: 세션 ID 삭제 (IP로 차단되므로 새 세션이어도 거부됨)
                         localStorage.removeItem('chatSessionId');
                     }
 
-                    // WebSocket 연결 완전 종료
                     if (this.wsManager) {
                         this.wsManager.manualClose = true;
                         this.wsManager.disconnect();
@@ -435,15 +421,13 @@ class ChatClient {
                     }, 2000);
                 }
                 break;
-            case 'banned':
-                // Session or IP is banned
+            }
+            case 'banned': {
                 this.ui.displayError(data.content);
                 this.ui.setInputEnabled(false);
 
-                // 세션 ID 삭제
                 localStorage.removeItem('chatSessionId');
 
-                // WebSocket 연결 종료
                 if (this.wsManager) {
                     this.wsManager.disconnect();
                 }
@@ -456,11 +440,12 @@ class ChatClient {
                     alert(`접속이 차단되었습니다.\n차단 해제까지 ${timeText} 남았습니다.\n\n차단 시간이 지난 후 페이지를 새로고침하여 재접속할 수 있습니다.`);
                 }
                 break;
+            }
             case 'error':
                 this.ui.displayError(data.content);
                 break;
             default:
-                console.log('Unknown message type:', data.type);
+                break;
         }
     }
 
@@ -634,8 +619,6 @@ class ChatClient {
             try {
                 const filesData = await this.fileUpload.uploadFiles();
 
-                console.log('Files uploaded successfully:', filesData);
-
                 // Add files info to message
                 if (filesData.length === 1) {
                     // Single file - backward compatibility
@@ -784,8 +767,6 @@ class ChatClient {
         channelId = String(channelId || '0');
         if (this.currentChannel === channelId) return;
 
-        console.log(`[Channel] Switching to ${channelId}`);
-
         // Update state
         this.currentChannel = channelId;
         this.currentChannelName = channelName;
@@ -797,7 +778,7 @@ class ChatClient {
             } else {
                 localStorage.removeItem('chatCurrentChannelName');
             }
-        } catch {
+        } catch (_e) {
             /* ignore storage errors */
         }
 
@@ -818,7 +799,6 @@ class ChatClient {
     }
 
     async createChannel(name) {
-        console.log('[Channel] createChannel called with name:', name);
         if (this.ui._channelProcessing) return;
         if (!name) {
             this.ui.showCreateChannelError('채널 이름을 입력해주세요.');
@@ -837,7 +817,6 @@ class ChatClient {
                 body: JSON.stringify({ name, sessionId: this.sessionManager.getSessionId() })
             });
             const data = await resp.json();
-            console.log('[Channel] create response:', resp.status, data);
 
             if (!resp.ok) {
                 this.ui.showCreateChannelError(data.error || '채널 생성에 실패했습니다.');
@@ -856,7 +835,6 @@ class ChatClient {
     }
 
     async joinChannel(raw) {
-        console.log('[Channel] joinChannel called with raw:', raw);
         if (this.ui._channelProcessing) return;
 
         const trimmed = String(raw || '').trim();
@@ -873,7 +851,6 @@ class ChatClient {
                 body: JSON.stringify({ name: trimmed })
             });
             const data = await resp.json();
-            console.log('[Channel] join response:', resp.status, data);
 
             if (!resp.ok) {
                 this.ui.showJoinChannelError(data.error || '채널을 찾을 수 없습니다.');
@@ -952,7 +929,7 @@ class ChatClient {
                 const data = await res.json().catch(() => ({}));
                 this.ui.displayError(data.error || '요약 생성에 실패했습니다.');
             }
-        } catch (err) {
+        } catch (_err) {
             this.ui.displayError('요약 요청 중 오류가 발생했습니다.');
         }
     }
@@ -1092,12 +1069,17 @@ class ChatClient {
 
 // Initialize chat client when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
-    let config = { turnstileSiteKey: '0x4AAAAAADAY6kk52-ZxU23s' };
+    let config = {};
     try {
         const res = await fetch('/api/config');
         if (res.ok) config = await res.json();
-    } catch {
-        // fallback to hardcoded default
+    } catch (_e) {
+        // config will be empty, features requiring config will be disabled
+    }
+
+    if (!config.turnstileSiteKey) {
+        console.error('Failed to load configuration');
+        return;
     }
 
     const emergency = await fetch('/api/emergency-announcement').then(r => r.json()).catch(() => ({ isEmergency: false }));

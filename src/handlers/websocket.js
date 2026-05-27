@@ -54,7 +54,6 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
             const banStatus = await banCheckResponse.json();
             
             if (banStatus.banned) {
-                console.log(`Blocked WebSocket connection - banned: IP=${clientIP}, SessionID=${sessionId}`);
                 return new Response('Access Denied - You are banned', { 
                     status: 403,
                     statusText: `Banned for ${banStatus.remainingSeconds} seconds`

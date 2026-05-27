@@ -55,7 +55,6 @@ export class WebSocketManager {
     }
 
     handleOpen() {
-        console.log('WebSocket connected');
         this.reconnectAttempts = 0;
 
         // Send join message with reconnection flag
@@ -98,8 +97,6 @@ export class WebSocketManager {
     }
 
     handleClose(event) {
-        console.log('WebSocket closed:', event.code, event.reason);
-
         // Stop heartbeat
         this.stopHeartbeat();
 
@@ -140,7 +137,6 @@ export class WebSocketManager {
         this.messageHandler.onConnectionChange('reconnecting', this.reconnectAttempts, this.maxReconnectAttempts);
 
         setTimeout(() => {
-            console.log(`Reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
             this.connect();
         }, delay);
     }
@@ -157,7 +153,6 @@ export class WebSocketManager {
 
     checkConnection() {
         if (!this.isConnected() && !this.isReconnecting) {
-            console.log('Connection lost, attempting proactive reconnect');
             this.connect();
         } else if (this.isConnected()) {
             // If connected, send a ping to verify

@@ -41,3 +41,6 @@ tmp/
 temp/
 firebase-service-account.json
 google-services.json
+
+# IDE/Tooling
+.opencode/

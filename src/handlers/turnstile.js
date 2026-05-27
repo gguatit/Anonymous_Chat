@@ -1,3 +1,5 @@
+import { safeJson } from '../utils/helpers.js';
+
 export async function handleTurnstileVerify(request, env, corsHeaders) {
     if (request.method !== 'POST') {
         return new Response(JSON.stringify({ success: false, error: 'Method not allowed' }), {
@@ -7,7 +9,7 @@ export async function handleTurnstileVerify(request, env, corsHeaders) {
     }
 
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const token = body.token;
 
         if (!token || typeof token !== 'string') {

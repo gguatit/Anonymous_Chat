@@ -37,7 +37,7 @@ export function isAllowedOrigin(origin) {
         }
         // In production, check against allowed origins
         return SECURITY.ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed));
-    } catch {
+    } catch (_e) { /* expected: invalid origin URL */
         return false;
     }
 }

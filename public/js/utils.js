@@ -15,7 +15,7 @@ export function isValidUrl(url) {
             }
         }
         return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    } catch {
+    } catch (_e) {
         return false;
     }
 }
@@ -52,7 +52,7 @@ export function sendErrorReport(message, context = '', extra = {}) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         }).catch(() => {});
-    } catch {
+    } catch (_e) {
         // silent
     }
 }

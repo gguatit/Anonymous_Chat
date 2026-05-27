@@ -2,6 +2,7 @@
 import { PUSH_SUBSCRIPTION_TTL } from '../config/constants.js';
 import { sendPushNotification } from '../utils/web-push.js';
 import { getFCMAccessToken } from '../utils/fcm-auth.js';
+import { safeJson } from '../utils/helpers.js';
 
 /**
  * GET /api/push/vapid-key — Return VAPID public key
@@ -36,7 +37,7 @@ export async function handleGetVapidKey(request, env, corsHeaders) {
  */
 export async function handlePushSubscribe(request, env, corsHeaders) {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const { subscription, sessionId, isFcmToken, type } = body;
 
         if (type === 'resubscribe' && subscription) {
@@ -62,7 +63,6 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
                 if (parsed && parsed.type === 'web' && parsed.data?.endpoint === subscription.endpoint) {
                     const dataToSave = { type: 'web', data: subscription };
                     await env.PUSH_SUBSCRIPTIONS.put(key.name, JSON.stringify(dataToSave), { expirationTtl: PUSH_SUBSCRIPTION_TTL });
-                    console.log(`[Push API] Updated subscription for ${key.name}`);
                     return new Response(JSON.stringify({ success: true }), {
                         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                     });
@@ -101,7 +101,6 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
                 JSON.stringify(dataToSave),
                 { expirationTtl: PUSH_SUBSCRIPTION_TTL } // 30 days TTL
             );
-            console.log(`[Push API] Saved ${dataToSave.type} subscription for ${sessionId}`);
         }
 
         return new Response(JSON.stringify({ success: true }), {
@@ -121,7 +120,7 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
  */
 export async function handlePushUnsubscribe(request, env, corsHeaders) {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const { sessionId } = body;
 
         if (!sessionId) {
@@ -231,7 +230,7 @@ function parseSubscriptionData(rawData) {
             if (inner && typeof inner === 'object' && inner.endpoint && inner.keys) {
                 return { type: 'web', data: inner };
             }
-        } catch { /* not valid nested JSON */ }
+        } catch (_e) { /* expected: not valid nested JSON */ }
     }
 
     return null;
@@ -264,7 +263,6 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
 
     try {
         const allKeys = await listAllKvKeys(env.PUSH_SUBSCRIPTIONS, 'sub:');
-        console.log(`[Push] Found ${allKeys.length} subscriptions, online: ${onlineSessionIds.size}`);
 
         const pushPromises = [];
         const keysToDelete = [];
@@ -307,7 +305,6 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
                     const fcmToken = subWrap.data;
                     pushPromises.push(
                         sendFcmNotification(fcmToken, payload, env)
-                            .then(() => console.log(`[Push FCM] ✓ Sent to ${sessionId}`))
                             .catch(async (err) => {
                                 if (err.message && (err.message.includes('UNREGISTERED') || err.message.includes('INVALID_ARGUMENT'))) {
                                     keysToDelete.push(key.name);
@@ -319,11 +316,6 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
                     pushPromises.push(
                         sendPushNotification(subscription, JSON.stringify(payload), vapidKeys)
                             .then(async (response) => {
-                                if (response.ok) {
-                                    console.log(`[Push WEB] ✓ Sent to ${sessionId}`);
-                                } else {
-                                    console.warn(`[Push WEB] ✗ Failed for ${sessionId}: ${response.status}`);
-                                }
                                 if (response.status === 404 || response.status === 410) {
                                     keysToDelete.push(key.name);
                                 }
@@ -345,7 +337,6 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
         if (keysToDelete.length > 0) {
             const deletePromises = keysToDelete.map(k => env.PUSH_SUBSCRIPTIONS.delete(k));
             await Promise.allSettled(deletePromises);
-            console.log(`[Push] Cleaned up ${keysToDelete.length} invalid subscriptions`);
         }
     } catch (error) {
         console.error('[Push] sendPushToOfflineUsers error:', error.message);

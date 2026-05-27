@@ -1,3 +1,5 @@
+import { safeJson } from '../utils/helpers.js';
+
 const OG_CACHE_TTL = 3600;
 const MAX_BODY_BYTES = 32768;
 const RATE_LIMIT_WINDOW = 10000;
@@ -63,8 +65,8 @@ export async function handlePreview(request, env, corsHeaders) {
 
     let body;
     try {
-        body = await request.json();
-    } catch {
+        body = await safeJson(request);
+    } catch (_e) {
         return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -83,7 +85,7 @@ export async function handlePreview(request, env, corsHeaders) {
         if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
             throw new Error('Invalid protocol');
         }
-    } catch {
+    } catch (_e) {
         return new Response(JSON.stringify({ error: 'Invalid URL' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -132,7 +134,7 @@ export async function handlePreview(request, env, corsHeaders) {
         if (og.image && !og.image.startsWith('http')) {
             try {
                 og.image = new URL(og.image, targetUrl).href;
-            } catch {
+            } catch (_e) { /* expected: relative URL unresolvable */
                 og.image = '';
             }
         }

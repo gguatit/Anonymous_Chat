@@ -2,6 +2,8 @@ import { sleep, constantTimeCompare } from '../utils/security.js';
 import { logAdminActivity } from '../utils/logger.js';
 import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken } from '../middleware/auth.js';
 import { forwardToDO, forwardToChannelDO } from '../utils/do.js';
+import { safeJson } from '../utils/helpers.js';
+import { AUTH } from '../config/constants.js';
 
 async function requireAdminAuth(request, env) {
     const authHeader = request.headers.get('Authorization');
@@ -11,13 +13,32 @@ async function requireAdminAuth(request, env) {
     return isValid ? token : null;
 }
 
-// Admin Authentication Handlers
+function withAuth(handler) {
+    return async (request, env, corsHeaders) => {
+        const token = await requireAdminAuth(request, env);
+        if (!token) return new Response(null, { status: 401, headers: corsHeaders });
+        return handler(request, env, corsHeaders);
+    };
+}
+
+function jsonError(corsHeaders, message, status = 400) {
+    return new Response(JSON.stringify({ error: message }), {
+        status, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+function forwardResponse(response, corsHeaders) {
+    return new Response(response.body, {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
 export async function handleAdminLogin(request, env, corsHeaders) {
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
     const timestamp = Date.now();
 
     try {
-        // Rate Limiting 체크 (브루트포스 방지)
         const rateLimitKey = `ratelimit:${clientIP}`;
         const isBlocked = await checkRateLimit(env, rateLimitKey);
 
@@ -29,7 +50,6 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 timestamp
             });
 
-            // 타이밍 공격 방지: 일정 시간 대기
             await sleep(1000);
 
             return new Response(JSON.stringify({
@@ -41,9 +61,8 @@ export async function handleAdminLogin(request, env, corsHeaders) {
             });
         }
 
-        const { id, password } = await request.json();
+        const { id, password } = await safeJson(request);
 
-        // 환경변수 필수 체크 (하드코딩 완전 제거)
         if (!env.ADMIN_ID || !env.ADMIN_PASSWORD) {
             await logAdminActivity(env, {
                 type: 'login_failed',
@@ -64,20 +83,16 @@ export async function handleAdminLogin(request, env, corsHeaders) {
         const ADMIN_ID = env.ADMIN_ID;
         const ADMIN_PASSWORD = env.ADMIN_PASSWORD;
 
-        // 타이밍 공격 방지: 상수 시간 비교
         const idMatch = await constantTimeCompare(id, ADMIN_ID);
-        const passwordMatch = await constantTimeCompare(password, ADMIN_PASSWORD);
+        const _passwordMatch = await constantTimeCompare(password, ADMIN_PASSWORD);
 
-        if (idMatch && passwordMatch) {
-            // Rate limit 초기화
+        if (idMatch && _passwordMatch) {
             if (env?.ADMIN_TOKENS) {
                 await env.ADMIN_TOKENS.delete(rateLimitKey);
             }
 
-            // Generate JWT-like token
             const token = await generateAdminToken(id + ':' + password, env.HMAC_SECRET);
 
-            // 감사 로그: 성공한 로그인
             await logAdminActivity(env, {
                 type: 'login_success',
                 admin: id,
@@ -94,13 +109,9 @@ export async function handleAdminLogin(request, env, corsHeaders) {
             });
         }
 
-        // Rate limit 증가
         await incrementRateLimit(env, rateLimitKey);
-
-        // 타이밍 공격 방지: 실패 시에도 동일한 시간 소요
         await sleep(100);
 
-        // 감사 로그: 실패한 로그인 시도
         await logAdminActivity(env, {
             type: 'login_failed',
             reason: 'invalid_credentials',
@@ -117,15 +128,14 @@ export async function handleAdminLogin(request, env, corsHeaders) {
             status: 401,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
-    } catch (error) {
+    } catch (_error) {
         await logAdminActivity(env, {
             type: 'login_error',
-            error: error.message,
+            error: _error.message,
             ip: clientIP,
             timestamp
         });
 
-        // 타이밍 공격 방지
         await sleep(100);
 
         return new Response(JSON.stringify({ error: 'Invalid request' }), {
@@ -135,65 +145,37 @@ export async function handleAdminLogin(request, env, corsHeaders) {
     }
 }
 
-export async function handleAdminVerify(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminVerify = withAuth(async (_request, _env, corsHeaders) => {
     return new Response(JSON.stringify({ valid: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
-}
+});
 
-export async function handleAdminMetrics(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminMetrics = withAuth(async (_request, env, corsHeaders) => {
     const response = await forwardToDO(env, '/admin/metrics', {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
+    return forwardResponse(response, corsHeaders);
+});
 
-    return new Response(response.body, {
-        status: response.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-}
-
-export async function handleAdminSessions(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminSessions = withAuth(async (_request, env, corsHeaders) => {
     const response = await forwardToDO(env, '/admin/sessions', {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
+    return forwardResponse(response, corsHeaders);
+});
 
-    return new Response(response.body, {
-        status: response.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-}
-
-export async function handleAdminMessages(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminMessages = withAuth(async (_request, env, corsHeaders) => {
     const response = await forwardToDO(env, '/admin/messages', {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
+    return forwardResponse(response, corsHeaders);
+});
 
-    return new Response(response.body, {
-        status: response.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-}
-
-// 에러 로그 초기화
-export async function handleAdminDeleteErrorLogs(request, env, corsHeaders) {
+export const handleAdminDeleteErrorLogs = withAuth(async (request, env, corsHeaders) => {
     if (request.method !== 'POST') {
         return new Response(null, { status: 405, headers: corsHeaders });
     }
-
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
 
     if (env?.DB_ADMIN) {
         try {
@@ -207,13 +189,9 @@ export async function handleAdminDeleteErrorLogs(request, env, corsHeaders) {
         method: 'POST',
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
+    return forwardResponse(response, corsHeaders);
+});
 
-    return new Response(response.body, {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-}
-
-// 로그아웃 (토큰 무효화)
 export async function handleAdminLogout(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');
 
@@ -224,14 +202,12 @@ export async function handleAdminLogout(request, env, corsHeaders) {
     const token = authHeader.substring(7);
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
 
-    // 토큰을 블랙리스트에 추가 (2시간 만료)
     if (env?.ADMIN_TOKENS) {
         await env.ADMIN_TOKENS.put(`revoked:${token}`, 'true', {
-            expirationTtl: 2 * 60 * 60
+            expirationTtl: AUTH.TOKEN_EXPIRY_MS / 1000
         });
     }
 
-    // 감사 로그
     await logAdminActivity(env, {
         type: 'logout',
         ip: clientIP,
@@ -243,11 +219,7 @@ export async function handleAdminLogout(request, env, corsHeaders) {
     });
 }
 
-// 감사 로그 조회
-export async function handleAdminLogs(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminLogs = withAuth(async (_request, env, corsHeaders) => {
     if (!env?.DB_ADMIN) {
         return new Response(JSON.stringify({ logs: [] }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -259,18 +231,15 @@ export async function handleAdminLogs(request, env, corsHeaders) {
     ).all();
 
     const logs = (results || []).map(row => {
-        try { return JSON.parse(row.data); } catch { return null; }
+        try { return JSON.parse(row.data); } catch (_e) { /* expected: malformed log rows */ return null; }
     }).filter(Boolean);
 
     return new Response(JSON.stringify({ logs }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
-}
+});
 
-export async function handleAdminDeleteLogs(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminDeleteLogs = withAuth(async (_request, env, corsHeaders) => {
     if (!env?.DB_ADMIN) {
         return new Response(JSON.stringify({ success: true, deletedCount: 0 }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -285,19 +254,14 @@ export async function handleAdminDeleteLogs(request, env, corsHeaders) {
         return new Response(JSON.stringify({ success: true, deletedCount: meta?.changes || 0 }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
-    } catch (error) {
-        return new Response(JSON.stringify({ error: 'Failed to delete logs' }), {
-            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Failed to delete logs', 500);
     }
-}
+});
 
-export async function handleAdminBroadcast(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminBroadcast = withAuth(async (request, env, corsHeaders) => {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const content = typeof body.content === 'string' ? body.content : '';
         const file = body.file || null;
 
@@ -305,176 +269,113 @@ export async function handleAdminBroadcast(request, env, corsHeaders) {
             method: 'POST',
             json: { content, file, adminId: 'admin' }
         });
-        return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('handleAdminBroadcast error:', error);
-        return new Response(JSON.stringify({ error: 'Invalid request' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return forwardResponse(response, corsHeaders);
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Invalid request');
     }
-}
+});
 
-export async function handleAdminEditMessage(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminEditMessage = withAuth(async (request, env, corsHeaders) => {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const messageId = body.messageId;
         const newContent = body.newContent;
 
         if (!messageId || !newContent) {
-            return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError(corsHeaders, 'Missing required fields');
         }
 
         const response = await forwardToDO(env, '/admin/edit-message', {
             method: 'POST',
             json: { messageId, newContent }
         });
-        return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('handleAdminEditMessage error:', error);
-        return new Response(JSON.stringify({ error: 'Invalid request' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return forwardResponse(response, corsHeaders);
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Invalid request');
     }
-}
+});
 
-export async function handleAdminDeleteMessage(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminDeleteMessage = withAuth(async (request, env, corsHeaders) => {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const messageId = body.messageId;
 
         if (!messageId) {
-            return new Response(JSON.stringify({ error: 'Missing messageId' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError(corsHeaders, 'Missing messageId');
         }
 
         const response = await forwardToDO(env, '/admin/delete-message', {
             method: 'POST',
             json: { messageId }
         });
-        return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('handleAdminDeleteMessage error:', error);
-        return new Response(JSON.stringify({ error: 'Invalid request' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return forwardResponse(response, corsHeaders);
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Invalid request');
     }
-}
+});
 
-export async function handleAdminDeleteAllMessages(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminDeleteAllMessages = withAuth(async (request, env, corsHeaders) => {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const confirmation = body.confirmation;
 
         if (confirmation !== 'DELETE_ALL_MESSAGES') {
-            return new Response(JSON.stringify({ error: 'Invalid confirmation' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError(corsHeaders, 'Invalid confirmation');
         }
 
         const response = await forwardToDO(env, '/admin/delete-all-messages', {
             method: 'POST',
             json: { confirmation }
         });
-        return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('handleAdminDeleteAllMessages error:', error);
-        return new Response(JSON.stringify({ error: 'Invalid request' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return forwardResponse(response, corsHeaders);
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Invalid request');
     }
-}
+});
 
-export async function handleAdminKickUser(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminKickUser = withAuth(async (request, env, corsHeaders) => {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const sessionId = body.sessionId;
         const banDuration = body.banDuration || 0;
 
         if (!sessionId) {
-            return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError(corsHeaders, 'Missing sessionId');
         }
 
         const response = await forwardToDO(env, '/admin/kick-user', {
             method: 'POST',
             json: { sessionId, banDuration }
         });
-        return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('handleAdminKickUser error:', error);
-        return new Response(JSON.stringify({ error: 'Invalid request' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return forwardResponse(response, corsHeaders);
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Invalid request');
     }
-}
+});
 
-export async function handleAdminAnnounce(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) => {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const content = typeof body.content === 'string' ? body.content : '';
-        const timestamp = body.timestamp; // Required for PUT/DELETE
+        const timestamp = body.timestamp;
 
         if (request.method === 'POST' && !content) {
-            return new Response(JSON.stringify({ error: 'Missing content' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-        }
-        
-        if ((request.method === 'PUT' || request.method === 'DELETE') && !timestamp) {
-            return new Response(JSON.stringify({ error: 'Missing timestamp' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError(corsHeaders, 'Missing content');
         }
 
-        let forwardBody = { content };
+        if ((request.method === 'PUT' || request.method === 'DELETE') && !timestamp) {
+            return jsonError(corsHeaders, 'Missing timestamp');
+        }
+
+        const forwardBody = { content };
         if (request.method === 'PUT' || request.method === 'DELETE') {
             forwardBody.timestamp = timestamp;
         }
         if (request.method === 'POST' || request.method === 'PUT') {
-            if (body.hasOwnProperty('isEmergency')) {
+            if (Object.hasOwn(body, 'isEmergency')) {
                 forwardBody.isEmergency = !!body.isEmergency;
             }
-            if (body.hasOwnProperty('emergencyUntil')) {
+            if (Object.hasOwn(body, 'emergencyUntil')) {
                 forwardBody.emergencyUntil = body.emergencyUntil ? Number(body.emergencyUntil) : null;
             }
         }
@@ -483,103 +384,57 @@ export async function handleAdminAnnounce(request, env, corsHeaders) {
             method: request.method,
             json: forwardBody
         });
-        return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: response.status
-        });
-    } catch (error) {
-        console.error('handleAdminAnnounce error:', error);
-        return new Response(JSON.stringify({ error: 'Invalid request' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return forwardResponse(response, corsHeaders);
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Invalid request');
     }
-}
+});
 
-export async function handleAdminBannedIPs(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminBannedIPs = withAuth(async (_request, env, corsHeaders) => {
     try {
         const response = await forwardToDO(env, '/admin/banned-ips');
-
-        return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('handleAdminBannedIPs error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch banned IPs' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return forwardResponse(response, corsHeaders);
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Failed to fetch banned IPs', 500);
     }
-}
+});
 
-export async function handleAdminUnbanIP(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminUnbanIP = withAuth(async (request, env, corsHeaders) => {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const ip = body.ip;
 
         if (!ip) {
-            return new Response(JSON.stringify({ error: 'Missing IP address' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError(corsHeaders, 'Missing IP address');
         }
 
         const response = await forwardToDO(env, '/admin/unban-ip', {
             method: 'POST',
             json: { ip }
         });
-
-        return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('handleAdminUnbanIP error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to unban IP' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return forwardResponse(response, corsHeaders);
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Failed to unban IP', 500);
     }
-}
+});
 
-export async function handleAdminUserDetails(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminUserDetails = withAuth(async (request, env, corsHeaders) => {
     try {
         const url = new URL(request.url);
         const sessionId = url.searchParams.get('sessionId');
 
         if (!sessionId) {
-            return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError(corsHeaders, 'Missing sessionId');
         }
 
         const response = await forwardToDO(env, `/admin/user-details?sessionId=${encodeURIComponent(sessionId)}`);
-
-        return new Response(response.body, {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('handleAdminUserDetails error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch user details' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return forwardResponse(response, corsHeaders);
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Failed to fetch user details', 500);
     }
-}
+});
 
-export async function handleAdminAuditLogs(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminAuditLogs = withAuth(async (_request, env, corsHeaders) => {
     if (!env?.DB_ADMIN) {
         return new Response(JSON.stringify([]), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -601,43 +456,27 @@ export async function handleAdminAuditLogs(request, env, corsHeaders) {
         return new Response(JSON.stringify(logs), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
-    } catch (error) {
-        console.error('handleAdminAuditLogs error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch audit logs' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Failed to fetch audit logs', 500);
     }
-}
+});
 
-export async function handleAdminDeleteAuditLogs(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminDeleteAuditLogs = withAuth(async (_request, env, corsHeaders) => {
     try {
         if (env?.DB_ADMIN) {
             await env.DB_ADMIN.prepare('DELETE FROM audit_logs').run();
         }
-        // Also clear in-memory in the DO
         await forwardToDO(env, '/admin/delete-audit-logs', { method: 'POST' });
 
         return new Response(JSON.stringify({ success: true }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
-    } catch (error) {
-        console.error('handleAdminDeleteAuditLogs error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to delete audit logs' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Failed to delete audit logs', 500);
     }
-}
+});
 
-// Channel Management Handlers
-export async function handleAdminChannels(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminChannels = withAuth(async (_request, env, corsHeaders) => {
     try {
         const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
         const registry = env.CHANNEL_REGISTRY.get(registryId);
@@ -645,61 +484,41 @@ export async function handleAdminChannels(request, env, corsHeaders) {
             headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
         }));
         return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    } catch (error) {
-        console.error('handleAdminChannels error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch channels' }), {
-            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Failed to fetch channels', 500);
     }
-}
+});
 
-export async function handleAdminChannelDetails(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminChannelDetails = withAuth(async (request, env, corsHeaders) => {
     try {
         const url = new URL(request.url);
         const slug = url.searchParams.get('slug');
         if (!slug) {
-            return new Response(JSON.stringify({ error: 'Missing channel slug' }), {
-                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError(corsHeaders, 'Missing channel slug');
         }
 
         const response = await forwardToChannelDO(env, slug, '/admin/info');
         return new Response(response.body, { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    } catch (error) {
-        console.error('handleAdminChannelDetails error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch channel details' }), {
-            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Failed to fetch channel details', 500);
     }
-}
+});
 
-export async function handleAdminChannelDelete(request, env, corsHeaders) {
-    const token = await requireAdminAuth(request, env);
-    if (!token) return new Response(null, { status: 401, headers: corsHeaders });
-
+export const handleAdminChannelDelete = withAuth(async (request, env, corsHeaders) => {
     try {
-        const body = await request.json();
+        const body = await safeJson(request);
         const slug = body.slug;
         if (!slug) {
-            return new Response(JSON.stringify({ error: 'Missing channel slug' }), {
-                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError(corsHeaders, 'Missing channel slug');
         }
 
-        // Step 1: Force delete the channel DO (clear all data, close connections)
         try {
             await forwardToChannelDO(env, slug, '/admin/force-delete', {
                 method: 'POST',
                 json: { confirmation: 'FORCE_DELETE_CHANNEL' }
             });
-        } catch (e) {
-            console.warn('Channel DO force delete warning:', e);
-        }
+        } catch (_e) { /* expected: DO may already be deleted */ }
 
-        // Step 2: Remove from registry
         const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
         const registry = env.CHANNEL_REGISTRY.get(registryId);
         const resp = await registry.fetch(new Request('https://dummy/admin/channel-delete', {
@@ -708,7 +527,6 @@ export async function handleAdminChannelDelete(request, env, corsHeaders) {
             body: JSON.stringify({ slug })
         }));
 
-        // Audit log
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         await logAdminActivity(env, {
             type: 'channel_delete',
@@ -718,10 +536,7 @@ export async function handleAdminChannelDelete(request, env, corsHeaders) {
         });
 
         return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    } catch (error) {
-        console.error('handleAdminChannelDelete error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to delete channel' }), {
-            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+    } catch (_e) {
+        return jsonError(corsHeaders, 'Failed to delete channel', 500);
     }
-}
+});

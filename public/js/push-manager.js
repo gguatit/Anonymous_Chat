@@ -11,13 +11,11 @@ export class PushNotificationManager {
 
     async initialize() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            console.log('[Push] Push notifications not supported');
             return { supported: false, subscribed: false };
         }
 
         try {
             this.swRegistration = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
-            console.log('[Push] Service Worker registered');
 
             await navigator.serviceWorker.ready;
 
@@ -48,12 +46,8 @@ export class PushNotificationManager {
                 }
             }
 
-            console.log('[Push] Initialization complete, subscribed:', this.isSubscribed);
-
-            navigator.serviceWorker.addEventListener('message', (event) => {
-                if (event.data?.type === 'push-received') {
-                    console.log('[Push] Push forwarded from SW while page visible');
-                }
+            navigator.serviceWorker.addEventListener('message', (_event) => {
+                // push-received events handled silently
             });
 
             return { supported: true, subscribed: this.isSubscribed };
@@ -70,13 +64,10 @@ export class PushNotificationManager {
      */
     async subscribe(sessionId) {
         try {
-            console.log('[Push] Starting subscription process...');
-
             // --- ANDROID WEBVIEW / FCM HYBRID SUPPORT ---
             // If running inside our Android Hybrid App, the Android native side will provide the FCM token
             // via window.AndroidBridge.getDeviceToken() or similar mechanism.
             if (window.AndroidBridge && typeof window.AndroidBridge.getFcmToken === 'function') {
-                console.log('[Push] Android Hybrid App detected. Using FCM token.');
                 const fcmToken = window.AndroidBridge.getFcmToken();
 
                 if (!fcmToken) {
@@ -99,7 +90,6 @@ export class PushNotificationManager {
                     this.isSubscribed = true;
                     this._sessionSubscribed = true;
                     sessionStorage.setItem('pushSubscribed', 'true');
-                    console.log('[Push] ✓ FCM Token subscribed successfully via Hybrid App');
                     return true;
                 } else {
                     const errorText = await response.text();
@@ -111,15 +101,12 @@ export class PushNotificationManager {
 
             // Request permission for standard Web Push
             const permission = await Notification.requestPermission();
-            console.log('[Push] Permission result:', permission);
 
             if (permission !== 'granted') {
-                console.log('[Push] Permission denied by user');
                 return false;
             }
 
             if (!this.swRegistration) {
-                console.log('[Push] Re-initializing Service Worker...');
                 const initResult = await this.initialize();
                 if (!initResult.supported) {
                     console.error('[Push] Initialization failed:', initResult.error);
@@ -132,18 +119,14 @@ export class PushNotificationManager {
                 return false;
             }
 
-            console.log('[Push] Converting VAPID key...');
-            // Convert VAPID key from base64url to Uint8Array
             const applicationServerKey = this.urlBase64ToUint8Array(this.vapidPublicKey);
 
-            console.log('[Push] Subscribing to push service...');
             // Subscribe to push
             const subscription = await this.swRegistration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey
             });
 
-            console.log('[Push] Sending subscription to server...');
             // Send subscription to server
             const response = await fetch('/api/push/subscribe', {
                 method: 'POST',
@@ -159,7 +142,6 @@ export class PushNotificationManager {
                 this.isSubscribed = true;
                 this._sessionSubscribed = true;
                 sessionStorage.setItem('pushSubscribed', 'true');
-                console.log('[Push] ✓ Subscribed successfully');
                 return true;
             } else {
                 const errorText = await response.text();
@@ -193,7 +175,6 @@ export class PushNotificationManager {
             this.isSubscribed = false;
             this._sessionSubscribed = false;
             sessionStorage.removeItem('pushSubscribed');
-            console.log('[Push] Unsubscribed');
             return true;
         } catch (error) {
             console.error('[Push] Unsubscribe failed:', error);

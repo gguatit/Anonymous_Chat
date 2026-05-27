@@ -61,7 +61,7 @@ export function detectLanguage(content) {
 
     // JSON — 유효한 JSON 파싱
     if (/^\s*[{[]/.test(trimmed)) {
-        try { JSON.parse(trimmed); return 'json'; } catch { /* not json */ }
+        try { JSON.parse(trimmed); return 'json'; } catch (_e) { /* not json */ }
     }
 
     // HTML/XML — DOCTYPE이나 HTML 태그로 시작
@@ -136,7 +136,7 @@ export function renderCodeBlock(code, lang, sanitizeFn) {
         if (codeEl && typeof Prism !== 'undefined' && resolvedLang) {
             try {
                 Prism.highlightElement(codeEl);
-            } catch { /* ignore */ }
+            } catch (_e) { /* ignore */ }
         }
 
         const btn = document.getElementById(copyBtnId);
