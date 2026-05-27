@@ -54,6 +54,7 @@ binding = "ASSETS"
 [vars]
 ENVIRONMENT = "production"
 TURNSTILE_SITE_KEY = "0x4AAAAAADAY6kk52-ZxU23s"
+FILE_UPLOAD_URL = "https://file.xeon.kr/upload"
 # HMAC_SECRET should be set in production via: wrangler secret put HMAC_SECRET
 # ADMIN_ID should be set in production via: wrangler secret put ADMIN_ID
 # ADMIN_PASSWORD should be set in production via: wrangler secret put ADMIN_PASSWORD
