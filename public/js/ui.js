@@ -1147,7 +1147,7 @@ export class UIManager {
 
     displaySystemMessage(content) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'text-center text-xs text-gray-500 py-1.5';
+        messageDiv.className = 'text-center text-xs text-gray-500 py-1.5 system-message-enter';
         messageDiv.textContent = content;
 
         messageDiv.setAttribute('data-message', 'true');

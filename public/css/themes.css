@@ -722,7 +722,7 @@ html[data-theme="sakura"] .sakura-p4 {
 
 /* ── Grouped messages (continuation, no header) ── */
 .msg-bubble-grouped.msg-bubble-own {
-    border-radius: 16px 4px 16px 4px;
+    border-radius: 16px 4px 16px 16px;
     margin-top: 0.125rem;
 }
 .msg-bubble-grouped.msg-bubble-other {
