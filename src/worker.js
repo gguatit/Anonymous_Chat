@@ -150,8 +150,10 @@ const publicRoutes = [
                 headers: { 'Content-Type': 'application/json' },
                 body
             }));
-            return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+            const data = await resp.text();
+            return new Response(data, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
         } catch (_error) {
+            console.error('Secret store error:', _error);
             return new Response(JSON.stringify({ error: 'Secret store failed' }), {
                 status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
             });
@@ -163,8 +165,10 @@ const publicRoutes = [
             const doStub = env.DEAD_DROP_STORE.get(did);
             const url = new URL(req.url);
             const resp = await doStub.fetch(new Request(`https://dummy/read?id=${url.searchParams.get('id') || ''}`));
-            return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+            const data = await resp.text();
+            return new Response(data, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
         } catch (_error) {
+            console.error('Secret read error:', _error);
             return new Response(JSON.stringify({ error: 'Secret read failed' }), {
                 status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
             });
