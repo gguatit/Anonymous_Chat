@@ -523,13 +523,13 @@ export class UIManager {
             bubble.setAttribute('aria-live', 'polite');
             bubble.setAttribute('aria-label', '\uAD00\uB9AC\uC790 \uBA54\uC2DC\uC9C0');
         } else if (isOwnMessage) {
-            bubble.className = 'message-enter msg-bubble msg-bubble-own';
+            bubble.className = 'message-enter-own msg-bubble msg-bubble-own';
             bubble.style.setProperty('--bubble-bg', 'rgba(30,58,138,0.8)');
             bubble.style.backgroundColor = 'rgba(30,58,138,0.8)';
         } else {
             const hue = this._getSenderHue(data.sessionId);
             const bgColor = `hsla(${hue}, 25%, 28%, 0.8)`;
-            bubble.className = 'message-enter msg-bubble msg-bubble-other';
+            bubble.className = 'message-enter-other msg-bubble msg-bubble-other';
             bubble.style.setProperty('--bubble-bg', bgColor);
             bubble.style.backgroundColor = bgColor;
         }
