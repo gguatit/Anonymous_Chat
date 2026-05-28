@@ -992,7 +992,7 @@ export class ChatRoom {
             const isEmergency = Object.hasOwn(data, 'isEmergency') ? !!data.isEmergency : undefined;
             const emergencyUntil = Object.hasOwn(data, 'emergencyUntil') ? (data.emergencyUntil ? Number(data.emergencyUntil) : null) : undefined;
 
-            if (!timestamp || !content) {
+            if (!timestamp || (content === '' && !Object.hasOwn(data, 'isEmergency'))) {
                 return new Response(JSON.stringify({ error: 'Missing timestamp or content' }), {
                     status: 400,
                     headers: { 'Content-Type': 'application/json' }
@@ -1008,7 +1008,9 @@ export class ChatRoom {
             }
 
             const wasEmergency = this.announcementHistory[announcementIndex].isEmergency;
-            this.announcementHistory[announcementIndex].content = sanitizeInput(content);
+            if (content) {
+                this.announcementHistory[announcementIndex].content = sanitizeInput(content);
+            }
             if (isEmergency !== undefined) {
                 this.announcementHistory[announcementIndex].isEmergency = isEmergency;
                 this.announcementHistory[announcementIndex].emergencyUntil = emergencyUntil;
@@ -1017,7 +1019,9 @@ export class ChatRoom {
 
             // Update currentAnnouncement if it matches
             if (this.currentAnnouncement && this.currentAnnouncement.timestamp === timestamp) {
-                this.currentAnnouncement.content = this.announcementHistory[announcementIndex].content;
+                if (content) {
+                    this.currentAnnouncement.content = this.announcementHistory[announcementIndex].content;
+                }
                 if (isEmergency !== undefined) {
                     this.currentAnnouncement.isEmergency = isEmergency;
                     this.currentAnnouncement.emergencyUntil = emergencyUntil;
@@ -1034,7 +1038,7 @@ export class ChatRoom {
                 }
             }
 
-            await this.addAuditLog('edit_announcement', `Edited announcement from timestamp ${timestamp}: ${content.substring(0, 50)}...`, {
+            await this.addAuditLog('edit_announcement', `Edited announcement from timestamp ${timestamp}: ${content ? content.substring(0, 50) + '...' : 'emergency status changed'}`, {
                 timestamp,
                 isEmergency
             });
