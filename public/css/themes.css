@@ -690,42 +690,41 @@ html[data-theme="sakura"] .sakura-p4 {
 /* ── Own message (right-aligned) ── */
 .msg-bubble-own {
     padding: 0.625rem 0.75rem;
-    border-radius: 16px 4px 16px 16px;
+    border-radius: 16px 16px 4px 16px;
     margin-left: auto;
 }
 .msg-bubble-own::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    right: -5px;
-    width: 0;
-    height: 0;
-    border-left: 7px solid var(--bubble-bg, rgba(30,58,138,0.8));
-    border-bottom: 7px solid transparent;
-    border-top: 7px solid transparent;
+    bottom: 2px;
+    right: -6px;
+    width: 10px;
+    height: 7px;
+    background: var(--bubble-bg, rgba(30,58,138,0.8));
+    border-radius: 0 0 0 8px;
+    transform: none;
 }
 
 /* ── Other message (left-aligned) ── */
 .msg-bubble-other {
     padding: 0.625rem 0.75rem;
-    border-radius: 4px 16px 16px 16px;
+    border-radius: 16px 16px 16px 4px;
 }
 .msg-bubble-other::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: -5px;
-    width: 0;
-    height: 0;
-    border-right: 7px solid var(--bubble-bg, rgba(55,65,81,0.8));
-    border-top: 7px solid transparent;
-    border-bottom: 7px solid transparent;
+    top: 2px;
+    left: -6px;
+    width: 10px;
+    height: 7px;
+    background: var(--bubble-bg, rgba(55,65,81,0.8));
+    border-radius: 0 8px 0 0;
 }
 
 /* ── Admin message ── */
 .msg-bubble-admin {
     padding: 0.75rem;
-    border-radius: 4px 16px 16px 16px;
+    border-radius: 16px 16px 16px 4px;
     margin-left: 0;
     margin-right: auto;
     border-left-width: 4px;
@@ -734,31 +733,31 @@ html[data-theme="sakura"] .sakura-p4 {
 .msg-bubble-admin::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
-    border-right: 7px solid var(--bubble-bg, rgba(113,63,18,0.2));
-    border-top: 7px solid transparent;
+    top: 2px;
+    left: -6px;
+    width: 10px;
+    height: 7px;
+    background: var(--bubble-bg, rgba(113,63,18,0.2));
+    border-radius: 0 8px 0 0;
 }
 
 /* ── Grouped messages (continuation, no tail no header) ── */
 .msg-bubble-grouped.msg-bubble-own {
-    border-radius: 4px 4px 4px 16px;
+    border-radius: 4px 16px 4px 16px;
     margin-top: 0.125rem;
 }
 .msg-bubble-grouped.msg-bubble-own::after {
     display: none;
 }
 .msg-bubble-grouped.msg-bubble-other {
-    border-radius: 4px 4px 16px 4px;
+    border-radius: 16px 4px 16px 4px;
     margin-top: 0.125rem;
 }
 .msg-bubble-grouped.msg-bubble-other::after {
     display: none;
 }
 .msg-bubble-grouped.msg-bubble-admin {
-    border-radius: 4px 16px 4px 4px;
+    border-radius: 16px 4px 16px 4px;
     margin-top: 0.125rem;
 }
 .msg-bubble-grouped.msg-bubble-admin::after {
@@ -767,19 +766,19 @@ html[data-theme="sakura"] .sakura-p4 {
 
 /* ── Last in group (tail reappears) ── */
 .msg-bubble-last.msg-bubble-own {
-    border-radius: 4px 4px 16px 16px;
+    border-radius: 4px 16px 16px 16px;
 }
 .msg-bubble-last.msg-bubble-own::after {
     display: block;
 }
 .msg-bubble-last.msg-bubble-other {
-    border-radius: 4px 16px 4px 16px;
+    border-radius: 16px 4px 16px 4px;
 }
 .msg-bubble-last.msg-bubble-other::after {
     display: block;
 }
 .msg-bubble-last.msg-bubble-admin {
-    border-radius: 4px 16px 4px 16px;
+    border-radius: 16px 4px 16px 4px;
 }
 .msg-bubble-last.msg-bubble-admin::after {
     display: block;
@@ -789,11 +788,8 @@ html[data-theme="sakura"] .sakura-p4 {
 .msg-sender-label {
     font-size: 0.7rem;
     margin-bottom: 0.125rem;
-    opacity: 0.8;
-}
-.msg-bubble-own + .msg-sender-label,
-.msg-bubble-own .msg-sender-label {
-    text-align: right;
+    opacity: 0.75;
+    line-height: 1.2;
 }
 
 /* ── Timestamp inside bubble ── */
@@ -801,5 +797,5 @@ html[data-theme="sakura"] .sakura-p4 {
     font-size: 0.6rem;
     text-align: right;
     margin-top: 0.25rem;
-    opacity: 0.6;
+    opacity: 0.55;
 }
