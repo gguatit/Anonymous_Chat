@@ -486,7 +486,9 @@ export class UIManager {
         wrapper.setAttribute('data-timestamp', data.timestamp);
 
         if (isAdmin) {
-            wrapper.className = isOwnMessage ? 'flex flex-col items-end' : 'flex flex-col items-start';
+            wrapper.className = 'flex flex-col';
+            wrapper.classList.add(isOwnMessage ? 'items-end' : 'items-start');
+            if (isOwnMessage) wrapper.style.marginLeft = 'auto';
             if (!isGrouped) {
                 const adminLabel = document.createElement('div');
                 adminLabel.className = 'msg-sender-label px-1 text-yellow-300 font-semibold';
@@ -494,7 +496,9 @@ export class UIManager {
                 wrapper.appendChild(adminLabel);
             }
         } else if (!isGrouped) {
-            wrapper.className = isOwnMessage ? 'flex flex-col items-end' : 'flex flex-col items-start';
+            wrapper.className = 'flex flex-col';
+            wrapper.classList.add(isOwnMessage ? 'items-end' : 'items-start');
+            if (isOwnMessage) wrapper.style.marginLeft = 'auto';
             const nameLabel = document.createElement('div');
             const hue = isOwnMessage ? null : this._getSenderHue(data.sessionId);
             const colorStyle = hue !== null ? `color: hsl(${hue}, 60%, 65%)` : 'color: var(--c-blue-300)';
@@ -504,7 +508,10 @@ export class UIManager {
             wrapper.appendChild(nameLabel);
         } else {
             wrapper.className = 'flex flex-col';
-            if (isOwnMessage) wrapper.classList.add('items-end');
+            if (isOwnMessage) {
+                wrapper.classList.add('items-end');
+                wrapper.style.marginLeft = 'auto';
+            }
         }
 
         const bubble = document.createElement('div');

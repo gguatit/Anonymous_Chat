@@ -682,16 +682,26 @@ html[data-theme="sakura"] .sakura-p4 {
 
 .msg-bubble {
     position: relative;
-    max-width: 75%;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 48px;
     word-wrap: break-word;
     transition: opacity 0.3s ease;
+}
+
+[data-message] {
+    width: fit-content;
+    margin-bottom: 0.375rem;
+}
+
+[data-message]:has(.msg-bubble-own) {
+    margin-left: auto;
 }
 
 /* ── Own message (right-aligned) ── */
 .msg-bubble-own {
     padding: 0.625rem 0.75rem;
     border-radius: 16px 16px 4px 16px;
-    margin-left: auto;
 }
 
 /* ── Other message (left-aligned) ── */
