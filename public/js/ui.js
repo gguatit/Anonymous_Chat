@@ -519,9 +519,12 @@ export class UIManager {
             if (isOwnMessage) wrapper.style.marginLeft = 'auto';
             const nameLabel = document.createElement('div');
             const senderColor = isOwnMessage ? null : this._getSenderHue(data.sessionId);
-            const colorStyle = senderColor !== null ? `color: hsl(${senderColor.hue}, ${senderColor.sat + 30}%, ${senderColor.lgt + 35}%)` : 'color: var(--c-blue-300)';
             nameLabel.className = 'msg-sender-label px-1';
-            nameLabel.setAttribute('style', colorStyle);
+            if (senderColor) {
+                wrapper.style.setProperty('--sender-hue', senderColor.hue);
+            } else {
+                nameLabel.style.setProperty('color', 'var(--c-blue-300)');
+            }
             nameLabel.textContent = isOwnMessage ? `\uB098 (${senderName})` : senderName;
             wrapper.appendChild(nameLabel);
         } else {
@@ -542,14 +545,10 @@ export class UIManager {
             bubble.setAttribute('aria-label', '\uAD00\uB9AC\uC790 \uBA54\uC2DC\uC9C0');
         } else if (isOwnMessage) {
             bubble.className = 'message-enter-own msg-bubble msg-bubble-own';
-            bubble.style.setProperty('--bubble-bg', 'rgba(30,58,138,0.8)');
-            bubble.style.backgroundColor = 'rgba(30,58,138,0.8)';
         } else {
             const senderColor = this._getSenderHue(data.sessionId);
-            const bgColor = `hsla(${senderColor.hue}, ${senderColor.sat}%, ${senderColor.lgt}%, ${senderColor.alpha})`;
             bubble.className = 'message-enter-other msg-bubble msg-bubble-other';
-            bubble.style.setProperty('--bubble-bg', bgColor);
-            bubble.style.backgroundColor = bgColor;
+            bubble.style.setProperty('--sender-hue', senderColor.hue);
         }
 
         if (isGrouped) {

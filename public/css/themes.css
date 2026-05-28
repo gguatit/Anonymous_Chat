@@ -32,6 +32,7 @@
   --c-code-bg: #1E293B; --c-code-bd: #334155; --c-code-header: #1A2535; --c-code-lang: #94A3B8; --c-code-code: #E2E8F0;
   --c-inline-bg: rgba(51,65,85,0.5); --c-inline-code: #E2E8F0; --c-code-copy: #94A3B8; --c-code-copy-bd: #334155; --c-code-copy-hv: #E2E8F0; --c-code-copy-bg-hv: #1E293B; --c-code-copy-bd-hv: #64748B;
   --c-scrollbar: transparent;
+  --sender-sat: 25; --sender-lgt: 28; --sender-alpha: 0.8; --sender-name-sat: 55; --sender-name-lgt: 63;
 }
 
 /* ---- Theme: light ---- */
@@ -63,6 +64,7 @@
   --c-code-bg: #F3F4F6; --c-code-bd: #D1D5DB; --c-code-header: #E5E7EB; --c-code-lang: #6B7280; --c-code-code: #1F2937;
   --c-inline-bg: rgba(209,213,219,0.5); --c-inline-code: #1F2937; --c-code-copy: #6B7280; --c-code-copy-bd: #D1D5DB; --c-code-copy-hv: #374151; --c-code-copy-bg-hv: #E5E7EB; --c-code-copy-bd-hv: #9CA3AF;
   --c-scrollbar: #D1D5DB;
+  --sender-sat: 30; --sender-lgt: 75; --sender-alpha: 0.85; --sender-name-sat: 50; --sender-name-lgt: 35;
 }
 
 /* ---- Theme: midnight ---- */
@@ -94,6 +96,7 @@
   --c-code-bg: #141F32; --c-code-bd: #2A3F5A; --c-code-header: #10192A; --c-code-lang: #7B94B5; --c-code-code: #D0DDF0;
   --c-inline-bg: rgba(42,63,90,0.5); --c-inline-code: #D0DDF0; --c-code-copy: #7B94B5; --c-code-copy-bd: #2A3F5A; --c-code-copy-hv: #D0DDF0; --c-code-copy-bg-hv: #141F32; --c-code-copy-bd-hv: #5A7494;
   --c-scrollbar: transparent;
+  --sender-sat: 20; --sender-lgt: 25; --sender-alpha: 0.8; --sender-name-sat: 50; --sender-name-lgt: 60;
 }
 
 /* ---- Theme: ocean ---- */
@@ -125,6 +128,7 @@
   --c-code-bg: #073534; --c-code-bd: #175E58; --c-code-header: #042827; --c-code-lang: #6DBFB8; --c-code-code: #CCF0EA;
   --c-inline-bg: rgba(23,94,88,0.5); --c-inline-code: #CCF0EA; --c-code-copy: #6DBFB8; --c-code-copy-bd: #175E58; --c-code-copy-hv: #CCF0EA; --c-code-copy-bg-hv: #073534; --c-code-copy-bd-hv: #489B94;
   --c-scrollbar: transparent;
+  --sender-sat: 25; --sender-lgt: 30; --sender-alpha: 0.8; --sender-name-sat: 50; --sender-name-lgt: 65;
 }
 
 /* ---- Theme: forest ---- */
@@ -189,6 +193,7 @@
   --c-code-bg: #27221E; --c-code-bd: #504A44; --c-code-header: #1F1A16; --c-code-lang: #A89880; --c-code-code: #F5E6D3;
   --c-inline-bg: rgba(80,74,68,0.5); --c-inline-code: #F5E6D3; --c-code-copy: #A89880; --c-code-copy-bd: #504A44; --c-code-copy-hv: #F5E6D3; --c-code-copy-bg-hv: #27221E; --c-code-copy-bd-hv: #786E64;
   --c-scrollbar: transparent;
+  --sender-sat: 35; --sender-lgt: 30; --sender-alpha: 0.8; --sender-name-sat: 65; --sender-name-lgt: 65;
 }
 /* ---- Theme: amethyst ---- */
 [data-theme="amethyst"] {
@@ -220,6 +225,7 @@
   --c-code-bg: #221440; --c-code-bd: #3B2470; --c-code-header: #1A0A30; --c-code-lang: #8B6FC8; --c-code-code: #E4D9FF;
   --c-inline-bg: rgba(59,36,112,0.5); --c-inline-code: #E4D9FF; --c-code-copy: #8B6FC8; --c-code-copy-bd: #3B2470; --c-code-copy-hv: #E4D9FF; --c-code-copy-bg-hv: #221440; --c-code-copy-bd-hv: #6B56A8;
   --c-scrollbar: transparent;
+  --sender-sat: 25; --sender-lgt: 28; --sender-alpha: 0.8; --sender-name-sat: 55; --sender-name-lgt: 63;
 }
 /* ---- Theme: sakura ---- */
 [data-theme="sakura"] {
@@ -251,6 +257,7 @@
   --c-code-bg: #FFECF3; --c-code-bd: #F4DCE8; --c-code-header: #F8E0EC; --c-code-lang: #98707C; --c-code-code: #3D1828;
   --c-inline-bg: rgba(244,220,232,0.65); --c-inline-code: #3D1828; --c-code-copy: #98707C; --c-code-copy-bd: #F4DCE8; --c-code-copy-hv: #3D1828; --c-code-copy-bg-hv: #F8E0EC; --c-code-copy-bd-hv: #BC98A4;
   --c-scrollbar: #F4DCE8;
+  --sender-sat: 25; --sender-lgt: 35; --sender-alpha: 0.8; --sender-name-sat: 50; --sender-name-lgt: 40;
 }
 /* ============================================================
    Class Mappings — one rule per class, all themes auto-applied
@@ -702,12 +709,14 @@ html[data-theme="sakura"] .sakura-p4 {
 .msg-bubble-own {
     padding: 0.625rem 0.75rem;
     border-radius: 16px 16px 4px 16px;
+    background-color: var(--c-blue-bg-o);
 }
 
 /* ── Other message (left-aligned) ── */
 .msg-bubble-other {
     padding: 0.625rem 0.75rem;
     border-radius: 4px 16px 16px 16px;
+    background-color: hsla(var(--sender-hue, 220), var(--sender-sat, 25), var(--sender-lgt, 28), var(--sender-alpha, 0.8));
 }
 
 /* ── Admin message ── */
@@ -751,6 +760,7 @@ html[data-theme="sakura"] .sakura-p4 {
     margin-bottom: 0.125rem;
     opacity: 0.75;
     line-height: 1.2;
+    color: hsl(var(--sender-hue, 220), var(--sender-name-sat, 55), var(--sender-name-lgt, 63));
 }
 
 /* ── Timestamp inside bubble ── */
