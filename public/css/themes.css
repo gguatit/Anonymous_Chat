@@ -701,7 +701,7 @@ html[data-theme="sakura"] .sakura-p4 {
 /* ── Own message (right-aligned) ── */
 .msg-bubble-own {
     padding: 0.625rem 0.75rem;
-    border-radius: 16px 16px 4px 16px;
+    border-radius: 16px 16px 16px 4px;
 }
 
 /* ── Other message (left-aligned) ── */
@@ -722,7 +722,7 @@ html[data-theme="sakura"] .sakura-p4 {
 
 /* ── Grouped messages (continuation, no header) ── */
 .msg-bubble-grouped.msg-bubble-own {
-    border-radius: 4px 16px 4px 16px;
+    border-radius: 16px 4px 16px 4px;
     margin-top: 0.125rem;
 }
 .msg-bubble-grouped.msg-bubble-other {
@@ -736,7 +736,7 @@ html[data-theme="sakura"] .sakura-p4 {
 
 /* ── Last in group ── */
 .msg-bubble-last.msg-bubble-own {
-    border-radius: 4px 16px 16px 16px;
+    border-radius: 16px 4px 16px 16px;
 }
 .msg-bubble-last.msg-bubble-other {
     border-radius: 4px 16px 4px 16px;
