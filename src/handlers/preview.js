@@ -105,8 +105,8 @@ export async function handlePreview(request, env, corsHeaders) {
         });
 
         if (!fetchResponse.ok) {
-            return new Response(JSON.stringify({ error: `HTTP ${fetchResponse.status}` }), {
-                status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            return new Response(JSON.stringify({ og: null }), {
+                status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
 
@@ -148,8 +148,8 @@ export async function handlePreview(request, env, corsHeaders) {
         });
     } catch (error) {
         console.error('OG preview error:', error);
-        return new Response(JSON.stringify({ error: 'Preview failed' }), {
-            status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        return new Response(JSON.stringify({ og: null }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
 }

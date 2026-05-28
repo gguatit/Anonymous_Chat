@@ -716,7 +716,7 @@ html[data-theme="sakura"] .sakura-p4 {
 .msg-bubble-other {
     padding: 0.625rem 0.75rem;
     border-radius: 4px 16px 16px 16px;
-    background-color: hsla(var(--sender-hue, 220), var(--sender-sat, 25), var(--sender-lgt, 28), var(--sender-alpha, 0.8));
+    background-color: hsl(var(--sender-hue, 220) var(--sender-sat, 25) var(--sender-lgt, 28) / var(--sender-alpha, 0.8));
 }
 
 /* ── Admin message ── */
@@ -760,7 +760,7 @@ html[data-theme="sakura"] .sakura-p4 {
     margin-bottom: 0.125rem;
     opacity: 0.75;
     line-height: 1.2;
-    color: hsl(var(--sender-hue, 220), var(--sender-name-sat, 55), var(--sender-name-lgt, 63));
+    color: hsl(var(--sender-hue, 220) var(--sender-name-sat, 55) var(--sender-name-lgt, 63));
 }
 
 /* ── Timestamp inside bubble ── */
