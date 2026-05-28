@@ -5,6 +5,10 @@ export class DeadDropClient {
         this.apiKey = null; // Optional bearer token
     }
 
+    isAvailable() {
+        return !!this.apiUrl;
+    }
+
     /**
      * Store a secret message in Dead Drop
      * @param {string} message - The secret message to store

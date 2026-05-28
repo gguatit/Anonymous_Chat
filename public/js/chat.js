@@ -19,6 +19,7 @@ class ChatClient {
         this.ui = new UIManager();
         this.fileUpload = new FileUploadManager(config.fileUploadUrl || null, '/api/upload');
         this.deadDrop = new DeadDropClient(config.kalphaApiUrl || null);
+        this.ui.setDeadDropAvailable(this.deadDrop.isAvailable());
 
         // State
         this.typingTimeout = null;
@@ -591,6 +592,10 @@ class ChatClient {
         const replyingTo = this.ui.getReplyingTo();
         if (replyingTo) {
             if (replyingTo.isSecret) {
+                if (!this.deadDrop.isAvailable()) {
+                    this.ui.displayError('비밀 메시지 기능을 사용할 수 없습니다.');
+                    return;
+                }
                 // 비밀 메시지로 보내기 - Dead Drop에 저장
                 try {
                     const deadDropResult = await this.deadDrop.store(trimmedMessage || '[파일]');
