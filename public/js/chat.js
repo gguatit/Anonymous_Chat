@@ -375,10 +375,16 @@ class ChatClient {
                     }
                 }
                 break;
-            case 'emergency_cleared':
+            case 'emergency_cleared': {
                 localStorage.removeItem('chatEmergencySeenTs');
                 localStorage.removeItem('chatEmergencyRedirectTime');
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-green-800 text-green-100 px-4 py-2 rounded-lg shadow-lg text-sm transition-opacity duration-500';
+                toast.textContent = '긴급 공지가 해제되었습니다.';
+                document.body.appendChild(toast);
+                setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
                 break;
+            }
             case 'kicked': {
                 const banDuration = data.banDuration || 0;
                 const isPermanent = data.permanent === true;

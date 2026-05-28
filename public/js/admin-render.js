@@ -356,7 +356,9 @@ const renderMethods = {
 
         container.innerHTML = announcements.map(acc => {
             const timeStr = new Date(acc.timestamp).toLocaleString('ko-KR');
-            const content = this.escapeHtml(acc.content).replace(/\n/g, '<br>');
+            const escaped = this.escapeHtml(acc.content);
+            const withLinks = escaped.replace(/(https?:\/\/[^\s<>"']+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline break-all">$1</a>');
+            const content = withLinks.replace(/\n/g, '<br>');
             const emergencyBadge = acc.isEmergency
                 ? '<span class="text-xs bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded-full font-medium ml-1">긴급</span>'
                 : '';
@@ -369,6 +371,7 @@ const renderMethods = {
                     </div>
                     <div class="flex flex-col gap-2">
                         <button onclick="window.adminDashboard.editAnnouncement(${acc.timestamp})" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">수정</button>
+                        ${acc.isEmergency ? '<button onclick="window.adminDashboard.demoteAnnouncement(' + acc.timestamp + ')" class="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">일반 전환</button>' : ''}
                         <button onclick="window.adminDashboard.deleteAnnouncement(${acc.timestamp})" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">삭제</button>
                     </div>
                 </div>

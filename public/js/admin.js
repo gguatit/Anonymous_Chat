@@ -97,11 +97,40 @@ class AdminDashboard {
         this.adminAnnounceInput = document.getElementById('admin-announce-input');
         this.emergencyCheckbox = document.getElementById('emergency-checkbox');
         this.emergencyDuration = document.getElementById('emergency-duration');
+        this.announceChannelSelect = document.getElementById('announce-channel-select');
         this.adminSendBtn?.addEventListener('click', () => this.sendAdminBroadcast());
         this.adminAnnounceBtn?.addEventListener('click', () => this.sendAdminAnnounce());
         this.emergencyCheckbox?.addEventListener('change', () => {
             this.emergencyDuration.classList.toggle('hidden', !this.emergencyCheckbox.checked);
         });
+
+        if (this.adminAnnounceInput) {
+            const counter = document.getElementById('announce-char-count');
+            this.adminAnnounceInput.addEventListener('input', () => {
+                const len = this.adminAnnounceInput.value.length;
+                if (counter) {
+                    counter.textContent = `${len} / 5000`;
+                    counter.className = len > 4500 ? 'text-xs text-red-400' : len > 4000 ? 'text-xs text-yellow-400' : 'text-xs text-gray-500';
+                }
+            });
+        }
+
+        const previewBtn = document.getElementById('announce-preview-btn');
+        const previewDiv = document.getElementById('announce-preview');
+        const previewContent = document.getElementById('announce-preview-content');
+        if (previewBtn && this.adminAnnounceInput) {
+            previewBtn.addEventListener('click', () => {
+                if (previewDiv.classList.contains('hidden')) {
+                    const text = this.adminAnnounceInput.value.trim();
+                    previewContent.innerHTML = text ? this.escapeHtml(text).replace(/\n/g, '<br>') : '<span class="text-gray-500">내용을 입력하세요</span>';
+                    previewDiv.classList.remove('hidden');
+                    previewBtn.textContent = '미리보기 닫기';
+                } else {
+                    previewDiv.classList.add('hidden');
+                    previewBtn.textContent = '미리보기';
+                }
+            });
+        }
 
         this.deleteAllMessagesBtn = document.getElementById('delete-all-messages-btn');
         this.deleteAllMessagesBtn?.addEventListener('click', () => this.deleteAllMessages());
@@ -179,6 +208,42 @@ class AdminDashboard {
         if (userDetailsModal) {
             userDetailsModal.addEventListener('click', (e) => {
                 if (e.target === userDetailsModal) hideModal(userDetailsModal);
+            });
+        }
+
+        const announceSearch = document.getElementById('announce-search');
+        if (announceSearch) {
+            let searchTimer = null;
+            announceSearch.addEventListener('input', () => {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(() => {
+                    const query = announceSearch.value.trim().toLowerCase();
+                    this.filterAnnouncements(query);
+                }, 300);
+            });
+        }
+
+        this.scheduleCheckbox = document.getElementById('schedule-checkbox');
+        this.scheduleDatetime = document.getElementById('schedule-datetime');
+        if (this.scheduleCheckbox && this.scheduleDatetime) {
+            this.scheduleCheckbox.addEventListener('change', () => {
+                this.scheduleDatetime.classList.toggle('hidden', !this.scheduleCheckbox.checked);
+                if (this.scheduleCheckbox.checked && !this.scheduleDatetime.value) {
+                    const now = new Date();
+                    now.setMinutes(now.getMinutes() + 5);
+                    this.scheduleDatetime.value = now.toISOString().slice(0, 16);
+                }
+            });
+        }
+
+        this.announceExpirySelect = document.getElementById('announce-expiry-select');
+
+        if (this.adminAnnounceInput) {
+            this.adminAnnounceInput.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    this.sendAdminAnnounce();
+                }
             });
         }
     }
@@ -412,6 +477,21 @@ class AdminDashboard {
         } catch (_err) {
             // ignore
         }
+    }
+
+    populateChannelSelector(channels) {
+        if (!this.announceChannelSelect) return;
+        const currentVal = this.announceChannelSelect.value;
+        this.announceChannelSelect.innerHTML = '<option value="">전체 채널</option>';
+        if (channels && channels.length) {
+            channels.forEach(ch => {
+                const option = document.createElement('option');
+                option.value = ch.slug;
+                option.textContent = `${ch.title || ch.slug} (${ch.userCount || 0})`;
+                this.announceChannelSelect.appendChild(option);
+            });
+        }
+        this.announceChannelSelect.value = currentVal;
     }
 }
 

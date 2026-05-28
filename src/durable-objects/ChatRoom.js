@@ -1026,7 +1026,11 @@ export class ChatRoom {
 
                 // If emergency was explicitly cleared, broadcast to all clients
                 if (wasEmergency && isEmergency === false && (!this.currentAnnouncement || !this.currentAnnouncement.isEmergency)) {
-                    this.broadcast({ type: 'emergency_cleared' });
+                    this.broadcast({
+                        type: 'emergency_cleared',
+                        content: wasEmergency ? `긴급 공지가 해제되었습니다.` : '',
+                        timestamp: Date.now()
+                    });
                 }
             }
 
@@ -1109,6 +1113,8 @@ export class ChatRoom {
             const content = typeof data.content === 'string' ? data.content : '';
             const isEmergency = !!data.isEmergency;
             const emergencyUntil = isEmergency && data.emergencyUntil ? Number(data.emergencyUntil) : null;
+            const channelSlug = data.channelSlug || '';
+            const scheduleAt = data.scheduleAt || null;
 
             if (!content) {
                 return new Response(JSON.stringify({ error: 'Empty content' }), {
@@ -1124,6 +1130,10 @@ export class ChatRoom {
                 isEmergency,
                 emergencyUntil
             };
+            this.currentAnnouncement.channelSlug = channelSlug || undefined;
+            if (data.expiresAt && data.expiresAt > Date.now()) {
+                this.currentAnnouncement.expiresAt = data.expiresAt;
+            }
             await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
 
             // Append to announcement history (newest first, keep up to 100)
@@ -1132,6 +1142,14 @@ export class ChatRoom {
                 this.announcementHistory = this.announcementHistory.slice(0, 100);
             }
             await this.state.storage.put('announcementHistory', this.announcementHistory);
+
+            if (scheduleAt && scheduleAt > Date.now()) {
+                this.currentAnnouncement.scheduleAt = scheduleAt;
+                await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+                return new Response(JSON.stringify({ success: true, scheduled: true, scheduleAt: scheduleAt }), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
 
             // Broadcast system announcement to all users
             const announcementMessage = {
@@ -1142,18 +1160,23 @@ export class ChatRoom {
                 emergencyUntil: this.currentAnnouncement.emergencyUntil
             };
 
-            this.broadcast(announcementMessage);
+            let notified = 0;
+            for (const [sessionId, ws] of this.sessions) {
+                const meta = this.userMetadata.get(sessionId);
+                if (channelSlug && meta && meta.channelSlug !== channelSlug) continue;
+                try { ws.send(JSON.stringify(announcementMessage)); notified++; } catch (_e) { /* ignore dead sessions */ }
+            }
 
             // Add audit log
             await this.addAuditLog('send_announcement', `Sent announcement: ${content.substring(0, 50)}...${isEmergency ? ' [EMERGENCY]' : ''}`, {
                 contentLength: content.length,
-                sessionsNotified: this.sessions.size,
+                sessionsNotified: notified,
                 isEmergency
             });
 
             return new Response(JSON.stringify({
                 success: true,
-                sessionsNotified: this.sessions.size
+                sessionsNotified: notified
             }), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -2319,6 +2342,35 @@ export class ChatRoom {
             this.currentAnnouncement.emergencyUntil = null;
             await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
             this.broadcast({ type: 'emergency_cleared' });
+        }
+
+        // Check scheduled announcements
+        if (this.currentAnnouncement && this.currentAnnouncement.scheduleAt && now >= this.currentAnnouncement.scheduleAt) {
+            const announcementMessage = {
+                type: 'announcement',
+                content: this.currentAnnouncement.content,
+                timestamp: this.currentAnnouncement.timestamp,
+                isEmergency: this.isEmergencyActive(),
+                emergencyUntil: this.currentAnnouncement.emergencyUntil
+            };
+            this.broadcast(announcementMessage);
+            delete this.currentAnnouncement.scheduleAt;
+            await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+        }
+
+        // Check expired announcements
+        if (this.currentAnnouncement && !this.currentAnnouncement.isEmergency && this.currentAnnouncement.expiresAt && now >= this.currentAnnouncement.expiresAt) {
+            if (this.announcementHistory.length > 0) {
+                const next = this.announcementHistory[0];
+                if (next.timestamp !== this.currentAnnouncement.timestamp) {
+                    this.currentAnnouncement = next;
+                } else {
+                    this.currentAnnouncement = null;
+                }
+            } else {
+                this.currentAnnouncement = null;
+            }
+            await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
         }
 
         if (this.messages.length !== initialLength) {

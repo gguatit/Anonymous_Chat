@@ -379,6 +379,15 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
                 forwardBody.emergencyUntil = body.emergencyUntil ? Number(body.emergencyUntil) : null;
             }
         }
+        if (body.channelSlug) {
+            forwardBody.channelSlug = body.channelSlug;
+        }
+        if (body.scheduleAt) {
+            forwardBody.scheduleAt = body.scheduleAt;
+        }
+        if (body.expiresAt) {
+            forwardBody.expiresAt = body.expiresAt;
+        }
 
         const response = await forwardToDO(env, '/admin/announce', {
             method: request.method,
