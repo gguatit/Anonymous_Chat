@@ -44,12 +44,28 @@ export class TurnstileManager {
 
     showModal() {
         const modal = document.getElementById('turnstile-modal');
-        if (modal) modal.classList.remove('hidden');
+        if (modal) {
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100');
+            const inner = modal.querySelector('.scale-95');
+            if (inner) {
+                inner.classList.remove('scale-95');
+                inner.classList.add('scale-100');
+            }
+        }
     }
 
     hideModal() {
         const modal = document.getElementById('turnstile-modal');
-        if (modal) modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.classList.remove('opacity-100');
+            const inner = modal.querySelector('.scale-100');
+            if (inner) {
+                inner.classList.remove('scale-100');
+                inner.classList.add('scale-95');
+            }
+        }
     }
 
     showSuccess() {

@@ -132,10 +132,12 @@
         </div>
     </header>
 
+    <!-- Platform Info Panel Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 opacity-0 pointer-events-none transition-opacity duration-200 z-30"></div>
+
     <!-- Platform Info Panel -->
     <aside id="platform-info"
-        class="fixed left-0 bg-gray-800 border-r border-gray-700 shadow-lg transition-transform duration-300 -translate-x-full"
-        style="width: 300px; top: 56px; bottom: 0; overflow-y: auto; z-index: 40;">
+        class="fixed left-0 bg-gray-800 border-r border-gray-700 shadow-lg transition-transform duration-200 ease-out -translate-x-full z-40"
         <div class="p-4">
             <!-- 테마 선택 -->
             <div id="theme-section" class="mb-6 bg-gray-700/50 rounded-lg p-4 border border-gray-600">
@@ -386,7 +388,8 @@
 
     <!-- Announcement Banner -->
     <div id="announcement-banner"
-        class="hidden sticky top-[56px] z-40 bg-gradient-to-r from-yellow-900/40 to-yellow-800/40 border-b border-yellow-600/50 shadow-lg">
+        class="sticky top-[56px] z-40 bg-gradient-to-r from-yellow-900/40 to-yellow-800/40 border-b border-yellow-600/50 shadow-lg overflow-hidden transition-all duration-300 ease-out"
+        style="max-height: 0; opacity: 0;">
         <div class="max-w-5xl mx-auto px-4 py-3">
             <div class="flex items-start gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none"
@@ -550,8 +553,8 @@
     </div>
 
     <!-- Turnstile Verification Modal -->
-    <div id="turnstile-modal" class="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
-        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-md overflow-hidden transform transition-all p-6 text-center">
+    <div id="turnstile-modal" class="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-md overflow-hidden transform transition-all duration-200 scale-95 p-6 text-center">
             <div class="w-16 h-16 bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -575,8 +578,8 @@
     </div>
 
     <!-- Notice Modal -->
-    <div id="notice-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
-        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-md overflow-hidden transform transition-all">
+    <div id="notice-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-md overflow-hidden transform transition-all duration-200 scale-95">
             <div class="p-6 text-center">
                 <div class="w-16 h-16 bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -603,8 +606,8 @@
     </div>
 
     <!-- Create Channel Modal -->
-    <div id="create-channel-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
-        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-sm overflow-hidden transform transition-all">
+    <div id="create-channel-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-sm overflow-hidden transform transition-all duration-200 scale-95">
             <div class="p-5">
                 <h3 class="text-lg font-bold text-gray-100 mb-3">채널 추가</h3>
                 <p class="text-gray-400 text-sm mb-3">새로운 채널을 생성합니다.</p>
@@ -621,8 +624,8 @@
     </div>
 
     <!-- Join Channel Modal -->
-    <div id="join-channel-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
-        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-sm overflow-hidden transform transition-all">
+    <div id="join-channel-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-11/12 max-w-sm overflow-hidden transform transition-all duration-200 scale-95">
             <div class="p-5">
                 <h3 class="text-lg font-bold text-gray-100 mb-3">채널 참가</h3>
                 <p class="text-gray-400 text-sm mb-3">참가할 채널의 <span class="text-emerald-400 font-medium">이름</span>을 입력하세요.</p>
@@ -649,25 +652,51 @@
         // Platform info toggle
         const infoToggle = document.getElementById('info-toggle');
         const platformInfo = document.getElementById('platform-info');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+        function openSidebar() {
+            platformInfo.classList.remove('-translate-x-full');
+            sidebarOverlay.classList.remove('opacity-0', 'pointer-events-none');
+            sidebarOverlay.classList.add('opacity-100');
+        }
+
+        function closeSidebar() {
+            platformInfo.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('opacity-0', 'pointer-events-none');
+            sidebarOverlay.classList.remove('opacity-100');
+        }
+
+        function isSidebarOpen() {
+            return !platformInfo.classList.contains('-translate-x-full');
+        }
 
         infoToggle.addEventListener('click', () => {
-            platformInfo.classList.toggle('-translate-x-full');
+            if (isSidebarOpen()) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
         });
 
         // Close platform info on ESC key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !platformInfo.classList.contains('-translate-x-full')) {
-                platformInfo.classList.add('-translate-x-full');
+            if (e.key === 'Escape' && isSidebarOpen()) {
+                closeSidebar();
             }
         });
 
         // Close platform info when clicking outside
         document.addEventListener('click', (e) => {
-            if (!platformInfo.classList.contains('-translate-x-full') &&
+            if (isSidebarOpen() &&
                 !platformInfo.contains(e.target) &&
                 e.target !== infoToggle && !infoToggle.contains(e.target)) {
-                platformInfo.classList.add('-translate-x-full');
+                closeSidebar();
             }
+        });
+
+        // Close platform info when clicking overlay
+        sidebarOverlay.addEventListener('click', () => {
+            closeSidebar();
         });
 
         // Mobile Nickname Layout Logic

@@ -26,6 +26,11 @@ export class UIManager {
         this.replyingTo = null; // { messageId, content, isOwnMessage, isSecret }
         this.onReaction = null;
 
+        // Message grouping tracking
+        this._lastSender = null;
+        this._lastTime = null;
+        this._lastMessageEl = null;
+
         // Announcement banner elements
         this.announcementBanner = document.getElementById('announcement-banner');
         this.announcementContent = document.getElementById('announcement-content');
@@ -269,14 +274,32 @@ export class UIManager {
     }
     
     showNoticeModal() {
-        if (this.noticeModal) {
-            this.noticeModal.classList.remove('hidden');
+        this._showModal(this.noticeModal);
+    }
+
+    hideNoticeModal() {
+        this._hideModal(this.noticeModal);
+    }
+
+    _showModal(modal) {
+        if (!modal) return;
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        modal.classList.add('opacity-100');
+        const inner = modal.querySelector('.scale-95');
+        if (inner) {
+            inner.classList.remove('scale-95');
+            inner.classList.add('scale-100');
         }
     }
-    
-    hideNoticeModal() {
-        if (this.noticeModal) {
-            this.noticeModal.classList.add('hidden');
+
+    _hideModal(modal) {
+        if (!modal) return;
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        modal.classList.remove('opacity-100');
+        const inner = modal.querySelector('.scale-100');
+        if (inner) {
+            inner.classList.remove('scale-100');
+            inner.classList.add('scale-95');
         }
     }
 
@@ -342,6 +365,16 @@ export class UIManager {
         });
     }
 
+    _getSenderHue(sessionId) {
+        if (!sessionId) return 220;
+        let hash = 0;
+        for (let i = 0; i < sessionId.length; i++) {
+            hash = ((hash << 5) - hash) + sessionId.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash % 360);
+    }
+
     _renderSingleMessage(data, sessionId) {
         if (data.type === 'summary') {
             const MODE_STYLES = {
@@ -373,25 +406,17 @@ export class UIManager {
         const isOwnMessage = data.sessionId === sessionId;
         const isAdmin = !!(data.sessionId && String(data.sessionId).startsWith('admin_'));
 
-        const messageDiv = document.createElement('div');
-
-        if (isAdmin) {
-            messageDiv.className = 'message-enter p-3 rounded-lg border-l-4 border-yellow-400 bg-yellow-900/20 shadow-lg ring-1 ring-yellow-400/20';
-            messageDiv.style.marginLeft = '0';
-            messageDiv.style.marginRight = 'auto';
-            messageDiv.setAttribute('role', 'region');
-            messageDiv.setAttribute('aria-live', 'polite');
-            messageDiv.setAttribute('aria-label', '관리자 메시지');
-        } else {
-            messageDiv.className = 'message-enter p-2.5 rounded-lg ' +
-                (data.sessionId === sessionId ? 'bg-blue-900/80 ml-auto' : 'bg-gray-700/80');
+        const TIME_GAP = 5 * 60 * 1000;
+        const sameAsPrev = this._lastSender !== null
+            && this._lastSender === data.sessionId
+            && this._lastTime !== null
+            && (data.timestamp - this._lastTime < TIME_GAP);
+        const isGrouped = sameAsPrev && !isAdmin;
+        if (isGrouped && this._lastMessageEl) {
+            this._lastMessageEl.classList.add('msg-bubble-grouped');
         }
-        messageDiv.style.maxWidth = '75%';
-
-        messageDiv.setAttribute('data-message', 'true');
-        messageDiv.setAttribute('data-message-id', data.messageId);
-        messageDiv.setAttribute('data-session-id', data.sessionId);
-        messageDiv.setAttribute('data-timestamp', data.timestamp);
+        this._lastSender = data.sessionId;
+        this._lastTime = data.timestamp;
 
         const timestamp = new Date(data.timestamp).toLocaleTimeString('ko-KR', {
             hour: '2-digit',
@@ -399,10 +424,9 @@ export class UIManager {
         });
 
         const canEdit = isOwnMessage && data.timestamp && (Date.now() - data.timestamp < 10 * 60 * 1000);
-        const editedLabel = data.editedAt ? ' <span class="text-xs text-gray-500">(수정됨)</span>' : '';
+        const senderName = data.nickname || '익명';
 
         let contentHtml = '';
-
         if (data.replyTo) {
             const replyContent = data.replyTo.content || '[파일]';
             const truncatedReply = replyContent.length > 50
@@ -436,9 +460,9 @@ export class UIManager {
                         </div>
                     `;
                 } else if (isOwnMessage) {
-                    contentHtml += `<div class="text-sm text-gray-400 italic">비밀 메시지를 보냈습니다</div>`;
+                    contentHtml += '<div class="text-sm text-gray-400 italic">비밀 메시지를 보냈습니다</div>';
                 } else {
-                    contentHtml += `<div class="text-sm text-gray-500 italic">비밀 메시지 (답장)</div>`;
+                    contentHtml += '<div class="text-sm text-gray-500 italic">비밀 메시지 (답장)</div>';
                 }
             } else {
                 contentHtml += `<div class="text-sm break-words leading-relaxed message-content">${this.formatMessageContent(data.content)}</div>`;
@@ -455,22 +479,70 @@ export class UIManager {
             contentHtml = '<div class="text-sm text-gray-500 italic">내용 없음</div>';
         }
 
-        const senderName = data.nickname || '익명';
-        const nameLabel = isAdmin
-            ? `<span class="text-xs font-semibold text-yellow-300">관리자</span>`
-            : `<span class="text-xs font-medium ${isOwnMessage ? 'text-blue-300' : 'text-gray-400'}">${isOwnMessage ? `나 (${this.sanitizeInput(senderName)})` : this.sanitizeInput(senderName)}</span>`;
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('data-message', 'true');
+        wrapper.setAttribute('data-message-id', data.messageId);
+        wrapper.setAttribute('data-session-id', data.sessionId);
+        wrapper.setAttribute('data-timestamp', data.timestamp);
 
-        messageDiv.innerHTML = `
-            <div class="flex items-start justify-between gap-2 mb-1">
-                <div class="flex items-center gap-2">${nameLabel}${editedLabel}</div>
-                <span class="text-xs text-gray-500">${timestamp}</span>
-            </div>
+        if (isAdmin) {
+            wrapper.className = isOwnMessage ? 'flex flex-col items-end' : 'flex flex-col items-start';
+            if (!isGrouped) {
+                const adminLabel = document.createElement('div');
+                adminLabel.className = 'msg-sender-label px-1 text-yellow-300 font-semibold';
+                adminLabel.textContent = '\uAD00\uB9AC\uC790';
+                wrapper.appendChild(adminLabel);
+            }
+        } else if (!isGrouped) {
+            wrapper.className = isOwnMessage ? 'flex flex-col items-end' : 'flex flex-col items-start';
+            const nameLabel = document.createElement('div');
+            const hue = isOwnMessage ? null : this._getSenderHue(data.sessionId);
+            const colorStyle = hue !== null ? `color: hsl(${hue}, 60%, 65%)` : 'color: var(--c-blue-300)';
+            nameLabel.className = 'msg-sender-label px-1';
+            nameLabel.setAttribute('style', colorStyle);
+            nameLabel.textContent = isOwnMessage ? `\uB098 (${senderName})` : senderName;
+            wrapper.appendChild(nameLabel);
+        } else {
+            wrapper.className = 'flex flex-col';
+            if (isOwnMessage) wrapper.classList.add('items-end');
+        }
+
+        const bubble = document.createElement('div');
+        if (isAdmin) {
+            bubble.className = 'message-enter msg-bubble msg-bubble-admin border-yellow-400 ring-1 ring-yellow-400/20';
+            bubble.style.setProperty('--bubble-bg', 'rgba(113,63,18,0.25)');
+            bubble.style.backgroundColor = 'rgba(113,63,18,0.25)';
+            bubble.setAttribute('role', 'region');
+            bubble.setAttribute('aria-live', 'polite');
+            bubble.setAttribute('aria-label', '\uAD00\uB9AC\uC790 \uBA54\uC2DC\uC9C0');
+        } else if (isOwnMessage) {
+            bubble.className = 'message-enter msg-bubble msg-bubble-own';
+            bubble.style.setProperty('--bubble-bg', 'rgba(30,58,138,0.8)');
+            bubble.style.backgroundColor = 'rgba(30,58,138,0.8)';
+        } else {
+            const hue = this._getSenderHue(data.sessionId);
+            const bgColor = `hsla(${hue}, 25%, 28%, 0.8)`;
+            bubble.className = 'message-enter msg-bubble msg-bubble-other';
+            bubble.style.setProperty('--bubble-bg', bgColor);
+            bubble.style.backgroundColor = bgColor;
+        }
+
+        if (isGrouped) {
+            bubble.classList.add('msg-bubble-grouped');
+        }
+
+        const editedLabel = data.editedAt ? ' <span class="text-xs opacity-60">(\uC218\uC815\uB428)</span>' : '';
+
+        bubble.innerHTML = `
             ${contentHtml}
+            <div class="msg-time">${timestamp}${editedLabel}</div>
         `;
+
+        wrapper.appendChild(bubble);
 
         if (data.reactions && Object.keys(data.reactions).length > 0) {
             const reactionBar = document.createElement('div');
-            reactionBar.className = 'reaction-bar flex flex-wrap gap-1 mt-2';
+            reactionBar.className = 'reaction-bar flex flex-wrap gap-1 mt-1';
             for (const [emoji, count] of Object.entries(data.reactions)) {
                 if (count > 0) {
                     const userReacted = data.reactionSessions &&
@@ -494,12 +566,13 @@ export class UIManager {
                     reactionBar.appendChild(pill);
                 }
             }
-            messageDiv.appendChild(reactionBar);
+            wrapper.appendChild(reactionBar);
         }
 
-        this.addMessageInteractions(messageDiv, data.messageId, canEdit, data.replyTo?.messageId);
+        this.addMessageInteractions(wrapper, data.messageId, canEdit, data.replyTo?.messageId);
+        this._lastMessageEl = bubble;
 
-        return messageDiv;
+        return wrapper;
     }
 
     addMessageInteractions(messageDiv, messageId, canEdit, replyToMessageId) {
@@ -577,7 +650,7 @@ export class UIManager {
         // Create context menu
         const menu = document.createElement('div');
         menu.id = 'message-context-menu';
-        menu.className = 'fixed bg-gray-800 border border-gray-600 rounded-lg shadow-lg py-1 z-50';
+        menu.className = 'fixed bg-gray-800 border border-gray-600 rounded-lg shadow-lg py-1 z-50 context-menu-enter';
         menu.style.minWidth = '120px';
 
         menu.innerHTML = `
@@ -653,7 +726,7 @@ export class UIManager {
 
             const contentDiv = messageDiv.querySelector('.message-content');
             const content = contentDiv ? this.htmlToPlainText(contentDiv.innerHTML) : '[파일]';
-            const isOwnMessage = messageDiv.classList.contains('ml-auto');
+            const isOwnMessage = !!messageDiv.querySelector('.msg-bubble-own');
             const targetSessionId = messageDiv.dataset.sessionId; // 원본 메시지 작성자의 sessionId
 
             this.setReplyingTo(messageId, content, isOwnMessage, targetSessionId);
@@ -830,7 +903,7 @@ export class UIManager {
     showCreateChannelModal() {
         if (this.createChannelModal) {
             this.hideJoinChannelModal();
-            this.createChannelModal.classList.remove('hidden');
+            this._showModal(this.createChannelModal);
             this.createChannelInput.value = '';
             this.createChannelError.classList.add('hidden');
             setTimeout(() => this.createChannelInput.focus(), 50);
@@ -839,7 +912,7 @@ export class UIManager {
 
     hideCreateChannelModal() {
         if (this.createChannelModal) {
-            this.createChannelModal.classList.add('hidden');
+            this._hideModal(this.createChannelModal);
         }
     }
 
@@ -853,7 +926,7 @@ export class UIManager {
     showJoinChannelModal() {
         if (this.joinChannelModal) {
             this.hideCreateChannelModal();
-            this.joinChannelModal.classList.remove('hidden');
+            this._showModal(this.joinChannelModal);
             this.joinChannelInput.value = '';
             this.joinChannelError.classList.add('hidden');
             setTimeout(() => this.joinChannelInput.focus(), 50);
@@ -862,7 +935,7 @@ export class UIManager {
 
     hideJoinChannelModal() {
         if (this.joinChannelModal) {
-            this.joinChannelModal.classList.add('hidden');
+            this._hideModal(this.joinChannelModal);
         }
     }
 
@@ -895,15 +968,18 @@ export class UIManager {
 
         // If no content div exists (file-only message), create one
         if (!contentDiv) {
-            const headerDiv = messageDiv.querySelector('.flex.items-start.justify-between');
+            const timeEl = messageDiv.querySelector('.msg-time');
             contentDiv = document.createElement('div');
             contentDiv.className = 'text-sm break-words leading-relaxed message-content';
-            headerDiv.insertAdjacentElement('afterend', contentDiv);
+            if (timeEl) {
+                timeEl.parentNode.insertBefore(contentDiv, timeEl);
+            } else {
+                messageDiv.appendChild(contentDiv);
+            }
         }
 
         const originalContent = currentContent;
 
-        // Create edit input
         contentDiv.innerHTML = `
             <div class="flex flex-col gap-2">
                 <textarea class="edit-input bg-gray-800 text-gray-100 border border-gray-600 rounded px-2 py-1 text-sm w-full resize-none"
@@ -972,19 +1048,23 @@ export class UIManager {
 
         // If no content div exists (file-only message), create one
         if (!contentDiv) {
-            const headerDiv = messageDiv.querySelector('.flex.items-start.justify-between');
+            const timeEl = messageDiv.querySelector('.msg-time');
             contentDiv = document.createElement('div');
             contentDiv.className = 'text-sm break-words leading-relaxed message-content';
-            headerDiv.insertAdjacentElement('afterend', contentDiv);
+            if (timeEl) {
+                timeEl.parentNode.insertBefore(contentDiv, timeEl);
+            } else {
+                messageDiv.appendChild(contentDiv);
+            }
         }
 
         // Use formatMessageContent to preserve line breaks and format URLs
         contentDiv.innerHTML = this.formatMessageContent(newContent);
 
         // Update edited label
-        const nameSpan = messageDiv.querySelector('.text-xs.font-medium');
-        if (nameSpan && !nameSpan.innerHTML.includes('수정됨')) {
-            nameSpan.innerHTML += ' <span class="text-xs text-gray-500">(수정됨)</span>';
+        const timeEl = messageDiv.querySelector('.msg-time');
+        if (timeEl && !timeEl.innerHTML.includes('\uC218\uC815\uB428')) {
+            timeEl.innerHTML += ' <span class="text-xs opacity-60">(\uC218\uC815\uB428)</span>';
         }
 
         // Remove edit button after 10 minutes elapsed
@@ -1124,7 +1204,8 @@ export class UIManager {
 
     hideAnnouncement() {
         if (this.announcementBanner) {
-            this.announcementBanner.classList.add('hidden');
+            this.announcementBanner.style.maxHeight = '0';
+            this.announcementBanner.style.opacity = '0';
         }
     }
 
