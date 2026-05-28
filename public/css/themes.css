@@ -690,97 +690,49 @@ html[data-theme="sakura"] .sakura-p4 {
 /* ── Own message (right-aligned) ── */
 .msg-bubble-own {
     padding: 0.625rem 0.75rem;
-    border-radius: 16px 16px 6px 16px;
+    border-radius: 16px 16px 4px 16px;
     margin-left: auto;
-}
-.msg-bubble-own::after {
-    content: '';
-    position: absolute;
-    bottom: 2px;
-    right: -6px;
-    width: 7px;
-    height: 6px;
-    background: var(--bubble-bg, rgba(30,58,138,0.8));
-    clip-path: polygon(0% 0%, 100% 50%, 100% 100%);
 }
 
 /* ── Other message (left-aligned) ── */
 .msg-bubble-other {
     padding: 0.625rem 0.75rem;
-    border-radius: 16px 16px 16px 6px;
-}
-.msg-bubble-other::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: -6px;
-    width: 7px;
-    height: 6px;
-    background: var(--bubble-bg, rgba(55,65,81,0.8));
-    clip-path: polygon(0% 50%, 100% 0%, 100% 100%);
+    border-radius: 4px 16px 16px 16px;
 }
 
 /* ── Admin message ── */
 .msg-bubble-admin {
     padding: 0.75rem;
-    border-radius: 16px 16px 16px 6px;
+    border-radius: 4px 16px 16px 16px;
     margin-left: 0;
     margin-right: auto;
     border-left-width: 4px;
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
 }
-.msg-bubble-admin::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: -6px;
-    width: 7px;
-    height: 6px;
-    background: var(--bubble-bg, rgba(113,63,18,0.2));
-    clip-path: polygon(0% 50%, 100% 0%, 100% 100%);
-}
 
-/* ── Grouped messages (continuation, no tail no header) ── */
+/* ── Grouped messages (continuation, no header) ── */
 .msg-bubble-grouped.msg-bubble-own {
-    border-radius: 6px 16px 6px 16px;
+    border-radius: 4px 16px 4px 16px;
     margin-top: 0.125rem;
-}
-.msg-bubble-grouped.msg-bubble-own::after {
-    display: none;
 }
 .msg-bubble-grouped.msg-bubble-other {
-    border-radius: 16px 6px 16px 6px;
+    border-radius: 4px 16px 4px 16px;
     margin-top: 0.125rem;
-}
-.msg-bubble-grouped.msg-bubble-other::after {
-    display: none;
 }
 .msg-bubble-grouped.msg-bubble-admin {
-    border-radius: 16px 6px 16px 6px;
+    border-radius: 4px 16px 4px 16px;
     margin-top: 0.125rem;
 }
-.msg-bubble-grouped.msg-bubble-admin::after {
-    display: none;
-}
 
-/* ── Last in group (tail reappears) ── */
+/* ── Last in group ── */
 .msg-bubble-last.msg-bubble-own {
-    border-radius: 6px 16px 16px 16px;
-}
-.msg-bubble-last.msg-bubble-own::after {
-    display: block;
+    border-radius: 4px 16px 16px 16px;
 }
 .msg-bubble-last.msg-bubble-other {
-    border-radius: 16px 6px 16px 6px;
-}
-.msg-bubble-last.msg-bubble-other::after {
-    display: block;
+    border-radius: 4px 16px 4px 16px;
 }
 .msg-bubble-last.msg-bubble-admin {
-    border-radius: 16px 6px 16px 6px;
-}
-.msg-bubble-last.msg-bubble-admin::after {
-    display: block;
+    border-radius: 4px 16px 4px 16px;
 }
 
 /* ── Sender name above bubble ── */
