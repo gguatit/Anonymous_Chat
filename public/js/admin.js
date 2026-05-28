@@ -97,7 +97,6 @@ class AdminDashboard {
         this.adminAnnounceInput = document.getElementById('admin-announce-input');
         this.emergencyCheckbox = document.getElementById('emergency-checkbox');
         this.emergencyDuration = document.getElementById('emergency-duration');
-        this.announceChannelSelect = document.getElementById('announce-channel-select');
         this.adminSendBtn?.addEventListener('click', () => this.sendAdminBroadcast());
         this.adminAnnounceBtn?.addEventListener('click', () => this.sendAdminAnnounce());
         this.emergencyCheckbox?.addEventListener('change', () => {
@@ -477,21 +476,6 @@ class AdminDashboard {
         } catch (_err) {
             // ignore
         }
-    }
-
-    populateChannelSelector(channels) {
-        if (!this.announceChannelSelect) return;
-        const currentVal = this.announceChannelSelect.value;
-        this.announceChannelSelect.innerHTML = '<option value="">전체 채널</option>';
-        if (channels && channels.length) {
-            channels.forEach(ch => {
-                const option = document.createElement('option');
-                option.value = ch.slug;
-                option.textContent = `${ch.title || ch.slug} (${ch.userCount || 0})`;
-                this.announceChannelSelect.appendChild(option);
-            });
-        }
-        this.announceChannelSelect.value = currentVal;
     }
 }
 

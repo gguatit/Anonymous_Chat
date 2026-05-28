@@ -199,11 +199,6 @@ const dataMethods = {
             }
         }
 
-        const channelSlug = this.announceChannelSelect?.value || '';
-        if (channelSlug) {
-            body.channelSlug = channelSlug;
-        }
-
         const isScheduled = this.scheduleCheckbox?.checked || false;
         if (isScheduled && this.scheduleDatetime?.value) {
             body.scheduleAt = new Date(this.scheduleDatetime.value).getTime();
@@ -1222,7 +1217,6 @@ const dataMethods = {
             if (!resp.ok) throw new Error('Failed to load channels');
             const data = await resp.json();
             this.renderChannels(data.channels || []);
-            this.populateChannelSelector(data.channels || []);
         } catch (error) {
             console.error('loadChannels error:', error);
             const tbody = document.getElementById('channels-list');

@@ -1117,7 +1117,6 @@ export class ChatRoom {
             const content = typeof data.content === 'string' ? data.content : '';
             const isEmergency = !!data.isEmergency;
             const emergencyUntil = isEmergency && data.emergencyUntil ? Number(data.emergencyUntil) : null;
-            const channelSlug = data.channelSlug || '';
             const scheduleAt = data.scheduleAt || null;
 
             if (!content) {
@@ -1134,7 +1133,6 @@ export class ChatRoom {
                 isEmergency,
                 emergencyUntil
             };
-            this.currentAnnouncement.channelSlug = channelSlug || undefined;
             if (data.expiresAt && data.expiresAt > Date.now()) {
                 this.currentAnnouncement.expiresAt = data.expiresAt;
             }
@@ -1165,9 +1163,7 @@ export class ChatRoom {
             };
 
             let notified = 0;
-            for (const [sessionId, ws] of this.sessions) {
-                const meta = this.userMetadata.get(sessionId);
-                if (channelSlug && meta && meta.channelSlug !== channelSlug) continue;
+            for (const [_sessionId, ws] of this.sessions) {
                 try { ws.send(JSON.stringify(announcementMessage)); notified++; } catch (_e) { /* ignore dead sessions */ }
             }
 
