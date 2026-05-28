@@ -55,9 +55,9 @@
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     background: transparent !important;
     padding: 0 !important;
-    white-space: pre;
-    word-break: normal;
-    word-wrap: normal;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-wrap: anywhere;
 }
 
 /* Override Prism.js default backgrounds */
