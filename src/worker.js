@@ -223,20 +223,12 @@ export default {
                             status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                         });
                     }
-                    const formData = await request.formData();
-                    const file = formData.get('file');
-                    if (file && file.size > 50 * 1024 * 1024) {
-                        return new Response(JSON.stringify({ error: 'File too large (max 50MB)' }), {
-                            status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                        });
-                    }
-                    const uploadUrl = env.FILE_UPLOAD_URL;
-                    if (!uploadUrl) {
-                        return new Response(JSON.stringify({ error: 'Upload service not configured' }), {
-                            status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                        });
-                    }
-                    const upstreamResponse = await fetch(uploadUrl, { method: 'POST', body: formData });
+                    const uploadUrl = env.FILE_UPLOAD_URL || 'https://file.xeon.kr/upload';
+                    const upstreamResponse = await fetch(uploadUrl, {
+                        method: 'POST',
+                        body: request.body,
+                        headers: request.headers
+                    });
                     const contentType = upstreamResponse.headers.get('content-type') || 'application/json';
                     return new Response(upstreamResponse.body, {
                         status: upstreamResponse.status,

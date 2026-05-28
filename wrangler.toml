@@ -62,8 +62,6 @@ FILE_UPLOAD_URL = "https://file.xeon.kr/upload"
 # VAPID_PRIVATE_KEY should be set via: wrangler secret put VAPID_PRIVATE_KEY
 # TURNSTILE_SECRET_KEY should be set via: wrangler secret put TURNSTILE_SECRET_KEY
 # FCM_SERVICE_ACCOUNT should be set via: wrangler secret put FCM_SERVICE_ACCOUNT
-# FILE_UPLOAD_URL is optional; defaults to https://file.xeon.kr/upload
-
 # Observability configuration
 [observability]
 enabled = true
