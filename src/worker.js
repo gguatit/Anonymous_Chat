@@ -14,7 +14,8 @@ import { handleSummary } from './handlers/summary.js';
 
 import { ChatRoom } from './durable-objects/ChatRoom.js';
 import { ChannelRegistry } from './durable-objects/ChannelRegistry.js';
-export { ChatRoom, ChannelRegistry };
+import { DeadDropStore } from './durable-objects/DeadDropStore.js';
+export { ChatRoom, ChannelRegistry, DeadDropStore };
 
 const rateLimitMap = new Map();
 
@@ -136,6 +137,39 @@ const publicRoutes = [
         return await handleTurnstileVerify(req, env, cors);
     }],
     ['/api/preview', 'POST', handlePreview],
+    ['/api/secret-store', 'POST', async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHECK_BAN, 'secret')) {
+            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+        }
+        try {
+            const did = env.DEAD_DROP_STORE.idFromName('singleton');
+            const doStub = env.DEAD_DROP_STORE.get(did);
+            const body = await req.text();
+            const resp = await doStub.fetch(new Request('https://dummy/store', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body
+            }));
+            return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+        } catch (_error) {
+            return new Response(JSON.stringify({ error: 'Secret store failed' }), {
+                status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
+            });
+        }
+    }],
+    ['/api/secret-read', 'GET', async (req, env, cors) => {
+        try {
+            const did = env.DEAD_DROP_STORE.idFromName('singleton');
+            const doStub = env.DEAD_DROP_STORE.get(did);
+            const url = new URL(req.url);
+            const resp = await doStub.fetch(new Request(`https://dummy/read?id=${url.searchParams.get('id') || ''}`));
+            return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+        } catch (_error) {
+            return new Response(JSON.stringify({ error: 'Secret read failed' }), {
+                status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
+            });
+        }
+    }],
     ['/api/summary', null, async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', AI_SUMMARY.RATE_LIMIT, 'summary')) {
             return new Response(JSON.stringify({ error: '잠시 후 다시 시도해주세요. (15초에 1회 제한)' }), {
@@ -234,8 +268,8 @@ export default {
                         status: upstreamResponse.status,
                         headers: { ...corsHeaders, 'Content-Type': contentType }
                     });
-                } catch (error) {
-                    console.error('File upload proxy error:', error);
+                } catch (_error) {
+                    console.error('File upload proxy error:', _error);
                     return new Response(JSON.stringify({ error: 'Upload proxy failed' }), {
                         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                     });
@@ -287,9 +321,9 @@ export default {
 
             return new Response('Not Found', { status: 404 });
 
-        } catch (error) {
+        } catch (_error) {
             metrics.errors++;
-            console.error('Worker error:', error);
+            console.error('Worker error:', _error);
             return new Response('Internal Server Error', { status: 500 });
         }
     }

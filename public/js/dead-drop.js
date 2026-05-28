@@ -1,33 +1,20 @@
-// Dead Drop API Client - 일회성 비밀 메시지 저장소
+// Dead Drop API Client - store/read once 자체 구현
 export class DeadDropClient {
-    constructor(apiUrl = null) {
-        this.apiUrl = apiUrl;
-        this.apiKey = null; // Optional bearer token
-    }
-
-    isAvailable() {
-        return !!this.apiUrl;
+    constructor() {
+        this._storeUrl = '/api/secret-store';
+        this._readUrl = '/api/secret-read';
     }
 
     /**
-     * Store a secret message in Dead Drop
+     * Store a secret message
      * @param {string} message - The secret message to store
      * @returns {Promise<{id: string}>} - The ID to retrieve the message
      */
     async store(message) {
-        if (!this.apiUrl) throw new Error('Dead Drop API not configured');
         try {
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-
-            if (this.apiKey) {
-                headers['Authorization'] = `Bearer ${this.apiKey}`;
-            }
-
-            const response = await fetch(`${this.apiUrl}/store`, {
+            const response = await fetch(this._storeUrl, {
                 method: 'POST',
-                headers,
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message })
             });
 
@@ -36,10 +23,9 @@ export class DeadDropClient {
                 throw new Error(error.error || `HTTP ${response.status}`);
             }
 
-            const data = await response.json();
-            return data;
+            return await response.json();
         } catch (error) {
-            console.error('Dead Drop store error:', error);
+            console.error('Secret store error:', error);
             throw error;
         }
     }
@@ -50,31 +36,20 @@ export class DeadDropClient {
      * @returns {Promise<{message: string}>} - The secret message
      */
     async read(id) {
-        if (!this.apiUrl) throw new Error('Dead Drop API not configured');
         try {
-            const headers = {};
-
-            if (this.apiKey) {
-                headers['Authorization'] = `Bearer ${this.apiKey}`;
-            }
-
-            const response = await fetch(`${this.apiUrl}/read/${id}`, {
-                method: 'GET',
-                headers
-            });
+            const response = await fetch(`${this._readUrl}?id=${encodeURIComponent(id)}`);
 
             if (!response.ok) {
-                if (response.status === 404) {
+                if (response.status === 404 || response.status === 410) {
                     throw new Error('메시지를 찾을 수 없거나 이미 읽혔습니다.');
                 }
                 const error = await response.json().catch(() => ({ error: 'Unknown error' }));
                 throw new Error(error.error || `HTTP ${response.status}`);
             }
 
-            const data = await response.json();
-            return data;
+            return await response.json();
         } catch (error) {
-            console.error('Dead Drop read error:', error);
+            console.error('Secret read error:', error);
             throw error;
         }
     }

@@ -27,6 +27,10 @@ class_name = "ChatRoom"
 name = "CHANNEL_REGISTRY"
 class_name = "ChannelRegistry"
 
+[[durable_objects.bindings]]
+name = "DEAD_DROP_STORE"
+class_name = "DeadDropStore"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["ChatRoom"]
@@ -34,6 +38,10 @@ new_classes = ["ChatRoom"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["ChannelRegistry"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["DeadDropStore"]
 
 # D1 Database for admin logs (replaces KV.list())
 [[d1_databases]]

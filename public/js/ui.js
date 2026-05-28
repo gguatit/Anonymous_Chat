@@ -24,7 +24,6 @@ export class UIManager {
 
         // 답장 상태
         this.replyingTo = null; // { messageId, content, isOwnMessage, isSecret }
-        this.deadDropAvailable = false;
         this.onReaction = null;
 
         // Message grouping tracking
@@ -1743,10 +1742,6 @@ export class UIManager {
         return div.textContent || div.innerText || '';
     }
 
-    setDeadDropAvailable(available) {
-        this.deadDropAvailable = !!available;
-    }
-
     setReplyingTo(messageId, content, isOwnMessage, targetSessionId) {
         this.replyingTo = { messageId, content, isOwnMessage, targetSessionId, isSecret: false };
         this.showReplyPreview();
@@ -1782,11 +1777,10 @@ export class UIManager {
                     </svg>
                 </button>
             </div>
-            ${this.deadDropAvailable ? `
             <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-200 transition-colors">
                 <input type="checkbox" id="secret-reply-checkbox" class="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0">
                 <span>비밀 메시지로 보내기 (받는 사람만 한 번 볼 수 있음)</span>
-            </label>` : ''}
+            </label>
         `;
 
         const cancelBtn = preview.querySelector('.cancel-reply-btn');
@@ -1795,11 +1789,9 @@ export class UIManager {
         });
 
         const secretCheckbox = preview.querySelector('#secret-reply-checkbox');
-        if (secretCheckbox) {
-            secretCheckbox.addEventListener('change', (e) => {
-                this.replyingTo.isSecret = e.target.checked;
-            });
-        }
+        secretCheckbox.addEventListener('change', (e) => {
+            this.replyingTo.isSecret = e.target.checked;
+        });
 
         // 메시지 입력 폼 앞에 삽입
         this.messageForm.parentElement.insertBefore(preview, this.messageForm);
