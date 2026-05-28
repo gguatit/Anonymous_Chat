@@ -365,14 +365,32 @@ export class UIManager {
         });
     }
 
+    _getThemeHueRange() {
+        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const ranges = {
+            dark:       { min: 0,   max: 360, sat: 25, lgt: 28, alpha: 0.8 },
+            light:      { min: 0,   max: 360, sat: 30, lgt: 75, alpha: 0.85 },
+            midnight:   { min: 210, max: 270, sat: 20, lgt: 25, alpha: 0.8 },
+            ocean:      { min: 160, max: 210, sat: 25, lgt: 30, alpha: 0.8 },
+            forest:     { min: 80,  max: 160, sat: 25, lgt: 30, alpha: 0.8 },
+            amethyst:   { min: 240, max: 320, sat: 25, lgt: 28, alpha: 0.8 },
+            sunset:     { min: 0,   max: 50,  sat: 35, lgt: 30, alpha: 0.8 },
+            sakura:     { min: 310, max: 360, sat: 25, lgt: 35, alpha: 0.8 },
+        };
+        return ranges[theme] || ranges.dark;
+    }
+
     _getSenderHue(sessionId) {
-        if (!sessionId) return 220;
+        if (!sessionId) return { hue: 220, sat: 25, lgt: 28, alpha: 0.8 };
         let hash = 0;
         for (let i = 0; i < sessionId.length; i++) {
             hash = ((hash << 5) - hash) + sessionId.charCodeAt(i);
             hash |= 0;
         }
-        return Math.abs(hash % 360);
+        const range = this._getThemeHueRange();
+        const span = range.max - range.min;
+        const hue = range.min + (Math.abs(hash) % Math.max(span, 1));
+        return { hue: hue, sat: range.sat, lgt: range.lgt, alpha: range.alpha };
     }
 
     _renderSingleMessage(data, sessionId) {
@@ -500,8 +518,8 @@ export class UIManager {
             wrapper.classList.add(isOwnMessage ? 'items-end' : 'items-start');
             if (isOwnMessage) wrapper.style.marginLeft = 'auto';
             const nameLabel = document.createElement('div');
-            const hue = isOwnMessage ? null : this._getSenderHue(data.sessionId);
-            const colorStyle = hue !== null ? `color: hsl(${hue}, 60%, 65%)` : 'color: var(--c-blue-300)';
+            const senderColor = isOwnMessage ? null : this._getSenderHue(data.sessionId);
+            const colorStyle = senderColor !== null ? `color: hsl(${senderColor.hue}, ${senderColor.sat + 30}%, ${senderColor.lgt + 35}%)` : 'color: var(--c-blue-300)';
             nameLabel.className = 'msg-sender-label px-1';
             nameLabel.setAttribute('style', colorStyle);
             nameLabel.textContent = isOwnMessage ? `\uB098 (${senderName})` : senderName;
@@ -527,8 +545,8 @@ export class UIManager {
             bubble.style.setProperty('--bubble-bg', 'rgba(30,58,138,0.8)');
             bubble.style.backgroundColor = 'rgba(30,58,138,0.8)';
         } else {
-            const hue = this._getSenderHue(data.sessionId);
-            const bgColor = `hsla(${hue}, 25%, 28%, 0.8)`;
+            const senderColor = this._getSenderHue(data.sessionId);
+            const bgColor = `hsla(${senderColor.hue}, ${senderColor.sat}%, ${senderColor.lgt}%, ${senderColor.alpha})`;
             bubble.className = 'message-enter-other msg-bubble msg-bubble-other';
             bubble.style.setProperty('--bubble-bg', bgColor);
             bubble.style.backgroundColor = bgColor;
