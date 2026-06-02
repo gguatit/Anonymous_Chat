@@ -107,53 +107,85 @@ async function callAI(env, messages, mode) {
 }
 
 async function broadcastSummary(env, content, mode) {
-    const resp = await forwardToDO(env, '/broadcast-summary', {
-        method: 'POST',
-        json: { content, mode }
-    });
-    return resp.ok;
+    try {
+        const resp = await forwardToDO(env, '/broadcast-summary', {
+            method: 'POST',
+            json: { content, mode }
+        });
+        return resp.ok;
+    } catch (err) {
+        console.error('Summary: broadcastSummary DO call failed:', err.message);
+        return false;
+    }
 }
 
 export async function handleSummary(request, env, corsHeaders) {
+    let mode = 'default';
     try {
-        let mode = 'default';
-        try {
-            const body = await safeJson(request);
-            if (body && ['default', 'topic', 'mood', 'conflict'].includes(body.mode)) {
-                mode = body.mode;
-            }
-        } catch (_e) { /* expected: invalid JSON body, fall back to default mode */ }
-
-        const doResp = await forwardToDO(env, '/messages/recent', { method: 'GET' });
-
-        if (!doResp.ok) {
-            return new Response(JSON.stringify({ error: '메시지를 가져올 수 없습니다.' }), {
-                status: 502,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+        const body = await safeJson(request);
+        if (body && ['default', 'topic', 'mood', 'conflict'].includes(body.mode)) {
+            mode = body.mode;
         }
+    } catch (_e) { /* expected: invalid JSON body, fall back to default mode */ }
 
-        const messages = await doResp.json();
-
-        let summary;
-        if (!messages || messages.length === 0) {
-            summary = '아직 대화가 충분하지 않아요. 조금 더 채팅한 후에 요약을 요청해주세요.';
-            mode = 'default';
-        } else {
-            summary = await callAI(env, messages, mode);
-        }
-
-        const ok = await broadcastSummary(env, summary, mode);
-        if (!ok) {
-            throw new Error('Failed to broadcast summary');
-        }
-
-        return new Response(null, { status: 204, headers: corsHeaders });
+    let doResp;
+    try {
+        doResp = await forwardToDO(env, '/messages/recent', { method: 'GET' });
     } catch (err) {
-        console.error('Summary handler error:', err);
-        return new Response(JSON.stringify({ error: '요약 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }), {
-            status: 500,
+        console.error('Summary: Failed to fetch messages from DO:', err.message);
+        return new Response(JSON.stringify({ error: '메시지를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.' }), {
+            status: 502,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
+
+    if (!doResp.ok) {
+        return new Response(JSON.stringify({ error: '대화 데이터를 불러올 수 없습니다.' }), {
+            status: 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    let messages;
+    try {
+        messages = await doResp.json();
+    } catch (err) {
+        console.error('Summary: Failed to parse messages JSON:', err.message);
+        return new Response(JSON.stringify({ error: '대화 데이터 처리 중 오류가 발생했습니다.' }), {
+            status: 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    let summary;
+    if (!messages || messages.length === 0) {
+        summary = '아직 대화가 충분하지 않아요. 조금 더 채팅한 후에 요약을 요청해주세요.';
+        mode = 'default';
+    } else {
+        try {
+            summary = await callAI(env, messages, mode);
+        } catch (err) {
+            console.error('Summary: AI model call failed:', err.message);
+            return new Response(JSON.stringify({ error: 'AI 요약 모델이 현재 사용 불가능합니다. 잠시 후 다시 시도해주세요.' }), {
+                status: 503,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+    }
+
+    let ok;
+    try {
+        ok = await broadcastSummary(env, summary, mode);
+    } catch (err) {
+        console.error('Summary: Broadcast failed:', err.message);
+    }
+
+    if (!ok) {
+        return new Response(JSON.stringify({ error: '요약을 채팅방에 전달하지 못했습니다.' }), {
+            status: 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    return new Response(null, { status: 204, headers: corsHeaders });
 }
