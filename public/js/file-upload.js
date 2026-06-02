@@ -43,11 +43,21 @@ export class FileUploadManager {
             }
         });
 
-        // Remove file
+        // Remove all files
         this.removeFileBtn.addEventListener('click', () => {
             if (!this.isUploading) {
                 this.clearFiles();
             }
+        });
+
+        // Remove individual file (event delegation — handles async image thumbnails)
+        this.previewGallery.addEventListener('click', (e) => {
+            const btn = e.target.closest('.remove-file-btn');
+            if (!btn) return;
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.index);
+            this.selectedFiles.splice(idx, 1);
+            this.showPreview();
         });
 
         // Clipboard image paste
@@ -135,16 +145,6 @@ export class FileUploadManager {
             }
             
             this.previewGallery.appendChild(item);
-        });
-
-        // Add remove button listeners
-        this.previewGallery.querySelectorAll('.remove-file-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const idx = parseInt(btn.dataset.index);
-                this.selectedFiles.splice(idx, 1);
-                this.showPreview();
-            });
         });
 
         this.filePreview.classList.remove('hidden');

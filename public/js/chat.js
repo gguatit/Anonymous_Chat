@@ -503,6 +503,7 @@ class ChatClient {
             case 'connected':
                 statusText = '연결됨';
                 this.ui.setInputEnabled(true);
+                this.ui.messageInput.focus();
                 // 재연결 시에도 기존 메시지는 유지됨 (중복 체크로 자동 필터링)
                 break;
             case 'disconnected':
@@ -672,7 +673,8 @@ class ChatClient {
 
         this.lastMessageTime = now;
         this.ui.clearInput();
-        this.ui.cancelReply(); // \ub2f5\uc7a5 \uc0c1\ud0dc \ucd08\uae30\ud654
+        this.ui.cancelReply(); // 답장 상태 초기화
+        this.ui.messageInput.focus();
     }
 
     // Note: 서명 생성은 서버에서만 수행됨 (보안 강화)
