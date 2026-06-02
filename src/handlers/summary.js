@@ -173,18 +173,10 @@ export async function handleSummary(request, env, corsHeaders) {
         }
     }
 
-    let ok;
     try {
-        ok = await broadcastSummary(env, summary, mode);
+        await broadcastSummary(env, summary, mode);
     } catch (err) {
         console.error('Summary: Broadcast failed:', err.message);
-    }
-
-    if (!ok) {
-        return new Response(JSON.stringify({ error: '요약을 채팅방에 전달하지 못했습니다.' }), {
-            status: 502,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
     }
 
     return new Response(null, { status: 204, headers: corsHeaders });

@@ -126,10 +126,13 @@ export class OGPreviewManager {
         });
     }
 
-    enrichMessage(element) {
+    async enrichMessage(element) {
         if (!element) return;
         const links = element.querySelectorAll('a[href^="http"]');
-        links.forEach(link => this.enrichUrlLink(link));
+        for (const link of links) {
+            this.enrichUrlLink(link);
+            await new Promise(r => setTimeout(r, 150));
+        }
     }
 
     _esc(text) {

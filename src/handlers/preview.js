@@ -2,8 +2,8 @@ import { safeJson } from '../utils/helpers.js';
 
 const OG_CACHE_TTL = 3600;
 const MAX_BODY_BYTES = 32768;
-const RATE_LIMIT_WINDOW = 10000;
-const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW = 12000;
+const RATE_LIMIT_MAX = 8;
 
 const rateLimitMap = new Map();
 

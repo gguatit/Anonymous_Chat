@@ -935,7 +935,11 @@ class ChatClient {
             });
             if (res.status !== 204 && !res.ok) {
                 const data = await res.json().catch(() => ({}));
-                this.ui.displayError(data.error || '요약 생성에 실패했습니다.');
+                if (res.status === 503) {
+                    this.ui.displayError('AI 모델이 혼잡합니다. 1~2분 후 다시 시도해주세요.');
+                } else {
+                    this.ui.displayError(data.error || '요약 생성에 실패했습니다.');
+                }
             }
         } catch (_err) {
             this.ui.displayError('요약 요청 중 오류가 발생했습니다.');
