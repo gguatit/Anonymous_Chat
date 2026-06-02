@@ -1185,6 +1185,8 @@ export class UIManager {
         if (content.includes('AI가 대화 요약을 생성 중입니다')) {
             messageDiv.setAttribute('data-loading-summary', 'true');
         }
+
+        return messageDiv;
     }
 
     _clearLoadingSummary() {

@@ -926,13 +926,14 @@ class ChatClient {
 
     async requestSummary(mode = 'default') {
         this.ui.clearInput();
-        this.ui.displaySystemMessage('AI가 대화 요약을 생성 중입니다...');
+        const loadingMsg = this.ui.displaySystemMessage('AI가 대화 요약을 생성 중입니다...');
         try {
             const res = await fetch('/api/summary', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mode })
             });
+            loadingMsg.remove();
             if (res.status !== 204 && !res.ok) {
                 const data = await res.json().catch(() => ({}));
                 if (res.status === 503) {
@@ -942,6 +943,7 @@ class ChatClient {
                 }
             }
         } catch (_err) {
+            loadingMsg.remove();
             this.ui.displayError('요약 요청 중 오류가 발생했습니다.');
         }
     }
