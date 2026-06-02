@@ -305,6 +305,7 @@ class ChatClient {
             case 'history':
                 if (data.messages && data.messages.length > 0) {
                     this.ui.displayBatchMessages(data.messages, this.sessionManager.getSessionId());
+                    this.ui.scrollToBottom();
                     if (this.ogPreview) {
                         this.ogPreview.enrichMessage(this.ui.messagesContainer);
                     }
