@@ -108,8 +108,8 @@ class AdminDashboard {
             this.adminAnnounceInput.addEventListener('input', () => {
                 const len = this.adminAnnounceInput.value.length;
                 if (counter) {
-                    counter.textContent = `${len} / 5000`;
-                    counter.className = len > 4500 ? 'text-xs text-red-400' : len > 4000 ? 'text-xs text-yellow-400' : 'text-xs text-gray-500';
+                    counter.textContent = `${len} / 7500`;
+                    counter.className = len > 7000 ? 'text-xs text-red-400' : len > 6000 ? 'text-xs text-yellow-400' : 'text-xs text-gray-500';
                 }
             });
         }

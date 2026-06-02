@@ -114,8 +114,8 @@ const dataMethods = {
             return;
         }
 
-        if (raw.length > 5000) {
-            alert('메시지는 최대 5000자까지 가능합니다.');
+        if (raw.length > 7500) {
+            alert('메시지는 최대 7500자까지 가능합니다.');
             return;
         }
 
@@ -158,8 +158,8 @@ const dataMethods = {
             return;
         }
 
-        if (raw.length > 5000) {
-            alert('공지사항은 최대 5000자까지 가능합니다.');
+        if (raw.length > 7500) {
+            alert('공지사항은 최대 7500자까지 가능합니다.');
             return;
         }
 

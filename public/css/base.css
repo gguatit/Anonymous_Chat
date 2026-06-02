@@ -18,7 +18,7 @@ body {
 
 /* Message input textarea — auto-resize with hidden scrollbar */
 #message-input {
-    max-height: 150px;
+    max-height: 200px;
     overflow-y: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;

@@ -7,7 +7,7 @@ export const RATE_LIMIT = {
 
 // Security configuration
 export const SECURITY = {
-    MAX_MESSAGE_LENGTH: 5000,
+    MAX_MESSAGE_LENGTH: 7500,
     ALLOWED_ORIGINS: [
         'https://kalpha.mmv.kr',
         'http://localhost:8787',

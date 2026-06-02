@@ -525,7 +525,7 @@ const RATE_LIMIT = {
 
 ```javascript
 const SECURITY = {
-    MAX_MESSAGE_LENGTH: 5000,
+    MAX_MESSAGE_LENGTH: 7500,
     BANNED_IPS: new Set([
         '192.168.1.1',
         '10.0.0.1'
@@ -701,7 +701,7 @@ if (messagesThisMinute >= MAX_MESSAGES_PER_MINUTE) {
 - Cloudflare의 네트워크 레벨 DDoS 보호
 - IP당 동시 연결 수 제한
 - 지수적 백오프 재연결 (최대 10회)
-- 메시지 크기 제한 (5000자)
+- 메시지 크기 제한 (7500자)
 
 </details>
 
@@ -1178,13 +1178,13 @@ wrangler rollback [deployment-id]
 **원인:**
 
 - Rate Limiting 제한 (1초당 1개)
-- 메시지 길이 초과 (5000자)
+- 메시지 길이 초과 (7500자)
 - 세션 만료
 
 **해결:**
 
 1. 1초 이상 간격을 두고 메시지 전송
-2. 메시지 길이 5000자 이하로 줄이기
+2. 메시지 길이 7500자 이하로 줄이기
 3. 페이지 새로고침 (새 세션 생성)
 
 </details>
