@@ -11,8 +11,10 @@ dist/
 
 # Environment files
 .env
-.env.local
+.env.*
 .dev.vars
+*.pem
+*.key
 
 # Wrangler
 .wrangler/
@@ -39,6 +41,7 @@ coverage/
 # Temporary files
 tmp/
 temp/
+*.tgz
 firebase-service-account.json
 google-services.json
 
