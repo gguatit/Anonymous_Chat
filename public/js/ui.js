@@ -1186,6 +1186,11 @@ export class UIManager {
             messageDiv.setAttribute('data-loading-summary', 'true');
         }
 
+        // Auto-remove transient notifications after 3.5 seconds
+        if (content.includes('입장했습니다')) {
+            setTimeout(() => messageDiv.remove(), 3500);
+        }
+
         return messageDiv;
     }
 
