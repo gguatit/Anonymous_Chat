@@ -154,9 +154,15 @@ export class UIManager {
             }
         });
 
-        // Character count
+        // Character count + auto-resize textarea
         this.messageInput.addEventListener('input', () => {
             this.charCount.textContent = this.messageInput.value.length;
+
+            this.messageInput.style.height = 'auto';
+            const maxH = 150;
+            const scrollH = this.messageInput.scrollHeight;
+            this.messageInput.style.height = Math.min(scrollH, maxH) + 'px';
+            this.messageInput.style.overflowY = scrollH > maxH ? 'auto' : 'hidden';
         });
 
         // Scroll button
@@ -1300,6 +1306,7 @@ export class UIManager {
     clearInput() {
         this.messageInput.value = '';
         this.charCount.textContent = '0';
+        this.messageInput.style.height = '';
     }
 
     getInputValue() {

@@ -16,17 +16,16 @@ body {
     /* Chrome, Safari, Opera */
 }
 
-/* Hide scrollbar for message input textarea */
+/* Message input textarea — auto-resize with hidden scrollbar */
 #message-input {
+    max-height: 150px;
+    overflow-y: hidden;
     scrollbar-width: none;
-    /* Firefox */
     -ms-overflow-style: none;
-    /* IE and Edge */
 }
 
 #message-input::-webkit-scrollbar {
     display: none;
-    /* Chrome, Safari, Opera */
 }
 
 /* Scroll to bottom button */
