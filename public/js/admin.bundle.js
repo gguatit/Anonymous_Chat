@@ -1,5 +1,318 @@
-var R={_token:null,setToken(t){this._token=t},getToken(){return this._token},headers(t={}){let e={...t};return this._token&&(e.Authorization=`Bearer ${this._token}`),e},async request(t,e={}){return await fetch(t,{...e,headers:this.headers(e.headers||{})})},async get(t){let e=await this.request(t);if(!e.ok)throw new Error(`GET ${t} failed: ${e.status}`);return e.json()},async getRaw(t){return await this.request(t)},async post(t,e){return(await this.request(t,{method:"POST",headers:{"Content-Type":"application/json"},body:e?JSON.stringify(e):void 0})).json().catch(()=>null)},async postRaw(t,e){return await this.request(t,{method:"POST",headers:{"Content-Type":"application/json"},body:e?JSON.stringify(e):void 0})},async put(t,e){return(await this.request(t,{method:"PUT",headers:{"Content-Type":"application/json"},body:e?JSON.stringify(e):void 0})).json().catch(()=>null)},async del(t,e){return(await this.request(t,{method:"DELETE",headers:{"Content-Type":"application/json"},body:e?JSON.stringify(e):void 0})).json().catch(()=>null)}},v=R;function b(t){let e=document.createElement("div");return e.textContent=String(t||""),e.innerHTML}function $(t){try{let e=t.match(/^https?:\/\//)?t:"https://"+t,n=new URL(e);if(!t.match(/^https?:\/\//)){let s=n.hostname;if(!s||!s.includes(".")||s.split(".").pop().length<2)return!1}return n.protocol==="http:"||n.protocol==="https:"}catch{return!1}}function B(t){return $(t)?(t.match(/^https?:\/\//)?t:"https://"+t).replace(/"/g,"&quot;").replace(/'/g,"&#39;"):"#"}function C(t){if(!t&&t!==0)return"";if(t===0)return"0 B";let e=1024,n=["B","KB","MB","GB","TB"],s=Math.floor(Math.log(t)/Math.log(e));return`${(t/Math.pow(e,s)).toFixed(s===0?0:2)} ${n[s]}`}var O='a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';function S(t){if(!t)return function(){};let e=Array.from(t.querySelectorAll(O));if(e.length===0)return function(){};let n=e[0],s=e[e.length-1];n.focus();function a(r){r.key==="Tab"&&(r.shiftKey&&document.activeElement===n?(r.preventDefault(),s.focus()):!r.shiftKey&&document.activeElement===s&&(r.preventDefault(),n.focus()))}return t.addEventListener("keydown",a),function(){t.removeEventListener("keydown",a)}}function T(t,e,n){if(!t)return function(){return function(){}};t.classList.remove("hidden");let s=S(t),a=e?t.querySelectorAll(e):[];function r(){t.classList.add("hidden"),s(),n&&typeof n.focus=="function"&&n.focus(),document.removeEventListener("keydown",o),a.forEach(i=>i.removeEventListener("click",r))}function o(i){i.key==="Escape"&&r()}function l(i){i.target===t&&r()}return document.addEventListener("keydown",o),t.addEventListener("click",l),a.forEach(i=>i.addEventListener("click",r)),r}function _(t){if(!t)return;let e=document.createEvent("Event");e.initEvent("modal:hide",!0,!0),t.dispatchEvent(e),t.classList.add("hidden")}var H={async exportCsv(){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}try{let[t,e]=await Promise.all([v.getRaw("/api/admin/sessions"),v.getRaw("/api/admin/messages")]);if(!t.ok||!e.ok){alert("\uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.");return}let n=await t.json(),s=await e.json(),a=new Map;for(let c of n)a.set(c.sessionId,c);let r=[],o=["user_session_id","user_ip","user_join_time","user_message_count","user_last_message_time","message_id","message_timestamp","message_content","message_edited_at","file_url","file_name","file_size","file_type"];for(let c of s){let h=a.get(c.sessionId)||{};r.push([h.sessionId||c.sessionId||"",h.ip||"",h.joinTime?new Date(h.joinTime).toISOString():"",h.messageCount!=null?h.messageCount:"",h.lastMessageTime?new Date(h.lastMessageTime).toISOString():"",c.messageId||"",c.timestamp?new Date(c.timestamp).toISOString():"",c.content||"",c.editedAt?new Date(c.editedAt).toISOString():"",c.file?.url||"",c.file?.filename||"",c.file?.filesize!=null?String(c.file.filesize):"",c.file?.filetype||""])}for(let[c,h]of a.entries())s.some(m=>m.sessionId===c)||r.push([h.sessionId||c,h.ip||"",h.joinTime?new Date(h.joinTime).toISOString():"",h.messageCount!=null?h.messageCount:"",h.lastMessageTime?new Date(h.lastMessageTime).toISOString():"","","","","","","","",""]);let l=c=>c==null?"":'"'+String(c).replace(/"/g,'""')+'"',i=[o.map(c=>l(c)).join(",")].concat(r.map(c=>c.map(h=>l(h)).join(","))).join(`
-`),u="\uFEFF",x=new Blob([u+i],{type:"text/csv;charset=utf-8;"}),f=URL.createObjectURL(x),g=document.createElement("a");g.href=f,g.download=`anonymous_chat_export_${new Date().toISOString().replace(/[:.]/g,"-")}.csv`,document.body.appendChild(g),g.click(),g.remove(),URL.revokeObjectURL(f)}catch(t){console.error("Export CSV error:",t),alert("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uCF58\uC194\uC744 \uD655\uC778\uD558\uC138\uC694.")}},async sendAdminBroadcast(){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}let t=this.adminMessageInput?.value||"";if(!t.trim()){alert("\uBA54\uC2DC\uC9C0\uB97C \uC785\uB825\uD558\uC138\uC694.");return}if(t.length>7500){alert("\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");return}try{let n=await v.postRaw("/api/admin/broadcast",{content:t});if(!n.ok){let s=await n.json().catch(()=>null);console.error("Broadcast failed",s),alert("\uBA54\uC2DC\uC9C0 \uC804\uC1A1\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");return}this.adminMessageInput&&(this.adminMessageInput.value=""),this.refreshData()}catch(n){console.error("sendAdminBroadcast error:",n),alert("\uBA54\uC2DC\uC9C0 \uC804\uC1A1 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}},async sendAdminAnnounce(){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}let t=this.adminAnnounceInput?.value||"",e=t.trim();if(!e){alert("\uACF5\uC9C0 \uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694.");return}if(t.length>7500){alert("\uACF5\uC9C0\uC0AC\uD56D\uC740 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");return}let n=this.emergencyCheckbox?.checked||!1;if(n&&!await new Promise(l=>{let i=document.createElement("div");i.className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50",i.innerHTML=`
+// public/js/api-client.js
+var ApiClient = {
+  _token: null,
+  setToken(token) {
+    this._token = token;
+  },
+  getToken() {
+    return this._token;
+  },
+  headers(extra = {}) {
+    const h = { ...extra };
+    if (this._token) {
+      h["Authorization"] = `Bearer ${this._token}`;
+    }
+    return h;
+  },
+  async request(url, options = {}) {
+    const res = await fetch(url, {
+      ...options,
+      headers: this.headers(options.headers || {})
+    });
+    return res;
+  },
+  async get(url) {
+    const res = await this.request(url);
+    if (!res.ok) {
+      throw new Error(`GET ${url} failed: ${res.status}`);
+    }
+    return res.json();
+  },
+  async getRaw(url) {
+    const res = await this.request(url);
+    return res;
+  },
+  async post(url, body) {
+    const res = await this.request(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : void 0
+    });
+    return res.json().catch(() => null);
+  },
+  async postRaw(url, body) {
+    const res = await this.request(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : void 0
+    });
+    return res;
+  },
+  async put(url, body) {
+    const res = await this.request(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : void 0
+    });
+    return res.json().catch(() => null);
+  },
+  async del(url, body) {
+    const res = await this.request(url, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : void 0
+    });
+    return res.json().catch(() => null);
+  }
+};
+var api_client_default = ApiClient;
+
+// public/js/utils.js
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = String(text || "");
+  return div.innerHTML;
+}
+function isValidUrl(url) {
+  try {
+    const urlWithProtocol = url.match(/^https?:\/\//) ? url : "https://" + url;
+    const parsed = new URL(urlWithProtocol);
+    if (!url.match(/^https?:\/\//)) {
+      const domain = parsed.hostname;
+      if (!domain || !domain.includes(".") || domain.split(".").pop().length < 2) {
+        return false;
+      }
+    }
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch (_e) {
+    return false;
+  }
+}
+function sanitizeUrl(url) {
+  if (!isValidUrl(url)) return "#";
+  const safeUrl = url.match(/^https?:\/\//) ? url : "https://" + url;
+  return safeUrl.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function formatFileSize(bytes) {
+  if (!bytes && bytes !== 0) return "";
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const size = (bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 2);
+  return `${size} ${sizes[i]}`;
+}
+
+// public/js/admin-utils.js
+var FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+function trapFocus(modalEl) {
+  if (!modalEl) return function cleanup() {
+  };
+  const focusable = Array.from(modalEl.querySelectorAll(FOCUSABLE));
+  if (focusable.length === 0) return function cleanup() {
+  };
+  const firstEl = focusable[0];
+  const lastEl = focusable[focusable.length - 1];
+  firstEl.focus();
+  function handler(e) {
+    if (e.key !== "Tab") return;
+    if (e.shiftKey && document.activeElement === firstEl) {
+      e.preventDefault();
+      lastEl.focus();
+    } else if (!e.shiftKey && document.activeElement === lastEl) {
+      e.preventDefault();
+      firstEl.focus();
+    }
+  }
+  modalEl.addEventListener("keydown", handler);
+  return function cleanup() {
+    modalEl.removeEventListener("keydown", handler);
+  };
+}
+function showModal(modalEl, closeSelector, previousActiveEl) {
+  if (!modalEl) return function cleanup2() {
+    return function cleanup3() {
+    };
+  };
+  modalEl.classList.remove("hidden");
+  const cleanup = trapFocus(modalEl);
+  const triggers = closeSelector ? modalEl.querySelectorAll(closeSelector) : [];
+  function hideHandler() {
+    modalEl.classList.add("hidden");
+    cleanup();
+    if (previousActiveEl && typeof previousActiveEl.focus === "function") {
+      previousActiveEl.focus();
+    }
+    document.removeEventListener("keydown", escHandler);
+    triggers.forEach((btn) => btn.removeEventListener("click", hideHandler));
+  }
+  function escHandler(e) {
+    if (e.key === "Escape") hideHandler();
+  }
+  function clickHandler(e) {
+    if (e.target === modalEl) hideHandler();
+  }
+  document.addEventListener("keydown", escHandler);
+  modalEl.addEventListener("click", clickHandler);
+  triggers.forEach((btn) => btn.addEventListener("click", hideHandler));
+  return hideHandler;
+}
+function hideModal(modalEl) {
+  if (!modalEl) return;
+  const hidden = document.createEvent("Event");
+  hidden.initEvent("modal:hide", true, true);
+  modalEl.dispatchEvent(hidden);
+  modalEl.classList.add("hidden");
+}
+
+// public/js/admin-data.js
+var dataMethods = {
+  async exportCsv() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    try {
+      const [sessionsResp, messagesResp] = await Promise.all([
+        api_client_default.getRaw("/api/admin/sessions"),
+        api_client_default.getRaw("/api/admin/messages")
+      ]);
+      if (!sessionsResp.ok || !messagesResp.ok) {
+        alert("\uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.");
+        return;
+      }
+      const sessions = await sessionsResp.json();
+      const messages = await messagesResp.json();
+      const usersMap = /* @__PURE__ */ new Map();
+      for (const s of sessions) {
+        usersMap.set(s.sessionId, s);
+      }
+      const rows = [];
+      const headers = [
+        "user_session_id",
+        "user_ip",
+        "user_join_time",
+        "user_message_count",
+        "user_last_message_time",
+        "message_id",
+        "message_timestamp",
+        "message_content",
+        "message_edited_at",
+        "file_url",
+        "file_name",
+        "file_size",
+        "file_type"
+      ];
+      for (const msg of messages) {
+        const user = usersMap.get(msg.sessionId) || {};
+        rows.push([
+          user.sessionId || msg.sessionId || "",
+          user.ip || "",
+          user.joinTime ? new Date(user.joinTime).toISOString() : "",
+          user.messageCount != null ? user.messageCount : "",
+          user.lastMessageTime ? new Date(user.lastMessageTime).toISOString() : "",
+          msg.messageId || "",
+          msg.timestamp ? new Date(msg.timestamp).toISOString() : "",
+          msg.content || "",
+          msg.editedAt ? new Date(msg.editedAt).toISOString() : "",
+          msg.file?.url || "",
+          msg.file?.filename || "",
+          msg.file?.filesize != null ? String(msg.file.filesize) : "",
+          msg.file?.filetype || ""
+        ]);
+      }
+      for (const [sessionId, user] of usersMap.entries()) {
+        const hasMessage = messages.some((m) => m.sessionId === sessionId);
+        if (!hasMessage) {
+          rows.push([
+            user.sessionId || sessionId,
+            user.ip || "",
+            user.joinTime ? new Date(user.joinTime).toISOString() : "",
+            user.messageCount != null ? user.messageCount : "",
+            user.lastMessageTime ? new Date(user.lastMessageTime).toISOString() : "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]);
+        }
+      }
+      const escape = (value) => {
+        if (value == null) return "";
+        const str = String(value);
+        return '"' + str.replace(/"/g, '""') + '"';
+      };
+      const csvContent = [headers.map((h) => escape(h)).join(",")].concat(rows.map((r) => r.map((cell) => escape(cell)).join(","))).join("\n");
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `anonymous_chat_export_${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export CSV error:", error);
+      alert("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uCF58\uC194\uC744 \uD655\uC778\uD558\uC138\uC694.");
+    }
+  },
+  async sendAdminBroadcast() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    const raw = this.adminMessageInput?.value || "";
+    const content = raw.trim();
+    if (!content) {
+      alert("\uBA54\uC2DC\uC9C0\uB97C \uC785\uB825\uD558\uC138\uC694.");
+      return;
+    }
+    if (raw.length > 7500) {
+      alert("\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    try {
+      const response = await api_client_default.postRaw("/api/admin/broadcast", { content: raw });
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        console.error("Broadcast failed", err);
+        alert("\uBA54\uC2DC\uC9C0 \uC804\uC1A1\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      if (this.adminMessageInput) this.adminMessageInput.value = "";
+      this.refreshData();
+    } catch (error) {
+      console.error("sendAdminBroadcast error:", error);
+      alert("\uBA54\uC2DC\uC9C0 \uC804\uC1A1 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async sendAdminAnnounce() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    const raw = this.adminAnnounceInput?.value || "";
+    const content = raw.trim();
+    if (!content) {
+      alert("\uACF5\uC9C0 \uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694.");
+      return;
+    }
+    if (raw.length > 7500) {
+      alert("\uACF5\uC9C0\uC0AC\uD56D\uC740 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    const isEmergency = this.emergencyCheckbox?.checked || false;
+    if (isEmergency) {
+      const confirmed = await new Promise((resolve) => {
+        const modal = document.createElement("div");
+        modal.className = "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50";
+        modal.innerHTML = `
             <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-red-500/30">
                 <div class="flex items-center gap-2 mb-3">
                     <span class="text-2xl">\u{1F6A8}</span>
@@ -7,12 +320,87 @@ var R={_token:null,setToken(t){this._token=t},getToken(){return this._token},hea
                 </div>
                 <p class="text-sm text-gray-300 mb-1">\uC815\uB9D0 <span class="text-red-400 font-semibold">\uAE34\uAE09 \uACF5\uC9C0</span>\uB85C \uBC1C\uC1A1\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?</p>
                 <p class="text-xs text-gray-500 mb-4">\uAE34\uAE09 \uACF5\uC9C0\uB294 \uBAA8\uB4E0 \uC0AC\uC6A9\uC790\uB97C \uACF5\uC9C0 \uD398\uC774\uC9C0\uB85C \uAC15\uC81C \uC774\uB3D9\uC2DC\uD0B5\uB2C8\uB2E4.</p>
-                <div class="text-xs text-gray-600 bg-gray-900 rounded p-2 mb-4 max-h-24 overflow-y-auto">${this.escapeHtml(e.substring(0,200))}${e.length>200?"...":""}</div>
+                <div class="text-xs text-gray-600 bg-gray-900 rounded p-2 mb-4 max-h-24 overflow-y-auto">${this.escapeHtml(content.substring(0, 200))}${content.length > 200 ? "..." : ""}</div>
                 <div class="flex gap-3 justify-end">
                     <button class="cancel-btn bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">\uCDE8\uC18C</button>
                     <button class="confirm-btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">\uAE34\uAE09 \uBC1C\uC1A1</button>
                 </div>
-            </div>`,document.body.appendChild(i),i.querySelector(".cancel-btn").onclick=()=>{i.remove(),l(!1)},i.querySelector(".confirm-btn").onclick=()=>{i.remove(),l(!0)},i.addEventListener("click",u=>{u.target===i&&(i.remove(),l(!1))})}))return;let s={content:t,isEmergency:n};if(n){let o=parseInt(this.emergencyDuration?.value||"0");o>0&&(s.emergencyUntil=Date.now()+o)}if((this.scheduleCheckbox?.checked||!1)&&this.scheduleDatetime?.value&&(s.scheduleAt=new Date(this.scheduleDatetime.value).getTime(),s.scheduleAt<=Date.now())){alert("\uC608\uC57D \uC2DC\uAC04\uC740 \uD604\uC7AC\uBCF4\uB2E4 \uC774\uD6C4\uC5EC\uC57C \uD569\uB2C8\uB2E4.");return}let r=parseInt(this.announceExpirySelect?.value||"0");r>0&&(s.expiresAt=Date.now()+r);try{let o=await fetch("/api/admin/announce",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`},body:JSON.stringify(s)});if(!o.ok){let i=await o.json().catch(()=>null);console.error("Announce failed",i),alert("\uACF5\uC9C0 \uC804\uC1A1\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");return}let l=await o.json();l.sessionsNotified!==void 0?alert(`\uACF5\uC9C0\uAC00 ${l.sessionsNotified}\uBA85\uC758 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC804\uC1A1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`):alert("\uACF5\uC9C0\uAC00 \uC804\uC1A1\uB418\uC5C8\uC2B5\uB2C8\uB2E4."),this.adminAnnounceInput&&(this.adminAnnounceInput.value=""),this.emergencyCheckbox&&(this.emergencyCheckbox.checked=!1),this.emergencyDuration&&this.emergencyDuration.classList.add("hidden"),this.refreshData()}catch(o){console.error("sendAdminAnnounce error:",o),alert("\uACF5\uC9C0 \uC804\uC1A1 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}},async deleteAllMessages(){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}let t=document.createElement("div");t.className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",t.innerHTML=`
+            </div>`;
+        document.body.appendChild(modal);
+        modal.querySelector(".cancel-btn").onclick = () => {
+          modal.remove();
+          resolve(false);
+        };
+        modal.querySelector(".confirm-btn").onclick = () => {
+          modal.remove();
+          resolve(true);
+        };
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) {
+            modal.remove();
+            resolve(false);
+          }
+        });
+      });
+      if (!confirmed) return;
+    }
+    const body = { content: raw, isEmergency };
+    if (isEmergency) {
+      const duration = parseInt(this.emergencyDuration?.value || "0");
+      if (duration > 0) {
+        body.emergencyUntil = Date.now() + duration;
+      }
+    }
+    const isScheduled = this.scheduleCheckbox?.checked || false;
+    if (isScheduled && this.scheduleDatetime?.value) {
+      body.scheduleAt = new Date(this.scheduleDatetime.value).getTime();
+      if (body.scheduleAt <= Date.now()) {
+        alert("\uC608\uC57D \uC2DC\uAC04\uC740 \uD604\uC7AC\uBCF4\uB2E4 \uC774\uD6C4\uC5EC\uC57C \uD569\uB2C8\uB2E4.");
+        return;
+      }
+    }
+    const expiryDuration = parseInt(this.announceExpirySelect?.value || "0");
+    if (expiryDuration > 0) {
+      body.expiresAt = Date.now() + expiryDuration;
+    }
+    try {
+      const response = await fetch("/api/admin/announce", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        console.error("Announce failed", err);
+        alert("\uACF5\uC9C0 \uC804\uC1A1\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      const result = await response.json();
+      if (result.sessionsNotified !== void 0) {
+        alert(`\uACF5\uC9C0\uAC00 ${result.sessionsNotified}\uBA85\uC758 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC804\uC1A1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`);
+      } else {
+        alert("\uACF5\uC9C0\uAC00 \uC804\uC1A1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+      }
+      if (this.adminAnnounceInput) this.adminAnnounceInput.value = "";
+      if (this.emergencyCheckbox) this.emergencyCheckbox.checked = false;
+      if (this.emergencyDuration) this.emergencyDuration.classList.add("hidden");
+      this.refreshData();
+    } catch (error) {
+      console.error("sendAdminAnnounce error:", error);
+      alert("\uACF5\uC9C0 \uC804\uC1A1 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async deleteAllMessages() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    modal.innerHTML = `
             <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
                 <h3 class="text-xl font-bold text-red-400 mb-3">\u26A0\uFE0F \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C</h3>
                 <p class="text-sm text-gray-300 mb-4">\uC815\uB9D0\uB85C \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?</p>
@@ -36,94 +424,479 @@ var R={_token:null,setToken(t){this._token=t},getToken(){return this._token},hea
                     <button id="delete-all-confirm-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>\uC0AD\uC81C</button>
                 </div>
             </div>
-        `,document.body.appendChild(t),S(t);let e=t.querySelector("#delete-all-confirm-input"),n=t.querySelector("#delete-all-confirm-btn"),s=t.querySelector("#delete-all-cancel-btn"),a=t.querySelector("#delete-all-confirm-error"),r=t.querySelector(".copy-confirm-text-btn");r.addEventListener("click",async()=>{try{await navigator.clipboard.writeText("DELETE_ALL_MESSAGES");let l=r.innerHTML;r.innerHTML='<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>',setTimeout(()=>r.innerHTML=l,1500)}catch{let i=document.createElement("textarea");i.value="DELETE_ALL_MESSAGES",i.style.position="fixed",i.style.opacity="0",document.body.appendChild(i),i.select(),document.execCommand("copy"),document.body.removeChild(i)}}),e.addEventListener("input",()=>{let l=e.value==="DELETE_ALL_MESSAGES";n.disabled=!l,a.classList.add("hidden"),l?(e.classList.remove("focus:ring-red-500","border-red-500"),e.classList.add("focus:ring-green-500","border-green-500")):(e.classList.remove("focus:ring-green-500","border-green-500"),e.classList.add("focus:ring-red-500","border-red-500"))}),e.addEventListener("keydown",l=>{l.key==="Enter"&&!n.disabled&&n.click(),l.key==="Escape"&&t.remove()});let o=()=>t.remove();s.addEventListener("click",o),t.addEventListener("click",l=>{l.target===t&&o()}),n.addEventListener("click",async()=>{if(e.value!=="DELETE_ALL_MESSAGES"){a.classList.remove("hidden");return}try{let l=await fetch("/api/admin/delete-all-messages",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`},body:JSON.stringify({confirmation:"DELETE_ALL_MESSAGES"})});if(!l.ok){let u=await l.json().catch(()=>null);console.error("Delete all messages failed",u),alert("\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uCF58\uC194\uC744 \uD655\uC778\uD558\uC138\uC694.");return}let i=await l.json();t.remove(),alert(`\u2713 \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0\uAC00 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4. (${i.deletedCount}\uAC1C)`),this.refreshData()}catch(l){console.error("deleteAllMessages error:",l),t.remove(),alert("\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}}),setTimeout(()=>e.focus(),100)},async exportFilteredCsv(){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}let t=prompt(`\uB0B4\uBCF4\uB0B4\uAE30 \uC635\uC158\uC744 \uC120\uD0DD\uD558\uC138\uC694:
-1: \uC804\uCCB4 \uB370\uC774\uD130
-2: \uD65C\uC131 \uC138\uC158\uB9CC
-3: \uC624\uB298 \uBA54\uC2DC\uC9C0\uB9CC
-4: \uCD5C\uADFC 1\uC2DC\uAC04
-5: \uCD5C\uADFC 24\uC2DC\uAC04`,"1");if(t)try{let[e,n]=await Promise.all([v.getRaw("/api/admin/sessions"),v.getRaw("/api/admin/messages")]);if(!e.ok||!n.ok){alert("\uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");return}let s=await e.json(),a=await n.json(),r=Date.now(),o=3600*1e3,l=24*o,i=new Date().setHours(0,0,0,0);switch(t){case"2":{let d=new Set(s.map(p=>p.sessionId));a=a.filter(p=>d.has(p.sessionId));break}case"3":a=a.filter(d=>d.timestamp>=i);break;case"4":a=a.filter(d=>r-d.timestamp<o),s=s.filter(d=>r-d.joinTime<o);break;case"5":a=a.filter(d=>r-d.timestamp<l),s=s.filter(d=>r-d.joinTime<l);break;default:break}let u=new Map;for(let d of s)u.set(d.sessionId,d);let x=[],f=["user_session_id","user_ip","user_join_time","user_message_count","user_last_message_time","message_id","message_timestamp","message_content","message_edited_at","file_url","file_name","file_size","file_type"];for(let d of a){let p=u.get(d.sessionId)||{};x.push([p.sessionId||d.sessionId||"",p.ip||"",p.joinTime?new Date(p.joinTime).toISOString():"",p.messageCount!=null?p.messageCount:"",p.lastMessageTime?new Date(p.lastMessageTime).toISOString():"",d.messageId||"",d.timestamp?new Date(d.timestamp).toISOString():"",d.content||"",d.editedAt?new Date(d.editedAt).toISOString():"",d.file?.url||"",d.file?.filename||"",d.file?.filesize!=null?String(d.file.filesize):"",d.file?.filetype||""])}for(let[d,p]of u.entries())a.some(L=>L.sessionId===d)||x.push([p.sessionId||d,p.ip||"",p.joinTime?new Date(p.joinTime).toISOString():"",p.messageCount!=null?p.messageCount:"",p.lastMessageTime?new Date(p.lastMessageTime).toISOString():"","","","","","","","",""]);let g=d=>d==null?"":'"'+String(d).replace(/"/g,'""')+'"',c=[f.map(d=>g(d)).join(",")].concat(x.map(d=>d.map(p=>g(p)).join(","))).join(`
-`),h="\uFEFF",k=new Blob([h+c],{type:"text/csv;charset=utf-8;"}),m=URL.createObjectURL(k),y=["all","active","today","1hour","24hours"][parseInt(t)-1]||"filtered",w=document.createElement("a");w.href=m,w.download=`anonymous_chat_${y}_${new Date().toISOString().replace(/[:.]/g,"-")}.csv`,document.body.appendChild(w),w.click(),w.remove(),URL.revokeObjectURL(m)}catch(e){console.error("Export filtered CSV error:",e),alert("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}},async editAdminMessage(t,e){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}if(!e){alert("\uBA54\uC2DC\uC9C0 \uB0B4\uC6A9\uC774 \uBE44\uC5B4\uC788\uC2B5\uB2C8\uB2E4.");return}try{let n=await fetch("/api/admin/edit-message",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`},body:JSON.stringify({messageId:t,newContent:e})});if(!n.ok){let s=await n.json().catch(()=>null);console.error("Edit failed",s),alert("\uBA54\uC2DC\uC9C0 \uC218\uC815\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");return}this.refreshData()}catch(n){console.error("editAdminMessage error:",n),alert("\uBA54\uC2DC\uC9C0 \uC218\uC815 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}},async deleteMessage(t){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}try{let e=await fetch("/api/admin/delete-message",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`},body:JSON.stringify({messageId:t})});if(!e.ok){let n=await e.json().catch(()=>null);console.error("Delete failed",n),alert("\uBA54\uC2DC\uC9C0 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");return}await e.json(),this.refreshData()}catch(e){console.error("deleteMessage error:",e),alert("\uBA54\uC2DC\uC9C0 \uC0AD\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}},async kickUser(t,e=0){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}try{let n=await fetch("/api/admin/kick-user",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`},body:JSON.stringify({sessionId:t,banDuration:e})});if(!n.ok){let a=await n.json().catch(()=>null);console.error("Kick user failed",a),alert("\uC0AC\uC6A9\uC790 \uAC15\uC81C\uD1F4\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");return}let s=await n.json();if(s.banned){let a=Math.floor(e/60),r=e%60,o=a>0?`${a}\uBD84 ${r}\uCD08`:`${r}\uCD08`;s.sharedIP?alert(`\uC0AC\uC6A9\uC790\uAC00 \uAC15\uC81C\uD1F4\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
+        `;
+    document.body.appendChild(modal);
+    trapFocus(modal);
+    const input = modal.querySelector("#delete-all-confirm-input");
+    const confirmBtn = modal.querySelector("#delete-all-confirm-btn");
+    const cancelBtn = modal.querySelector("#delete-all-cancel-btn");
+    const errorEl = modal.querySelector("#delete-all-confirm-error");
+    const copyBtn = modal.querySelector(".copy-confirm-text-btn");
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText("DELETE_ALL_MESSAGES");
+        const original = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+        setTimeout(() => copyBtn.innerHTML = original, 1500);
+      } catch (_e) {
+        const ta = document.createElement("textarea");
+        ta.value = "DELETE_ALL_MESSAGES";
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+    });
+    input.addEventListener("input", () => {
+      const matched = input.value === "DELETE_ALL_MESSAGES";
+      confirmBtn.disabled = !matched;
+      errorEl.classList.add("hidden");
+      if (matched) {
+        input.classList.remove("focus:ring-red-500", "border-red-500");
+        input.classList.add("focus:ring-green-500", "border-green-500");
+      } else {
+        input.classList.remove("focus:ring-green-500", "border-green-500");
+        input.classList.add("focus:ring-red-500", "border-red-500");
+      }
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !confirmBtn.disabled) confirmBtn.click();
+      if (e.key === "Escape") modal.remove();
+    });
+    const closeModal = () => modal.remove();
+    cancelBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+    confirmBtn.addEventListener("click", async () => {
+      if (input.value !== "DELETE_ALL_MESSAGES") {
+        errorEl.classList.remove("hidden");
+        return;
+      }
+      try {
+        const response = await fetch("/api/admin/delete-all-messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${this.sessionToken}`
+          },
+          body: JSON.stringify({ confirmation: "DELETE_ALL_MESSAGES" })
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => null);
+          console.error("Delete all messages failed", err);
+          alert("\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uCF58\uC194\uC744 \uD655\uC778\uD558\uC138\uC694.");
+          return;
+        }
+        const result = await response.json();
+        modal.remove();
+        alert(`\u2713 \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0\uAC00 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4. (${result.deletedCount}\uAC1C)`);
+        this.refreshData();
+      } catch (error) {
+        console.error("deleteAllMessages error:", error);
+        modal.remove();
+        alert("\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+      }
+    });
+    setTimeout(() => input.focus(), 100);
+  },
+  async exportFilteredCsv() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    const filterOptions = prompt(
+      "\uB0B4\uBCF4\uB0B4\uAE30 \uC635\uC158\uC744 \uC120\uD0DD\uD558\uC138\uC694:\n1: \uC804\uCCB4 \uB370\uC774\uD130\n2: \uD65C\uC131 \uC138\uC158\uB9CC\n3: \uC624\uB298 \uBA54\uC2DC\uC9C0\uB9CC\n4: \uCD5C\uADFC 1\uC2DC\uAC04\n5: \uCD5C\uADFC 24\uC2DC\uAC04",
+      "1"
+    );
+    if (!filterOptions) return;
+    try {
+      const [sessionsResp, messagesResp] = await Promise.all([
+        api_client_default.getRaw("/api/admin/sessions"),
+        api_client_default.getRaw("/api/admin/messages")
+      ]);
+      if (!sessionsResp.ok || !messagesResp.ok) {
+        alert("\uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      let sessions = await sessionsResp.json();
+      let messages = await messagesResp.json();
+      const now = Date.now();
+      const oneHour = 60 * 60 * 1e3;
+      const oneDay = 24 * oneHour;
+      const todayStart = (/* @__PURE__ */ new Date()).setHours(0, 0, 0, 0);
+      switch (filterOptions) {
+        case "2": {
+          const activeSessions = new Set(sessions.map((s) => s.sessionId));
+          messages = messages.filter((m) => activeSessions.has(m.sessionId));
+          break;
+        }
+        case "3":
+          messages = messages.filter((m) => m.timestamp >= todayStart);
+          break;
+        case "4":
+          messages = messages.filter((m) => now - m.timestamp < oneHour);
+          sessions = sessions.filter((s) => now - s.joinTime < oneHour);
+          break;
+        case "5":
+          messages = messages.filter((m) => now - m.timestamp < oneDay);
+          sessions = sessions.filter((s) => now - s.joinTime < oneDay);
+          break;
+        default:
+          break;
+      }
+      const usersMap = /* @__PURE__ */ new Map();
+      for (const s of sessions) {
+        usersMap.set(s.sessionId, s);
+      }
+      const rows = [];
+      const headers = [
+        "user_session_id",
+        "user_ip",
+        "user_join_time",
+        "user_message_count",
+        "user_last_message_time",
+        "message_id",
+        "message_timestamp",
+        "message_content",
+        "message_edited_at",
+        "file_url",
+        "file_name",
+        "file_size",
+        "file_type"
+      ];
+      for (const msg of messages) {
+        const user = usersMap.get(msg.sessionId) || {};
+        rows.push([
+          user.sessionId || msg.sessionId || "",
+          user.ip || "",
+          user.joinTime ? new Date(user.joinTime).toISOString() : "",
+          user.messageCount != null ? user.messageCount : "",
+          user.lastMessageTime ? new Date(user.lastMessageTime).toISOString() : "",
+          msg.messageId || "",
+          msg.timestamp ? new Date(msg.timestamp).toISOString() : "",
+          msg.content || "",
+          msg.editedAt ? new Date(msg.editedAt).toISOString() : "",
+          msg.file?.url || "",
+          msg.file?.filename || "",
+          msg.file?.filesize != null ? String(msg.file.filesize) : "",
+          msg.file?.filetype || ""
+        ]);
+      }
+      for (const [sessionId, user] of usersMap.entries()) {
+        const hasMessage = messages.some((m) => m.sessionId === sessionId);
+        if (!hasMessage) {
+          rows.push([
+            user.sessionId || sessionId,
+            user.ip || "",
+            user.joinTime ? new Date(user.joinTime).toISOString() : "",
+            user.messageCount != null ? user.messageCount : "",
+            user.lastMessageTime ? new Date(user.lastMessageTime).toISOString() : "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]);
+        }
+      }
+      const escape = (value) => {
+        if (value == null) return "";
+        const str = String(value);
+        return '"' + str.replace(/"/g, '""') + '"';
+      };
+      const csvContent = [headers.map((h) => escape(h)).join(",")].concat(rows.map((r) => r.map((cell) => escape(cell)).join(","))).join("\n");
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const filterName = ["all", "active", "today", "1hour", "24hours"][parseInt(filterOptions) - 1] || "filtered";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `anonymous_chat_${filterName}_${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export filtered CSV error:", error);
+      alert("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async editAdminMessage(messageId, newContent) {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    if (!newContent) {
+      alert("\uBA54\uC2DC\uC9C0 \uB0B4\uC6A9\uC774 \uBE44\uC5B4\uC788\uC2B5\uB2C8\uB2E4.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/admin/edit-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        },
+        body: JSON.stringify({ messageId, newContent })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        console.error("Edit failed", err);
+        alert("\uBA54\uC2DC\uC9C0 \uC218\uC815\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      this.refreshData();
+    } catch (error) {
+      console.error("editAdminMessage error:", error);
+      alert("\uBA54\uC2DC\uC9C0 \uC218\uC815 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async deleteMessage(messageId) {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/admin/delete-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        },
+        body: JSON.stringify({ messageId })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        console.error("Delete failed", err);
+        alert("\uBA54\uC2DC\uC9C0 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      await response.json();
+      this.refreshData();
+    } catch (error) {
+      console.error("deleteMessage error:", error);
+      alert("\uBA54\uC2DC\uC9C0 \uC0AD\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async kickUser(sessionId, banDuration = 0) {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/admin/kick-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        },
+        body: JSON.stringify({ sessionId, banDuration })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        console.error("Kick user failed", err);
+        alert("\uC0AC\uC6A9\uC790 \uAC15\uC81C\uD1F4\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      const result = await response.json();
+      if (result.banned) {
+        const minutes = Math.floor(banDuration / 60);
+        const seconds = banDuration % 60;
+        const timeStr = minutes > 0 ? `${minutes}\uBD84 ${seconds}\uCD08` : `${seconds}\uCD08`;
+        if (result.sharedIP) {
+          alert(`\uC0AC\uC6A9\uC790\uAC00 \uAC15\uC81C\uD1F4\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 
-\u26A0\uFE0F \uACF5\uC720 IP \uAC10\uC9C0: \uC138\uC158\uB9CC ${o}\uAC04 \uCC28\uB2E8\uB428
-(\uAC19\uC740 IP\uC758 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uB294 \uC601\uD5A5 \uC5C6\uC74C)`):alert(`\uC0AC\uC6A9\uC790\uAC00 \uAC15\uC81C\uD1F4\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
-IP ${s.ip}\uAC00 ${o}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`)}else alert("\uC0AC\uC6A9\uC790\uAC00 \uAC15\uC81C\uD1F4\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");this.refreshData()}catch(n){console.error("kickUser error:",n),alert("\uC0AC\uC6A9\uC790 \uAC15\uC81C\uD1F4\uC7A5 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}},async loadBannedIPs(){try{let t=await fetch("/api/admin/banned-ips",{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!t.ok)throw new Error("Failed to load banned IPs");let e=await t.json(),n=document.getElementById("banned-ips-body");if(!n)return;if(!e||e.length===0){n.innerHTML='<tr><td colspan="5" class="px-3 md:px-4 py-8 text-center text-gray-500">\uCC28\uB2E8\uB41C IP\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';return}n.innerHTML=e.map(s=>`
+\u26A0\uFE0F \uACF5\uC720 IP \uAC10\uC9C0: \uC138\uC158\uB9CC ${timeStr}\uAC04 \uCC28\uB2E8\uB428
+(\uAC19\uC740 IP\uC758 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uB294 \uC601\uD5A5 \uC5C6\uC74C)`);
+        } else {
+          alert(`\uC0AC\uC6A9\uC790\uAC00 \uAC15\uC81C\uD1F4\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
+IP ${result.ip}\uAC00 ${timeStr}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`);
+        }
+      } else {
+        alert("\uC0AC\uC6A9\uC790\uAC00 \uAC15\uC81C\uD1F4\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+      }
+      this.refreshData();
+    } catch (error) {
+      console.error("kickUser error:", error);
+      alert("\uC0AC\uC6A9\uC790 \uAC15\uC81C\uD1F4\uC7A5 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async loadBannedIPs() {
+    try {
+      const response = await fetch("/api/admin/banned-ips", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load banned IPs");
+      }
+      const bannedList = await response.json();
+      const tbody = document.getElementById("banned-ips-body");
+      if (!tbody) return;
+      if (!bannedList || bannedList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-3 md:px-4 py-8 text-center text-gray-500">\uCC28\uB2E8\uB41C IP\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = bannedList.map((ban) => `
                 <tr class="border-t border-gray-700 md:border-0">
-                    <td data-label="IP \uC8FC\uC18C" class="px-3 md:px-4 py-3 font-mono text-sm break-all">${s.ip}</td>
-                    <td data-label="\uB0A8\uC740 \uC2DC\uAC04" class="px-3 md:px-4 py-3 text-sm">${this.formatDuration(s.remainingSeconds*1e3)}</td>
-                    <td data-label="\uC0AC\uC720" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${s.reason||"No reason"}</td>
-                    <td data-label="\uCC28\uB2E8 \uC2DC\uAC01" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${new Date(s.bannedAt).toLocaleString("ko-KR")}</td>
+                    <td data-label="IP \uC8FC\uC18C" class="px-3 md:px-4 py-3 font-mono text-sm break-all">${ban.ip}</td>
+                    <td data-label="\uB0A8\uC740 \uC2DC\uAC04" class="px-3 md:px-4 py-3 text-sm">${this.formatDuration(ban.remainingSeconds * 1e3)}</td>
+                    <td data-label="\uC0AC\uC720" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${ban.reason || "No reason"}</td>
+                    <td data-label="\uCC28\uB2E8 \uC2DC\uAC01" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${new Date(ban.bannedAt).toLocaleString("ko-KR")}</td>
                     <td data-label="\uC791\uC5C5" class="px-3 md:px-4 py-3 text-center">
-                        <button class="unban-ip-btn bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded" data-ip="${s.ip}">
+                        <button class="unban-ip-btn bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded" data-ip="${ban.ip}">
                             \uCC28\uB2E8 \uD574\uC81C
                         </button>
                     </td>
                 </tr>
-            `).join(""),document.querySelectorAll(".unban-ip-btn").forEach(s=>{s.addEventListener("click",async a=>{let r=a.currentTarget.dataset.ip;await this.unbanIP(r)})})}catch(t){console.error("Load banned IPs error:",t)}},async unbanIP(t){if(confirm(`IP ${t}\uC758 \uCC28\uB2E8\uC744 \uD574\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?`))try{if(!(await fetch("/api/admin/unban-ip",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`},body:JSON.stringify({ip:t})})).ok)throw new Error("Failed to unban IP");alert(`IP ${t}\uC758 \uCC28\uB2E8\uC774 \uD574\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`),await this.loadBannedIPs()}catch(e){console.error("Unban IP error:",e),alert("IP \uCC28\uB2E8 \uD574\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}},async showUserDetails(t){try{let e=await fetch(`/api/admin/user-details?sessionId=${encodeURIComponent(t)}`,{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!e.ok)throw new Error("Failed to load user details");let n=await e.json(),s=document.getElementById("user-details-modal"),a=document.getElementById("user-details-content");if(!s||!a)return;a.innerHTML=`
+            `).join("");
+      document.querySelectorAll(".unban-ip-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const ip = e.currentTarget.dataset.ip;
+          await this.unbanIP(ip);
+        });
+      });
+    } catch (error) {
+      console.error("Load banned IPs error:", error);
+    }
+  },
+  async unbanIP(ip) {
+    if (!confirm(`IP ${ip}\uC758 \uCC28\uB2E8\uC744 \uD574\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?`)) {
+      return;
+    }
+    try {
+      const response = await fetch("/api/admin/unban-ip", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        },
+        body: JSON.stringify({ ip })
+      });
+      if (!response.ok) {
+        throw new Error("Failed to unban IP");
+      }
+      alert(`IP ${ip}\uC758 \uCC28\uB2E8\uC774 \uD574\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`);
+      await this.loadBannedIPs();
+    } catch (error) {
+      console.error("Unban IP error:", error);
+      alert("IP \uCC28\uB2E8 \uD574\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async showUserDetails(sessionId) {
+    try {
+      const response = await fetch(`/api/admin/user-details?sessionId=${encodeURIComponent(sessionId)}`, {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load user details");
+      }
+      const userDetails = await response.json();
+      const modal = document.getElementById("user-details-modal");
+      const content = document.getElementById("user-details-content");
+      if (!modal || !content) return;
+      content.innerHTML = `
                 <div class="space-y-4">
                     <div class="bg-gray-700 rounded-lg p-4">
                         <h3 class="text-sm font-semibold text-gray-400 mb-2">\uAE30\uBCF8 \uC815\uBCF4</h3>
                         <div class="grid grid-cols-2 gap-3 text-sm">
                             <div>
                                 <p class="text-gray-500">\uC138\uC158 ID</p>
-                                <p class="text-gray-200 font-mono break-all">${n.sessionId||"N/A"}</p>
+                                <p class="text-gray-200 font-mono break-all">${userDetails.sessionId || "N/A"}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">\uB2C9\uB124\uC784</p>
-                                <p class="text-gray-200">${n.metadata?.nickname?this.escapeHtml(n.metadata.nickname):"\uC775\uBA85"}</p>
+                                <p class="text-gray-200">${userDetails.metadata?.nickname ? this.escapeHtml(userDetails.metadata.nickname) : "\uC775\uBA85"}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">IP \uC8FC\uC18C</p>
-                                <p class="text-gray-200 font-mono break-all">${n.metadata?.ip||"N/A"}</p>
+                                <p class="text-gray-200 font-mono break-all">${userDetails.metadata?.ip || "N/A"}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">\uAD6D\uAC00</p>
-                                <p class="text-gray-200">${n.metadata?.environment?.country||"N/A"}</p>
+                                <p class="text-gray-200">${userDetails.metadata?.environment?.country || "N/A"}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">User-Agent</p>
-                                <p class="text-gray-200 text-xs break-all">${this.escapeHtml(n.metadata?.environment?.userAgent||"N/A")}</p>
+                                <p class="text-gray-200 text-xs break-all">${this.escapeHtml(userDetails.metadata?.environment?.userAgent || "N/A")}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">\uC811\uC18D \uC2DC\uAC01</p>
-                                <p class="text-gray-200">${n.metadata?.joinTime?new Date(n.metadata.joinTime).toLocaleString("ko-KR"):"N/A"}</p>
+                                <p class="text-gray-200">${userDetails.metadata?.joinTime ? new Date(userDetails.metadata.joinTime).toLocaleString("ko-KR") : "N/A"}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">\uC0C1\uD0DC</p>
-                                <p class="text-gray-200">${n.isOnline?'<span class="text-green-400">\uC628\uB77C\uC778</span>':'<span class="text-gray-400">\uC624\uD504\uB77C\uC778</span>'}</p>
+                                <p class="text-gray-200">${userDetails.isOnline ? '<span class="text-green-400">\uC628\uB77C\uC778</span>' : '<span class="text-gray-400">\uC624\uD504\uB77C\uC778</span>'}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">\uBA54\uC2DC\uC9C0 \uC218</p>
-                                <p class="text-gray-200">${n.messageCount||0}</p>
+                                <p class="text-gray-200">${userDetails.messageCount || 0}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">\uB9C8\uC9C0\uB9C9 \uD65C\uB3D9</p>
-                                <p class="text-gray-200">${n.lastMessage?new Date(n.lastMessage).toLocaleString("ko-KR"):"N/A"}</p>
+                                <p class="text-gray-200">${userDetails.lastMessage ? new Date(userDetails.lastMessage).toLocaleString("ko-KR") : "N/A"}</p>
                             </div>
                         </div>
                     </div>
                     
                     <div class="bg-gray-700 rounded-lg p-4">
-                        <h3 class="text-sm font-semibold text-gray-400 mb-2">\uBA54\uC2DC\uC9C0 \uAE30\uB85D (\uCD5C\uADFC ${Math.min(n.messages?.length||0,50)}\uAC1C)</h3>
+                        <h3 class="text-sm font-semibold text-gray-400 mb-2">\uBA54\uC2DC\uC9C0 \uAE30\uB85D (\uCD5C\uADFC ${Math.min(userDetails.messages?.length || 0, 50)}\uAC1C)</h3>
                         <div class="space-y-2 max-h-96 overflow-y-auto">
-                            ${n.messages&&n.messages.length>0?n.messages.slice(0,50).map(r=>`
+                            ${userDetails.messages && userDetails.messages.length > 0 ? userDetails.messages.slice(0, 50).map((msg) => `
                                     <div class="bg-gray-800 rounded p-3 text-sm">
                                         <div class="flex justify-between items-start mb-1">
-                                            <span class="text-xs text-gray-500">${new Date(r.timestamp).toLocaleString("ko-KR")}</span>
-                                            ${r.editedAt?'<span class="text-xs text-yellow-400">(\uC218\uC815\uB428)</span>':""}
+                                            <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleString("ko-KR")}</span>
+                                            ${msg.editedAt ? '<span class="text-xs text-yellow-400">(\uC218\uC815\uB428)</span>' : ""}
                                         </div>
-                                        <p class="text-gray-200 break-all whitespace-pre-wrap">${this.escapeHtml(r.content)}</p>
-                                        ${r.file?`<p class="text-xs text-blue-400 mt-1 break-all">\uD30C\uC77C: ${r.file.filename}</p>`:""}
+                                        <p class="text-gray-200 break-all whitespace-pre-wrap">${this.escapeHtml(msg.content)}</p>
+                                        ${msg.file ? `<p class="text-xs text-blue-400 mt-1 break-all">\uD30C\uC77C: ${msg.file.filename}</p>` : ""}
                                     </div>
-                                `).join(""):'<p class="text-gray-500 text-center py-4">\uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</p>'}
+                                `).join("") : '<p class="text-gray-500 text-center py-4">\uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</p>'}
                         </div>
                     </div>
                 </div>
-            `,s.classList.remove("hidden"),T(s,"#close-user-modal",document.activeElement)}catch(e){console.error("Show user details error:",e),alert("\uC0AC\uC6A9\uC790 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}},async loadAnnouncements(){try{let t=await fetch("/api/announcements");if(!t.ok)throw new Error("Failed to load announcements");let e=await t.json();this.lastAnnouncements=e,this.updateAnnouncementsList(e)}catch(t){console.error("Announcements load error:",t);let e=document.getElementById("announcement-list");e&&(e.innerHTML='<p class="text-sm text-red-500 text-center py-8">\uACF5\uC9C0\uC0AC\uD56D\uC744 \uBD88\uB7EC\uC624\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.</p>')}},async editAnnouncement(t){let e=this.lastAnnouncements?.find(a=>a.timestamp===t);if(!e)return;let n=e.isEmergency||!1,s=document.createElement("div");s.className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50",s.innerHTML=`
+            `;
+      modal.classList.remove("hidden");
+      showModal(modal, "#close-user-modal", document.activeElement);
+    } catch (error) {
+      console.error("Show user details error:", error);
+      alert("\uC0AC\uC6A9\uC790 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async loadAnnouncements() {
+    try {
+      const response = await fetch("/api/announcements");
+      if (!response.ok) {
+        throw new Error("Failed to load announcements");
+      }
+      const announcements = await response.json();
+      this.lastAnnouncements = announcements;
+      this.updateAnnouncementsList(announcements);
+    } catch (error) {
+      console.error("Announcements load error:", error);
+      const container = document.getElementById("announcement-list");
+      if (container) {
+        container.innerHTML = '<p class="text-sm text-red-500 text-center py-8">\uACF5\uC9C0\uC0AC\uD56D\uC744 \uBD88\uB7EC\uC624\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.</p>';
+      }
+    }
+  },
+  async editAnnouncement(timestamp) {
+    const item = this.lastAnnouncements?.find((a) => a.timestamp === timestamp);
+    if (!item) return;
+    const isEmergency = item.isEmergency || false;
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50";
+    modal.innerHTML = `
             <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-lg w-full mx-4 border border-gray-700">
                 <h3 class="text-lg font-bold text-gray-100 mb-4">\uACF5\uC9C0\uC0AC\uD56D \uC218\uC815</h3>
-                <textarea id="edit-announce-input" rows="5" class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none resize-none mb-3">${e.content}</textarea>
+                <textarea id="edit-announce-input" rows="5" class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none resize-none mb-3">${item.content}</textarea>
                 <label class="flex items-center gap-1.5 text-sm text-gray-300 mb-4 cursor-pointer">
-                    <input type="checkbox" id="edit-emergency-checkbox" class="rounded bg-gray-700 border-gray-600 text-red-500 focus:ring-red-500" ${n?"checked":""}>
+                    <input type="checkbox" id="edit-emergency-checkbox" class="rounded bg-gray-700 border-gray-600 text-red-500 focus:ring-red-500" ${isEmergency ? "checked" : ""}>
                     \uAE34\uAE09\uACF5\uC9C0
                 </label>
                 <div class="flex justify-end gap-2">
@@ -131,93 +904,487 @@ IP ${s.ip}\uAC00 ${o}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`)}else a
                     <button id="save-edit-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors">\uC800\uC7A5</button>
                 </div>
             </div>
-        `,document.body.appendChild(s),s.querySelector("#cancel-edit-btn").addEventListener("click",()=>s.remove()),s.querySelector("#save-edit-btn").addEventListener("click",async()=>{let a=s.querySelector("#edit-announce-input").value.trim();if(!a){this.showNotification("\uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694.","error");return}let r=s.querySelector("#edit-emergency-checkbox").checked;s.remove();try{let o={timestamp:t,content:a,isEmergency:r};if(r&&e.emergencyUntil&&(o.emergencyUntil=e.emergencyUntil),!(await fetch("/api/admin/announce",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`},body:JSON.stringify(o)})).ok)throw new Error("Failed to edit announcement");this.showNotification("\uACF5\uC9C0\uC0AC\uD56D\uC774 \uC218\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4.","success"),this.refreshData()}catch{this.showNotification("\uACF5\uC9C0\uC0AC\uD56D \uC218\uC815\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.","error")}})},async deleteAnnouncement(t){if(confirm("\uC815\uB9D0 \uC774 \uACF5\uC9C0\uC0AC\uD56D\uC744 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?"))try{if(!(await fetch("/api/admin/announce",{method:"DELETE",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`},body:JSON.stringify({timestamp:t})})).ok)throw new Error("Failed to delete announcement");this.showNotification("\uACF5\uC9C0\uC0AC\uD56D\uC774 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.","success"),this.refreshData()}catch{this.showNotification("\uACF5\uC9C0\uC0AC\uD56D \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.","error")}},async demoteAnnouncement(t){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}if(confirm(`\uAE34\uAE09 \uACF5\uC9C0\uB97C \uC77C\uBC18 \uACF5\uC9C0\uB85C \uC804\uD658\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
-
-\uC804\uD658 \uC2DC \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uAE34\uAE09 \uD574\uC81C \uC54C\uB9BC\uC774 \uC804\uC1A1\uB429\uB2C8\uB2E4.`))try{let e=await fetch("/api/admin/announce",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`},body:JSON.stringify({timestamp:t,isEmergency:!1,emergencyUntil:null})});if(!e.ok){let n=await e.json().catch(()=>null);console.error("Demote announce failed",n),alert("\uACF5\uC9C0 \uC804\uD658\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");return}alert("\uAE34\uAE09 \uACF5\uC9C0\uAC00 \uC77C\uBC18 \uACF5\uC9C0\uB85C \uC804\uD658\uB418\uC5C8\uC2B5\uB2C8\uB2E4."),this.refreshData()}catch(e){console.error("demoteAnnouncement error:",e),alert("\uACF5\uC9C0 \uC804\uD658 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.")}},async loadAuditLogs(){try{let t=await fetch("/api/admin/audit-logs",{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!t.ok)throw new Error("Failed to load audit logs");let e=await t.json(),n=document.getElementById("audit-logs-list"),s=document.getElementById("audit-log-filter");if(!n)return;let a=s?.value||"all",r=a==="all"?e:e.filter(o=>a==="delete_message"?o.action==="delete_message"||o.action==="admin_delete_message":o.action===a);if(!r||r.length===0){n.innerHTML='<p class="text-sm text-gray-500 text-center py-8">\uAC10\uC0AC \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';return}n.innerHTML=r.map(o=>{let l={kick_user:"\uC720\uC800 \uAC15\uD1F4",edit_message:"\uBA54\uC2DC\uC9C0 \uC218\uC815",delete_message:"\uBA54\uC2DC\uC9C0 \uC0AD\uC81C",admin_delete_message:"\uBA54\uC2DC\uC9C0 \uC0AD\uC81C",admin_delete_all_messages:"\uC804\uCCB4 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C",send_announcement:"\uACF5\uC9C0 \uC804\uC1A1",edit_announcement:"\uACF5\uC9C0\uC0AC\uD56D \uC218\uC815",delete_announcement:"\uACF5\uC9C0\uC0AC\uD56D \uC0AD\uC81C",UNBAN_IP:"IP \uCC28\uB2E8 \uD574\uC81C"}[o.action]||o.action;return`
+        `;
+    document.body.appendChild(modal);
+    modal.querySelector("#cancel-edit-btn").addEventListener("click", () => modal.remove());
+    modal.querySelector("#save-edit-btn").addEventListener("click", async () => {
+      const newContent = modal.querySelector("#edit-announce-input").value.trim();
+      if (!newContent) {
+        this.showNotification("\uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694.", "error");
+        return;
+      }
+      const newEmergency = modal.querySelector("#edit-emergency-checkbox").checked;
+      modal.remove();
+      try {
+        const body = { timestamp, content: newContent, isEmergency: newEmergency };
+        if (newEmergency && item.emergencyUntil) {
+          body.emergencyUntil = item.emergencyUntil;
+        }
+        const response = await fetch("/api/admin/announce", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${this.sessionToken}`
+          },
+          body: JSON.stringify(body)
+        });
+        if (!response.ok) throw new Error("Failed to edit announcement");
+        this.showNotification("\uACF5\uC9C0\uC0AC\uD56D\uC774 \uC218\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "success");
+        this.refreshData();
+      } catch (_error) {
+        this.showNotification("\uACF5\uC9C0\uC0AC\uD56D \uC218\uC815\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", "error");
+      }
+    });
+  },
+  async deleteAnnouncement(timestamp) {
+    if (!confirm("\uC815\uB9D0 \uC774 \uACF5\uC9C0\uC0AC\uD56D\uC744 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?")) return;
+    try {
+      const response = await fetch("/api/admin/announce", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        },
+        body: JSON.stringify({ timestamp })
+      });
+      if (!response.ok) throw new Error("Failed to delete announcement");
+      this.showNotification("\uACF5\uC9C0\uC0AC\uD56D\uC774 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "success");
+      this.refreshData();
+    } catch (_error) {
+      this.showNotification("\uACF5\uC9C0\uC0AC\uD56D \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", "error");
+    }
+  },
+  async demoteAnnouncement(timestamp) {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    if (!confirm("\uAE34\uAE09 \uACF5\uC9C0\uB97C \uC77C\uBC18 \uACF5\uC9C0\uB85C \uC804\uD658\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?\n\n\uC804\uD658 \uC2DC \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uAE34\uAE09 \uD574\uC81C \uC54C\uB9BC\uC774 \uC804\uC1A1\uB429\uB2C8\uB2E4.")) return;
+    try {
+      const response = await fetch("/api/admin/announce", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        },
+        body: JSON.stringify({ timestamp, isEmergency: false, emergencyUntil: null })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        console.error("Demote announce failed", err);
+        alert("\uACF5\uC9C0 \uC804\uD658\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      alert("\uAE34\uAE09 \uACF5\uC9C0\uAC00 \uC77C\uBC18 \uACF5\uC9C0\uB85C \uC804\uD658\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+      this.refreshData();
+    } catch (error) {
+      console.error("demoteAnnouncement error:", error);
+      alert("\uACF5\uC9C0 \uC804\uD658 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async loadAuditLogs() {
+    try {
+      const response = await fetch("/api/admin/audit-logs", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load audit logs");
+      }
+      const logs = await response.json();
+      const container = document.getElementById("audit-logs-list");
+      const filterSelect = document.getElementById("audit-log-filter");
+      if (!container) return;
+      const selectedFilter = filterSelect?.value || "all";
+      const filteredLogs = selectedFilter === "all" ? logs : logs.filter((log) => {
+        if (selectedFilter === "delete_message") {
+          return log.action === "delete_message" || log.action === "admin_delete_message";
+        }
+        return log.action === selectedFilter;
+      });
+      if (!filteredLogs || filteredLogs.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">\uAC10\uC0AC \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
+        return;
+      }
+      container.innerHTML = filteredLogs.map((log) => {
+        const actionText = {
+          "kick_user": "\uC720\uC800 \uAC15\uD1F4",
+          "edit_message": "\uBA54\uC2DC\uC9C0 \uC218\uC815",
+          "delete_message": "\uBA54\uC2DC\uC9C0 \uC0AD\uC81C",
+          "admin_delete_message": "\uBA54\uC2DC\uC9C0 \uC0AD\uC81C",
+          "admin_delete_all_messages": "\uC804\uCCB4 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C",
+          "send_announcement": "\uACF5\uC9C0 \uC804\uC1A1",
+          "edit_announcement": "\uACF5\uC9C0\uC0AC\uD56D \uC218\uC815",
+          "delete_announcement": "\uACF5\uC9C0\uC0AC\uD56D \uC0AD\uC81C",
+          "UNBAN_IP": "IP \uCC28\uB2E8 \uD574\uC81C"
+        }[log.action] || log.action;
+        const actionColor = {
+          "kick_user": "text-red-400",
+          "edit_message": "text-yellow-400",
+          "delete_message": "text-orange-400",
+          "admin_delete_message": "text-orange-400",
+          "admin_delete_all_messages": "text-red-500",
+          "send_announcement": "text-blue-400",
+          "edit_announcement": "text-blue-400",
+          "delete_announcement": "text-red-400",
+          "UNBAN_IP": "text-green-400"
+        }[log.action] || "text-gray-400";
+        return `
                     <div class="bg-gray-700 rounded-lg p-3">
                         <div class="flex justify-between items-start mb-1">
-                            <span class="text-sm font-medium ${{kick_user:"text-red-400",edit_message:"text-yellow-400",delete_message:"text-orange-400",admin_delete_message:"text-orange-400",admin_delete_all_messages:"text-red-500",send_announcement:"text-blue-400",edit_announcement:"text-blue-400",delete_announcement:"text-red-400",UNBAN_IP:"text-green-400"}[o.action]||"text-gray-400"}">${l}</span>
-                            <span class="text-xs text-gray-500">${new Date(o.timestamp).toLocaleString("ko-KR")}</span>
+                            <span class="text-sm font-medium ${actionColor}">${actionText}</span>
+                            <span class="text-xs text-gray-500">${new Date(log.timestamp).toLocaleString("ko-KR")}</span>
                         </div>
-                        <p class="text-sm text-gray-300 break-all">${o.details}</p>
-                        ${o.metadata?`<p class="text-xs text-gray-500 mt-1 break-all overflow-x-auto">${JSON.stringify(o.metadata)}</p>`:""}
+                        <p class="text-sm text-gray-300 break-all">${log.details}</p>
+                        ${log.metadata ? `<p class="text-xs text-gray-500 mt-1 break-all overflow-x-auto">${JSON.stringify(log.metadata)}</p>` : ""}
                     </div>
-                `}).join("")}catch(t){console.error("Load audit logs error:",t)}},async clearAuditLogs(){if(confirm(`\uBAA8\uB4E0 \uAC10\uC0AC \uB85C\uADF8\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
-\uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`))try{if(!(await fetch("/api/admin/delete-audit-logs",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.sessionToken}`}})).ok)throw new Error("Failed to delete audit logs");this.showNotification("\uAC10\uC0AC \uB85C\uADF8\uAC00 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.","success"),this.loadAuditLogs()}catch(e){console.error("Clear audit logs error:",e),this.showNotification("\uAC10\uC0AC \uB85C\uADF8 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.","error")}},async loadAdminLogs(){try{let t=await fetch("/api/admin/logs",{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!t.ok)throw new Error("Failed to load admin logs");let n=((await t.json()).logs||[]).filter(a=>["login_success","login_failed","login_blocked","logout"].includes(a.type)),s=document.getElementById("admin-login-logs");if(!s)return;if(n.length===0){s.innerHTML='<p class="text-sm text-gray-500 text-center py-8">\uAD00\uB9AC\uC790 \uB85C\uADF8\uC778 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';return}s.innerHTML=n.map(a=>{let r={login_success:"bg-green-900/50 text-green-400 border border-green-700",login_failed:"bg-red-900/50 text-red-400 border border-red-700",login_blocked:"bg-orange-900/50 text-orange-400 border border-orange-700",logout:"bg-gray-700 text-gray-300 border border-gray-600"}[a.type]||"bg-gray-700 text-gray-300",o={login_success:"\uB85C\uADF8\uC778 \uC131\uACF5",login_failed:"\uB85C\uADF8\uC778 \uC2E4\uD328",login_blocked:"\uB85C\uADF8\uC778 \uCC28\uB2E8",logout:"\uB85C\uADF8\uC544\uC6C3"}[a.type]||a.type;return`
+                `;
+      }).join("");
+    } catch (error) {
+      console.error("Load audit logs error:", error);
+    }
+  },
+  async clearAuditLogs() {
+    const confirmed = confirm("\uBAA8\uB4E0 \uAC10\uC0AC \uB85C\uADF8\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?\n\uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+    if (!confirmed) return;
+    try {
+      const response = await fetch("/api/admin/delete-audit-logs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        }
+      });
+      if (!response.ok) throw new Error("Failed to delete audit logs");
+      this.showNotification("\uAC10\uC0AC \uB85C\uADF8\uAC00 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "success");
+      this.loadAuditLogs();
+    } catch (error) {
+      console.error("Clear audit logs error:", error);
+      this.showNotification("\uAC10\uC0AC \uB85C\uADF8 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", "error");
+    }
+  },
+  async loadAdminLogs() {
+    try {
+      const response = await fetch("/api/admin/logs", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load admin logs");
+      }
+      const data = await response.json();
+      const logs = (data.logs || []).filter(
+        (log) => ["login_success", "login_failed", "login_blocked", "logout"].includes(log.type)
+      );
+      const container = document.getElementById("admin-login-logs");
+      if (!container) return;
+      if (logs.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">\uAD00\uB9AC\uC790 \uB85C\uADF8\uC778 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
+        return;
+      }
+      container.innerHTML = logs.map((log) => {
+        const typeBadge = {
+          "login_success": "bg-green-900/50 text-green-400 border border-green-700",
+          "login_failed": "bg-red-900/50 text-red-400 border border-red-700",
+          "login_blocked": "bg-orange-900/50 text-orange-400 border border-orange-700",
+          "logout": "bg-gray-700 text-gray-300 border border-gray-600"
+        }[log.type] || "bg-gray-700 text-gray-300";
+        const typeText = {
+          "login_success": "\uB85C\uADF8\uC778 \uC131\uACF5",
+          "login_failed": "\uB85C\uADF8\uC778 \uC2E4\uD328",
+          "login_blocked": "\uB85C\uADF8\uC778 \uCC28\uB2E8",
+          "logout": "\uB85C\uADF8\uC544\uC6C3"
+        }[log.type] || log.type;
+        return `
                     <div class="bg-gray-700 rounded-lg p-3">
                         <div class="flex justify-between items-start mb-1">
-                            <span class="text-sm font-medium"><span class="px-2 py-0.5 rounded text-xs font-bold ${r}">${o}</span></span>
-                            <span class="text-xs text-gray-500">${new Date(a.timestamp).toLocaleString("ko-KR")}</span>
+                            <span class="text-sm font-medium"><span class="px-2 py-0.5 rounded text-xs font-bold ${typeBadge}">${typeText}</span></span>
+                            <span class="text-xs text-gray-500">${new Date(log.timestamp).toLocaleString("ko-KR")}</span>
                         </div>
-                        <p class="text-sm text-gray-300 break-all">IP: ${this.escapeHtml(a.ip||"N/A")}</p>
-                        ${a.details?`<p class="text-xs text-gray-400 mt-1">${this.escapeHtml(a.details)}</p>`:""}
+                        <p class="text-sm text-gray-300 break-all">IP: ${this.escapeHtml(log.ip || "N/A")}</p>
+                        ${log.details ? `<p class="text-xs text-gray-400 mt-1">${this.escapeHtml(log.details)}</p>` : ""}
                     </div>
-                `}).join("")}catch(t){console.error("Load admin logs error:",t)}},async deleteAdminLogs(){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}if(confirm(`\uBAA8\uB4E0 \uAD00\uB9AC\uC790 \uB85C\uADF8\uC778 \uAE30\uB85D\uC744 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
-\uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`))try{let t=await fetch("/api/admin/delete-logs",{method:"POST",headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!t.ok)throw new Error("Failed to delete admin logs");let e=await t.json();this.showNotification(`\uB85C\uADF8\uC778 \uAE30\uB85D ${e.deletedCount}\uAC74\uC774 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`,"success"),this.loadAdminLogs()}catch(t){console.error("Delete admin logs error:",t),this.showNotification("\uB85C\uADF8\uC778 \uAE30\uB85D \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.","error")}},downloadErrorLogs(){if(!this.lastMetrics||!this.lastMetrics.errorLogs||this.lastMetrics.errorLogs.length===0){this.showNotification("\uB2E4\uC6B4\uB85C\uB4DC\uD560 \uC624\uB958 \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.","error");return}let e=`error_logs_${new Date().toISOString().replace(/[:.]/g,"-")}.json`,n=JSON.stringify(this.lastMetrics.errorLogs,null,2),s=new Blob([n],{type:"application/json"}),a=URL.createObjectURL(s),r=document.createElement("a");r.href=a,r.download=e,document.body.appendChild(r),r.click(),setTimeout(()=>{document.body.removeChild(r),window.URL.revokeObjectURL(a)},0)},async deleteErrorLogs(){if(!this.lastMetrics||!this.lastMetrics.errorLogs||this.lastMetrics.errorLogs.length===0){this.showNotification("\uC0AD\uC81C\uD560 \uC624\uB958 \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.","error");return}if(confirm("\uACBD\uACE0: \uBAA8\uB4E0 \uC624\uB958 \uB85C\uADF8 \uB370\uC774\uD130\uAC00 \uC11C\uBC84\uC5D0\uC11C \uC601\uAD6C\uC801\uC73C\uB85C \uC0AD\uC81C\uB429\uB2C8\uB2E4. \uACC4\uC18D\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?"))try{if(!(await fetch("/api/admin/delete-error-logs",{method:"POST",headers:{Authorization:`Bearer ${this.sessionToken}`}})).ok)throw new Error("Failed to delete error logs");this.showNotification("\uBAA8\uB4E0 \uC624\uB958 \uB85C\uADF8\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.","success"),this.refreshData()}catch(t){console.error("Error deleting logs:",t),this.showNotification("\uC624\uB958 \uB85C\uADF8 \uC0AD\uC81C \uC911 \uBB38\uC81C\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.","error")}},async exportAuditLogCsv(){if(!this.sessionToken){alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");return}try{let t=await fetch("/api/admin/audit-logs",{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!t.ok)throw new Error("Failed to load audit logs");let e=await t.json(),s=document.getElementById("audit-log-filter")?.value||"all",a=e;if(s!=="all"&&(a=e.filter(c=>s==="delete_message"?c.action==="delete_message"||c.action==="admin_delete_message":c.action===s)),!a||a.length===0){this.showNotification("\uB0B4\uBCF4\uB0BC \uAC10\uC0AC \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.","error");return}let r=["timestamp","action","details","metadata"],o=c=>c==null?"":'"'+String(c).replace(/"/g,'""')+'"',l=a.map(c=>[new Date(c.timestamp).toISOString(),c.action,c.details||"",c.metadata?JSON.stringify(c.metadata):""]),i=[r.map(c=>o(c)).join(",")].concat(l.map(c=>c.map(h=>o(h)).join(","))).join(`
-`),u="\uFEFF",x=new Blob([u+i],{type:"text/csv;charset=utf-8;"}),f=URL.createObjectURL(x),g=document.createElement("a");g.href=f,g.download=`audit_logs_${new Date().toISOString().replace(/[:.]/g,"-")}.csv`,document.body.appendChild(g),g.click(),g.remove(),URL.revokeObjectURL(f)}catch(t){console.error("Export audit CSV error:",t),this.showNotification("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.","error")}},async loadChannels(){try{let t=await fetch("/api/admin/channels",{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!t.ok)throw new Error("Failed to load channels");let e=await t.json();this.renderChannels(e.channels||[])}catch(t){console.error("loadChannels error:",t);let e=document.getElementById("channels-list");e&&(e.innerHTML='<tr><td colspan="6" class="px-4 py-8 text-center text-red-400">\uCC44\uB110 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.</td></tr>')}},async loadChannelStats(t){try{let e=await fetch(`/api/admin/channel-details?slug=${encodeURIComponent(t)}`,{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!e.ok)return;let n=await e.json(),s=document.querySelector(`.channel-users[data-slug="${CSS.escape(t)}"]`),a=document.querySelector(`.channel-messages[data-slug="${CSS.escape(t)}"]`);s&&(s.textContent=n.activeConnections??"-"),a&&(a.textContent=n.totalMessages??"-")}catch(e){console.warn("loadChannelStats error:",e)}},async viewChannelDetail(t,e){try{let n=await fetch(`/api/admin/channel-details?slug=${encodeURIComponent(t)}`,{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!n.ok)throw new Error("Failed to load channel details");let s=await n.json(),a=document.getElementById("channel-detail-title"),r=document.getElementById("channel-detail-content");a&&(a.textContent=`\uCC44\uB110 \uC0C1\uC138: ${b(e)}`);let o=s.sessions||[],l=s.messages||[];r.innerHTML=`
+                `;
+      }).join("");
+    } catch (error) {
+      console.error("Load admin logs error:", error);
+    }
+  },
+  async deleteAdminLogs() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    if (!confirm("\uBAA8\uB4E0 \uAD00\uB9AC\uC790 \uB85C\uADF8\uC778 \uAE30\uB85D\uC744 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?\n\uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.")) {
+      return;
+    }
+    try {
+      const response = await fetch("/api/admin/delete-logs", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!response.ok) throw new Error("Failed to delete admin logs");
+      const result = await response.json();
+      this.showNotification(`\uB85C\uADF8\uC778 \uAE30\uB85D ${result.deletedCount}\uAC74\uC774 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`, "success");
+      this.loadAdminLogs();
+    } catch (error) {
+      console.error("Delete admin logs error:", error);
+      this.showNotification("\uB85C\uADF8\uC778 \uAE30\uB85D \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", "error");
+    }
+  },
+  downloadErrorLogs() {
+    if (!this.lastMetrics || !this.lastMetrics.errorLogs || this.lastMetrics.errorLogs.length === 0) {
+      this.showNotification("\uB2E4\uC6B4\uB85C\uB4DC\uD560 \uC624\uB958 \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "error");
+      return;
+    }
+    const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
+    const fileName = `error_logs_${timestamp}.json`;
+    const jsonStr = JSON.stringify(this.lastMetrics.errorLogs, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 0);
+  },
+  async deleteErrorLogs() {
+    if (!this.lastMetrics || !this.lastMetrics.errorLogs || this.lastMetrics.errorLogs.length === 0) {
+      this.showNotification("\uC0AD\uC81C\uD560 \uC624\uB958 \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "error");
+      return;
+    }
+    if (!confirm("\uACBD\uACE0: \uBAA8\uB4E0 \uC624\uB958 \uB85C\uADF8 \uB370\uC774\uD130\uAC00 \uC11C\uBC84\uC5D0\uC11C \uC601\uAD6C\uC801\uC73C\uB85C \uC0AD\uC81C\uB429\uB2C8\uB2E4. \uACC4\uC18D\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?")) {
+      return;
+    }
+    try {
+      const response = await fetch("/api/admin/delete-error-logs", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.sessionToken}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete error logs");
+      }
+      this.showNotification("\uBAA8\uB4E0 \uC624\uB958 \uB85C\uADF8\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "success");
+      this.refreshData();
+    } catch (error) {
+      console.error("Error deleting logs:", error);
+      this.showNotification("\uC624\uB958 \uB85C\uADF8 \uC0AD\uC81C \uC911 \uBB38\uC81C\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.", "error");
+    }
+  },
+  async exportAuditLogCsv() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/admin/audit-logs", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load audit logs");
+      }
+      const logs = await response.json();
+      const filterSelect = document.getElementById("audit-log-filter");
+      const selectedFilter = filterSelect?.value || "all";
+      let filteredLogs = logs;
+      if (selectedFilter !== "all") {
+        filteredLogs = logs.filter((log) => {
+          if (selectedFilter === "delete_message") {
+            return log.action === "delete_message" || log.action === "admin_delete_message";
+          }
+          return log.action === selectedFilter;
+        });
+      }
+      if (!filteredLogs || filteredLogs.length === 0) {
+        this.showNotification("\uB0B4\uBCF4\uB0BC \uAC10\uC0AC \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "error");
+        return;
+      }
+      const headers = ["timestamp", "action", "details", "metadata"];
+      const escape = (value) => {
+        if (value == null) return "";
+        const str = String(value);
+        return '"' + str.replace(/"/g, '""') + '"';
+      };
+      const rows = filteredLogs.map((log) => [
+        new Date(log.timestamp).toISOString(),
+        log.action,
+        log.details || "",
+        log.metadata ? JSON.stringify(log.metadata) : ""
+      ]);
+      const csvContent = [headers.map((h) => escape(h)).join(",")].concat(rows.map((r) => r.map((cell) => escape(cell)).join(","))).join("\n");
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `audit_logs_${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export audit CSV error:", error);
+      this.showNotification("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.", "error");
+    }
+  },
+  async loadChannels() {
+    try {
+      const resp = await fetch("/api/admin/channels", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!resp.ok) throw new Error("Failed to load channels");
+      const data = await resp.json();
+      this.renderChannels(data.channels || []);
+    } catch (error) {
+      console.error("loadChannels error:", error);
+      const tbody = document.getElementById("channels-list");
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-400">\uCC44\uB110 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.</td></tr>';
+    }
+  },
+  async loadChannelStats(slug) {
+    try {
+      const resp = await fetch(`/api/admin/channel-details?slug=${encodeURIComponent(slug)}`, {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const usersEl = document.querySelector(`.channel-users[data-slug="${CSS.escape(slug)}"]`);
+      const msgsEl = document.querySelector(`.channel-messages[data-slug="${CSS.escape(slug)}"]`);
+      if (usersEl) usersEl.textContent = data.activeConnections ?? "-";
+      if (msgsEl) msgsEl.textContent = data.totalMessages ?? "-";
+    } catch (e) {
+      console.warn("loadChannelStats error:", e);
+    }
+  },
+  async viewChannelDetail(slug, name) {
+    try {
+      const resp = await fetch(`/api/admin/channel-details?slug=${encodeURIComponent(slug)}`, {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!resp.ok) throw new Error("Failed to load channel details");
+      const data = await resp.json();
+      const title = document.getElementById("channel-detail-title");
+      const content = document.getElementById("channel-detail-content");
+      if (title) title.textContent = `\uCC44\uB110 \uC0C1\uC138: ${escapeHtml(name)}`;
+      const sessions = data.sessions || [];
+      const messages = data.messages || [];
+      content.innerHTML = `
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div class="bg-gray-700/50 rounded-lg p-3">
                         <div class="text-xs text-gray-400">\uC811\uC18D\uC790</div>
-                        <div class="text-xl font-bold text-white">${s.activeConnections||0}</div>
+                        <div class="text-xl font-bold text-white">${data.activeConnections || 0}</div>
                     </div>
                     <div class="bg-gray-700/50 rounded-lg p-3">
                         <div class="text-xs text-gray-400">\uCD1D \uBA54\uC2DC\uC9C0</div>
-                        <div class="text-xl font-bold text-white">${s.totalMessages||0}</div>
+                        <div class="text-xl font-bold text-white">${data.totalMessages || 0}</div>
                     </div>
                     <div class="bg-gray-700/50 rounded-lg p-3">
                         <div class="text-xs text-gray-400">\uCD1D \uC5F0\uACB0</div>
-                        <div class="text-xl font-bold text-white">${s.totalConnections||0}</div>
+                        <div class="text-xl font-bold text-white">${data.totalConnections || 0}</div>
                     </div>
                     <div class="bg-gray-700/50 rounded-lg p-3">
                         <div class="text-xs text-gray-400">\uC624\uB958</div>
-                        <div class="text-xl font-bold text-white">${s.errors||0}</div>
+                        <div class="text-xl font-bold text-white">${data.errors || 0}</div>
                     </div>
                 </div>
                 <div>
-                    <h4 class="text-sm font-semibold text-gray-200 mb-2">\uC811\uC18D \uC911\uC778 \uC0AC\uC6A9\uC790 (${o.filter(u=>u.isOnline).length})</h4>
+                    <h4 class="text-sm font-semibold text-gray-200 mb-2">\uC811\uC18D \uC911\uC778 \uC0AC\uC6A9\uC790 (${sessions.filter((s) => s.isOnline).length})</h4>
                     <div class="overflow-x-auto">
                         <table class="w-full text-xs text-left">
                             <thead class="text-gray-400 bg-gray-700/50"><tr><th class="px-2 py-1">\uB2C9\uB124\uC784</th><th class="px-2 py-1">IP</th><th class="px-2 py-1">\uAD6D\uAC00</th><th class="px-2 py-1">\uBA54\uC2DC\uC9C0</th><th class="px-2 py-1">\uC0C1\uD0DC</th></tr></thead>
                             <tbody class="divide-y divide-gray-700">
-                                ${o.length?o.map(u=>`
-                                    <tr class="${u.isOnline?"text-gray-200":"text-gray-500"}">
-                                        <td class="px-2 py-1">${b(u.nickname)}</td>
-                                        <td class="px-2 py-1 font-mono">${b(u.ip)}</td>
-                                        <td class="px-2 py-1">${b(u.country)}</td>
-                                        <td class="px-2 py-1">${u.messageCount||0}</td>
-                                        <td class="px-2 py-1">${u.isOnline?'<span class="text-green-400">\uC628\uB77C\uC778</span>':'<span class="text-gray-500">\uC624\uD504\uB77C\uC778</span>'}</td>
+                                ${sessions.length ? sessions.map((s) => `
+                                    <tr class="${s.isOnline ? "text-gray-200" : "text-gray-500"}">
+                                        <td class="px-2 py-1">${escapeHtml(s.nickname)}</td>
+                                        <td class="px-2 py-1 font-mono">${escapeHtml(s.ip)}</td>
+                                        <td class="px-2 py-1">${escapeHtml(s.country)}</td>
+                                        <td class="px-2 py-1">${s.messageCount || 0}</td>
+                                        <td class="px-2 py-1">${s.isOnline ? '<span class="text-green-400">\uC628\uB77C\uC778</span>' : '<span class="text-gray-500">\uC624\uD504\uB77C\uC778</span>'}</td>
                                     </tr>
-                                `).join(""):'<tr><td colspan="5" class="px-2 py-4 text-center text-gray-500">\uC0AC\uC6A9\uC790 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>'}
+                                `).join("") : '<tr><td colspan="5" class="px-2 py-4 text-center text-gray-500">\uC0AC\uC6A9\uC790 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
                 </div>
                 <div>
-                    <h4 class="text-sm font-semibold text-gray-200 mb-2">\uCD5C\uADFC \uBA54\uC2DC\uC9C0 (${l.length})</h4>
+                    <h4 class="text-sm font-semibold text-gray-200 mb-2">\uCD5C\uADFC \uBA54\uC2DC\uC9C0 (${messages.length})</h4>
                     <div class="space-y-1 max-h-64 overflow-y-auto bg-gray-900/50 rounded-lg p-2">
-                        ${l.length?l.map(u=>`
+                        ${messages.length ? messages.map((m) => `
                             <div class="text-xs text-gray-300 border-b border-gray-700/50 pb-1">
-                                <span class="text-gray-500">[${new Date(u.timestamp).toLocaleTimeString("ko-KR")}]</span>
-                                <span class="text-emerald-400">${b(u.nickname||"\uC775\uBA85")}</span>:
-                                <span>${b(u.content?.substring(0,100)||"(\uD30C\uC77C)")}${u.content?.length>100?"...":""}</span>
+                                <span class="text-gray-500">[${new Date(m.timestamp).toLocaleTimeString("ko-KR")}]</span>
+                                <span class="text-emerald-400">${escapeHtml(m.nickname || "\uC775\uBA85")}</span>:
+                                <span>${escapeHtml(m.content?.substring(0, 100) || "(\uD30C\uC77C)")}${m.content?.length > 100 ? "..." : ""}</span>
                             </div>
-                        `).join(""):'<div class="text-xs text-gray-500 text-center py-4">\uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</div>'}
+                        `).join("") : '<div class="text-xs text-gray-500 text-center py-4">\uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</div>'}
                     </div>
                 </div>
-            `;let i=document.getElementById("channel-detail-modal");i?.classList.remove("hidden"),i&&(this._channelModalHide=T(i,"#close-channel-detail",document.activeElement))}catch(n){console.error("viewChannelDetail error:",n),this.showNotification("\uCC44\uB110 \uC0C1\uC138 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.","error")}},hideChannelDetail(){let t=document.getElementById("channel-detail-modal");this._channelModalHide&&(this._channelModalHide(),this._channelModalHide=null),t?.classList.add("hidden")},async deleteChannel(t,e){if(confirm(`\uCC44\uB110 "${e}"\uC744(\uB97C) \uAC15\uC81C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
-\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0\uC640 \uC0AC\uC6A9\uC790 \uB370\uC774\uD130\uAC00 \uC601\uAD6C \uC0AD\uC81C\uB429\uB2C8\uB2E4.`))try{if(!(await fetch("/api/admin/channel-delete",{method:"POST",headers:{Authorization:`Bearer ${this.sessionToken}`,"Content-Type":"application/json"},body:JSON.stringify({slug:t})})).ok)throw new Error("Failed to delete channel");this.showNotification(`\uCC44\uB110 "${e}"\uC774(\uAC00) \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`,"success"),this.loadChannels()}catch(n){console.error("deleteChannel error:",n),this.showNotification("\uCC44\uB110 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.","error")}},createBanModal(t,e){let n=document.querySelectorAll(".session-row"),s=0;n.forEach(l=>{let i=l.querySelector(".kick-user-btn");i&&i.dataset.userIp===e&&s++});let a=s>1,r=a?`
+            `;
+      const channelDetailModal = document.getElementById("channel-detail-modal");
+      channelDetailModal?.classList.remove("hidden");
+      if (channelDetailModal) this._channelModalHide = showModal(channelDetailModal, "#close-channel-detail", document.activeElement);
+    } catch (error) {
+      console.error("viewChannelDetail error:", error);
+      this.showNotification("\uCC44\uB110 \uC0C1\uC138 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.", "error");
+    }
+  },
+  hideChannelDetail() {
+    const modal = document.getElementById("channel-detail-modal");
+    if (this._channelModalHide) {
+      this._channelModalHide();
+      this._channelModalHide = null;
+    }
+    modal?.classList.add("hidden");
+  },
+  async deleteChannel(slug, name) {
+    if (!confirm(`\uCC44\uB110 "${name}"\uC744(\uB97C) \uAC15\uC81C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
+\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0\uC640 \uC0AC\uC6A9\uC790 \uB370\uC774\uD130\uAC00 \uC601\uAD6C \uC0AD\uC81C\uB429\uB2C8\uB2E4.`)) return;
+    try {
+      const resp = await fetch("/api/admin/channel-delete", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.sessionToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ slug })
+      });
+      if (!resp.ok) throw new Error("Failed to delete channel");
+      this.showNotification(`\uCC44\uB110 "${name}"\uC774(\uAC00) \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`, "success");
+      this.loadChannels();
+    } catch (error) {
+      console.error("deleteChannel error:", error);
+      this.showNotification("\uCC44\uB110 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", "error");
+    }
+  },
+  createBanModal(sessionId, userIp) {
+    const sessionRows = document.querySelectorAll(".session-row");
+    let sameIpCount = 0;
+    sessionRows.forEach((row) => {
+      const btn = row.querySelector(".kick-user-btn");
+      if (btn && btn.dataset.userIp === userIp) {
+        sameIpCount++;
+      }
+    });
+    const isSharedIP = sameIpCount > 1;
+    const sharedIpWarning = isSharedIP ? `
             <div class="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg">
-                <p class="text-yellow-400 text-sm font-semibold">\u26A0\uFE0F \uACF5\uC720 IP \uAC10\uC9C0 (${s}\uBA85 \uC811\uC18D \uC911)</p>
+                <p class="text-yellow-400 text-sm font-semibold">\u26A0\uFE0F \uACF5\uC720 IP \uAC10\uC9C0 (${sameIpCount}\uBA85 \uC811\uC18D \uC911)</p>
                 <p class="text-yellow-500 text-xs mt-1">\uAC19\uC740 IP\uB97C \uC0AC\uC6A9\uD558\uB294 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC788\uC2B5\uB2C8\uB2E4. \uCC28\uB2E8 \uC2DC \uD574\uB2F9 \uC138\uC158\uB9CC \uCC28\uB2E8\uB418\uBA70, \uAC19\uC740 IP\uC758 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uB294 \uC601\uD5A5\uC744 \uBC1B\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.</p>
             </div>
-        `:"",o=document.createElement("div");return o.className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",o.innerHTML=`
+        ` : "";
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    modal.innerHTML = `
             <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
                 <h3 class="text-xl font-bold text-gray-100 mb-4">\uC0AC\uC6A9\uC790 \uAC15\uC81C\uD1F4\uC7A5</h3>
                 <div class="mb-4 text-sm text-gray-400">
-                    <p>\uC138\uC158 ID: <span class="text-gray-200">${this.truncateId(t)}</span></p>
-                    <p>IP \uC8FC\uC18C: <span class="text-gray-200">${e}</span></p>
+                    <p>\uC138\uC158 ID: <span class="text-gray-200">${this.truncateId(sessionId)}</span></p>
+                    <p>IP \uC8FC\uC18C: <span class="text-gray-200">${userIp}</span></p>
                 </div>
-                ${r}
+                ${sharedIpWarning}
                 <p class="text-sm text-gray-300 mb-4">\uCC28\uB2E8 \uC2DC\uAC04\uC744 \uC120\uD0DD\uD558\uC138\uC694:</p>
                 <div class="grid grid-cols-2 gap-3 mb-6">
                     <button class="ban-option-btn bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="0">
@@ -226,82 +1393,205 @@ IP ${s.ip}\uAC00 ${o}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`)}else a
                     </button>
                     <button class="ban-option-btn bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="30">
                         30\uCD08 \uCC28\uB2E8
-                        <span class="block text-xs opacity-80">${a?"\uC138\uC158\uB9CC \uCC28\uB2E8":"\uC784\uC2DC \uCC28\uB2E8"}</span>
+                        <span class="block text-xs opacity-80">${isSharedIP ? "\uC138\uC158\uB9CC \uCC28\uB2E8" : "\uC784\uC2DC \uCC28\uB2E8"}</span>
                     </button>
                     <button class="ban-option-btn bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="300">
                         5\uBD84 \uCC28\uB2E8
-                        <span class="block text-xs opacity-80">${a?"\uC138\uC158\uB9CC \uCC28\uB2E8":"\uB2E8\uAE30 \uCC28\uB2E8"}</span>
+                        <span class="block text-xs opacity-80">${isSharedIP ? "\uC138\uC158\uB9CC \uCC28\uB2E8" : "\uB2E8\uAE30 \uCC28\uB2E8"}</span>
                     </button>
                     <button class="ban-option-btn bg-red-700 hover:bg-red-800 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="600">
                         10\uBD84 \uCC28\uB2E8
-                        <span class="block text-xs opacity-80">${a?"\uC138\uC158\uB9CC \uCC28\uB2E8":"\uC7A5\uAE30 \uCC28\uB2E8"}</span>
+                        <span class="block text-xs opacity-80">${isSharedIP ? "\uC138\uC158\uB9CC \uCC28\uB2E8" : "\uC7A5\uAE30 \uCC28\uB2E8"}</span>
                     </button>
                 </div>
                 <button class="cancel-btn w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 rounded-lg transition-colors">
                     \uCDE8\uC18C
                 </button>
             </div>
-        `,o.querySelectorAll(".ban-option-btn").forEach(l=>{l.addEventListener("click",async()=>{let i=parseInt(l.dataset.duration);o.remove(),await this.kickUser(t,i)})}),o.querySelector(".cancel-btn").addEventListener("click",()=>{o.remove()}),o.addEventListener("click",l=>{l.target===o&&o.remove()}),o},filterAnnouncements(t){if(!this.lastAnnouncements)return;if(!t){this.updateAnnouncementsList(this.lastAnnouncements);return}let e=this.lastAnnouncements.filter(n=>{let s=n.content.toLowerCase(),a=new Date(n.timestamp).toLocaleString("ko-KR").toLowerCase();return s.includes(t)||a.includes(t)});this.updateAnnouncementsList(e)}},M=H;var N='a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';function U(t){if(!t)return function(){};let e=Array.from(t.querySelectorAll(N));if(e.length===0)return function(){};let n=e[0],s=e[e.length-1];n.focus();function a(r){r.key==="Tab"&&(r.shiftKey&&document.activeElement===n?(r.preventDefault(),s.focus()):!r.shiftKey&&document.activeElement===s&&(r.preventDefault(),n.focus()))}return t.addEventListener("keydown",a),function(){t.removeEventListener("keydown",a)}}var z={updateMetrics(t){if(this.lastMetrics=t,document.getElementById("stat-active-connections").textContent=t.activeConnections?.toLocaleString()||"0",document.getElementById("stat-total-messages").textContent=t.totalMessages?.toLocaleString()||"0",document.getElementById("stat-total-connections").textContent=t.totalConnections?.toLocaleString()||"0",document.getElementById("stat-errors").textContent=t.errors?.toLocaleString()||"0",document.getElementById("server-time").textContent=new Date().toLocaleString("ko-KR"),t.uptime){let e=Math.floor(t.uptime/36e5),n=Math.floor(t.uptime%36e5/6e4);document.getElementById("uptime").textContent=`${e}\uC2DC\uAC04 ${n}\uBD84`}t.errorLogs&&this.renderErrorLogs(t.errorLogs)},renderErrorLogs(t){let e=document.getElementById("error-logs-list");if(!e)return;this._errorLogs=t||[];let n=document.getElementById("error-log-filter"),s=document.getElementById("error-log-search"),a=n?.value||"all",r=(s?.value||"").toLowerCase(),o=this._errorLogs;if(a!=="all"&&(o=o.filter(i=>i.type===a)),r&&(o=o.filter(i=>i.message&&i.message.toLowerCase().includes(r)||i.location&&i.location.toLowerCase().includes(r)||i.type&&i.type.toLowerCase().includes(r))),!o||o.length===0){e.innerHTML='<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">\uCD5C\uADFC \uBC1C\uC0DD\uD55C \uC624\uB958\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';return}let l=Array.from(e.querySelectorAll('tr[id^="error-detail-"]:not(.hidden)')).map(i=>i.getAttribute("data-log-id"));e.innerHTML=o.map((i,u)=>{let x=new Date(i.timestamp),f="bg-gray-700 text-gray-300";i.type==="WS_MESSAGE_PARSE"?f="bg-yellow-900/50 text-yellow-500 border border-yellow-700":i.type==="CLIENT_ERROR"?f="bg-orange-900/50 text-orange-500 border border-orange-700":i.type==="WS_CONNECTION"?f="bg-purple-900/50 text-purple-500 border border-purple-700":i.type==="SYSTEM_ERROR"&&(f="bg-red-900/50 text-red-500 border border-red-700");let g=`log-${i.timestamp}-${i.type}`,c=`error-detail-${u}`,h=l.includes(g);return`
+        `;
+    modal.querySelectorAll(".ban-option-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const banDuration = parseInt(btn.dataset.duration);
+        modal.remove();
+        await this.kickUser(sessionId, banDuration);
+      });
+    });
+    modal.querySelector(".cancel-btn").addEventListener("click", () => {
+      modal.remove();
+    });
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+    return modal;
+  },
+  filterAnnouncements(query) {
+    if (!this.lastAnnouncements) return;
+    if (!query) {
+      this.updateAnnouncementsList(this.lastAnnouncements);
+      return;
+    }
+    const filtered = this.lastAnnouncements.filter((acc) => {
+      const content = acc.content.toLowerCase();
+      const timeStr = new Date(acc.timestamp).toLocaleString("ko-KR").toLowerCase();
+      return content.includes(query) || timeStr.includes(query);
+    });
+    this.updateAnnouncementsList(filtered);
+  }
+};
+var admin_data_default = dataMethods;
+
+// public/js/admin-render.js
+var FOCUSABLE2 = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+function trapFocus2(modalEl) {
+  if (!modalEl) return function cleanup() {
+  };
+  const focusable = Array.from(modalEl.querySelectorAll(FOCUSABLE2));
+  if (focusable.length === 0) return function cleanup() {
+  };
+  const firstEl = focusable[0];
+  const lastEl = focusable[focusable.length - 1];
+  firstEl.focus();
+  function handler(e) {
+    if (e.key !== "Tab") return;
+    if (e.shiftKey && document.activeElement === firstEl) {
+      e.preventDefault();
+      lastEl.focus();
+    } else if (!e.shiftKey && document.activeElement === lastEl) {
+      e.preventDefault();
+      firstEl.focus();
+    }
+  }
+  modalEl.addEventListener("keydown", handler);
+  return function cleanup() {
+    modalEl.removeEventListener("keydown", handler);
+  };
+}
+var renderMethods = {
+  updateMetrics(metrics) {
+    this.lastMetrics = metrics;
+    document.getElementById("stat-active-connections").textContent = metrics.activeConnections?.toLocaleString() || "0";
+    document.getElementById("stat-total-messages").textContent = metrics.totalMessages?.toLocaleString() || "0";
+    document.getElementById("stat-total-connections").textContent = metrics.totalConnections?.toLocaleString() || "0";
+    document.getElementById("stat-errors").textContent = metrics.errors?.toLocaleString() || "0";
+    document.getElementById("server-time").textContent = (/* @__PURE__ */ new Date()).toLocaleString("ko-KR");
+    if (metrics.uptime) {
+      const hours = Math.floor(metrics.uptime / 36e5);
+      const minutes = Math.floor(metrics.uptime % 36e5 / 6e4);
+      document.getElementById("uptime").textContent = `${hours}\uC2DC\uAC04 ${minutes}\uBD84`;
+    }
+    if (metrics.errorLogs) {
+      this.renderErrorLogs(metrics.errorLogs);
+    }
+  },
+  renderErrorLogs(logs) {
+    const container = document.getElementById("error-logs-list");
+    if (!container) return;
+    this._errorLogs = logs || [];
+    const filterSelect = document.getElementById("error-log-filter");
+    const searchInput = document.getElementById("error-log-search");
+    const filterType = filterSelect?.value || "all";
+    const searchText = (searchInput?.value || "").toLowerCase();
+    let filteredLogs = this._errorLogs;
+    if (filterType !== "all") {
+      filteredLogs = filteredLogs.filter((log) => log.type === filterType);
+    }
+    if (searchText) {
+      filteredLogs = filteredLogs.filter(
+        (log) => log.message && log.message.toLowerCase().includes(searchText) || log.location && log.location.toLowerCase().includes(searchText) || log.type && log.type.toLowerCase().includes(searchText)
+      );
+    }
+    if (!filteredLogs || filteredLogs.length === 0) {
+      container.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">\uCD5C\uADFC \uBC1C\uC0DD\uD55C \uC624\uB958\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
+      return;
+    }
+    const currentOpened = Array.from(container.querySelectorAll('tr[id^="error-detail-"]:not(.hidden)')).map((el) => el.getAttribute("data-log-id"));
+    container.innerHTML = filteredLogs.map((log, index) => {
+      const date = new Date(log.timestamp);
+      let badgeClass = "bg-gray-700 text-gray-300";
+      if (log.type === "WS_MESSAGE_PARSE") badgeClass = "bg-yellow-900/50 text-yellow-500 border border-yellow-700";
+      else if (log.type === "CLIENT_ERROR") badgeClass = "bg-orange-900/50 text-orange-500 border border-orange-700";
+      else if (log.type === "WS_CONNECTION") badgeClass = "bg-purple-900/50 text-purple-500 border border-purple-700";
+      else if (log.type === "SYSTEM_ERROR") badgeClass = "bg-red-900/50 text-red-500 border border-red-700";
+      const uniqueLogId = `log-${log.timestamp}-${log.type}`;
+      const detailsId = `error-detail-${index}`;
+      const isOpened = currentOpened.includes(uniqueLogId);
+      return `
             <tr class="hover:bg-gray-700/30 transition-colors">
                 <td class="px-2 py-2 md:px-4 md:py-3 whitespace-nowrap text-xs text-gray-400">
-                    ${x.toLocaleDateString()}<br>${x.toLocaleTimeString()}
+                    ${date.toLocaleDateString()}<br>${date.toLocaleTimeString()}
                 </td>
                 <td class="px-2 py-2 md:px-4 md:py-3 whitespace-nowrap">
-                    <span class="px-2 py-1 rounded text-[10px] font-bold ${f}">${i.type}</span>
+                    <span class="px-2 py-1 rounded text-[10px] font-bold ${badgeClass}">${log.type}</span>
                 </td>
                 <td class="px-2 py-2 md:px-4 md:py-3 text-xs" style="max-width: 0;">
-                    <div class="font-mono text-red-400 truncate w-full" title="${this.escapeHtml(i.message)}">${this.escapeHtml(i.message)}</div>
-                    <div class="text-gray-500 text-[10px] mt-1 truncate w-full" title="${this.escapeHtml(i.location)}">${this.escapeHtml(i.location)}</div>
+                    <div class="font-mono text-red-400 truncate w-full" title="${this.escapeHtml(log.message)}">${this.escapeHtml(log.message)}</div>
+                    <div class="text-gray-500 text-[10px] mt-1 truncate w-full" title="${this.escapeHtml(log.location)}">${this.escapeHtml(log.location)}</div>
                 </td>
                 <td class="px-2 py-2 md:px-4 md:py-3 text-right">
-                    <button onclick="document.getElementById('${c}').classList.toggle('hidden')" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300 transition-colors">
+                    <button onclick="document.getElementById('${detailsId}').classList.toggle('hidden')" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300 transition-colors">
                         \uC790\uC138\uD788
                     </button>
                 </td>
             </tr>
-            <tr id="${c}" data-log-id="${g}" class="${h?"":"hidden"} bg-gray-900/50 border-t border-gray-800">
+            <tr id="${detailsId}" data-log-id="${uniqueLogId}" class="${isOpened ? "" : "hidden"} bg-gray-900/50 border-t border-gray-800">
                 <td colspan="4" class="px-4 py-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
                         <div class="min-w-0 flex flex-col">
                             <h4 class="text-xs font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1 shrink-0">\uD658\uACBD \uC815\uBCF4</h4>
                             <div class="overflow-y-auto max-h-48 pr-1 min-h-[4rem]">
                                 <ul class="text-[11px] text-gray-300 space-y-1 font-mono break-all">
-                                    <li><strong class="text-gray-400">IP / \uC9C0\uC5ED:</strong> ${this.escapeHtml(i.environment?.ip||"N/A")} (${this.escapeHtml(i.environment?.country||"Unknown")})</li>
-                                    <li><strong class="text-gray-400">User-Agent:</strong> <span>${this.escapeHtml(i.environment?.userAgent||"N/A")}</span></li>
-                                    <li><strong class="text-gray-400">Context:</strong> ${this.escapeHtml(i.context||"N/A")}</li>
-                                    ${i.environment?.url?`<li><strong class="text-gray-400">URL:</strong> <a href="${this.escapeHtml(i.environment.url)}" target="_blank" class="text-cyan-400 hover:underline">${this.escapeHtml(i.environment.url)}</a></li>`:""}
+                                    <li><strong class="text-gray-400">IP / \uC9C0\uC5ED:</strong> ${this.escapeHtml(log.environment?.ip || "N/A")} (${this.escapeHtml(log.environment?.country || "Unknown")})</li>
+                                    <li><strong class="text-gray-400">User-Agent:</strong> <span>${this.escapeHtml(log.environment?.userAgent || "N/A")}</span></li>
+                                    <li><strong class="text-gray-400">Context:</strong> ${this.escapeHtml(log.context || "N/A")}</li>
+                                    ${log.environment?.url ? `<li><strong class="text-gray-400">URL:</strong> <a href="${this.escapeHtml(log.environment.url)}" target="_blank" class="text-cyan-400 hover:underline">${this.escapeHtml(log.environment.url)}</a></li>` : ""}
                                 </ul>
                             </div>
                         </div>
                         <div class="min-w-0 flex flex-col">
                             <h4 class="text-xs font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1 shrink-0">Stack Trace</h4>
-                            <div class="bg-black p-2 rounded flex-1 min-h-[8rem] max-h-48 overflow-y-auto overflow-x-hidden text-[10px] font-mono text-gray-400 whitespace-pre-wrap break-all">${this.escapeHtml(i.stackTrace)}</div>
+                            <div class="bg-black p-2 rounded flex-1 min-h-[8rem] max-h-48 overflow-y-auto overflow-x-hidden text-[10px] font-mono text-gray-400 whitespace-pre-wrap break-all">${this.escapeHtml(log.stackTrace)}</div>
                         </div>
                     </div>
                 </td>
             </tr>
-            `}).join("")},updateActiveSessions(t){let e=document.getElementById("active-sessions");if(!t||t.length===0){e.innerHTML='<p class="text-sm text-gray-500 text-center py-8">\uD65C\uC131 \uC138\uC158\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';return}e.innerHTML=t.map(n=>{let s=n.isOnline,a=s?"bg-green-500":"bg-gray-500",r=n.lastMessageTime>0?this.formatDuration(Date.now()-n.lastMessageTime)+" \uC804 \uD65C\uB3D9":n.lastActivityTime?this.formatDuration(Date.now()-n.lastActivityTime)+" \uC804 \uD65C\uB3D9":"\uD65C\uB3D9 \uC5C6\uC74C",o=n.userAgent?n.userAgent.substring(0,40)+(n.userAgent.length>40?"...":""):"";return`
-                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer session-row" data-session-id="${n.sessionId}">
+            `;
+    }).join("");
+  },
+  updateActiveSessions(sessions) {
+    const container = document.getElementById("active-sessions");
+    if (!sessions || sessions.length === 0) {
+      container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">\uD65C\uC131 \uC138\uC158\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
+      return;
+    }
+    container.innerHTML = sessions.map((session) => {
+      const isOnline = session.isOnline;
+      const statusColor = isOnline ? "bg-green-500" : "bg-gray-500";
+      const lastActiveText = session.lastMessageTime > 0 ? this.formatDuration(Date.now() - session.lastMessageTime) + " \uC804 \uD65C\uB3D9" : session.lastActivityTime ? this.formatDuration(Date.now() - session.lastActivityTime) + " \uC804 \uD65C\uB3D9" : "\uD65C\uB3D9 \uC5C6\uC74C";
+      const userAgent = session.userAgent ? session.userAgent.substring(0, 40) + (session.userAgent.length > 40 ? "..." : "") : "";
+      return `
+                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer session-row" data-session-id="${session.sessionId}">
                     <div class="flex items-center gap-3 flex-1">
-                        <div class="w-2 h-2 ${a} rounded-full ${s?"animate-pulse":""}"></div>
+                        <div class="w-2 h-2 ${statusColor} rounded-full ${isOnline ? "animate-pulse" : ""}"></div>
                         <div class="flex-1">
                             <p class="text-sm font-mono text-gray-300 break-all">
-                                ${this.truncateId(n.sessionId)}
-                                ${n.nickname?`<span class="text-xs ml-2 text-yellow-300">(${this.escapeHtml(n.nickname)})</span>`:""}
+                                ${this.truncateId(session.sessionId)}
+                                ${session.nickname ? `<span class="text-xs ml-2 text-yellow-300">(${this.escapeHtml(session.nickname)})</span>` : ""}
                             </p>
-                            <p class="text-xs text-gray-500 break-all">${n.ip||"Unknown IP"}${n.country?` \xB7 ${this.escapeHtml(n.country)}`:""}</p>
-                            <p class="text-xs text-gray-400">${r}</p>
-                            ${o?`<p class="text-xs text-gray-500 truncate">${this.escapeHtml(o)}</p>`:""}
+                            <p class="text-xs text-gray-500 break-all">${session.ip || "Unknown IP"}${session.country ? ` \xB7 ${this.escapeHtml(session.country)}` : ""}</p>
+                            <p class="text-xs text-gray-400">${lastActiveText}</p>
+                            ${userAgent ? `<p class="text-xs text-gray-500 truncate">${this.escapeHtml(userAgent)}</p>` : ""}
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="text-right">
-                            <p class="text-xs text-gray-400">${n.messageCount||0} \uBA54\uC2DC\uC9C0</p>
-                            <p class="text-xs text-gray-500">\uC811\uC18D: ${this.formatDuration(Date.now()-n.joinTime)}</p>
+                            <p class="text-xs text-gray-400">${session.messageCount || 0} \uBA54\uC2DC\uC9C0</p>
+                            <p class="text-xs text-gray-500">\uC811\uC18D: ${this.formatDuration(Date.now() - session.joinTime)}</p>
                         </div>
                         <button class="kick-user-btn bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded" 
-                                data-session-id="${n.sessionId}"
-                                data-user-ip="${n.ip||"Unknown"}"
+                                data-session-id="${session.sessionId}"
+                                data-user-ip="${session.ip || "Unknown"}"
                                 title="\uC0AC\uC6A9\uC790 \uAC15\uC81C\uD1F4\uC7A5"
                                 onclick="event.stopPropagation()">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline" viewBox="0 0 20 20" fill="currentColor">
@@ -311,73 +1601,584 @@ IP ${s.ip}\uAC00 ${o}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`)}else a
                         </button>
                     </div>
                 </div>
-            `}).join(""),document.querySelectorAll(".session-row").forEach(n=>{n.addEventListener("click",async s=>{let a=s.currentTarget.dataset.sessionId;await this.showUserDetails(a)})}),document.querySelectorAll(".kick-user-btn").forEach(n=>{n.addEventListener("click",async s=>{let a=s.currentTarget.dataset.sessionId,r=s.currentTarget.dataset.userIp,o=this.createBanModal(a,r);document.body.appendChild(o),U(o)})})},updateRecentMessages(t){let e=document.getElementById("recent-messages");if(!t||t.length===0){e.innerHTML='<p class="text-sm text-gray-500 text-center py-8">\uCD5C\uADFC \uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';return}e.innerHTML=t.slice(-50).reverse().map(n=>{let s=n.file?(()=>{let u=this.escapeHtml(n.file.filename||"\uD30C\uC77C"),x=n.file.filesize!=null?this.formatFileSize(n.file.filesize):"",f=n.file.filetype||"",g=n.file.url||"#";if(!this.isValidUrl(g))return'<div class="text-red-400 text-xs mt-2">Invalid file URL</div>';let c=this.sanitizeUrl(g);return f.startsWith("image/")?`
+            `;
+    }).join("");
+    document.querySelectorAll(".session-row").forEach((row) => {
+      row.addEventListener("click", async (e) => {
+        const sessionId = e.currentTarget.dataset.sessionId;
+        await this.showUserDetails(sessionId);
+      });
+    });
+    document.querySelectorAll(".kick-user-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const sessionId = e.currentTarget.dataset.sessionId;
+        const userIp = e.currentTarget.dataset.userIp;
+        const modal = this.createBanModal(sessionId, userIp);
+        document.body.appendChild(modal);
+        trapFocus2(modal);
+      });
+    });
+  },
+  updateRecentMessages(messages) {
+    const container = document.getElementById("recent-messages");
+    if (!messages || messages.length === 0) {
+      container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">\uCD5C\uADFC \uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
+      return;
+    }
+    container.innerHTML = messages.slice(-50).reverse().map((msg) => {
+      const fileHtml = msg.file ? (() => {
+        const filename = this.escapeHtml(msg.file.filename || "\uD30C\uC77C");
+        const filesize = msg.file.filesize != null ? this.formatFileSize(msg.file.filesize) : "";
+        const filetype = msg.file.filetype || "";
+        const url = msg.file.url || "#";
+        if (!this.isValidUrl(url)) {
+          return '<div class="text-red-400 text-xs mt-2">Invalid file URL</div>';
+        }
+        const safeUrl = this.sanitizeUrl(url);
+        if (filetype.startsWith("image/")) {
+          return `
                         <div class="mt-2">
-                            <a href="${c}" target="_blank" rel="noopener noreferrer">
-                                <img src="${c}" alt="${u}" class="w-full max-h-48 object-contain rounded border border-gray-600" />
+                            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
+                                <img src="${safeUrl}" alt="${filename}" class="w-full max-h-48 object-contain rounded border border-gray-600" />
                             </a>
-                            <div class="mt-1 text-xs text-gray-400">${u} ${x?"\xB7 "+x:""}</div>
+                            <div class="mt-1 text-xs text-gray-400">${filename} ${filesize ? "\xB7 " + filesize : ""}</div>
                         </div>
-                    `:`
+                    `;
+        }
+        return `
                     <div class="mt-2 text-xs text-gray-300">
-                        <a href="${c}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">${u}</a>
-                        ${x?`<span class="text-gray-400"> \xB7 ${x}</span>`:""}
-                        ${f?`<span class="text-gray-400"> \xB7 ${this.escapeHtml(f)}</span>`:""}
+                        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">${filename}</a>
+                        ${filesize ? `<span class="text-gray-400"> \xB7 ${filesize}</span>` : ""}
+                        ${filetype ? `<span class="text-gray-400"> \xB7 ${this.escapeHtml(filetype)}</span>` : ""}
                     </div>
-                `})():"",a=n.sessionId&&String(n.sessionId).startsWith("admin_"),r=a?`
+                `;
+      })() : "";
+      const isAdminMsg = msg.sessionId && String(msg.sessionId).startsWith("admin_");
+      const adminBadge = isAdminMsg ? `
                 <span class="inline-block text-xs font-semibold text-yellow-300 bg-yellow-900/20 px-2 py-0.5 rounded">\uAD00\uB9AC\uC790</span>
-            `:"",i=`
+            ` : "";
+      const canEdit = isAdminMsg;
+      const canDelete = true;
+      const editButtons = `
                 <div class="mt-2 flex gap-2">
-                    ${a?`
-                        <button class="admin-edit-msg-btn text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded" data-message-id="${n.messageId}" data-content="${this.escapeHtml(n.content||"")}">
+                    ${canEdit ? `
+                        <button class="admin-edit-msg-btn text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded" data-message-id="${msg.messageId}" data-content="${this.escapeHtml(msg.content || "")}">
                             \uC218\uC815
                         </button>
-                    `:""}
-                    ${!0?`
-                        <button class="admin-delete-msg-btn text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded" data-message-id="${n.messageId}">
+                    ` : ""}
+                    ${canDelete ? `
+                        <button class="admin-delete-msg-btn text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded" data-message-id="${msg.messageId}">
                             \uC0AD\uC81C
                         </button>
-                    `:""}
+                    ` : ""}
                 </div>
-            `;return`
-                <div class="p-3 ${a?"bg-yellow-900/5 border border-yellow-800":"bg-gray-700"} rounded-lg" data-message-id="${n.messageId}">
+            `;
+      return `
+                <div class="p-3 ${isAdminMsg ? "bg-yellow-900/5 border border-yellow-800" : "bg-gray-700"} rounded-lg" data-message-id="${msg.messageId}">
                     <div class="flex items-start justify-between mb-1">
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-mono text-gray-400">${this.truncateId(n.sessionId)}</span>
-                            ${r}
+                            <span class="text-xs font-mono text-gray-400">${this.truncateId(msg.sessionId)}</span>
+                            ${adminBadge}
                         </div>
-                        <span class="text-xs text-gray-500">${new Date(n.timestamp).toLocaleTimeString("ko-KR")}</span>
+                        <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString("ko-KR")}</span>
                     </div>
-                    <p class="message-content text-sm text-gray-200 break-words whitespace-pre-wrap">${this.escapeHtml(n.content||"")}</p>
-                    ${n.editedAt?'<span class="text-xs text-yellow-500">(\uC218\uC815\uB428)</span>':""}
-                    ${s}
-                    ${i}
+                    <p class="message-content text-sm text-gray-200 break-words whitespace-pre-wrap">${this.escapeHtml(msg.content || "")}</p>
+                    ${msg.editedAt ? '<span class="text-xs text-yellow-500">(\uC218\uC815\uB428)</span>' : ""}
+                    ${fileHtml}
+                    ${editButtons}
                 </div>
-            `}).join(""),this.attachMessageEventListeners()},attachMessageEventListeners(){document.querySelectorAll(".admin-edit-msg-btn").forEach(t=>{t.addEventListener("click",async e=>{let n=e.target.dataset.messageId,s=e.target.dataset.content,a=prompt("\uBA54\uC2DC\uC9C0\uB97C \uC218\uC815\uD558\uC138\uC694:",s);a!==null&&a.trim()!==s.trim()&&await this.editAdminMessage(n,a.trim())})}),document.querySelectorAll(".admin-delete-msg-btn").forEach(t=>{t.addEventListener("click",async e=>{let n=e.target.dataset.messageId;confirm(`\uC774 \uBA54\uC2DC\uC9C0\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
-
-\uC0AD\uC81C\uB41C \uBA54\uC2DC\uC9C0\uB294 \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.
-\uCCA8\uBD80\uB41C \uD30C\uC77C\uB3C4 \uD568\uAED8 \uC0AD\uC81C\uB429\uB2C8\uB2E4.`)&&await this.deleteMessage(n)})})},updateAnnouncementsList(t){let e=document.getElementById("announcement-list");if(e){if(!t||t.length===0){e.innerHTML='<p class="text-sm text-gray-500 text-center py-8">\uB4F1\uB85D\uB41C \uACF5\uC9C0\uC0AC\uD56D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';return}e.innerHTML=t.map(n=>{let s=new Date(n.timestamp).toLocaleString("ko-KR"),o=this.escapeHtml(n.content).replace(/(https?:\/\/[^\s<>"']+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline break-all">$1</a>').replace(/\n/g,"<br>"),l=n.isEmergency?'<span class="text-xs bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded-full font-medium ml-1">\uAE34\uAE09</span>':"";return`
-                <div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4 ${n.isEmergency?"border border-red-700/50":""}">
+            `;
+    }).join("");
+    this.attachMessageEventListeners();
+  },
+  attachMessageEventListeners() {
+    document.querySelectorAll(".admin-edit-msg-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const messageId = e.target.dataset.messageId;
+        const currentContent = e.target.dataset.content;
+        const newContent = prompt("\uBA54\uC2DC\uC9C0\uB97C \uC218\uC815\uD558\uC138\uC694:", currentContent);
+        if (newContent !== null && newContent.trim() !== currentContent.trim()) {
+          await this.editAdminMessage(messageId, newContent.trim());
+        }
+      });
+    });
+    document.querySelectorAll(".admin-delete-msg-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const messageId = e.target.dataset.messageId;
+        if (confirm("\uC774 \uBA54\uC2DC\uC9C0\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?\n\n\uC0AD\uC81C\uB41C \uBA54\uC2DC\uC9C0\uB294 \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.\n\uCCA8\uBD80\uB41C \uD30C\uC77C\uB3C4 \uD568\uAED8 \uC0AD\uC81C\uB429\uB2C8\uB2E4.")) {
+          await this.deleteMessage(messageId);
+        }
+      });
+    });
+  },
+  updateAnnouncementsList(announcements) {
+    const container = document.getElementById("announcement-list");
+    if (!container) return;
+    if (!announcements || announcements.length === 0) {
+      container.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">\uB4F1\uB85D\uB41C \uACF5\uC9C0\uC0AC\uD56D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
+      return;
+    }
+    container.innerHTML = announcements.map((acc) => {
+      const timeStr = new Date(acc.timestamp).toLocaleString("ko-KR");
+      const escaped = this.escapeHtml(acc.content);
+      const withLinks = escaped.replace(/(https?:\/\/[^\s<>"']+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline break-all">$1</a>');
+      const content = withLinks.replace(/\n/g, "<br>");
+      const emergencyBadge = acc.isEmergency ? '<span class="text-xs bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded-full font-medium ml-1">\uAE34\uAE09</span>' : "";
+      return `
+                <div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4 ${acc.isEmergency ? "border border-red-700/50" : ""}">
                     <div class="flex-1">
-                        <div class="text-xs text-gray-400 mb-1">${s}${l}</div>
-                        <div class="text-sm text-gray-200">${o}</div>
+                        <div class="text-xs text-gray-400 mb-1">${timeStr}${emergencyBadge}</div>
+                        <div class="text-sm text-gray-200">${content}</div>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <button onclick="window.adminDashboard.editAnnouncement(${n.timestamp})" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">\uC218\uC815</button>
-                        ${n.isEmergency?'<button onclick="window.adminDashboard.demoteAnnouncement('+n.timestamp+')" class="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">\uC77C\uBC18 \uC804\uD658</button>':""}
-                        <button onclick="window.adminDashboard.deleteAnnouncement(${n.timestamp})" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">\uC0AD\uC81C</button>
+                        <button onclick="window.adminDashboard.editAnnouncement(${acc.timestamp})" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">\uC218\uC815</button>
+                        ${acc.isEmergency ? '<button onclick="window.adminDashboard.demoteAnnouncement(' + acc.timestamp + ')" class="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">\uC77C\uBC18 \uC804\uD658</button>' : ""}
+                        <button onclick="window.adminDashboard.deleteAnnouncement(${acc.timestamp})" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap">\uC0AD\uC81C</button>
                     </div>
                 </div>
-            `}).join("")}},renderChannels(t){let e=document.getElementById("channels-list");if(e){if(!t.length){e.innerHTML='<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">\uD65C\uC131 \uCC44\uB110\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';return}e.innerHTML=t.map(n=>{let s=new Date(n.createdAt).toLocaleString("ko-KR");return`
+            `;
+    }).join("");
+  },
+  renderChannels(channels) {
+    const tbody = document.getElementById("channels-list");
+    if (!tbody) return;
+    if (!channels.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">\uD65C\uC131 \uCC44\uB110\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = channels.map((ch) => {
+      const date = new Date(ch.createdAt).toLocaleString("ko-KR");
+      return `
                 <tr class="hover:bg-gray-700/50 transition-colors">
-                    <td class="px-2 py-2 md:px-4 md:py-3 font-medium text-emerald-300">${b(n.name)}</td>
-                    <td class="px-2 py-2 md:px-4 md:py-3 text-xs text-gray-400">${b(n.createdBy||"-")}</td>
-                    <td class="px-2 py-2 md:px-4 md:py-3 text-xs text-gray-400">${s}</td>
-                    <td class="px-2 py-2 md:px-4 md:py-3"><span class="channel-users" data-slug="${b(n.slug)}">-</span></td>
-                    <td class="px-2 py-2 md:px-4 md:py-3"><span class="channel-messages" data-slug="${b(n.slug)}">-</span></td>
+                    <td class="px-2 py-2 md:px-4 md:py-3 font-medium text-emerald-300">${escapeHtml(ch.name)}</td>
+                    <td class="px-2 py-2 md:px-4 md:py-3 text-xs text-gray-400">${escapeHtml(ch.createdBy || "-")}</td>
+                    <td class="px-2 py-2 md:px-4 md:py-3 text-xs text-gray-400">${date}</td>
+                    <td class="px-2 py-2 md:px-4 md:py-3"><span class="channel-users" data-slug="${escapeHtml(ch.slug)}">-</span></td>
+                    <td class="px-2 py-2 md:px-4 md:py-3"><span class="channel-messages" data-slug="${escapeHtml(ch.slug)}">-</span></td>
                     <td class="px-2 py-2 md:px-4 md:py-3 text-right">
-                        <button class="view-channel-btn text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded mr-1" data-slug="${b(n.slug)}" data-name="${b(n.name)}">\uC0C1\uC138</button>
-                        <button class="delete-channel-btn text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded" data-slug="${b(n.slug)}" data-name="${b(n.name)}">\uC0AD\uC81C</button>
+                        <button class="view-channel-btn text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded mr-1" data-slug="${escapeHtml(ch.slug)}" data-name="${escapeHtml(ch.name)}">\uC0C1\uC138</button>
+                        <button class="delete-channel-btn text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded" data-slug="${escapeHtml(ch.slug)}" data-name="${escapeHtml(ch.name)}">\uC0AD\uC81C</button>
                     </td>
                 </tr>
-            `}).join(""),e.querySelectorAll(".view-channel-btn").forEach(n=>{n.addEventListener("click",()=>this.viewChannelDetail(n.dataset.slug,n.dataset.name))}),e.querySelectorAll(".delete-channel-btn").forEach(n=>{n.addEventListener("click",()=>this.deleteChannel(n.dataset.slug,n.dataset.name))}),t.forEach(n=>this.loadChannelStats(n.slug))}}},D=z;var I=class{constructor(){this.loginScreen=document.getElementById("login-screen"),this.adminDashboard=document.getElementById("admin-dashboard"),this.loginForm=document.getElementById("login-form"),this.loginError=document.getElementById("login-error"),this.logoutBtn=document.getElementById("logout-btn"),this.refreshBtn=document.getElementById("refresh-btn"),this.sessionToken=localStorage.getItem("admin_token"),this.sessionToken&&v.setToken(this.sessionToken),this.refreshInterval=null,this.autoRefreshInterval=null,this.initializeEventListeners(),this.checkAuthentication()}initializeEventListeners(){this.loginForm.addEventListener("submit",m=>this.handleLogin(m)),this.logoutBtn?.addEventListener("click",()=>this.handleLogout()),this.refreshBtn?.addEventListener("click",()=>this.refreshData()),this.exportCsvBtn=document.getElementById("export-csv-btn"),this.exportCsvBtn?.addEventListener("click",()=>this.exportCsv()),document.getElementById("download-errors-btn")?.addEventListener("click",()=>this.downloadErrorLogs()),document.getElementById("delete-errors-btn")?.addEventListener("click",()=>this.deleteErrorLogs()),document.getElementById("refresh-channels-btn")?.addEventListener("click",()=>this.loadChannels()),document.getElementById("close-channel-detail")?.addEventListener("click",()=>this.hideChannelDetail());try{let m=document.getElementById("mobile-menu-btn"),y=document.getElementById("mobile-menu"),w=document.getElementById("close-mobile-menu"),d=y?.querySelector(".mobile-menu");m?.addEventListener("click",()=>{y?.classList.remove("hidden"),setTimeout(()=>d?.classList.add("active"),10)}),w?.addEventListener("click",()=>{d?.classList.remove("active"),setTimeout(()=>y?.classList.add("hidden"),300)}),y?.addEventListener("click",E=>{E.target===y&&(d?.classList.remove("active"),setTimeout(()=>y?.classList.add("hidden"),300))});let p=document.getElementById("auto-refresh-toggle"),A=document.getElementById("mobile-auto-refresh"),L=document.getElementById("auto-refresh-interval"),j=document.getElementById("mobile-refresh-interval");A?.addEventListener("change",E=>{p&&(p.checked=E.target.checked),E.target.checked?this.startAutoRefresh():this.stopAutoRefresh()}),j?.addEventListener("change",E=>{L&&(L.value=E.target.value),this.autoRefreshInterval&&(this.stopAutoRefresh(),this.startAutoRefresh())}),document.getElementById("mobile-export-csv")?.addEventListener("click",()=>{this.exportCsv(),d?.classList.remove("active"),setTimeout(()=>y?.classList.add("hidden"),300)})}catch{}if(this.adminSendBtn=document.getElementById("admin-send-btn"),this.adminAnnounceBtn=document.getElementById("admin-announce-btn"),this.adminMessageInput=document.getElementById("admin-message-input"),this.adminAnnounceInput=document.getElementById("admin-announce-input"),this.emergencyCheckbox=document.getElementById("emergency-checkbox"),this.emergencyDuration=document.getElementById("emergency-duration"),this.adminSendBtn?.addEventListener("click",()=>this.sendAdminBroadcast()),this.adminAnnounceBtn?.addEventListener("click",()=>this.sendAdminAnnounce()),this.emergencyCheckbox?.addEventListener("change",()=>{this.emergencyDuration.classList.toggle("hidden",!this.emergencyCheckbox.checked)}),this.adminAnnounceInput){let m=document.getElementById("announce-char-count");this.adminAnnounceInput.addEventListener("input",()=>{let y=this.adminAnnounceInput.value.length;m&&(m.textContent=`${y} / 7500`,m.className=y>7e3?"text-xs text-red-400":y>6e3?"text-xs text-yellow-400":"text-xs text-gray-500")})}let s=document.getElementById("announce-preview-btn"),a=document.getElementById("announce-preview"),r=document.getElementById("announce-preview-content");s&&this.adminAnnounceInput&&s.addEventListener("click",()=>{if(a.classList.contains("hidden")){let m=this.adminAnnounceInput.value.trim();r.innerHTML=m?this.escapeHtml(m).replace(/\n/g,"<br>"):'<span class="text-gray-500">\uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694</span>',a.classList.remove("hidden"),s.textContent="\uBBF8\uB9AC\uBCF4\uAE30 \uB2EB\uAE30"}else a.classList.add("hidden"),s.textContent="\uBBF8\uB9AC\uBCF4\uAE30"}),this.deleteAllMessagesBtn=document.getElementById("delete-all-messages-btn"),this.deleteAllMessagesBtn?.addEventListener("click",()=>this.deleteAllMessages()),this.adminMessageInput&&this.adminMessageInput.addEventListener("keydown",m=>{m.key==="Enter"&&!m.shiftKey&&(m.preventDefault(),this.sendAdminBroadcast())}),this.exportFilteredCsvBtn=document.getElementById("export-filtered-csv-btn"),this.exportFilteredCsvBtn?.addEventListener("click",()=>this.exportFilteredCsv());let o=document.getElementById("auto-refresh-toggle"),l=document.getElementById("auto-refresh-interval");o&&o.addEventListener("change",m=>{if(m.target.checked){let y=parseInt(l.value)*1e3;this.startAutoRefresh(y)}else this.stopAutoRefresh()}),l&&l.addEventListener("change",m=>{if(o&&o.checked){this.stopAutoRefresh();let y=parseInt(m.target.value)*1e3;this.startAutoRefresh(y)}});let i=document.getElementById("audit-log-filter");i&&i.addEventListener("change",()=>this.loadAuditLogs());let u=document.getElementById("export-audit-csv-btn");u&&u.addEventListener("click",()=>this.exportAuditLogCsv());let x=document.getElementById("clear-audit-logs-btn");x&&x.addEventListener("click",()=>this.clearAuditLogs());let f=document.getElementById("delete-admin-logs-btn");f&&f.addEventListener("click",()=>this.deleteAdminLogs());let g=document.getElementById("error-log-filter"),c=document.getElementById("error-log-search");g&&g.addEventListener("change",()=>{this._errorLogs&&this.renderErrorLogs(this._errorLogs)}),c&&c.addEventListener("input",()=>{this._errorLogs&&this.renderErrorLogs(this._errorLogs)});let h=document.getElementById("user-details-modal");h&&h.addEventListener("click",m=>{m.target===h&&_(h)});let k=document.getElementById("announce-search");if(k){let m=null;k.addEventListener("input",()=>{clearTimeout(m),m=setTimeout(()=>{let y=k.value.trim().toLowerCase();this.filterAnnouncements(y)},300)})}this.scheduleCheckbox=document.getElementById("schedule-checkbox"),this.scheduleDatetime=document.getElementById("schedule-datetime"),this.scheduleCheckbox&&this.scheduleDatetime&&this.scheduleCheckbox.addEventListener("change",()=>{if(this.scheduleDatetime.classList.toggle("hidden",!this.scheduleCheckbox.checked),this.scheduleCheckbox.checked&&!this.scheduleDatetime.value){let m=new Date;m.setMinutes(m.getMinutes()+5),this.scheduleDatetime.value=m.toISOString().slice(0,16)}}),this.announceExpirySelect=document.getElementById("announce-expiry-select"),this.adminAnnounceInput&&this.adminAnnounceInput.addEventListener("keydown",m=>{(m.ctrlKey||m.metaKey)&&m.key==="Enter"&&(m.preventDefault(),this.sendAdminAnnounce())})}async checkAuthentication(){this.sessionToken?await this.verifyToken(this.sessionToken)?this.showDashboard():this.showLogin():this.showLogin()}async handleLogin(e){e.preventDefault();let n=document.getElementById("admin-id").value,s=document.getElementById("admin-password").value;this.loginError.classList.add("hidden");try{let a=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:n,password:s})}),r=await a.json();a.ok&&r.success?(this.sessionToken=r.token,v.setToken(r.token),localStorage.setItem("admin_token",r.token),this.showDashboard()):(this.loginError.classList.remove("hidden"),document.getElementById("admin-id").value="",document.getElementById("admin-password").value="")}catch{this.loginError.classList.remove("hidden")}}async verifyToken(e){try{return(await fetch("/api/admin/verify",{headers:{Authorization:`Bearer ${e}`}})).ok}catch{return!1}}handleLogout(){let e=localStorage.getItem("admin_token");e&&fetch("/api/admin/logout",{method:"POST",headers:{Authorization:`Bearer ${e}`}}).catch(n=>console.error("Logout error:",n)),localStorage.removeItem("admin_token"),this.sessionToken=null,v.setToken(null),this.refreshInterval&&clearInterval(this.refreshInterval),this.showLogin()}showLogin(){this.loginScreen.classList.remove("hidden"),this.adminDashboard.classList.add("hidden")}showDashboard(){this.loginScreen.classList.add("hidden"),this.adminDashboard.classList.remove("hidden"),this.refreshData(),this.refreshInterval=setInterval(()=>this.refreshData(),5e3)}async refreshData(){try{let e=await fetch("/api/admin/metrics",{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(!e.ok){if(e.status===401){this.handleLogout();return}throw new Error("Failed to fetch metrics")}let n=await e.json();this.updateMetrics(n);let s=await fetch("/api/admin/sessions",{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(s.ok){let r=await s.json();this.updateActiveSessions(r)}let a=await fetch("/api/admin/messages",{headers:{Authorization:`Bearer ${this.sessionToken}`}});if(a.ok){let r=await a.json();this.updateRecentMessages(r)}await this.loadBannedIPs(),await this.loadAuditLogs(),await this.loadAnnouncements(),await this.loadAdminLogs(),await this.loadChannels(),this.updateLastUpdated()}catch{}}formatFileSize(e){return C(e)}updateLastUpdated(){let e=`\uB9C8\uC9C0\uB9C9 \uC5C5\uB370\uC774\uD2B8: ${new Date().toLocaleTimeString("ko-KR")}`;document.getElementById("last-updated").textContent=e;let n=document.getElementById("mobile-last-updated");n&&(n.textContent=e)}truncateId(e){return e?e.length>20?e.substring(0,20)+"...":e:"Unknown"}formatDuration(e){let n=Math.floor(e/1e3),s=Math.floor(n/60),a=Math.floor(s/60);return a>0?`${a}\uC2DC\uAC04 \uC804`:s>0?`${s}\uBD84 \uC804`:`${n}\uCD08 \uC804`}escapeHtml(e){return b(e)}isValidUrl(e){return $(e)}sanitizeUrl(e){return B(e)}startAutoRefresh(e){this.autoRefreshInterval&&clearInterval(this.autoRefreshInterval),this.autoRefreshInterval=setInterval(()=>this.refreshData(),e)}stopAutoRefresh(){this.autoRefreshInterval&&(clearInterval(this.autoRefreshInterval),this.autoRefreshInterval=null)}showNotification(e,n="info"){try{let s="admin-notifications-container",a=document.getElementById(s);a||(a=document.createElement("div"),a.id=s,a.style.position="fixed",a.style.top="1rem",a.style.right="1rem",a.style.zIndex="9999",a.style.display="flex",a.style.flexDirection="column",a.style.gap="0.5rem",document.body.appendChild(a));let r={success:"background: #16a34a; color: #fff;",error:"background: #dc2626; color: #fff;",warn:"background: #d97706; color: #fff;",info:"background: #374151; color: #fff;"}[n]||"background: #374151; color: #fff;",o=document.createElement("div");o.setAttribute("role","status"),o.style.cssText=`padding:8px 12px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.4);max-width:320px;${r}`,o.textContent=e,a.appendChild(o),setTimeout(()=>{o.style.transition="opacity 300ms ease, transform 300ms ease",o.style.opacity="0",o.style.transform="translateY(-6px)",setTimeout(()=>o.remove(),350)},3e3)}catch{}}};Object.assign(I.prototype,M,D);window.adminDashboard=new I;
+            `;
+    }).join("");
+    tbody.querySelectorAll(".view-channel-btn").forEach((btn) => {
+      btn.addEventListener("click", () => this.viewChannelDetail(btn.dataset.slug, btn.dataset.name));
+    });
+    tbody.querySelectorAll(".delete-channel-btn").forEach((btn) => {
+      btn.addEventListener("click", () => this.deleteChannel(btn.dataset.slug, btn.dataset.name));
+    });
+    channels.forEach((ch) => this.loadChannelStats(ch.slug));
+  }
+};
+var admin_render_default = renderMethods;
+
+// public/js/admin.js
+var AdminDashboard = class {
+  constructor() {
+    this.loginScreen = document.getElementById("login-screen");
+    this.adminDashboard = document.getElementById("admin-dashboard");
+    this.loginForm = document.getElementById("login-form");
+    this.loginError = document.getElementById("login-error");
+    this.logoutBtn = document.getElementById("logout-btn");
+    this.refreshBtn = document.getElementById("refresh-btn");
+    this.sessionToken = localStorage.getItem("admin_token");
+    if (this.sessionToken) {
+      api_client_default.setToken(this.sessionToken);
+    }
+    this.refreshInterval = null;
+    this.autoRefreshInterval = null;
+    this.initializeEventListeners();
+    this.checkAuthentication();
+  }
+  initializeEventListeners() {
+    this.loginForm.addEventListener("submit", (e) => this.handleLogin(e));
+    this.logoutBtn?.addEventListener("click", () => this.handleLogout());
+    this.refreshBtn?.addEventListener("click", () => this.refreshData());
+    this.exportCsvBtn = document.getElementById("export-csv-btn");
+    this.exportCsvBtn?.addEventListener("click", () => this.exportCsv());
+    const downloadErrorsBtn = document.getElementById("download-errors-btn");
+    downloadErrorsBtn?.addEventListener("click", () => this.downloadErrorLogs());
+    const deleteErrorsBtn = document.getElementById("delete-errors-btn");
+    deleteErrorsBtn?.addEventListener("click", () => this.deleteErrorLogs());
+    document.getElementById("refresh-channels-btn")?.addEventListener("click", () => this.loadChannels());
+    document.getElementById("close-channel-detail")?.addEventListener("click", () => this.hideChannelDetail());
+    try {
+      const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+      const mobileMenu = document.getElementById("mobile-menu");
+      const closeMobileMenu = document.getElementById("close-mobile-menu");
+      const mobileMenuPanel = mobileMenu?.querySelector(".mobile-menu");
+      mobileMenuBtn?.addEventListener("click", () => {
+        mobileMenu?.classList.remove("hidden");
+        setTimeout(() => mobileMenuPanel?.classList.add("active"), 10);
+      });
+      closeMobileMenu?.addEventListener("click", () => {
+        mobileMenuPanel?.classList.remove("active");
+        setTimeout(() => mobileMenu?.classList.add("hidden"), 300);
+      });
+      mobileMenu?.addEventListener("click", (e) => {
+        if (e.target === mobileMenu) {
+          mobileMenuPanel?.classList.remove("active");
+          setTimeout(() => mobileMenu?.classList.add("hidden"), 300);
+        }
+      });
+      const autoRefreshToggle = document.getElementById("auto-refresh-toggle");
+      const mobileAutoRefresh = document.getElementById("mobile-auto-refresh");
+      const autoRefreshInterval = document.getElementById("auto-refresh-interval");
+      const mobileRefreshInterval = document.getElementById("mobile-refresh-interval");
+      mobileAutoRefresh?.addEventListener("change", (e) => {
+        if (autoRefreshToggle) autoRefreshToggle.checked = e.target.checked;
+        if (e.target.checked) {
+          this.startAutoRefresh();
+        } else {
+          this.stopAutoRefresh();
+        }
+      });
+      mobileRefreshInterval?.addEventListener("change", (e) => {
+        if (autoRefreshInterval) autoRefreshInterval.value = e.target.value;
+        if (this.autoRefreshInterval) {
+          this.stopAutoRefresh();
+          this.startAutoRefresh();
+        }
+      });
+      const mobileExportCsv = document.getElementById("mobile-export-csv");
+      mobileExportCsv?.addEventListener("click", () => {
+        this.exportCsv();
+        mobileMenuPanel?.classList.remove("active");
+        setTimeout(() => mobileMenu?.classList.add("hidden"), 300);
+      });
+    } catch (_error) {
+    }
+    this.adminSendBtn = document.getElementById("admin-send-btn");
+    this.adminAnnounceBtn = document.getElementById("admin-announce-btn");
+    this.adminMessageInput = document.getElementById("admin-message-input");
+    this.adminAnnounceInput = document.getElementById("admin-announce-input");
+    this.emergencyCheckbox = document.getElementById("emergency-checkbox");
+    this.emergencyDuration = document.getElementById("emergency-duration");
+    this.adminSendBtn?.addEventListener("click", () => this.sendAdminBroadcast());
+    this.adminAnnounceBtn?.addEventListener("click", () => this.sendAdminAnnounce());
+    this.emergencyCheckbox?.addEventListener("change", () => {
+      this.emergencyDuration.classList.toggle("hidden", !this.emergencyCheckbox.checked);
+    });
+    if (this.adminAnnounceInput) {
+      const counter = document.getElementById("announce-char-count");
+      this.adminAnnounceInput.addEventListener("input", () => {
+        const len = this.adminAnnounceInput.value.length;
+        if (counter) {
+          counter.textContent = `${len} / 7500`;
+          counter.className = len > 7e3 ? "text-xs text-red-400" : len > 6e3 ? "text-xs text-yellow-400" : "text-xs text-gray-500";
+        }
+      });
+    }
+    const previewBtn = document.getElementById("announce-preview-btn");
+    const previewDiv = document.getElementById("announce-preview");
+    const previewContent = document.getElementById("announce-preview-content");
+    if (previewBtn && this.adminAnnounceInput) {
+      previewBtn.addEventListener("click", () => {
+        if (previewDiv.classList.contains("hidden")) {
+          const text = this.adminAnnounceInput.value.trim();
+          previewContent.innerHTML = text ? this.escapeHtml(text).replace(/\n/g, "<br>") : '<span class="text-gray-500">\uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694</span>';
+          previewDiv.classList.remove("hidden");
+          previewBtn.textContent = "\uBBF8\uB9AC\uBCF4\uAE30 \uB2EB\uAE30";
+        } else {
+          previewDiv.classList.add("hidden");
+          previewBtn.textContent = "\uBBF8\uB9AC\uBCF4\uAE30";
+        }
+      });
+    }
+    this.deleteAllMessagesBtn = document.getElementById("delete-all-messages-btn");
+    this.deleteAllMessagesBtn?.addEventListener("click", () => this.deleteAllMessages());
+    if (this.adminMessageInput) {
+      this.adminMessageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          this.sendAdminBroadcast();
+        }
+      });
+    }
+    this.exportFilteredCsvBtn = document.getElementById("export-filtered-csv-btn");
+    this.exportFilteredCsvBtn?.addEventListener("click", () => this.exportFilteredCsv());
+    const _autoRefreshToggle = document.getElementById("auto-refresh-toggle");
+    const autoRefreshIntervalSelect = document.getElementById("auto-refresh-interval");
+    if (_autoRefreshToggle) {
+      _autoRefreshToggle.addEventListener("change", (e) => {
+        if (e.target.checked) {
+          const interval = parseInt(autoRefreshIntervalSelect.value) * 1e3;
+          this.startAutoRefresh(interval);
+        } else {
+          this.stopAutoRefresh();
+        }
+      });
+    }
+    if (autoRefreshIntervalSelect) {
+      autoRefreshIntervalSelect.addEventListener("change", (e) => {
+        if (_autoRefreshToggle && _autoRefreshToggle.checked) {
+          this.stopAutoRefresh();
+          const interval = parseInt(e.target.value) * 1e3;
+          this.startAutoRefresh(interval);
+        }
+      });
+    }
+    const auditLogFilter = document.getElementById("audit-log-filter");
+    if (auditLogFilter) {
+      auditLogFilter.addEventListener("change", () => this.loadAuditLogs());
+    }
+    const exportAuditCsvBtn = document.getElementById("export-audit-csv-btn");
+    if (exportAuditCsvBtn) {
+      exportAuditCsvBtn.addEventListener("click", () => this.exportAuditLogCsv());
+    }
+    const clearAuditBtn = document.getElementById("clear-audit-logs-btn");
+    if (clearAuditBtn) {
+      clearAuditBtn.addEventListener("click", () => this.clearAuditLogs());
+    }
+    const deleteAdminLogsBtn = document.getElementById("delete-admin-logs-btn");
+    if (deleteAdminLogsBtn) {
+      deleteAdminLogsBtn.addEventListener("click", () => this.deleteAdminLogs());
+    }
+    const errorLogFilter = document.getElementById("error-log-filter");
+    const errorLogSearch = document.getElementById("error-log-search");
+    if (errorLogFilter) {
+      errorLogFilter.addEventListener("change", () => {
+        if (this._errorLogs) this.renderErrorLogs(this._errorLogs);
+      });
+    }
+    if (errorLogSearch) {
+      errorLogSearch.addEventListener("input", () => {
+        if (this._errorLogs) this.renderErrorLogs(this._errorLogs);
+      });
+    }
+    const userDetailsModal = document.getElementById("user-details-modal");
+    if (userDetailsModal) {
+      userDetailsModal.addEventListener("click", (e) => {
+        if (e.target === userDetailsModal) hideModal(userDetailsModal);
+      });
+    }
+    const announceSearch = document.getElementById("announce-search");
+    if (announceSearch) {
+      let searchTimer = null;
+      announceSearch.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          const query = announceSearch.value.trim().toLowerCase();
+          this.filterAnnouncements(query);
+        }, 300);
+      });
+    }
+    this.scheduleCheckbox = document.getElementById("schedule-checkbox");
+    this.scheduleDatetime = document.getElementById("schedule-datetime");
+    if (this.scheduleCheckbox && this.scheduleDatetime) {
+      this.scheduleCheckbox.addEventListener("change", () => {
+        this.scheduleDatetime.classList.toggle("hidden", !this.scheduleCheckbox.checked);
+        if (this.scheduleCheckbox.checked && !this.scheduleDatetime.value) {
+          const now = /* @__PURE__ */ new Date();
+          now.setMinutes(now.getMinutes() + 5);
+          this.scheduleDatetime.value = now.toISOString().slice(0, 16);
+        }
+      });
+    }
+    this.announceExpirySelect = document.getElementById("announce-expiry-select");
+    if (this.adminAnnounceInput) {
+      this.adminAnnounceInput.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          this.sendAdminAnnounce();
+        }
+      });
+    }
+  }
+  async checkAuthentication() {
+    if (this.sessionToken) {
+      const isValid = await this.verifyToken(this.sessionToken);
+      if (isValid) {
+        this.showDashboard();
+      } else {
+        this.showLogin();
+      }
+    } else {
+      this.showLogin();
+    }
+  }
+  async handleLogin(e) {
+    e.preventDefault();
+    const id = document.getElementById("admin-id").value;
+    const password = document.getElementById("admin-password").value;
+    this.loginError.classList.add("hidden");
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, password })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        this.sessionToken = data.token;
+        api_client_default.setToken(data.token);
+        localStorage.setItem("admin_token", data.token);
+        this.showDashboard();
+      } else {
+        this.loginError.classList.remove("hidden");
+        document.getElementById("admin-id").value = "";
+        document.getElementById("admin-password").value = "";
+      }
+    } catch (_error) {
+      this.loginError.classList.remove("hidden");
+    }
+  }
+  async verifyToken(token) {
+    try {
+      const response = await fetch("/api/admin/verify", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      return response.ok;
+    } catch (_error) {
+      return false;
+    }
+  }
+  handleLogout() {
+    const token = localStorage.getItem("admin_token");
+    if (token) {
+      fetch("/api/admin/logout", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      }).catch((err) => console.error("Logout error:", err));
+    }
+    localStorage.removeItem("admin_token");
+    this.sessionToken = null;
+    api_client_default.setToken(null);
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
+    this.showLogin();
+  }
+  showLogin() {
+    this.loginScreen.classList.remove("hidden");
+    this.adminDashboard.classList.add("hidden");
+  }
+  showDashboard() {
+    this.loginScreen.classList.add("hidden");
+    this.adminDashboard.classList.remove("hidden");
+    this.refreshData();
+    this.refreshInterval = setInterval(() => this.refreshData(), 5e3);
+  }
+  async refreshData() {
+    try {
+      const metricsResponse = await fetch("/api/admin/metrics", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!metricsResponse.ok) {
+        if (metricsResponse.status === 401) {
+          this.handleLogout();
+          return;
+        }
+        throw new Error("Failed to fetch metrics");
+      }
+      const metrics = await metricsResponse.json();
+      this.updateMetrics(metrics);
+      const sessionsResponse = await fetch("/api/admin/sessions", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (sessionsResponse.ok) {
+        const sessions = await sessionsResponse.json();
+        this.updateActiveSessions(sessions);
+      }
+      const messagesResponse = await fetch("/api/admin/messages", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (messagesResponse.ok) {
+        const messages = await messagesResponse.json();
+        this.updateRecentMessages(messages);
+      }
+      await this.loadBannedIPs();
+      await this.loadAuditLogs();
+      await this.loadAnnouncements();
+      await this.loadAdminLogs();
+      await this.loadChannels();
+      this.updateLastUpdated();
+    } catch (_error) {
+    }
+  }
+  formatFileSize(bytes) {
+    return formatFileSize(bytes);
+  }
+  updateLastUpdated() {
+    const timeStr = `\uB9C8\uC9C0\uB9C9 \uC5C5\uB370\uC774\uD2B8: ${(/* @__PURE__ */ new Date()).toLocaleTimeString("ko-KR")}`;
+    document.getElementById("last-updated").textContent = timeStr;
+    const mobileLastUpdated = document.getElementById("mobile-last-updated");
+    if (mobileLastUpdated) {
+      mobileLastUpdated.textContent = timeStr;
+    }
+  }
+  truncateId(id) {
+    if (!id) return "Unknown";
+    return id.length > 20 ? id.substring(0, 20) + "..." : id;
+  }
+  formatDuration(ms) {
+    const seconds = Math.floor(ms / 1e3);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    if (hours > 0) return `${hours}\uC2DC\uAC04 \uC804`;
+    if (minutes > 0) return `${minutes}\uBD84 \uC804`;
+    return `${seconds}\uCD08 \uC804`;
+  }
+  escapeHtml(text) {
+    return escapeHtml(text);
+  }
+  isValidUrl(url) {
+    return isValidUrl(url);
+  }
+  sanitizeUrl(url) {
+    return sanitizeUrl(url);
+  }
+  startAutoRefresh(interval) {
+    if (this.autoRefreshInterval) {
+      clearInterval(this.autoRefreshInterval);
+    }
+    this.autoRefreshInterval = setInterval(() => this.refreshData(), interval);
+  }
+  stopAutoRefresh() {
+    if (this.autoRefreshInterval) {
+      clearInterval(this.autoRefreshInterval);
+      this.autoRefreshInterval = null;
+    }
+  }
+  showNotification(message, type = "info") {
+    try {
+      const containerId = "admin-notifications-container";
+      let container = document.getElementById(containerId);
+      if (!container) {
+        container = document.createElement("div");
+        container.id = containerId;
+        container.style.position = "fixed";
+        container.style.top = "1rem";
+        container.style.right = "1rem";
+        container.style.zIndex = "9999";
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
+        container.style.gap = "0.5rem";
+        document.body.appendChild(container);
+      }
+      const colorClass = {
+        success: "background: #16a34a; color: #fff;",
+        error: "background: #dc2626; color: #fff;",
+        warn: "background: #d97706; color: #fff;",
+        info: "background: #374151; color: #fff;"
+      }[type] || "background: #374151; color: #fff;";
+      const el = document.createElement("div");
+      el.setAttribute("role", "status");
+      el.style.cssText = `padding:8px 12px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.4);max-width:320px;${colorClass}`;
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.transition = "opacity 300ms ease, transform 300ms ease";
+        el.style.opacity = "0";
+        el.style.transform = "translateY(-6px)";
+        setTimeout(() => el.remove(), 350);
+      }, 3e3);
+    } catch (_err) {
+    }
+  }
+};
+Object.assign(AdminDashboard.prototype, admin_data_default, admin_render_default);
+window.adminDashboard = new AdminDashboard();

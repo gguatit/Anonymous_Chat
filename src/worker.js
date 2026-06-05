@@ -18,8 +18,13 @@ import { ChannelRegistry } from './durable-objects/ChannelRegistry.js';
 import { DeadDropStore } from './durable-objects/DeadDropStore.js';
 export { ChatRoom, ChannelRegistry, DeadDropStore };
 
-const rateLimiter = createRateLimiter();
-const checkRateLimit = rateLimiter.checkRateLimit;
+let _rateLimiter = null;
+function checkRateLimit(ip, config, tag = '') {
+    if (!_rateLimiter) {
+        _rateLimiter = createRateLimiter();
+    }
+    return _rateLimiter.checkRateLimit(ip, config, tag);
+}
 
 const SAFE_HEADERS = ['content-type', 'content-length', 'user-agent', 'accept-language'];
 
