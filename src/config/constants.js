@@ -51,6 +51,10 @@ export const AUTH = {
 
 // Push notification constants
 export const PUSH_SUBSCRIPTION_TTL = 30 * 24 * 60 * 60; // 30 days
+export const PUSH_CONFIG = {
+    KV_LIST_LIMIT: 1000,
+    BODY_TRUNCATION: 100,
+};
 
 // API rate limiting for unprotected endpoints
 export const API_RATE_LIMIT = {
@@ -74,7 +78,56 @@ export const AI_SUMMARY = {
     RATE_LIMIT: { windowMs: 15000, max: 1 },
     MODEL_PRIMARY: '@cf/meta/llama-3-8b-instruct',
     MODEL_FALLBACK: '@cf/qwen/qwen1.5-7b-chat',
+    MAX_TOKENS: 600,
+    TEMPERATURE: 0.4,
 };
+
+// File upload constants
+export const UPLOAD = {
+    MAX_BYTES: 50 * 1024 * 1024, // 50MB
+    MAX_BODY_BYTES: 1024 * 1024,  // 1MB
+    MAX_FILENAME_LENGTH: 255,
+    MAX_FILETYPE_LENGTH: 100,
+    RATE_LIMIT: { windowMs: 60000, max: 10 },
+};
+
+// Dead drop constants
+export const DEAD_DROP = {
+    TTL_MS: 30 * 60 * 1000, // 30 minutes
+    MAX_MESSAGE_LENGTH: 10000,
+};
+
+// General time constants
+export const ONE_MINUTE_MS = 60000;
+export const ONE_HOUR_MS = 60 * 60 * 1000;
+export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+// Admin display constants
+export const ADMIN = {
+    LOG_FETCH_LIMIT: 100,
+    AUDIT_LOG_TRUNCATION: 50,
+    ANNOUNCEMENT_HISTORY_MAX: 100,
+    SESSION_ID_LENGTH: 8,
+};
+
+// Search constants
+export const SEARCH = {
+    DEFAULT_LIMIT: 50,
+    MAX_LIMIT: 100,
+};
+
+// Code detection tuning constants (for content classification)
+export const CODE_DETECTION = {
+    MIN_LINES_FOR_CODE: 2,
+    MAX_LINES_ALWAYS_CODE: 50,
+    CODE_ENDING_RATIO: 0.4,
+    CODE_CHAR_RATIO: 0.08,
+};
+
+// Miscellaneous delay/length constants
+export const FORCE_DELETE_DELAY_MS = 1500;
+export const MESSAGE_PREVIEW_COUNT = 20;
+export const MAX_SESSION_ID_LENGTH = 100;
 
 // Metrics storage (in-memory, per-worker instance)
 export const metrics = {

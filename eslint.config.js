@@ -23,6 +23,10 @@ export default [
             'no-eval': 'error',
             'no-implied-eval': 'error',
             'complexity': ['warn', 15],
+            'eqeqeq': ['error', 'always', { null: 'ignore' }],
+            'no-throw-literal': 'error',
+            'max-lines': ['warn', 600],
+            'max-depth': ['warn', 4],
         },
     },
     {
@@ -31,6 +35,7 @@ export default [
             '.wrangler/**',
             'dist/**',
             '.opencode/**',
+            'public/js/*.bundle.js',
         ],
     },
 ];

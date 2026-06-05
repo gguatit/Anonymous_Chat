@@ -1,4 +1,4 @@
-import { ROOM_NAME, SECURITY, CHANNEL_PREFIX } from '../config/constants.js';
+import { ROOM_NAME, SECURITY, CHANNEL_PREFIX, MAX_SESSION_ID_LENGTH } from '../config/constants.js';
 import { isAllowedOrigin } from '../utils/security.js';
 
 export async function handleWebSocket(request, env, HMAC_SECRET) {
@@ -26,7 +26,7 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
     const url = new URL(request.url);
     const sessionId = url.searchParams.get('sessionId');
 
-    if (sessionId && (sessionId.length > 100 || !/^[a-zA-Z0-9_-]+$/.test(sessionId))) {
+    if (sessionId && (sessionId.length > MAX_SESSION_ID_LENGTH || !/^[a-zA-Z0-9_-]+$/.test(sessionId))) {
         return new Response('Invalid sessionId', { status: 400 });
     }
 

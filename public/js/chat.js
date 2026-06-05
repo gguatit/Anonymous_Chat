@@ -1,4 +1,6 @@
 // Main Chat Client Application
+import './prism-bundle.js';
+import ApiClient from './api-client.js';
 import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
 import { UIManager } from './ui.js?v=1.1.0';
@@ -166,12 +168,7 @@ class ChatClient {
 
 
         try {
-            const res = await fetch('/api/announcements');
-            if (!res.ok) {
-                return;
-            }
-
-            const announcements = await res.json();
+            const announcements = await ApiClient.get('/api/announcements').catch(() => []);
             if (!Array.isArray(announcements) || announcements.length === 0) {
                 return;
             }
@@ -820,11 +817,7 @@ class ChatClient {
 
         this.ui._channelProcessing = true;
         try {
-            const resp = await fetch('/api/channels/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, sessionId: this.sessionManager.getSessionId() })
-            });
+            const resp = await ApiClient.postRaw('/api/channels/create', { name, sessionId: this.sessionManager.getSessionId() });
             const data = await resp.json();
 
             if (!resp.ok) {
@@ -854,11 +847,7 @@ class ChatClient {
 
         this.ui._channelProcessing = true;
         try {
-            const resp = await fetch('/api/channels/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: trimmed })
-            });
+            const resp = await ApiClient.postRaw('/api/channels/join', { name: trimmed });
             const data = await resp.json();
 
             if (!resp.ok) {
@@ -929,11 +918,7 @@ class ChatClient {
         this.ui.clearInput();
         const loadingMsg = this.ui.displaySystemMessage('AI가 대화 요약을 생성 중입니다...');
         try {
-            const res = await fetch('/api/summary', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode })
-            });
+            const res = await ApiClient.postRaw('/api/summary', { mode });
             loadingMsg.remove();
             if (res.status !== 204 && !res.ok) {
                 const data = await res.json().catch(() => ({}));
@@ -1086,8 +1071,7 @@ class ChatClient {
 document.addEventListener('DOMContentLoaded', async () => {
     let config = {};
     try {
-        const res = await fetch('/api/config');
-        if (res.ok) config = await res.json();
+        config = await ApiClient.get('/api/config');
     } catch (_e) {
         // config will be empty, features requiring config will be disabled
     }
@@ -1097,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    const emergency = await fetch('/api/emergency-announcement').then(r => r.json()).catch(() => ({ isEmergency: false }));
+    const emergency = await ApiClient.get('/api/emergency-announcement').catch(() => ({ isEmergency: false }));
     if (emergency.isEmergency) {
         const seenTs = localStorage.getItem('chatEmergencySeenTs');
         if (String(emergency.timestamp) !== seenTs) {

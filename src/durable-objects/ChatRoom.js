@@ -1,35 +1,37 @@
-import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI } from '../config/constants.js';
-import { generateMessageSignature, verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl } from '../utils/helpers.js';
-import { sendPushToOfflineUsers } from '../handlers/push.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH } from '../config/constants.js';
 import { logAuditLog, logErrorLog } from '../utils/logger.js';
+import { sendPushToOfflineUsers } from '../handlers/push.js';
+import { verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl, generateMessageSignature } from '../utils/helpers.js';
+import { validateClientMessage, validateSessionId } from '../utils/validate.js';
 
-// Durable Object for managing chat room state
+import { dispatchAdminRoute, handleCheckBan, handleBroadcastSummary } from './chat-room/admin.js';
+import { validateMessage, sanitizeContentForAI, generateSessionId, extractErrorLocation, searchMessages } from './chat-room/messages.js';
+import { isEmergencyActive } from './chat-room/announcements.js';
+
 export class ChatRoom {
     constructor(state, env) {
         this.state = state;
         this.env = env;
-        this.sessions = new Map(); // sessionId -> WebSocket
-        this.ipConnections = new Map(); // IP -> count
-        this.userMetadata = new Map(); // sessionId -> { ip, joinTime, messageCount, lastMessageTime }
+        this.sessions = new Map();
+        this.ipConnections = new Map();
+        this.userMetadata = new Map();
         this.typingUsers = new Set();
-        this.messages = []; // In-memory cache
+        this.messages = [];
         this.initialized = false;
-        this.startTime = Date.now(); // Track uptime
-        this.bannedIPs = new Map(); // IP -> { bannedUntil: timestamp, reason: string }
-        this.bannedSessions = new Map(); // sessionId -> { bannedUntil: timestamp, reason: string }
-        this.currentAnnouncement = null; // Current active announcement
-        this.announcementHistory = []; // History of all announcements
-        this.auditLogs = []; // Audit logs for admin actions
-        this.errorLogs = []; // Ring buffer for detailed errors
-        this.MAX_ERROR_LOGS = 100;
+        this.startTime = Date.now();
+        this.bannedIPs = new Map();
+        this.bannedSessions = new Map();
+        this.currentAnnouncement = null;
+        this.announcementHistory = [];
+        this.auditLogs = [];
+        this.errorLogs = [];
+        this.MAX_ERROR_LOGS = MAX_AUDIT_LOGS;
         this.pushThrottleTimer = null;
         this.pushThrottleQueue = [];
 
-        // Channel lifecycle
-        this.channelSlug = '0'; // '0' = main room
+        this.channelSlug = '0';
         this.emptySince = null;
 
-        // Periodic cleanup of stale data
         this.cleanupInterval = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
     }
 
@@ -39,11 +41,11 @@ export class ChatRoom {
             type,
             message: error instanceof Error ? error.message : String(error),
             stackTrace: error instanceof Error ? error.stack : 'No stack trace',
-            location: this.extractErrorLocation(error),
+            location: extractErrorLocation(error),
             environment: environment || {},
             context
         };
-        
+
         this.errorLogs.unshift(log);
         if (this.errorLogs.length > this.MAX_ERROR_LOGS) {
             this.errorLogs.pop();
@@ -54,46 +56,29 @@ export class ChatRoom {
         });
     }
 
-    extractErrorLocation(error) {
-        if (error instanceof Error && error.stack) {
-            const lines = error.stack.split('\n');
-            // get the first location line (usually the second line in stack)
-            if (lines.length > 1) {
-                return lines[1].trim();
-            }
-        }
-        return 'Unknown';
-    }
-
     async initializeMessages() {
         if (this.initialized) return;
 
-        // Load messages from Durable Object storage
         const stored = await this.state.storage.get('messages');
         if (stored) {
-            // Filter out messages older than 12 hours
             const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
             this.messages = stored.filter(msg => msg.timestamp > twelveHoursAgo);
 
-            // Save cleaned messages back if any were removed
             if (this.messages.length !== stored.length) {
                 await this.state.storage.put('messages', this.messages);
             }
         }
 
-        // Load banned IPs from storage
         const bannedIPs = await this.state.storage.get('bannedIPs');
         if (bannedIPs) {
             this.bannedIPs = new Map(bannedIPs);
         }
 
-        // Load banned sessions from storage
         const bannedSessions = await this.state.storage.get('bannedSessions');
         if (bannedSessions) {
             this.bannedSessions = new Map(bannedSessions);
         }
 
-        // Load audit logs from D1
         if (this.env?.DB_ADMIN) {
             try {
                 const { results } = await this.env.DB_ADMIN.prepare(
@@ -112,7 +97,6 @@ export class ChatRoom {
             }
         }
 
-        // Load error logs from D1
         if (this.env?.DB_ADMIN) {
             try {
                 const { results } = await this.env.DB_ADMIN.prepare(
@@ -134,26 +118,17 @@ export class ChatRoom {
             }
         }
 
-        // Load current announcement from storage
         const announcement = await this.state.storage.get('currentAnnouncement');
         if (announcement) {
             this.currentAnnouncement = announcement;
         }
 
-        // Load announcement history from storage
         const announcementHistory = await this.state.storage.get('announcementHistory');
         if (announcementHistory) {
             this.announcementHistory = announcementHistory;
         }
 
         this.initialized = true;
-    }
-
-    isEmergencyActive() {
-        const ann = this.currentAnnouncement;
-        if (!ann || !ann.isEmergency) return false;
-        if (!ann.emergencyUntil) return true;
-        return Date.now() < ann.emergencyUntil;
     }
 
     getSessionList() {
@@ -172,10 +147,8 @@ export class ChatRoom {
     }
 
     async fetch(request) {
-        // Get HMAC_SECRET from request headers
         const HMAC_SECRET = request.headers.get('X-HMAC-Secret') || request.headers.get('X-Admin-Internal-Token');
 
-        // Detect channel slug from header
         const channelHeader = request.headers.get('X-Channel-Slug');
         if (channelHeader) {
             this.channelSlug = channelHeader;
@@ -183,7 +156,6 @@ export class ChatRoom {
 
         const url = new URL(request.url);
 
-        // Security check for internal admin routes
         if (url.pathname.startsWith('/admin/')) {
             if (HMAC_SECRET !== this.env.HMAC_SECRET) {
                 this.addErrorLog('SECURITY', 'Unauthorized DO Admin Access Attempt', {}, `Path: ${url.pathname}`);
@@ -191,85 +163,8 @@ export class ChatRoom {
             }
         }
 
-        // Admin API endpoints
-        if (url.pathname === '/admin/metrics') {
-            return new Response(JSON.stringify({
-                activeConnections: this.sessions.size,
-                totalMessages: this.messages.length,
-                totalConnections: metrics.totalConnections,
-                errors: this.errorLogs ? this.errorLogs.length : 0,
-                uptime: Date.now() - (this.startTime || Date.now()),
-                errorLogs: this.errorLogs
-            }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        if (url.pathname === '/admin/info') {
-            const sessions = this.getSessionList();
-            return new Response(JSON.stringify({
-                slug: this.channelSlug || '0',
-                activeConnections: this.sessions.size,
-                totalMessages: this.messages.length,
-                totalConnections: metrics.totalConnections,
-                errors: this.errorLogs ? this.errorLogs.length : 0,
-                uptime: Date.now() - (this.startTime || Date.now()),
-                sessions,
-                messages: this.messages.slice(-20)
-            }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        if (url.pathname === '/admin/sessions') {
-            const sessions = this.getSessionList();
-
-            return new Response(JSON.stringify(sessions), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        if (url.pathname === '/admin/messages') {
-            return new Response(JSON.stringify(this.messages), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        if (url.pathname === '/admin/broadcast' && request.method === 'POST') {
-            return await this.handleAdminBroadcast(request, HMAC_SECRET);
-        }
-
-        if (url.pathname === '/admin/edit-message' && request.method === 'POST') {
-            return await this.handleAdminEditMessage(request, HMAC_SECRET);
-        }
-
-        if (url.pathname === '/admin/delete-message' && request.method === 'POST') {
-            return await this.handleAdminDeleteMessage(request);
-        }
-
-        if (url.pathname === '/admin/delete-all-messages' && request.method === 'POST') {
-            return await this.handleAdminDeleteAllMessages(request);
-        }
-
-        if (url.pathname === '/admin/force-delete' && request.method === 'POST') {
-            return await this.handleAdminForceDelete(request);
-        }
-
-        if (url.pathname === '/admin/kick-user' && request.method === 'POST') {
-            return await this.handleAdminKickUser(request);
-        }
-
-        if (url.pathname === '/admin/announce' && request.method === 'POST') {
-            return await this.handleAdminAnnounce(request);
-        }
-        
-        if (url.pathname === '/admin/announce' && request.method === 'PUT') {
-            return await this.handleAdminEditAnnounce(request);
-        }
-        
-        if (url.pathname === '/admin/announce' && request.method === 'DELETE') {
-            return await this.handleAdminDeleteAnnounce(request);
-        }
+        const adminResult = await dispatchAdminRoute(this, url, request, HMAC_SECRET);
+        if (adminResult !== null) return adminResult;
 
         if (url.pathname === '/announcement-history') {
             await this.initializeMessages();
@@ -298,56 +193,15 @@ export class ChatRoom {
         if (url.pathname === '/search') {
             await this.initializeMessages();
             const query = url.searchParams.get('q') || '';
-            const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
-            return this.handleSearch(query, limit);
-        }
-
-        if (url.pathname === '/admin/banned-ips') {
-            return await this.handleAdminBannedIPs();
-        }
-
-        if (url.pathname === '/admin/unban-ip' && request.method === 'POST') {
-            return await this.handleAdminUnbanIP(request);
-        }
-
-        if (url.pathname === '/admin/user-details') {
-            return await this.handleAdminUserDetails(url);
-        }
-
-        if (url.pathname === '/admin/audit-logs') {
-            return await this.handleAdminAuditLogs();
-        }
-
-        if (url.pathname === '/admin/delete-audit-logs' && request.method === 'POST') {
-            this.auditLogs = [];
-            if (this.env?.DB_ADMIN) {
-                try {
-                    await this.env.DB_ADMIN.prepare('DELETE FROM audit_logs').run();
-                } catch (e) {
-                    console.error('Failed to delete audit logs from D1:', e);
-                }
-            }
-            return new Response(JSON.stringify({ success: true }), {
+            const limit = Math.min(parseInt(url.searchParams.get('limit') || String(SEARCH.DEFAULT_LIMIT)), SEARCH.MAX_LIMIT);
+            const result = searchMessages(this.messages, query, limit);
+            return new Response(JSON.stringify(result), {
                 headers: { 'Content-Type': 'application/json' }
             });
         }
 
         if (url.pathname === '/check-ban') {
-            return await this.handleCheckBan(url, request);
-        }
-
-        if (url.pathname === '/admin/delete-error-logs' && request.method === 'POST') {
-            this.errorLogs = [];
-            if (this.env?.DB_ADMIN) {
-                try {
-                    await this.env.DB_ADMIN.prepare('DELETE FROM error_logs').run();
-                } catch (e) {
-                    console.error('Failed to delete error logs from D1:', e);
-                }
-            }
-            return new Response(JSON.stringify({ success: true }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
+            return await handleCheckBan(this, url, request);
         }
 
         if (url.pathname === '/api/logs/error' && request.method === 'POST') {
@@ -360,7 +214,6 @@ export class ChatRoom {
             }
         }
 
-        // Internal API: get recent messages for AI summary (HMAC-secured)
         if (url.pathname === '/messages/recent') {
             if (request.headers.get('X-HMAC-Secret') !== this.env.HMAC_SECRET) {
                 return new Response('Forbidden', { status: 403 });
@@ -368,9 +221,9 @@ export class ChatRoom {
             await this.initializeMessages();
             const recent = this.messages
                 .filter(msg => msg.sessionId !== '_ai_summary')
-                .slice(-50)
+                .slice(-AI_SUMMARY.RECENT_MESSAGES_COUNT)
                 .map(msg => {
-                    const sanitized = this._sanitizeContentForAI(msg.content || '');
+                    const sanitized = sanitizeContentForAI(msg.content || '');
                     if (sanitized === null) return null;
                     return {
                         nickname: msg.nickname,
@@ -389,10 +242,9 @@ export class ChatRoom {
             if (request.headers.get('X-HMAC-Secret') !== this.env.HMAC_SECRET) {
                 return new Response('Forbidden', { status: 403 });
             }
-            return await this.handleBroadcastSummary(request, HMAC_SECRET);
+            return await handleBroadcastSummary(this, request, HMAC_SECRET);
         }
 
-        // Initialize messages from storage on first request
         await this.initializeMessages();
 
         const clientIP = request.headers.get('CF-Connecting-IP');
@@ -408,7 +260,6 @@ export class ChatRoom {
             });
         }
 
-        // Check if IP is banned
         const banInfo = this.bannedIPs.get(clientIP);
         if (banInfo) {
             const now = Date.now();
@@ -423,904 +274,24 @@ export class ChatRoom {
                     headers: { 'Content-Type': 'application/json' }
                 });
             } else {
-                // Ban expired, remove it
                 this.bannedIPs.delete(clientIP);
                 await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
             }
         }
 
-        // Check IP-based connection limit
         const currentConnections = this.ipConnections.get(clientIP) || 0;
         if (currentConnections >= RATE_LIMIT.MAX_CONNECTIONS_PER_IP) {
             return new Response('Too many connections from this IP', { status: 429 });
         }
 
-        // Create WebSocket pair
         const pair = new WebSocketPair();
         const [client, server] = Object.values(pair);
 
-        // Accept the WebSocket connection
         await this.handleSession(server, clientIP, HMAC_SECRET, environment);
 
         return new Response(null, {
             status: 101,
             webSocket: client,
-        });
-    }
-
-    async handleBroadcastSummary(request, HMAC_SECRET) {
-        try {
-            const data = await safeJson(request);
-            const content = typeof data.content === 'string' ? data.content : '';
-            const summaryMode = typeof data.mode === 'string' ? data.mode : '_default';
-
-            if (!content) {
-                return new Response(JSON.stringify({ error: 'Empty summary' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-            }
-
-            await this.initializeMessages();
-
-            const messageId = `msg_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
-            const message = {
-                type: 'summary',
-                messageId,
-                content: sanitizeInput(content),
-                sessionId: '_ai_summary',
-                nickname: 'AI',
-                timestamp: Date.now(),
-                editedAt: null,
-                summaryMode: summaryMode
-            };
-
-            if (HMAC_SECRET) {
-                message.signature = await generateMessageSignature(message, HMAC_SECRET);
-            } else {
-                message.signature = '';
-            }
-
-            this.messages.push(message);
-
-            const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
-            this.messages = this.messages
-                .filter(msg => msg.timestamp > twelveHoursAgo)
-                .slice(-MAX_STORED_MESSAGES);
-
-            await this.state.storage.put('messages', this.messages);
-
-            this.broadcast(message);
-
-            return new Response(JSON.stringify({ success: true }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            this.addErrorLog('BROADCAST_SUMMARY', error);
-            return new Response(JSON.stringify({ error: 'Internal error' }), {
-                status: 500, headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminBroadcast(request, HMAC_SECRET) {
-        try {
-            const data = await safeJson(request);
-            const content = typeof data.content === 'string' ? data.content : '';
-            const file = data.file || null;
-            const adminId = data.adminId || 'admin';
-
-            if (!content && !file) {
-                return new Response(JSON.stringify({ error: 'Empty message' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-            }
-
-            // Generate unique message ID
-            const messageId = `msg_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
-
-            const message = {
-                type: 'message',
-                messageId: messageId,
-                content: sanitizeInput(content || ''),
-                sessionId: `admin_${adminId}`,
-                timestamp: Date.now(),
-                editedAt: null
-            };
-
-            if (file && file.url) {
-                message.file = {
-                    url: file.url,
-                    filename: file.filename || '',
-                    filesize: file.filesize || null,
-                    filetype: file.filetype || ''
-                };
-            }
-
-            if (HMAC_SECRET) {
-                message.signature = await generateMessageSignature(message, HMAC_SECRET);
-            } else {
-                message.signature = '';
-            }
-
-            this.messages.push(message);
-
-            // Clean up messages older than MESSAGE_RETENTION_MS and limit messages
-            const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
-            this.messages = this.messages
-                .filter(msg => msg.timestamp > twelveHoursAgo)
-                .slice(-MAX_STORED_MESSAGES);
-
-            // Persist to Durable Object storage
-            await this.state.storage.put('messages', this.messages);
-
-            // Broadcast message to all users
-            this.broadcast(message);
-
-            return new Response(JSON.stringify({ success: true, message }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('admin broadcast error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to broadcast' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
-        }
-    }
-
-    async handleAdminEditMessage(request, HMAC_SECRET) {
-        try {
-            const data = await safeJson(request);
-            const messageId = data.messageId;
-            const newContent = data.newContent;
-
-            if (!messageId || !newContent) {
-                return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            // Find the message
-            const messageIndex = this.messages.findIndex(msg => msg.messageId === messageId);
-
-            if (messageIndex === -1) {
-                return new Response(JSON.stringify({ error: 'Message not found' }), {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            const originalMessage = this.messages[messageIndex];
-
-            // Verify it's an admin message
-            if (!originalMessage.sessionId || !String(originalMessage.sessionId).startsWith('admin_')) {
-                return new Response(JSON.stringify({ error: 'Not an admin message' }), {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            const now = Date.now();
-
-            // Update message
-            const editedMessage = {
-                ...originalMessage,
-                content: sanitizeInput(newContent),
-                editedAt: now
-            };
-
-            // Generate new signature
-            if (HMAC_SECRET) {
-                editedMessage.signature = await generateMessageSignature(editedMessage, HMAC_SECRET);
-            }
-
-            // Update in messages array
-            this.messages[messageIndex] = editedMessage;
-
-            // Persist to storage
-            await this.state.storage.put('messages', this.messages);
-
-            // Broadcast edited message to all users
-            this.broadcast({
-                type: 'message_edited',
-                message: editedMessage
-            });
-
-            // Add audit log
-            await this.addAuditLog('edit_message', `Edited message ${messageId}`, {
-                messageId,
-                originalContent: originalMessage.content.substring(0, 50),
-                newContent: newContent.substring(0, 50)
-            });
-
-            return new Response(JSON.stringify({ success: true, message: editedMessage }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('admin edit message error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to edit message' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminDeleteMessage(request) {
-        try {
-            const data = await safeJson(request);
-            const messageId = data.messageId;
-
-            if (!messageId) {
-                return new Response(JSON.stringify({ error: 'Missing messageId' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            // Find the message
-            const messageIndex = this.messages.findIndex(msg => msg.messageId === messageId);
-
-            if (messageIndex === -1) {
-                return new Response(JSON.stringify({ error: 'Message not found' }), {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            const messageToDelete = this.messages[messageIndex];
-
-            // Remove message from array
-            this.messages.splice(messageIndex, 1);
-
-            // Persist to storage
-            await this.state.storage.put('messages', this.messages);
-
-            // Broadcast deletion to all users
-            this.broadcast({
-                type: 'message_deleted',
-                messageId: messageId
-            });
-
-            // Add audit log with more details
-            await this.addAuditLog('admin_delete_message', `Admin deleted message ${messageId} from user ${messageToDelete.sessionId}`, {
-                messageId,
-                originalSessionId: messageToDelete.sessionId,
-                content: messageToDelete.content ? messageToDelete.content.substring(0, 50) : '(file only)',
-                hasFile: !!messageToDelete.file
-            });
-
-            return new Response(JSON.stringify({ success: true }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('admin delete message error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to delete message' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminDeleteAllMessages(request) {
-        try {
-            const data = await safeJson(request);
-            const confirmation = data.confirmation;
-
-            if (confirmation !== 'DELETE_ALL_MESSAGES') {
-                return new Response(JSON.stringify({ error: 'Invalid confirmation' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            const messageCount = this.messages.length;
-
-            // Clear all messages
-            this.messages = [];
-
-            // Persist to storage
-            await this.state.storage.put('messages', this.messages);
-
-            // Broadcast clear to all users
-            this.broadcast({
-                type: 'all_messages_deleted'
-            });
-
-            // Add audit log
-            await this.addAuditLog('admin_delete_all_messages', `Admin deleted all messages (${messageCount} messages)`, {
-                deletedCount: messageCount
-            });
-
-            return new Response(JSON.stringify({
-                success: true,
-                deletedCount: messageCount
-            }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('admin delete all messages error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to delete all messages' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminForceDelete(request) {
-        try {
-            // Security: require confirmation phrase
-            const data = await safeJson(request);
-            if (data.confirmation !== 'FORCE_DELETE_CHANNEL') {
-                return new Response(JSON.stringify({ error: 'Invalid confirmation' }), {
-                    status: 400, headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            // Prevent deleting main room
-            if (this.channelSlug === '0') {
-                return new Response(JSON.stringify({ error: 'Cannot delete main room' }), {
-                    status: 403, headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            // Step 1: Notify all users to redirect to main channel
-            for (const [, websocket] of this.sessions) {
-                try {
-                    websocket.send(JSON.stringify({
-                        type: 'channel_deleted',
-                        content: '채널이 관리자에 의해 삭제되었습니다. 메인 채널로 이동합니다.'
-                    }));
-                } catch (e) {
-                    console.error('Error sending channel_deleted:', e);
-                }
-            }
-
-            // Give clients time to process and switch channels
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            // Step 2: Close all connections
-            for (const [, websocket] of this.sessions) {
-                try {
-                    websocket.close(1000, 'Channel deleted by admin');
-                } catch (_e) {
-                    // ignore
-                }
-            }
-
-            // Stop cleanup interval
-            if (this.cleanupInterval) {
-                clearInterval(this.cleanupInterval);
-                this.cleanupInterval = null;
-            }
-
-            // Clear all state completely
-            this.sessions.clear();
-            this.ipConnections.clear();
-            this.userMetadata.clear();
-            this.typingUsers.clear();
-            this.messages = [];
-            this.bannedIPs.clear();
-            this.bannedSessions.clear();
-            this.auditLogs = [];
-            this.errorLogs = [];
-            this.currentAnnouncement = null;
-            this.emptySince = null;
-            this.channelSlug = '0';
-
-            // Delete persistent storage
-            await this.state.storage.deleteAll();
-
-            return new Response(JSON.stringify({ success: true, slug: this.channelSlug }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('admin force delete error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to delete channel' }), {
-                status: 500, headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminKickUser(request) {
-        try {
-            const data = await safeJson(request);
-            const sessionId = data.sessionId;
-            const banDuration = data.banDuration || 0;
-
-            if (!sessionId) {
-                return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            // Find the session
-            const websocket = this.sessions.get(sessionId);
-            const metadata = this.userMetadata.get(sessionId);
-
-            if (!websocket && !metadata) {
-                return new Response(JSON.stringify({ error: 'Session not found' }), {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            const clientIP = metadata?.ip;
-
-            // Detect shared IP (NAT/internal network)
-            const ipConnectionCount = clientIP ? (this.ipConnections.get(clientIP) || 0) : 0;
-            const isSharedIP = ipConnectionCount > 1;
-
-            // Ban IP and Session if duration is specified
-            if (banDuration > 0) {
-                const bannedUntil = Date.now() + (banDuration * 1000);
-
-                // Always ban the specific session
-                this.bannedSessions.set(sessionId, {
-                    bannedUntil,
-                    reason: 'Admin kick',
-                    ip: clientIP
-                });
-                await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
-
-                // Ban IP only if NOT shared (to avoid banning innocent users on same network)
-                if (clientIP && !isSharedIP) {
-                    this.bannedIPs.set(clientIP, {
-                        bannedUntil,
-                        reason: 'Admin kick',
-                        sessionId
-                    });
-                    await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
-                }
-
-                if (isSharedIP) {
-                    // Shared IP: only kick the target session
-                    if (websocket) {
-                        try {
-                            websocket.send(JSON.stringify({
-                                type: 'kicked',
-                                content: `관리자에 의해 ${banDuration}초간 차단되었습니다.`,
-                                banDuration,
-                                permanent: true,
-                                sessionBan: true
-                            }));
-                            websocket.close(1008, 'Kicked by admin');
-                        } catch (e) {
-                            console.error('Failed to kick session:', e);
-                        }
-                    }
-                    this.sessions.delete(sessionId);
-                    this.userMetadata.delete(sessionId);
-                    this.typingUsers.delete(sessionId);
-
-                    // Decrement IP connection count (don't delete, other users still connected)
-                    if (clientIP) {
-                        const currentCount = this.ipConnections.get(clientIP) || 0;
-                        if (currentCount > 1) {
-                            this.ipConnections.set(clientIP, currentCount - 1);
-                        } else {
-                            this.ipConnections.delete(clientIP);
-                        }
-                    }
-                } else {
-                    // Single IP: kick all sessions from this IP (original behavior)
-                    for (const [sid, ws] of this.sessions.entries()) {
-                        const meta = this.userMetadata.get(sid);
-                        const shouldKick = sid === sessionId || (meta && meta.ip === clientIP);
-
-                        if (shouldKick) {
-                            try {
-                                ws.send(JSON.stringify({
-                                    type: 'kicked',
-                                    content: `관리자에 의해 ${banDuration}초간 차단되었습니다.`,
-                                    banDuration,
-                                    permanent: true
-                                }));
-                                ws.close(1008, 'Kicked by admin');
-                            } catch (e) {
-                                console.error('Failed to kick session:', e);
-                            }
-                            this.sessions.delete(sid);
-                            this.userMetadata.delete(sid);
-                            this.typingUsers.delete(sid);
-                        }
-                    }
-
-                    // Delete IP connection count entirely
-                    this.ipConnections.delete(clientIP);
-                }
-            } else {
-                // Just kick without ban
-                if (websocket) {
-                    try {
-                        websocket.send(JSON.stringify({
-                            type: 'kicked',
-                            content: '관리자에 의해 강제퇴장되었습니다.'
-                        }));
-                        websocket.close(1008, 'Kicked by admin');
-                    } catch (e) {
-                        console.error('Failed to send kick notification:', e);
-                    }
-                }
-
-                // Clean up session data
-                this.sessions.delete(sessionId);
-                if (metadata && clientIP) {
-                    const currentCount = this.ipConnections.get(clientIP) || 0;
-                    if (currentCount > 1) {
-                        this.ipConnections.set(clientIP, currentCount - 1);
-                    } else {
-                        this.ipConnections.delete(clientIP);
-                    }
-                }
-                this.userMetadata.delete(sessionId);
-                this.typingUsers.delete(sessionId);
-            }
-
-            metrics.activeConnections = this.sessions.size;
-            this.broadcastUserCount();
-
-            // Add audit log
-            const banType = isSharedIP ? 'session_only' : 'ip_and_session';
-            await this.addAuditLog('kick_user', `Kicked session ${sessionId}`, {
-                sessionId,
-                ip: clientIP,
-                banDuration,
-                banned: banDuration > 0,
-                sharedIP: isSharedIP,
-                banType
-            });
-
-            return new Response(JSON.stringify({
-                success: true,
-                banned: banDuration > 0,
-                banDuration,
-                ip: clientIP,
-                sharedIP: isSharedIP,
-                banType
-            }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('admin kick user error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to kick user' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminEditAnnounce(request) {
-        try {
-            const data = await safeJson(request);
-            const timestamp = Number(data.timestamp);
-            const content = typeof data.content === 'string' ? data.content : '';
-            const isEmergency = Object.hasOwn(data, 'isEmergency') ? !!data.isEmergency : undefined;
-            const emergencyUntil = Object.hasOwn(data, 'emergencyUntil') ? (data.emergencyUntil ? Number(data.emergencyUntil) : null) : undefined;
-
-            if (!timestamp || (content === '' && !Object.hasOwn(data, 'isEmergency'))) {
-                return new Response(JSON.stringify({ error: 'Missing timestamp or content' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            const announcementIndex = this.announcementHistory.findIndex(a => a.timestamp === timestamp);
-            if (announcementIndex === -1) {
-                return new Response(JSON.stringify({ error: 'Announcement not found' }), {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            const wasEmergency = this.announcementHistory[announcementIndex].isEmergency;
-            if (content) {
-                this.announcementHistory[announcementIndex].content = sanitizeInput(content);
-            }
-            if (isEmergency !== undefined) {
-                this.announcementHistory[announcementIndex].isEmergency = isEmergency;
-                this.announcementHistory[announcementIndex].emergencyUntil = emergencyUntil;
-            }
-            await this.state.storage.put('announcementHistory', this.announcementHistory);
-
-            // Update currentAnnouncement if it matches
-            if (this.currentAnnouncement && this.currentAnnouncement.timestamp === timestamp) {
-                if (content) {
-                    this.currentAnnouncement.content = this.announcementHistory[announcementIndex].content;
-                }
-                if (isEmergency !== undefined) {
-                    this.currentAnnouncement.isEmergency = isEmergency;
-                    this.currentAnnouncement.emergencyUntil = emergencyUntil;
-                }
-                await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
-
-                // If emergency was explicitly cleared, broadcast to all clients
-                if (wasEmergency && isEmergency === false && (!this.currentAnnouncement || !this.currentAnnouncement.isEmergency)) {
-                    this.broadcast({
-                        type: 'emergency_cleared',
-                        content: wasEmergency ? `긴급 공지가 해제되었습니다.` : '',
-                        timestamp: Date.now()
-                    });
-                }
-            }
-
-            await this.addAuditLog('edit_announcement', `Edited announcement from timestamp ${timestamp}: ${content ? content.substring(0, 50) + '...' : 'emergency status changed'}`, {
-                timestamp,
-                isEmergency
-            });
-
-            return new Response(JSON.stringify({ success: true }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('admin edit announce error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to edit announcement' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminDeleteAnnounce(request) {
-        try {
-            const data = await safeJson(request);
-            const timestamp = Number(data.timestamp);
-
-            if (!timestamp) {
-                return new Response(JSON.stringify({ error: 'Missing timestamp' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            const announcementIndex = this.announcementHistory.findIndex(a => a.timestamp === timestamp);
-            if (announcementIndex === -1) {
-                return new Response(JSON.stringify({ error: 'Announcement not found' }), {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            this.announcementHistory.splice(announcementIndex, 1);
-            await this.state.storage.put('announcementHistory', this.announcementHistory);
-
-            const wasEmergency = this.currentAnnouncement && this.currentAnnouncement.timestamp === timestamp && this.currentAnnouncement.isEmergency;
-
-            // Update currentAnnouncement if it matches
-            if (this.currentAnnouncement && this.currentAnnouncement.timestamp === timestamp) {
-                if (this.announcementHistory.length > 0) {
-                    this.currentAnnouncement = this.announcementHistory[0];
-                    await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
-                } else {
-                    this.currentAnnouncement = null;
-                    await this.state.storage.delete('currentAnnouncement');
-                }
-                // If deleted announcement was emergency, notify clients
-                if (wasEmergency && (!this.currentAnnouncement || !this.currentAnnouncement.isEmergency)) {
-                    this.broadcast({ type: 'emergency_cleared' });
-                }
-            }
-
-            await this.addAuditLog('delete_announcement', `Deleted announcement from timestamp ${timestamp}`, {
-                timestamp
-            });
-
-            return new Response(JSON.stringify({ success: true }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('admin delete announce error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to delete announcement' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminAnnounce(request) {
-        try {
-            const data = await safeJson(request);
-            const content = typeof data.content === 'string' ? data.content : '';
-            const isEmergency = !!data.isEmergency;
-            const emergencyUntil = isEmergency && data.emergencyUntil ? Number(data.emergencyUntil) : null;
-            const scheduleAt = data.scheduleAt || null;
-
-            if (!content) {
-                return new Response(JSON.stringify({ error: 'Empty content' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            // Save new announcement (replaces old one)
-            this.currentAnnouncement = {
-                content: sanitizeInput(content),
-                timestamp: Date.now(),
-                isEmergency,
-                emergencyUntil
-            };
-            if (data.expiresAt && data.expiresAt > Date.now()) {
-                this.currentAnnouncement.expiresAt = data.expiresAt;
-            }
-            await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
-
-            // Append to announcement history (newest first, keep up to 100)
-            this.announcementHistory.unshift(this.currentAnnouncement);
-            if (this.announcementHistory.length > 100) {
-                this.announcementHistory = this.announcementHistory.slice(0, 100);
-            }
-            await this.state.storage.put('announcementHistory', this.announcementHistory);
-
-            if (scheduleAt && scheduleAt > Date.now()) {
-                this.currentAnnouncement.scheduleAt = scheduleAt;
-                await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
-                return new Response(JSON.stringify({ success: true, scheduled: true, scheduleAt: scheduleAt }), {
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            // Broadcast system announcement to all users
-            const announcementMessage = {
-                type: 'announcement',
-                content: this.currentAnnouncement.content,
-                timestamp: this.currentAnnouncement.timestamp,
-                isEmergency: this.isEmergencyActive(),
-                emergencyUntil: this.currentAnnouncement.emergencyUntil
-            };
-
-            let notified = 0;
-            for (const [_sessionId, ws] of this.sessions) {
-                try { ws.send(JSON.stringify(announcementMessage)); notified++; } catch (_e) { /* ignore dead sessions */ }
-            }
-
-            // Add audit log
-            await this.addAuditLog('send_announcement', `Sent announcement: ${content.substring(0, 50)}...${isEmergency ? ' [EMERGENCY]' : ''}`, {
-                contentLength: content.length,
-                sessionsNotified: notified,
-                isEmergency
-            });
-
-            return new Response(JSON.stringify({
-                success: true,
-                sessionsNotified: notified
-            }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('admin announce error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to send announcement' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminBannedIPs() {
-        const now = Date.now();
-        const bannedList = [];
-
-        for (const [ip, banInfo] of this.bannedIPs.entries()) {
-            if (now < banInfo.bannedUntil) {
-                bannedList.push({
-                    ip,
-                    bannedUntil: banInfo.bannedUntil,
-                    remainingSeconds: Math.ceil((banInfo.bannedUntil - now) / 1000),
-                    reason: banInfo.reason || 'No reason provided',
-                    bannedAt: banInfo.bannedAt || (banInfo.bannedUntil - (banInfo.duration || 0) * 1000)
-                });
-            }
-        }
-
-        return new Response(JSON.stringify(bannedList), {
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-
-    async handleAdminUnbanIP(request) {
-        try {
-            const data = await safeJson(request);
-            const ip = data.ip;
-
-            if (!ip) {
-                return new Response(JSON.stringify({ error: 'Missing IP' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-
-            this.bannedIPs.delete(ip);
-            await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
-
-            // Add audit log
-            await this.addAuditLog('UNBAN_IP', `Unbanned IP: ${ip}`);
-
-            return new Response(JSON.stringify({ success: true }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('unban ip error:', error);
-            return new Response(JSON.stringify({ error: 'Failed to unban IP' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-    }
-
-    async handleAdminUserDetails(url) {
-        const sessionId = url.searchParams.get('sessionId');
-
-        if (!sessionId) {
-            return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        const metadata = this.userMetadata.get(sessionId);
-        const userMessages = this.messages.filter(m => m.sessionId === sessionId);
-        const isOnline = this.sessions.has(sessionId);
-
-        return new Response(JSON.stringify({
-            sessionId,
-            metadata: metadata || null,
-            messages: userMessages,
-            messageCount: userMessages.length,
-            isOnline,
-            firstMessage: userMessages.length > 0 ? userMessages[0].timestamp : null,
-            lastMessage: userMessages.length > 0 ? userMessages[userMessages.length - 1].timestamp : null
-        }), {
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-
-    async handleAdminAuditLogs() {
-        // Return last 100 audit logs
-        const logs = this.auditLogs.slice(-100).reverse();
-
-        return new Response(JSON.stringify(logs), {
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-
-    async handleCheckBan(url, request) {
-        const ip = url.searchParams.get('ip') || request.headers.get('CF-Connecting-IP') || 'unknown';
-        const sessionId = url.searchParams.get('sessionId');
-        const now = Date.now();
-
-        // Check session ban first
-        if (sessionId) {
-            const sessionBanInfo = this.bannedSessions.get(sessionId);
-            if (sessionBanInfo && now < sessionBanInfo.bannedUntil) {
-                const remainingSeconds = Math.ceil((sessionBanInfo.bannedUntil - now) / 1000);
-                return new Response(JSON.stringify({
-                    banned: true,
-                    remainingSeconds,
-                    message: `이 세션은 ${remainingSeconds}초 동안 차단되었습니다.`
-                }), {
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            } else if (sessionBanInfo) {
-                // Session ban expired, remove it
-                this.bannedSessions.delete(sessionId);
-                await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
-            }
-        }
-
-        // Check IP ban
-        const banInfo = this.bannedIPs.get(ip);
-        if (banInfo) {
-            if (now < banInfo.bannedUntil) {
-                const remainingSeconds = Math.ceil((banInfo.bannedUntil - now) / 1000);
-                return new Response(JSON.stringify({
-                    banned: true,
-                    remainingSeconds,
-                    message: `이 IP는 ${remainingSeconds}초 동안 차단되었습니다.`
-                }), {
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            } else {
-                // Ban expired, remove it
-                this.bannedIPs.delete(ip);
-                await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
-            }
-        }
-
-        return new Response(JSON.stringify({ banned: false }), {
-            headers: { 'Content-Type': 'application/json' }
         });
     }
 
@@ -1332,14 +303,12 @@ export class ChatRoom {
 
         websocket.addEventListener('message', async (event) => {
             try {
-                // Update activity time for any interaction
                 if (metadata) {
                     metadata.lastActivityTime = Date.now();
                 }
 
                 const data = JSON.parse(event.data);
 
-                // Handle different message types
                 switch (data.type) {
                     case 'ping': {
                         try {
@@ -1425,7 +394,6 @@ export class ChatRoom {
                 this.sessions.delete(sessionId);
                 this.typingUsers.delete(sessionId);
 
-                // Update IP connection count
                 const currentCount = this.ipConnections.get(clientIP) || 0;
                 if (currentCount > 1) {
                     this.ipConnections.set(clientIP, currentCount - 1);
@@ -1436,7 +404,6 @@ export class ChatRoom {
                 metrics.activeConnections--;
                 this.broadcastUserCount();
 
-                // Track empty state for channel auto-deletion
                 if (this.channelSlug !== '0' && this.sessions.size === 0) {
                     this.emptySince = Date.now();
                 }
@@ -1452,20 +419,23 @@ export class ChatRoom {
     }
 
     async handleJoin(data, websocket, clientIP, setSession) {
-        // Restart cleanup interval if it was stopped (e.g. after admin force-delete)
         if (!this.cleanupInterval) {
             this.cleanupInterval = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
         }
 
-        // Channel revived from empty state
         if (this.emptySince !== null && this.channelSlug !== '0') {
             this.emptySince = null;
             await this.touchRegistry();
         }
 
-        const sessionId = data.sessionId || this.generateSessionId();
+        const sessionId = data.sessionId || generateSessionId();
+        const sessionCheck = validateSessionId(sessionId);
+        if (!sessionCheck.valid && data.sessionId) {
+            websocket.send(JSON.stringify({ type: 'error', content: sessionCheck.error }));
+            websocket.close(1008, 'Invalid session');
+            return;
+        }
 
-        // Check if session is banned
         const sessionBanInfo = this.bannedSessions.get(sessionId);
         if (sessionBanInfo) {
             const now = Date.now();
@@ -1484,7 +454,6 @@ export class ChatRoom {
             }
         }
 
-        // Check if IP is still banned
         const banInfo = this.bannedIPs.get(clientIP);
         if (banInfo) {
             const now = Date.now();
@@ -1523,7 +492,6 @@ export class ChatRoom {
             };
             this.userMetadata.set(sessionId, metadata);
 
-            // Send recent messages as a batch for better performance
             const recentMessages = this.messages.slice(-RECENT_MESSAGES_BATCH);
             if (recentMessages.length > 0) {
                 this.sendToSession(sessionId, {
@@ -1537,7 +505,7 @@ export class ChatRoom {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
                     timestamp: this.currentAnnouncement.timestamp,
-                    isEmergency: this.isEmergencyActive()
+                    isEmergency: isEmergencyActive(this.currentAnnouncement)
                 });
             }
 
@@ -1561,7 +529,6 @@ export class ChatRoom {
 
             this.broadcastUserCount();
 
-            // Only show join message for truly new sessions, not reconnections
             if (!existingMetadata) {
                 this.sendToSession(sessionId, {
                     type: 'system',
@@ -1569,7 +536,6 @@ export class ChatRoom {
                 });
             }
 
-            // Send recent messages as a batch for better performance
             const recentMessages = this.messages.slice(-RECENT_MESSAGES_BATCH);
             if (recentMessages.length > 0) {
                 this.sendToSession(sessionId, {
@@ -1583,7 +549,7 @@ export class ChatRoom {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
                     timestamp: this.currentAnnouncement.timestamp,
-                    isEmergency: this.isEmergencyActive()
+                    isEmergency: isEmergencyActive(this.currentAnnouncement)
                 });
             }
         }
@@ -1593,14 +559,24 @@ export class ChatRoom {
 
     async handleMessage(data, sessionId, metadata, HMAC_SECRET) {
         if (!sessionId || !metadata) {
+            if (sessionId) {
+                this.sendToSession(sessionId, {
+                    type: 'error',
+                    content: '세션이 유효하지 않습니다.'
+                });
+            }
+            return;
+        }
+
+        const msgCheck = validateClientMessage(data);
+        if (!msgCheck.valid) {
             this.sendToSession(sessionId, {
                 type: 'error',
-                content: '세션이 유효하지 않습니다.'
+                content: msgCheck.error
             });
             return;
         }
 
-        // Verify message signature if provided
         if (data.signature) {
             const isValid = await verifyMessageSignature(
                 {
@@ -1631,7 +607,6 @@ export class ChatRoom {
             return;
         }
 
-        // Track the user's current nickname in metadata for admin view
         try {
             const nick = sanitizeInput(data.nickname || metadata.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH);
             metadata.nickname = nick;
@@ -1640,7 +615,7 @@ export class ChatRoom {
             // ignore nickname sanitization errors
         }
 
-        const validationError = this.validateMessage(data, metadata);
+        const validationError = validateMessage(data, metadata);
         if (validationError) {
             this.sendToSession(sessionId, {
                 type: 'error',
@@ -1658,15 +633,14 @@ export class ChatRoom {
 
         const message = {
             type: 'message',
-            messageId: messageId,
+            messageId,
             content: sanitizeInput(data.content),
-            sessionId: sessionId,
+            sessionId,
             nickname: sanitizeInput(data.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH),
             timestamp: Date.now(),
             editedAt: null
         };
 
-        // 답장 정보 추가
         if (data.replyTo) {
             message.replyTo = {
                 messageId: data.replyTo.messageId,
@@ -1674,7 +648,6 @@ export class ChatRoom {
                 isOwnMessage: data.replyTo.isOwnMessage
             };
 
-            // 비밀 메시지 정보 추가
             if (data.replyTo.isSecret) {
                 message.replyTo.isSecret = true;
                 message.replyTo.secretId = data.replyTo.secretId;
@@ -1684,15 +657,17 @@ export class ChatRoom {
 
         if (data.file && data.file.url) {
             if (!isValidFileUrl(data.file.url)) {
-                return new Response(JSON.stringify({ error: 'Invalid file URL' }), {
-                    status: 400, headers: { 'Content-Type': 'application/json' }
+                this.sendToSession(sessionId, {
+                    type: 'error',
+                    content: 'Invalid file URL'
                 });
+                return;
             }
             message.file = {
                 url: data.file.url,
-                filename: sanitizeInput(String(data.file.filename || '')).substring(0, 255),
+                filename: sanitizeInput(String(data.file.filename || '')).substring(0, UPLOAD.MAX_FILENAME_LENGTH),
                 filesize: typeof data.file.filesize === 'number' ? data.file.filesize : null,
-                filetype: sanitizeInput(String(data.file.filetype || '')).substring(0, 100)
+                filetype: sanitizeInput(String(data.file.filetype || '')).substring(0, UPLOAD.MAX_FILETYPE_LENGTH)
             };
         }
 
@@ -1702,9 +677,9 @@ export class ChatRoom {
                 if (!f.url || !isValidFileUrl(f.url)) continue;
                 validFiles.push({
                     url: f.url,
-                    filename: sanitizeInput(String(f.filename || '')).substring(0, 255),
+                    filename: sanitizeInput(String(f.filename || '')).substring(0, UPLOAD.MAX_FILENAME_LENGTH),
                     filesize: typeof f.filesize === 'number' ? f.filesize : null,
-                    filetype: sanitizeInput(String(f.filetype || '')).substring(0, 100)
+                    filetype: sanitizeInput(String(f.filetype || '')).substring(0, UPLOAD.MAX_FILETYPE_LENGTH)
                 });
             }
             if (validFiles.length > 0) {
@@ -1728,10 +703,12 @@ export class ChatRoom {
 
     async handleEdit(data, sessionId, metadata, HMAC_SECRET) {
         if (!sessionId || !metadata) {
-            this.sendToSession(sessionId, {
-                type: 'error',
-                content: '세션이 유효하지 않습니다.'
-            });
+            if (sessionId) {
+                this.sendToSession(sessionId, {
+                    type: 'error',
+                    content: '세션이 유효하지 않습니다.'
+                });
+            }
             return;
         }
 
@@ -1934,33 +911,9 @@ export class ChatRoom {
             messageId: data.messageId,
             emoji: data.emoji,
             count: message.reactions[data.emoji] || 0,
-            sessionId: sessionId,
+            sessionId,
             reactionSessions: message.reactionSessions[data.emoji] || []
         });
-    }
-
-    _sanitizeContentForAI(content) {
-        if (!content || !content.trim()) return null;
-        const trimmed = content.trim();
-
-        // 2글자 이하 → 잡음
-        if (trimmed.length <= 2) return null;
-
-        // 한글 자음/모음 비율 80% 이상 → 키보드 난타
-        const jamo = (trimmed.match(/[\u1100-\u11FF\u3130-\u318F]/g) || []).length;
-        const syllables = (trimmed.match(/[\uAC00-\uD7AF]/g) || []).length;
-        if (jamo > 0 && (jamo / Math.max(1, jamo + syllables)) >= 0.8) return null;
-
-        // 코드 메시지 → 첫 줄 + [코드]로 축약
-        if (/^```|^(import |export |function |class |const |let |var |async function)/m.test(trimmed)) {
-            const firstLine = trimmed.split('\n')[0].substring(0, 60);
-            return firstLine + ' [코드]';
-        }
-
-        // 순수 기호/공백만 → 잡음
-        if (/^[\s\W_]+$/.test(trimmed) && trimmed.length < 10) return null;
-
-        return trimmed;
     }
 
     handleTyping(data, sessionId) {
@@ -1972,7 +925,6 @@ export class ChatRoom {
             this.typingUsers.delete(sessionId);
         }
 
-        // Update nickname in metadata when typing events include a nickname
         try {
             const meta = this.userMetadata.get(sessionId);
             if (meta) {
@@ -1986,200 +938,10 @@ export class ChatRoom {
 
         this.broadcast({
             type: 'typing',
-            sessionId: sessionId,
+            sessionId,
             nickname: sanitizeInput(data.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH),
             typing: data.typing
         }, sessionId);
-    }
-
-    validateMessage(data, metadata) {
-        const hasFile = data.file && data.file.url;
-        const hasFiles = data.files && Array.isArray(data.files) && data.files.length > 0 && data.files[0].url;
-        const hasContent = data.content && data.content.trim().length > 0;
-
-        if (!hasContent && !hasFile && !hasFiles) {
-            return '메시지 내용이 비어있습니다.';
-        }
-
-        if (data.content && data.content.length > SECURITY.MAX_MESSAGE_LENGTH) {
-            return `메시지는 최대 ${SECURITY.MAX_MESSAGE_LENGTH}자까지 입력할 수 있습니다.`;
-        }
-
-        const now = Date.now();
-        if (now - metadata.lastMessageTime < RATE_LIMIT.MESSAGE_COOLDOWN) {
-            return '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 시도해주세요.';
-        }
-
-        const oneMinuteAgo = now - 60000;
-        if (!metadata._minuteWindowStart || metadata._minuteWindowStart < oneMinuteAgo) {
-            metadata._minuteWindowStart = now;
-            metadata._minuteMessageCount = 0;
-        }
-        if (metadata._minuteMessageCount >= RATE_LIMIT.MAX_MESSAGES_PER_MINUTE) {
-            return '분당 메시지 전송 한도를 초과했습니다.';
-        }
-
-        return null;
-    }
-
-    handleSearch(query, limit) {
-        if (!query || query.trim().length === 0) {
-            return new Response(JSON.stringify({ results: [], total: 0 }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        const tags = [];
-        const terms = [];
-        const parts = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
-        for (const part of parts) {
-            if (part.startsWith('#')) {
-                tags.push(part.substring(1));
-            } else {
-                terms.push(part);
-            }
-        }
-
-        if (tags.length > 0) {
-            terms.length = 0;
-        }
-
-        if (tags.length === 0 && terms.length === 0) {
-            return new Response(JSON.stringify({ results: [], total: 0 }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        const results = [];
-        const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
-        const recentMessages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
-
-        for (const msg of recentMessages) {
-            if (results.length >= limit) break;
-
-            if (tags.length > 0) {
-                let matchesAllTags = true;
-                for (const tag of tags) {
-                    if (tag === 'images') {
-                        const hasImage = (msg.file && msg.file.filetype && msg.file.filetype.startsWith('image/')) ||
-                                       (msg.files && msg.files.some(f => f.filetype && f.filetype.startsWith('image/')));
-                        if (!hasImage) {
-                            matchesAllTags = false;
-                            break;
-                        }
-                    } else if (tag === 'files') {
-                        const hasNonImage = (msg.file && msg.file.filetype && !msg.file.filetype.startsWith('image/')) ||
-                                          (msg.files && msg.files.some(f => f.filetype && !f.filetype.startsWith('image/')));
-                        if (!hasNonImage) {
-                            matchesAllTags = false;
-                            break;
-                        }
-                    } else if (tag === 'code') {
-                        if (!this.isLikelyCode(msg.content || '')) {
-                            matchesAllTags = false;
-                            break;
-                        }
-                    } else if (tag === 'url') {
-                        if (!this.containsUrl(msg.content || '')) {
-                            matchesAllTags = false;
-                            break;
-                        }
-                    } else {
-                        matchesAllTags = false;
-                        break;
-                    }
-                }
-                if (!matchesAllTags) continue;
-            }
-
-            if (terms.length > 0) {
-                const content = (msg.content || '').toLowerCase();
-                const nickname = (msg.nickname || '').toLowerCase();
-                const fileName = (msg.file?.filename || '').toLowerCase();
-                const matchesAllTerms = terms.every(term =>
-                    content.includes(term) ||
-                    nickname.includes(term) ||
-                    fileName.includes(term)
-                );
-                if (!matchesAllTerms) continue;
-            }
-
-            const tagList = [];
-            // Check single file
-            if (msg.file && msg.file.filetype) {
-                if (msg.file.filetype.startsWith('image/')) {
-                    tagList.push('images');
-                } else {
-                    tagList.push('files');
-                }
-            }
-            // Check multiple files
-            if (msg.files && msg.files.length > 0) {
-                const hasImage = msg.files.some(f => f.filetype && f.filetype.startsWith('image/'));
-                const hasNonImage = msg.files.some(f => f.filetype && !f.filetype.startsWith('image/'));
-                if (hasImage && !tagList.includes('images')) {
-                    tagList.push('images');
-                }
-                if (hasNonImage && !tagList.includes('files')) {
-                    tagList.push('files');
-                }
-            }
-            if (this.isLikelyCode(msg.content || '')) {
-                tagList.push('code');
-            }
-            if (this.containsUrl(msg.content || '')) {
-                tagList.push('url');
-            }
-
-            results.push({
-                messageId: msg.messageId,
-                content: msg.content || '',
-                nickname: msg.nickname || 'Anonymous',
-                sessionId: msg.sessionId,
-                timestamp: msg.timestamp,
-                hasFile: !!(msg.file),
-                fileName: msg.file?.filename || null,
-                fileType: msg.file?.filetype || null,
-                tags: tagList
-            });
-        }
-
-        return new Response(JSON.stringify({ results, total: results.length }), {
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-
-    isLikelyCode(content) {
-        if (!content || typeof content !== 'string') return false;
-        if (/```/.test(content)) return true;
-        const trimmed = content.trim();
-        const lines = trimmed.split(/\r?\n/);
-        if (lines.length < 2) return false;
-        if (lines.length > 50) return true;
-        if (/^(#!\/bin\/|import\s|from\s|export\s|const\s|let\s|var\s|function[\s(]|class\s|def\s|return\s|#include|#define|using\s|namespace\s|public\s|private\s|SELECT\s|INSERT\s|CREATE\s)/mi.test(trimmed)) return true;
-        let codeEndingLines = 0;
-        for (const line of lines) {
-            const t = line.trim();
-            if (/[;{})\]]=?>?\s*$/.test(t) && t.length > 1) codeEndingLines++;
-        }
-        if (codeEndingLines / lines.length > 0.4) return true;
-        const codeChars = (trimmed.match(/[{}();=<>]/g) || []).length;
-        if (codeChars / trimmed.length > 0.08) return true;
-        return false;
-    }
-
-    containsUrl(content) {
-        if (!content || typeof content !== 'string') return false;
-        // Match http/https URLs and common URL patterns
-        return /https?:\/\/[^\s<>"{}|^`[\]]+/i.test(content) ||
-                /www\.[a-zA-Z0-9][-a-zA-Z0-9]*[a-zA-Z0-9]*(\.[a-zA-Z]{2,})+/i.test(content);
-    }
-
-    generateSessionId() {
-        // Use only cryptographically secure random values
-        const randomPart1 = crypto.randomUUID().replace(/-/g, '');
-        const randomPart2 = crypto.randomUUID().replace(/-/g, '').substring(0, 8);
-        return `user_${randomPart1.substring(0, 16)}${randomPart2}`;
     }
 
     async addAuditLog(action, details, metadata = {}) {
@@ -2230,8 +992,6 @@ export class ChatRoom {
             }
         }
 
-        // Send push notifications to offline subscribers (fire-and-forget, throttled)
-        // Skip push notifications for channel messages (only main room broadcasts push)
         if (message.type === 'message' && this.channelSlug === '0' && this.env?.PUSH_SUBSCRIPTIONS) {
             this.throttledPushNotification(message);
         }
@@ -2327,7 +1087,6 @@ export class ChatRoom {
                 sessionsRemoved = true;
             }
         }
-        // Track empty state if cleanup removed the last session
         if (sessionsRemoved && this.channelSlug !== '0' && this.sessions.size === 0 && this.emptySince === null) {
             this.emptySince = Date.now();
         }
@@ -2336,7 +1095,6 @@ export class ChatRoom {
         const initialLength = this.messages.length;
         this.messages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
 
-        // Clear expired emergency announcement
         if (this.currentAnnouncement && this.currentAnnouncement.isEmergency && this.currentAnnouncement.emergencyUntil && now >= this.currentAnnouncement.emergencyUntil) {
             this.currentAnnouncement.isEmergency = false;
             this.currentAnnouncement.emergencyUntil = null;
@@ -2344,13 +1102,12 @@ export class ChatRoom {
             this.broadcast({ type: 'emergency_cleared' });
         }
 
-        // Check scheduled announcements
         if (this.currentAnnouncement && this.currentAnnouncement.scheduleAt && now >= this.currentAnnouncement.scheduleAt) {
             const announcementMessage = {
                 type: 'announcement',
                 content: this.currentAnnouncement.content,
                 timestamp: this.currentAnnouncement.timestamp,
-                isEmergency: this.isEmergencyActive(),
+                isEmergency: isEmergencyActive(this.currentAnnouncement),
                 emergencyUntil: this.currentAnnouncement.emergencyUntil
             };
             this.broadcast(announcementMessage);
@@ -2358,7 +1115,6 @@ export class ChatRoom {
             await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
         }
 
-        // Check expired announcements
         if (this.currentAnnouncement && !this.currentAnnouncement.isEmergency && this.currentAnnouncement.expiresAt && now >= this.currentAnnouncement.expiresAt) {
             if (this.announcementHistory.length > 0) {
                 const next = this.announcementHistory[0];
@@ -2374,10 +1130,9 @@ export class ChatRoom {
         }
 
         if (this.messages.length !== initialLength) {
-        await this.state.storage.put('messages', this.messages);
+            await this.state.storage.put('messages', this.messages);
         }
 
-        // Auto-delete empty channels after TTL
         if (this.emptySince !== null && this.channelSlug !== '0') {
             if (now - this.emptySince > CHANNEL.EMPTY_TTL) {
                 this.deleteChannel();
@@ -2400,15 +1155,13 @@ export class ChatRoom {
     }
 
     async deleteChannel() {
-        if (this.channelSlug === '0') return; // Never delete main room
+        if (this.channelSlug === '0') return;
 
-        // Stop periodic cleanup to prevent further invocations on deleted channel
         if (this.cleanupInterval) {
             clearInterval(this.cleanupInterval);
             this.cleanupInterval = null;
         }
 
-        // Clear all state
         this.sessions.clear();
         this.ipConnections.clear();
         this.userMetadata.clear();
@@ -2420,14 +1173,12 @@ export class ChatRoom {
         this.errorLogs = [];
         this.currentAnnouncement = null;
 
-        // Delete persistent storage
         try {
             await this.state.storage.deleteAll();
         } catch (error) {
             console.error('Failed to delete channel storage:', error);
         }
 
-        // Notify registry
         try {
             const registryId = this.env.CHANNEL_REGISTRY.idFromName('registry');
             const registry = this.env.CHANNEL_REGISTRY.get(registryId);

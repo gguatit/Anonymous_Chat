@@ -1,4 +1,5 @@
 // Admin Dashboard JavaScript
+import ApiClient from './api-client.js';
 import { escapeHtml, isValidUrl as _isValidUrl, sanitizeUrl as _sanitizeUrl, formatFileSize as _formatFileSize } from './utils.js';
 import { hideModal } from './admin-utils.js';
 import dataMethods from './admin-data.js';
@@ -14,6 +15,9 @@ class AdminDashboard {
         this.refreshBtn = document.getElementById('refresh-btn');
 
         this.sessionToken = localStorage.getItem('admin_token');
+        if (this.sessionToken) {
+            ApiClient.setToken(this.sessionToken);
+        }
         this.refreshInterval = null;
         this.autoRefreshInterval = null;
 
@@ -278,6 +282,7 @@ class AdminDashboard {
 
             if (response.ok && data.success) {
                 this.sessionToken = data.token;
+                ApiClient.setToken(data.token);
                 localStorage.setItem('admin_token', data.token);
                 this.showDashboard();
             } else {
@@ -315,6 +320,7 @@ class AdminDashboard {
 
         localStorage.removeItem('admin_token');
         this.sessionToken = null;
+        ApiClient.setToken(null);
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
         }

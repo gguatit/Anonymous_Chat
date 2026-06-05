@@ -4,6 +4,7 @@ import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToke
 import { forwardToDO, forwardToChannelDO } from '../utils/do.js';
 import { safeJson } from '../utils/helpers.js';
 import { AUTH } from '../config/constants.js';
+import { jsonError, emptyResponse } from '../utils/errors.js';
 
 async function requireAdminAuth(request, env) {
     const authHeader = request.headers.get('Authorization');
@@ -16,15 +17,9 @@ async function requireAdminAuth(request, env) {
 function withAuth(handler) {
     return async (request, env, corsHeaders) => {
         const token = await requireAdminAuth(request, env);
-        if (!token) return new Response(null, { status: 401, headers: corsHeaders });
+        if (!token) return emptyResponse(401, request.headers.get('Origin'));
         return handler(request, env, corsHeaders);
     };
-}
-
-function jsonError(corsHeaders, message, status = 400) {
-    return new Response(JSON.stringify({ error: message }), {
-        status, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
 }
 
 function forwardResponse(response, corsHeaders) {
@@ -138,34 +133,31 @@ export async function handleAdminLogin(request, env, corsHeaders) {
 
         await sleep(100);
 
-        return new Response(JSON.stringify({ error: 'Invalid request' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('Invalid request', 400, request.headers.get('Origin'));
     }
 }
 
-export const handleAdminVerify = withAuth(async (_request, _env, corsHeaders) => {
+export const handleAdminVerify = withAuth(async (request, _env, corsHeaders) => {
     return new Response(JSON.stringify({ valid: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 });
 
-export const handleAdminMetrics = withAuth(async (_request, env, corsHeaders) => {
+export const handleAdminMetrics = withAuth(async (request, env, corsHeaders) => {
     const response = await forwardToDO(env, '/admin/metrics', {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
     return forwardResponse(response, corsHeaders);
 });
 
-export const handleAdminSessions = withAuth(async (_request, env, corsHeaders) => {
+export const handleAdminSessions = withAuth(async (request, env, corsHeaders) => {
     const response = await forwardToDO(env, '/admin/sessions', {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
     return forwardResponse(response, corsHeaders);
 });
 
-export const handleAdminMessages = withAuth(async (_request, env, corsHeaders) => {
+export const handleAdminMessages = withAuth(async (request, env, corsHeaders) => {
     const response = await forwardToDO(env, '/admin/messages', {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
@@ -174,7 +166,7 @@ export const handleAdminMessages = withAuth(async (_request, env, corsHeaders) =
 
 export const handleAdminDeleteErrorLogs = withAuth(async (request, env, corsHeaders) => {
     if (request.method !== 'POST') {
-        return new Response(null, { status: 405, headers: corsHeaders });
+        return emptyResponse(405, request.headers.get('Origin'));
     }
 
     if (env?.DB_ADMIN) {
@@ -196,7 +188,7 @@ export async function handleAdminLogout(request, env, corsHeaders) {
     const authHeader = request.headers.get('Authorization');
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(null, { status: 401, headers: corsHeaders });
+        return emptyResponse(401, request.headers.get('Origin'));
     }
 
     const token = authHeader.substring(7);
@@ -219,7 +211,7 @@ export async function handleAdminLogout(request, env, corsHeaders) {
     });
 }
 
-export const handleAdminLogs = withAuth(async (_request, env, corsHeaders) => {
+export const handleAdminLogs = withAuth(async (request, env, corsHeaders) => {
     if (!env?.DB_ADMIN) {
         return new Response(JSON.stringify({ logs: [] }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -239,7 +231,7 @@ export const handleAdminLogs = withAuth(async (_request, env, corsHeaders) => {
     });
 });
 
-export const handleAdminDeleteLogs = withAuth(async (_request, env, corsHeaders) => {
+export const handleAdminDeleteLogs = withAuth(async (request, env, corsHeaders) => {
     if (!env?.DB_ADMIN) {
         return new Response(JSON.stringify({ success: true, deletedCount: 0 }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -255,7 +247,7 @@ export const handleAdminDeleteLogs = withAuth(async (_request, env, corsHeaders)
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     } catch (_e) {
-        return jsonError(corsHeaders, 'Failed to delete logs', 500);
+        return jsonError('Failed to delete logs', 500, request.headers.get('Origin'));
     }
 });
 
@@ -271,7 +263,7 @@ export const handleAdminBroadcast = withAuth(async (request, env, corsHeaders) =
         });
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError(corsHeaders, 'Invalid request');
+        return jsonError('Invalid request', 400, request.headers.get('Origin'));
     }
 });
 
@@ -282,7 +274,7 @@ export const handleAdminEditMessage = withAuth(async (request, env, corsHeaders)
         const newContent = body.newContent;
 
         if (!messageId || !newContent) {
-            return jsonError(corsHeaders, 'Missing required fields');
+            return jsonError('Missing required fields', 400, request.headers.get('Origin'));
         }
 
         const response = await forwardToDO(env, '/admin/edit-message', {
@@ -291,7 +283,7 @@ export const handleAdminEditMessage = withAuth(async (request, env, corsHeaders)
         });
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError(corsHeaders, 'Invalid request');
+        return jsonError('Invalid request', 400, request.headers.get('Origin'));
     }
 });
 
@@ -301,7 +293,7 @@ export const handleAdminDeleteMessage = withAuth(async (request, env, corsHeader
         const messageId = body.messageId;
 
         if (!messageId) {
-            return jsonError(corsHeaders, 'Missing messageId');
+            return jsonError('Missing messageId', 400, request.headers.get('Origin'));
         }
 
         const response = await forwardToDO(env, '/admin/delete-message', {
@@ -310,7 +302,7 @@ export const handleAdminDeleteMessage = withAuth(async (request, env, corsHeader
         });
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError(corsHeaders, 'Invalid request');
+        return jsonError('Invalid request', 400, request.headers.get('Origin'));
     }
 });
 
@@ -320,7 +312,7 @@ export const handleAdminDeleteAllMessages = withAuth(async (request, env, corsHe
         const confirmation = body.confirmation;
 
         if (confirmation !== 'DELETE_ALL_MESSAGES') {
-            return jsonError(corsHeaders, 'Invalid confirmation');
+            return jsonError('Invalid confirmation', 400, request.headers.get('Origin'));
         }
 
         const response = await forwardToDO(env, '/admin/delete-all-messages', {
@@ -329,7 +321,7 @@ export const handleAdminDeleteAllMessages = withAuth(async (request, env, corsHe
         });
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError(corsHeaders, 'Invalid request');
+        return jsonError('Invalid request', 400, request.headers.get('Origin'));
     }
 });
 
@@ -340,7 +332,7 @@ export const handleAdminKickUser = withAuth(async (request, env, corsHeaders) =>
         const banDuration = body.banDuration || 0;
 
         if (!sessionId) {
-            return jsonError(corsHeaders, 'Missing sessionId');
+            return jsonError('Missing sessionId', 400, request.headers.get('Origin'));
         }
 
         const response = await forwardToDO(env, '/admin/kick-user', {
@@ -349,7 +341,7 @@ export const handleAdminKickUser = withAuth(async (request, env, corsHeaders) =>
         });
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError(corsHeaders, 'Invalid request');
+        return jsonError('Invalid request', 400, request.headers.get('Origin'));
     }
 });
 
@@ -360,11 +352,11 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
         const timestamp = body.timestamp;
 
         if (request.method === 'POST' && !content) {
-            return jsonError(corsHeaders, 'Missing content');
+            return jsonError('Missing content', 400, request.headers.get('Origin'));
         }
 
         if ((request.method === 'PUT' || request.method === 'DELETE') && !timestamp) {
-            return jsonError(corsHeaders, 'Missing timestamp');
+            return jsonError('Missing timestamp', 400, request.headers.get('Origin'));
         }
 
         const forwardBody = { content };
@@ -392,16 +384,16 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
         });
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError(corsHeaders, 'Invalid request');
+        return jsonError('Invalid request', 400, request.headers.get('Origin'));
     }
 });
 
-export const handleAdminBannedIPs = withAuth(async (_request, env, corsHeaders) => {
+export const handleAdminBannedIPs = withAuth(async (request, env, corsHeaders) => {
     try {
         const response = await forwardToDO(env, '/admin/banned-ips');
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError(corsHeaders, 'Failed to fetch banned IPs', 500);
+        return jsonError('Failed to fetch banned IPs', 500, request.headers.get('Origin'));
     }
 });
 
@@ -411,7 +403,7 @@ export const handleAdminUnbanIP = withAuth(async (request, env, corsHeaders) => 
         const ip = body.ip;
 
         if (!ip) {
-            return jsonError(corsHeaders, 'Missing IP address');
+            return jsonError('Missing IP address', 400, request.headers.get('Origin'));
         }
 
         const response = await forwardToDO(env, '/admin/unban-ip', {
@@ -420,7 +412,7 @@ export const handleAdminUnbanIP = withAuth(async (request, env, corsHeaders) => 
         });
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError(corsHeaders, 'Failed to unban IP', 500);
+        return jsonError('Failed to unban IP', 500, request.headers.get('Origin'));
     }
 });
 
@@ -430,17 +422,17 @@ export const handleAdminUserDetails = withAuth(async (request, env, corsHeaders)
         const sessionId = url.searchParams.get('sessionId');
 
         if (!sessionId) {
-            return jsonError(corsHeaders, 'Missing sessionId');
+            return jsonError('Missing sessionId', 400, request.headers.get('Origin'));
         }
 
         const response = await forwardToDO(env, `/admin/user-details?sessionId=${encodeURIComponent(sessionId)}`);
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError(corsHeaders, 'Failed to fetch user details', 500);
+        return jsonError('Failed to fetch user details', 500, request.headers.get('Origin'));
     }
 });
 
-export const handleAdminAuditLogs = withAuth(async (_request, env, corsHeaders) => {
+export const handleAdminAuditLogs = withAuth(async (request, env, corsHeaders) => {
     if (!env?.DB_ADMIN) {
         return new Response(JSON.stringify([]), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -463,11 +455,11 @@ export const handleAdminAuditLogs = withAuth(async (_request, env, corsHeaders) 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     } catch (_e) {
-        return jsonError(corsHeaders, 'Failed to fetch audit logs', 500);
+        return jsonError('Failed to fetch audit logs', 500, request.headers.get('Origin'));
     }
 });
 
-export const handleAdminDeleteAuditLogs = withAuth(async (_request, env, corsHeaders) => {
+export const handleAdminDeleteAuditLogs = withAuth(async (request, env, corsHeaders) => {
     try {
         if (env?.DB_ADMIN) {
             await env.DB_ADMIN.prepare('DELETE FROM audit_logs').run();
@@ -478,11 +470,11 @@ export const handleAdminDeleteAuditLogs = withAuth(async (_request, env, corsHea
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     } catch (_e) {
-        return jsonError(corsHeaders, 'Failed to delete audit logs', 500);
+        return jsonError('Failed to delete audit logs', 500, request.headers.get('Origin'));
     }
 });
 
-export const handleAdminChannels = withAuth(async (_request, env, corsHeaders) => {
+export const handleAdminChannels = withAuth(async (request, env, corsHeaders) => {
     try {
         const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
         const registry = env.CHANNEL_REGISTRY.get(registryId);
@@ -491,7 +483,7 @@ export const handleAdminChannels = withAuth(async (_request, env, corsHeaders) =
         }));
         return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (_e) {
-        return jsonError(corsHeaders, 'Failed to fetch channels', 500);
+        return jsonError('Failed to fetch channels', 500, request.headers.get('Origin'));
     }
 });
 
@@ -500,13 +492,13 @@ export const handleAdminChannelDetails = withAuth(async (request, env, corsHeade
         const url = new URL(request.url);
         const slug = url.searchParams.get('slug');
         if (!slug) {
-            return jsonError(corsHeaders, 'Missing channel slug');
+            return jsonError('Missing channel slug', 400, request.headers.get('Origin'));
         }
 
         const response = await forwardToChannelDO(env, slug, '/admin/info');
         return new Response(response.body, { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (_e) {
-        return jsonError(corsHeaders, 'Failed to fetch channel details', 500);
+        return jsonError('Failed to fetch channel details', 500, request.headers.get('Origin'));
     }
 });
 
@@ -515,7 +507,7 @@ export const handleAdminChannelDelete = withAuth(async (request, env, corsHeader
         const body = await safeJson(request);
         const slug = body.slug;
         if (!slug) {
-            return jsonError(corsHeaders, 'Missing channel slug');
+            return jsonError('Missing channel slug', 400, request.headers.get('Origin'));
         }
 
         try {
@@ -543,6 +535,6 @@ export const handleAdminChannelDelete = withAuth(async (request, env, corsHeader
 
         return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (_e) {
-        return jsonError(corsHeaders, 'Failed to delete channel', 500);
+        return jsonError('Failed to delete channel', 500, request.headers.get('Origin'));
     }
 });

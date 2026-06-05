@@ -2,6 +2,8 @@ import { AI_SUMMARY } from '../config/constants.js';
 import { forwardToDO } from '../utils/do.js';
 import { safeJson } from '../utils/helpers.js';
 
+import { jsonError } from '../utils/errors.js';
+
 const BASE_RULES = `절대 규칙:
 0. 당신의 유일한 역할은 대화 요약입니다. 절대로 채팅에 참여하거나,
    개별 메시지에 답장하거나, 질문에 답변하지 마세요. 오직 요약문만 출력하세요.
@@ -80,8 +82,8 @@ async function callAI(env, messages, mode) {
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: prompt }
             ],
-            max_tokens: 600,
-            temperature: 0.4
+            max_tokens: AI_SUMMARY.MAX_TOKENS,
+            temperature: AI_SUMMARY.TEMPERATURE
         });
 
         return result.response || result;
@@ -94,8 +96,8 @@ async function callAI(env, messages, mode) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: prompt }
                 ],
-                max_tokens: 600,
-                temperature: 0.4
+                max_tokens: AI_SUMMARY.MAX_TOKENS,
+                temperature: AI_SUMMARY.TEMPERATURE
             });
 
             return result.response || result;
@@ -133,17 +135,11 @@ export async function handleSummary(request, env, corsHeaders) {
         doResp = await forwardToDO(env, '/messages/recent', { method: 'GET' });
     } catch (err) {
         console.error('Summary: Failed to fetch messages from DO:', err.message);
-        return new Response(JSON.stringify({ error: '메시지를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.' }), {
-            status: 502,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('메시지를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.', 502, request.headers.get('Origin'));
     }
 
     if (!doResp.ok) {
-        return new Response(JSON.stringify({ error: '대화 데이터를 불러올 수 없습니다.' }), {
-            status: 502,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('대화 데이터를 불러올 수 없습니다.', 502, request.headers.get('Origin'));
     }
 
     let messages;
@@ -151,10 +147,7 @@ export async function handleSummary(request, env, corsHeaders) {
         messages = await doResp.json();
     } catch (err) {
         console.error('Summary: Failed to parse messages JSON:', err.message);
-        return new Response(JSON.stringify({ error: '대화 데이터 처리 중 오류가 발생했습니다.' }), {
-            status: 502,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('대화 데이터 처리 중 오류가 발생했습니다.', 502, request.headers.get('Origin'));
     }
 
     let summary;
@@ -166,10 +159,7 @@ export async function handleSummary(request, env, corsHeaders) {
             summary = await callAI(env, messages, mode);
         } catch (err) {
             console.error('Summary: AI model call failed:', err.message);
-            return new Response(JSON.stringify({ error: 'AI 요약 모델이 현재 사용 불가능합니다. 잠시 후 다시 시도해주세요.' }), {
-                status: 503,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError('AI 요약 모델이 현재 사용 불가능합니다. 잠시 후 다시 시도해주세요.', 503, request.headers.get('Origin'));
         }
     }
 

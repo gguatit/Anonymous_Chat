@@ -1,8 +1,9 @@
-import { metrics, API_RATE_LIMIT } from './config/constants.js';
+import { metrics, API_RATE_LIMIT, AI_SUMMARY, UPLOAD } from './config/constants.js';
 import { getCorsHeaders, handleCorsPreflightResponse } from './config/cors.js';
-import { AI_SUMMARY } from './config/constants.js';
 import { forwardToDO } from './utils/do.js';
 import { safeJson } from './utils/helpers.js';
+import { createRateLimiter } from './utils/rate-limiter.js';
+import { jsonError, textError } from './utils/errors.js';
 
 import * as admin from './handlers/admin.js';
 import { handleWebSocket, handleCheckBan } from './handlers/websocket.js';
@@ -17,22 +18,8 @@ import { ChannelRegistry } from './durable-objects/ChannelRegistry.js';
 import { DeadDropStore } from './durable-objects/DeadDropStore.js';
 export { ChatRoom, ChannelRegistry, DeadDropStore };
 
-const rateLimitMap = new Map();
-
-function checkRateLimit(ip, config, tag = '') {
-    const key = tag ? `${ip}:${tag}` : ip;
-    const now = Date.now();
-    const entry = rateLimitMap.get(key);
-    if (!entry || now - entry.windowStart > config.windowMs) {
-        rateLimitMap.set(key, { windowStart: now, count: 1 });
-        return true;
-    }
-    if (entry.count >= config.max) {
-        return false;
-    }
-    entry.count++;
-    return true;
-}
+const rateLimiter = createRateLimiter();
+const checkRateLimit = rateLimiter.checkRateLimit;
 
 const SAFE_HEADERS = ['content-type', 'content-length', 'user-agent', 'accept-language'];
 
@@ -81,9 +68,7 @@ async function channelRequest(request, env, corsHeaders, endpoint, method, error
         return new Response(resp.body, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (error) {
         console.error(`Channel ${endpoint} error:`, error);
-        return new Response(JSON.stringify({ error: errorMsg }), {
-            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError(errorMsg, 500, request.headers.get('Origin'));
     }
 }
 
@@ -114,13 +99,13 @@ const publicRoutes = [
     ['/api/push/vapid-key', null, handleGetVapidKey],
     ['/api/push/subscribe', 'POST', async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.PUSH, 'push:sub')) {
-            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
         }
         return await handlePushSubscribe(req, env, cors);
     }],
     ['/api/push/unsubscribe', 'POST', async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.PUSH, 'push:unsub')) {
-            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
         }
         return await handlePushUnsubscribe(req, env, cors);
     }],
@@ -132,14 +117,14 @@ const publicRoutes = [
     ['/api/check-ban', null, handleCheckBan],
     ['/api/turnstile/verify', 'POST', async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.TURNSTILE, 'turnstile')) {
-            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
         }
         return await handleTurnstileVerify(req, env, cors);
     }],
     ['/api/preview', 'POST', handlePreview],
     ['/api/secret-store', 'POST', async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHECK_BAN, 'secret')) {
-            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
         }
         try {
             const did = env.DEAD_DROP_STORE.idFromName('singleton');
@@ -154,9 +139,7 @@ const publicRoutes = [
             return new Response(data, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
         } catch (_error) {
             console.error('Secret store error:', _error);
-            return new Response(JSON.stringify({ error: 'Secret store failed' }), {
-                status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
-            });
+            return jsonError('Secret store failed', 500, req.headers.get('Origin'));
         }
     }],
     ['/api/secret-read', 'GET', async (req, env, cors) => {
@@ -169,28 +152,24 @@ const publicRoutes = [
             return new Response(data, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
         } catch (_error) {
             console.error('Secret read error:', _error);
-            return new Response(JSON.stringify({ error: 'Secret read failed' }), {
-                status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
-            });
+            return jsonError('Secret read failed', 500, req.headers.get('Origin'));
         }
     }],
     ['/api/summary', null, async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', AI_SUMMARY.RATE_LIMIT, 'summary')) {
-            return new Response(JSON.stringify({ error: '잠시 후 다시 시도해주세요. (15초에 1회 제한)' }), {
-                status: 429, headers: { ...cors, 'Content-Type': 'application/json' }
-            });
+            return jsonError('잠시 후 다시 시도해주세요. (15초에 1회 제한)', 429, req.headers.get('Origin'));
         }
         return await handleSummary(req, env, cors);
     }],
     ['/metrics', null, async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.HEALTH, 'metrics')) {
-            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
         }
         return handleMetrics(cors);
     }],
     ['/health', null, async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.HEALTH, 'health')) {
-            return new Response('Rate limit exceeded', { status: 429, headers: cors });
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
         }
         return handleHealth(cors);
     }],
@@ -218,12 +197,38 @@ function matchRoute(routes, pathname, method) {
     return null;
 }
 
+/**
+ * @typedef {Object} WorkerEnv
+ * @property {string} HMAC_SECRET - HMAC key for message integrity
+ * @property {DurableObjectNamespace} CHAT_ROOM - ChatRoom DO namespace
+ * @property {DurableObjectNamespace} CHANNEL_REGISTRY - ChannelRegistry DO namespace
+ * @property {DurableObjectNamespace} DEAD_DROP_STORE - DeadDropStore DO namespace
+ * @property {KVNamespace} ADMIN_TOKENS - Admin auth token storage
+ * @property {KVNamespace} PUSH_SUBSCRIPTIONS - Web push subscription storage
+ * @property {D1Database} DB_ADMIN - Admin audit/error log database
+ * @property {Object} AI - Workers AI binding
+ * @property {string} ADMIN_ID - Admin account ID
+ * @property {string} ADMIN_PASSWORD - Admin account password
+ * @property {string} FILE_UPLOAD_URL - External file upload service URL
+ * @property {Object} ASSETS - Cloudflare Pages static assets binding
+ */
+
 export default {
+    /**
+     * Main request handler for Cloudflare Pages Functions.
+     * Routes requests to static assets, API endpoints, WebSocket upgrades,
+     * admin APIs, file upload proxy, and Turnstile verification.
+     *
+     * @param {Request} request - Incoming HTTP request
+     * @param {WorkerEnv} env - Cloudflare bindings and environment variables
+     * @param {{waitUntil: function}} _ctx - Execution context
+     * @returns {Promise<Response>} HTTP response
+     */
     async fetch(request, env, _ctx) {
         try {
             if (!env.HMAC_SECRET) {
                 console.error('HMAC_SECRET environment variable is not set');
-                return new Response('Service configuration error', { status: 500 });
+                return textError('Service configuration error', 500);
             }
             const HMAC_SECRET = env.HMAC_SECRET;
             const url = new URL(request.url);
@@ -251,15 +256,13 @@ export default {
             if (handler) return await handler(request, env, corsHeaders);
 
             if (url.pathname === '/api/upload' && request.method === 'POST') {
-                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
-                    return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
+                    if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
+                        return jsonError('Rate limit exceeded', 429, origin);
                 }
                 try {
                     const contentLength = parseInt(request.headers.get('content-length') || '0');
-                    if (contentLength > 50 * 1024 * 1024) {
-                        return new Response(JSON.stringify({ error: 'File too large (max 50MB)' }), {
-                            status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                        });
+                    if (contentLength > UPLOAD.MAX_BYTES) {
+                        return jsonError('File too large (max 50MB)', 413, origin);
                     }
                     const uploadUrl = env.FILE_UPLOAD_URL || 'https://file.xeon.kr/upload';
                     const upstreamResponse = await fetch(uploadUrl, {
@@ -274,16 +277,14 @@ export default {
                     });
                 } catch (_error) {
                     console.error('File upload proxy error:', _error);
-                    return new Response(JSON.stringify({ error: 'Upload proxy failed' }), {
-                        status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                    });
+                    return jsonError('Upload proxy failed', 502, origin);
                 }
             }
 
             // Client error log forwarding
             if (url.pathname === '/api/logs/error' && request.method === 'POST') {
                 if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHECK_BAN, 'errorlog')) {
-                    return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
+                    return jsonError('Rate limit exceeded', 429, origin);
                 }
                 const body = await request.text();
                 const filteredHeaders = {};
@@ -300,12 +301,10 @@ export default {
             // Config endpoint
             if (url.pathname === '/api/config') {
                 if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CONFIG, 'config')) {
-                    return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
+                    return jsonError('Rate limit exceeded', 429, origin);
                 }
                 if (!env.TURNSTILE_SITE_KEY) {
-                    return new Response(JSON.stringify({ error: 'Turnstile not configured' }), {
-                        status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                    });
+                    return jsonError('Turnstile not configured', 503, origin);
                 }
                 return new Response(JSON.stringify({
                     turnstileSiteKey: env.TURNSTILE_SITE_KEY,
@@ -328,7 +327,7 @@ export default {
         } catch (_error) {
             metrics.errors++;
             console.error('Worker error:', _error);
-            return new Response('Internal Server Error', { status: 500 });
+            return textError('Internal Server Error', 500);
         }
     }
 };

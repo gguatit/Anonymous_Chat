@@ -1,10 +1,5 @@
 // Code Highlight Module - Prism.js 기반 코드 구문 강조 및 자동 감지
 
-// Prism autoloader 경로 설정
-if (typeof Prism !== 'undefined' && Prism.plugins && Prism.plugins.autoloader) {
-    Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
-}
-
 /**
  * 언어 별칭 → Prism 언어명 매핑
  */

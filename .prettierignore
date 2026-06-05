@@ -1,0 +1,10 @@
+public/css/
+public/js/*.bundle.js
+wrangler.toml
+package-lock.json
+node_modules/
+dist/
+.wrangler/
+.opencode/
+migrations/
+

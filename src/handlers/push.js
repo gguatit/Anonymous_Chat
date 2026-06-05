@@ -1,8 +1,10 @@
 // Push notification subscription handlers
-import { PUSH_SUBSCRIPTION_TTL } from '../config/constants.js';
+import { PUSH_SUBSCRIPTION_TTL, PUSH_CONFIG } from '../config/constants.js';
 import { sendPushNotification } from '../utils/web-push.js';
 import { getFCMAccessToken } from '../utils/fcm-auth.js';
 import { safeJson } from '../utils/helpers.js';
+
+import { jsonError } from '../utils/errors.js';
 
 /**
  * GET /api/push/vapid-key — Return VAPID public key
@@ -11,20 +13,14 @@ export async function handleGetVapidKey(request, env, corsHeaders) {
     const publicKey = env.VAPID_PUBLIC_KEY;
 
     if (!publicKey) {
-        return new Response(JSON.stringify({ error: 'Push not configured' }), {
-            status: 503,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('Push not configured', 503, request.headers.get('Origin'));
     }
 
     // Validate and sanitize the key
     const sanitizedKey = publicKey.trim();
 
     if (!/^[A-Za-z0-9_-]+$/.test(sanitizedKey)) {
-        return new Response(JSON.stringify({ error: 'Invalid VAPID key configuration' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('Invalid VAPID key configuration', 500, request.headers.get('Origin'));
     }
 
     return new Response(JSON.stringify({ publicKey: sanitizedKey }), {
@@ -42,17 +38,11 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
 
         if (type === 'resubscribe' && subscription) {
             if (!subscription.endpoint) {
-                return new Response(JSON.stringify({ error: 'Invalid resubscribe data' }), {
-                    status: 400,
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                });
+                return jsonError('Invalid resubscribe data', 400, request.headers.get('Origin'));
             }
 
             if (!env.PUSH_SUBSCRIPTIONS) {
-                return new Response(JSON.stringify({ error: 'Push not configured' }), {
-                    status: 503,
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                });
+                return jsonError('Push not configured', 503, request.headers.get('Origin'));
             }
 
             const allKeys = await listAllKvKeys(env.PUSH_SUBSCRIPTIONS, 'sub:');
@@ -75,18 +65,12 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
         }
 
         if (!subscription || !sessionId) {
-            return new Response(JSON.stringify({ error: 'Missing subscription or sessionId' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError('Missing subscription or sessionId', 400, request.headers.get('Origin'));
         }
 
         // Validate subscription format based on type (Web Push vs FCM)
         if (!isFcmToken && (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth)) {
-            return new Response(JSON.stringify({ error: 'Invalid subscription format' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError('Invalid subscription format', 400, request.headers.get('Origin'));
         }
 
         // Store in KV: key = sessionId, value = subscription wrap
@@ -108,10 +92,7 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
         });
     } catch (error) {
         console.error('Push subscribe error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to subscribe' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('Failed to subscribe', 500, request.headers.get('Origin'));
     }
 }
 
@@ -124,10 +105,7 @@ export async function handlePushUnsubscribe(request, env, corsHeaders) {
         const { sessionId } = body;
 
         if (!sessionId) {
-            return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError('Missing sessionId', 400, request.headers.get('Origin'));
         }
 
         if (env.PUSH_SUBSCRIPTIONS) {
@@ -139,10 +117,7 @@ export async function handlePushUnsubscribe(request, env, corsHeaders) {
         });
     } catch (error) {
         console.error('Push unsubscribe error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to unsubscribe' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('Failed to unsubscribe', 500, request.headers.get('Origin'));
     }
 }
 
@@ -202,7 +177,7 @@ async function listAllKvKeys(kv, prefix) {
     let cursor = null;
 
     do {
-        const list = await kv.list({ prefix, limit: 1000, cursor });
+        const list = await kv.list({ prefix, limit: PUSH_CONFIG.KV_LIST_LIMIT, cursor });
         allKeys.push(...list.keys);
         cursor = list.list_complete ? null : list.cursor;
     } while (cursor);
@@ -290,9 +265,9 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
 
                 const payload = {
                     title: '익명 채팅',
-                    body: messageData.content
-                        ? (messageData.content.length > 100
-                            ? messageData.content.substring(0, 100) + '...'
+                body: messageData.content
+                    ? (messageData.content.length > PUSH_CONFIG.BODY_TRUNCATION
+                        ? messageData.content.substring(0, PUSH_CONFIG.BODY_TRUNCATION) + '...'
                             : messageData.content)
                         : '새 파일이 공유되었습니다.',
                     tag: 'chat-message',

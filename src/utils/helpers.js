@@ -1,3 +1,5 @@
+import { UPLOAD } from '../config/constants.js';
+
 // HMAC signature generation for message integrity
 export async function generateMessageSignature(message, secret) {
     const encoder = new TextEncoder();
@@ -41,11 +43,9 @@ export function sanitizeInput(input) {
         .replace(/\r\n?/g, '\n');
 }
 
-const MAX_BODY_BYTES = 1024 * 1024;
-
 export async function safeJson(request) {
     const contentLength = parseInt(request.headers.get('content-length') || '0');
-    if (contentLength > MAX_BODY_BYTES) {
+    if (contentLength > UPLOAD.MAX_BODY_BYTES) {
         throw new Error('Request body too large');
     }
     return request.json();

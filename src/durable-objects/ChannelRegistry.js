@@ -1,6 +1,15 @@
 import { CHANNEL } from '../config/constants.js';
 import { sanitizeInput, safeJson } from '../utils/helpers.js';
+import { validateChannelName } from '../utils/validate.js';
 
+/**
+ * @class ChannelRegistry
+ * @classdesc Singleton Durable Object that manages channel CRUD operations.
+ * Handles channel creation, listing, deletion, slug generation (Korean-safe),
+ * and auto-cleanup of stale channels.
+ *
+ * @property {Map<string,ChannelInfo>} channels - All channels keyed by slug
+ */
 export class ChannelRegistry {
     constructor(state, env) {
         this.state = state;
@@ -125,13 +134,14 @@ export class ChannelRegistry {
             const rawName = typeof data.name === 'string' ? data.name.trim() : '';
             const createdBy = data.sessionId || 'anonymous';
 
-            if (!rawName) {
-                return new Response(JSON.stringify({ error: '채널 이름을 입력해주세요.' }), {
+            const nameCheck = validateChannelName(rawName);
+            if (!nameCheck.valid) {
+                return new Response(JSON.stringify({ error: nameCheck.error }), {
                     status: 400, headers: { 'Content-Type': 'application/json' }
                 });
             }
 
-            const slug = this.toSlug(rawName);
+            const slug = this.toSlug(nameCheck.value);
             if (!slug) {
                 return new Response(JSON.stringify({ error: '사용할 수 없는 채널 이름입니다.' }), {
                     status: 400, headers: { 'Content-Type': 'application/json' }
@@ -146,7 +156,7 @@ export class ChannelRegistry {
             }
 
             // Also check by normalized name (defense against stale/corrupt data)
-            const normalizedName = rawName.toLowerCase().trim();
+            const normalizedName = nameCheck.value.toLowerCase();
             for (const [, ch] of this.channels) {
                 if (ch.name.toLowerCase().trim() === normalizedName) {
                     return new Response(JSON.stringify({ error: '이미 존재하는 채널 이름입니다.' }), {
@@ -157,7 +167,7 @@ export class ChannelRegistry {
 
             const now = Date.now();
             this.channels.set(slug, {
-                name: sanitizeInput(rawName),
+                name: sanitizeInput(nameCheck.value),
                 createdBy,
                 createdAt: now,
                 lastActive: now
@@ -165,7 +175,7 @@ export class ChannelRegistry {
 
             await this.persist();
 
-            return new Response(JSON.stringify({ slug, name: sanitizeInput(rawName) }), {
+            return new Response(JSON.stringify({ slug, name: sanitizeInput(nameCheck.value) }), {
                 headers: { 'Content-Type': 'application/json' }
             });
         } catch (error) {

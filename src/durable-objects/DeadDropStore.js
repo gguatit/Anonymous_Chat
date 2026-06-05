@@ -1,7 +1,17 @@
 import { safeJson } from '../utils/helpers.js';
+import { DEAD_DROP } from '../config/constants.js';
+import { validateDeadDropMessage } from '../utils/validate.js';
 
-const TTL_MS = 30 * 60 * 1000; // 30 minutes
+const TTL_MS = DEAD_DROP.TTL_MS;
 
+/**
+ * @class DeadDropStore
+ * @classdesc Singleton Durable Object for one-time secret messages.
+ * Messages are read-once and auto-expire after a configurable TTL.
+ * Persisted to DO storage for durability across worker restarts.
+ *
+ * @property {Object<string,{message:string,expiresAt:number}>} secrets - Active secret messages
+ */
 export class DeadDropStore {
     constructor(state, env) {
         this.state = state;
@@ -75,9 +85,17 @@ export class DeadDropStore {
             });
         }
 
+        const msgCheck = validateDeadDropMessage(String(body.message));
+        if (!msgCheck.valid) {
+            return new Response(JSON.stringify({ error: msgCheck.error }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         const id = crypto.randomUUID();
         this.secrets[id] = {
-            message: String(body.message).substring(0, 10000),
+            message: String(body.message).substring(0, DEAD_DROP.MAX_MESSAGE_LENGTH),
             expiresAt: Date.now() + TTL_MS
         };
         await this.persist();

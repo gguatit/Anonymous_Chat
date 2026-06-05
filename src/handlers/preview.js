@@ -1,5 +1,7 @@
 import { safeJson } from '../utils/helpers.js';
 
+import { jsonError } from '../utils/errors.js';
+
 const OG_CACHE_TTL = 3600;
 const MAX_BODY_BYTES = 32768;
 const RATE_LIMIT_WINDOW = 12000;
@@ -51,32 +53,25 @@ function parseOG(html) {
 
 export async function handlePreview(request, env, corsHeaders) {
     if (request.method !== 'POST') {
-        return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+        return jsonError('Method not allowed', 405, request.headers.get('Origin'));
     }
 
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
     const rl = getRateLimit(clientIP);
     if (!rl.allowed) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
-            status: 429,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('Rate limit exceeded', 429, request.headers.get('Origin'));
     }
 
     let body;
     try {
         body = await safeJson(request);
     } catch (_e) {
-        return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('Invalid JSON', 400, request.headers.get('Origin'));
     }
 
     const targetUrl = body.url;
     if (!targetUrl || typeof targetUrl !== 'string') {
-        return new Response(JSON.stringify({ error: 'Missing url' }), {
-            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('Missing url', 400, request.headers.get('Origin'));
     }
 
     let parsed;
@@ -86,9 +81,7 @@ export async function handlePreview(request, env, corsHeaders) {
             throw new Error('Invalid protocol');
         }
     } catch (_e) {
-        return new Response(JSON.stringify({ error: 'Invalid URL' }), {
-            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonError('Invalid URL', 400, request.headers.get('Origin'));
     }
 
     try {

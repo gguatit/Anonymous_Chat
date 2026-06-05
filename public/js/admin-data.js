@@ -1,4 +1,5 @@
 // Admin Dashboard - Data & API Methods
+import ApiClient from './api-client.js';
 import { escapeHtml } from './utils.js';
 import { trapFocus, showModal } from './admin-utils.js';
 
@@ -11,8 +12,8 @@ const dataMethods = {
 
         try {
             const [sessionsResp, messagesResp] = await Promise.all([
-                fetch('/api/admin/sessions', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } }),
-                fetch('/api/admin/messages', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } })
+                ApiClient.getRaw('/api/admin/sessions'),
+                ApiClient.getRaw('/api/admin/messages')
             ]);
 
             if (!sessionsResp.ok || !messagesResp.ok) {
@@ -120,14 +121,7 @@ const dataMethods = {
         }
 
         try {
-            const response = await fetch('/api/admin/broadcast', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.sessionToken}`
-                },
-                body: JSON.stringify({ content: raw })
-            });
+            const response = await ApiClient.postRaw('/api/admin/broadcast', { content: raw });
 
             if (!response.ok) {
                 const err = await response.json().catch(() => null);
@@ -391,8 +385,8 @@ const dataMethods = {
 
         try {
             const [sessionsResp, messagesResp] = await Promise.all([
-                fetch('/api/admin/sessions', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } }),
-                fetch('/api/admin/messages', { headers: { 'Authorization': `Bearer ${this.sessionToken}` } })
+                ApiClient.getRaw('/api/admin/sessions'),
+                ApiClient.getRaw('/api/admin/messages')
             ]);
 
             if (!sessionsResp.ok || !messagesResp.ok) {

@@ -1,0 +1,241 @@
+﻿
+E:\Downloads\Anonymous_Chat\public\js\admin-data.js
+     6:5   warning  Async method 'exportCsv' has a complexity of 33. Maximum allowed is 15          complexity
+    99:13  warning  Unexpected console statement                                                    no-console
+   134:17  warning  Unexpected console statement                                                    no-console
+   143:13  warning  Unexpected console statement                                                    no-console
+   148:5   warning  Async method 'sendAdminAnnounce' has a complexity of 29. Maximum allowed is 15  complexity
+   228:17  warning  Unexpected console statement                                                    no-console
+   246:13  warning  Unexpected console statement                                                    no-console
+   353:21  warning  Unexpected console statement                                                    no-console
+   364:17  warning  Unexpected console statement                                                    no-console
+   373:5   warning  Async method 'exportFilteredCsv' has a complexity of 39. Maximum allowed is 15  complexity
+   503:13  warning  Unexpected console statement                                                    no-console
+   531:17  warning  Unexpected console statement                                                    no-console
+   538:13  warning  Unexpected console statement                                                    no-console
+   561:17  warning  Unexpected console statement                                                    no-console
+   569:13  warning  Unexpected console statement                                                    no-console
+   592:17  warning  Unexpected console statement                                                    no-console
+   614:13  warning  Unexpected console statement                                                    no-console
+   662:13  warning  Unexpected console statement                                                    no-console
+   689:13  warning  Unexpected console statement                                                    no-console
+   694:5   warning  Async method 'showUserDetails' has a complexity of 25. Maximum allowed is 15    complexity
+   779:13  warning  Unexpected console statement                                                    no-console
+   796:13  warning  Unexpected console statement                                                    no-console
+   897:17  warning  Unexpected console statement                                                    no-console
+   904:13  warning  Unexpected console statement                                                    no-console
+   978:13  warning  Unexpected console statement                                                    no-console
+   999:13  warning  Unexpected console statement                                                    no-console
+  1055:13  warning  Unexpected console statement                                                    no-console
+  1081:13  warning  Unexpected console statement                                                    no-console
+  1137:13  warning  Unexpected console statement                                                    no-console
+  1207:13  warning  Unexpected console statement                                                    no-console
+  1221:13  warning  Unexpected console statement                                                    no-console
+  1239:13  warning  Unexpected console statement                                                    no-console
+  1314:13  warning  Unexpected console statement                                                    no-console
+  1340:13  warning  Unexpected console statement                                                    no-console
+
+E:\Downloads\Anonymous_Chat\public\js\admin.js
+   24:5   warning  Method 'initializeEventListeners' has a complexity of 38. Maximum allowed is 15  complexity
+  313:29  warning  Unexpected console statement                                                     no-console
+
+E:\Downloads\Anonymous_Chat\public\js\chat.js
+   186:13  warning  Unexpected console statement                                               no-console
+   197:21  warning  Unexpected console statement                                               no-console
+   220:21  warning  Unexpected console statement                                               no-console
+   224:17  warning  Unexpected console statement                                               no-console
+   303:5   warning  Method 'handleMessage' has a complexity of 38. Maximum allowed is 15       complexity
+   531:5   warning  Async method 'handleSubmit' has a complexity of 26. Maximum allowed is 15  complexity
+   610:21  warning  Unexpected console statement                                               no-console
+   651:17  warning  Unexpected console statement                                               no-console
+   670:13  warning  Unexpected console statement                                               no-console
+   839:13  warning  Unexpected console statement                                               no-console
+   873:13  warning  Unexpected console statement                                               no-console
+   913:13  warning  Unexpected console statement                                               no-console
+  1096:9   warning  Unexpected console statement                                               no-console
+
+E:\Downloads\Anonymous_Chat\public\js\code-highlight.js
+   50:8  warning  Function 'detectLanguage' has a complexity of 24. Maximum allowed is 15  complexity
+  162:8  warning  Function 'isLikelyCode' has a complexity of 25. Maximum allowed is 15    complexity
+
+E:\Downloads\Anonymous_Chat\public\js\dead-drop.js
+  28:13  warning  Unexpected console statement  no-console
+  52:13  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\public\js\file-upload.js
+  349:29  warning  Unexpected console statement  no-console
+  354:25  warning  Unexpected console statement  no-console
+  361:21  warning  Unexpected console statement  no-console
+  375:17  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\public\js\push-manager.js
+   25:17  warning  Unexpected console statement  no-console
+   32:17  warning  Unexpected console statement  no-console
+   55:13  warning  Unexpected console statement  no-console
+   74:21  warning  Unexpected console statement  no-console
+   96:21  warning  Unexpected console statement  no-console
+  112:21  warning  Unexpected console statement  no-console
+  118:17  warning  Unexpected console statement  no-console
+  148:17  warning  Unexpected console statement  no-console
+  152:13  warning  Unexpected console statement  no-console
+  180:13  warning  Unexpected console statement  no-console
+  195:21  warning  Unexpected console statement  no-console
+  201:21  warning  Unexpected console statement  no-console
+  207:13  warning  Unexpected console statement  no-console
+  245:13  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\public\js\search.js
+  262:13  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\public\js\security-headers.js
+  74:13  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\public\js\turnstile.js
+  162:13  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\public\js\ui.js
+   78:21  warning  Unexpected console statement                                                     no-console
+  135:5   warning  Method 'initializeEventListeners' has a complexity of 19. Maximum allowed is 15  complexity
+  402:5   warning  Method '_renderSingleMessage' has a complexity of 54. Maximum allowed is 15      complexity
+  771:21  warning  Unexpected console statement                                                     no-console
+
+E:\Downloads\Anonymous_Chat\public\js\websocket.js
+   52:13  warning  Unexpected console statement  no-console
+   95:13  warning  Unexpected console statement  no-console
+  120:9   warning  Unexpected console statement  no-console
+  178:21  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\public\sw.js
+   2:5   warning  Unexpected console statement                                                  no-console
+   7:5   warning  Unexpected console statement                                                  no-console
+  12:5   warning  Unexpected console statement                                                  no-console
+  19:18  error    'e' is defined but never used. Allowed unused caught errors must match /^_/u  no-unused-vars
+  54:17  warning  Unexpected console statement                                                  no-console
+  58:13  warning  Unexpected console statement                                                  no-console
+  65:5   warning  Unexpected console statement                                                  no-console
+  85:5   warning  Unexpected console statement                                                  no-console
+  99:17  warning  Unexpected console statement                                                  no-console
+
+E:\Downloads\Anonymous_Chat\src\durable-objects\ChannelRegistry.js
+   41:5   warning  Async method 'fetch' has a complexity of 17. Maximum allowed is 15  complexity
+  115:13  warning  Unexpected console statement                                        no-console
+  172:13  warning  Unexpected console statement                                        no-console
+  203:13  warning  Unexpected console statement                                        no-console
+  225:13  warning  Unexpected console statement                                        no-console
+  245:13  warning  Unexpected console statement                                        no-console
+
+E:\Downloads\Anonymous_Chat\src\durable-objects\ChatRoom.js
+    53:13  warning  Unexpected console statement                                                          no-console
+    68:5   warning  Async method 'initializeMessages' has a complexity of 18. Maximum allowed is 15       complexity
+   111:17  warning  Unexpected console statement                                                          no-console
+   133:17  warning  Unexpected console statement                                                          no-console
+   174:5   warning  Async method 'fetch' has a complexity of 74. Maximum allowed is 15                    complexity
+   327:21  warning  Unexpected console statement                                                          no-console
+   345:21  warning  Unexpected console statement                                                          no-console
+   559:13  warning  Unexpected console statement                                                          no-console
+   634:13  warning  Unexpected console statement                                                          no-console
+   690:13  warning  Unexpected console statement                                                          no-console
+   735:13  warning  Unexpected console statement                                                          no-console
+   768:21  warning  Unexpected console statement                                                          no-console
+   811:13  warning  Unexpected console statement                                                          no-console
+   818:5   warning  Async method 'handleAdminKickUser' has a complexity of 30. Maximum allowed is 15      complexity
+   883:29  warning  Unexpected console statement                                                          no-console
+   915:33  warning  Unexpected console statement                                                          no-console
+   936:25  warning  Unexpected console statement                                                          no-console
+   979:13  warning  Unexpected console statement                                                          no-console
+   987:5   warning  Async method 'handleAdminEditAnnounce' has a complexity of 22. Maximum allowed is 15  complexity
+  1050:13  warning  Unexpected console statement                                                          no-console
+  1106:13  warning  Unexpected console statement                                                          no-console
+  1184:13  warning  Unexpected console statement                                                          no-console
+  1235:13  warning  Unexpected console statement                                                          no-console
+  1333:61  warning  Async arrow function has a complexity of 17. Maximum allowed is 15                    complexity
+  1351:29  warning  Unexpected console statement                                                          no-console
+  1400:17  warning  Unexpected console statement                                                          no-console
+  1448:13  warning  Unexpected console statement                                                          no-console
+  1454:5   warning  Async method 'handleJoin' has a complexity of 19. Maximum allowed is 15               complexity
+  1594:5   warning  Async method 'handleMessage' has a complexity of 30. Maximum allowed is 15            complexity
+  1620:17  warning  Unexpected console statement                                                          no-console
+  1630:13  warning  Unexpected console statement                                                          no-console
+  1754:17  warning  Unexpected console statement                                                          no-console
+  1784:13  warning  Unexpected console statement                                                          no-console
+  1861:13  warning  Unexpected console statement                                                          no-console
+  1884:5   warning  Async method 'handleReaction' has a complexity of 18. Maximum allowed is 15           complexity
+  2025:5   warning  Method 'handleSearch' has a complexity of 56. Maximum allowed is 15                   complexity
+  2200:13  warning  Unexpected console statement                                                          no-console
+  2213:21  warning  Unexpected console statement                                                          no-console
+  2252:17  warning  Unexpected console statement                                                          no-console
+  2268:17  warning  Unexpected console statement                                                          no-console
+  2282:5   warning  Async method 'cleanup' has a complexity of 36. Maximum allowed is 15                  complexity
+  2322:25  warning  Unexpected console statement                                                          no-console
+  2398:13  warning  Unexpected console statement                                                          no-console
+  2427:13  warning  Unexpected console statement                                                          no-console
+  2440:13  warning  Unexpected console statement                                                          no-console
+
+E:\Downloads\Anonymous_Chat\src\durable-objects\DeadDropStore.js
+   34:13  warning  Unexpected console statement  no-console
+   61:13  warning  Unexpected console statement  no-console
+  102:13  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\src\handlers\admin.js
+  184:13  warning  Unexpected console statement                                        no-console
+  356:79  warning  Async arrow function has a complexity of 17. Maximum allowed is 15  complexity
+
+E:\Downloads\Anonymous_Chat\src\handlers\preview.js
+   52:8  warning  Async function 'handlePreview' has a complexity of 20. Maximum allowed is 15  complexity
+  150:9  warning  Unexpected console statement                                                  no-console
+
+E:\Downloads\Anonymous_Chat\src\handlers\push.js
+   38:8   warning  Async function 'handlePushSubscribe' has a complexity of 22. Maximum allowed is 15     complexity
+  110:9   warning  Unexpected console statement                                                           no-console
+  141:9   warning  Unexpected console statement                                                           no-console
+  192:9   warning  Unexpected console statement                                                           no-console
+  246:8   warning  Async function 'sendPushToOfflineUsers' has a complexity of 20. Maximum allowed is 15  complexity
+  286:21  warning  Unexpected console statement                                                           no-console
+  324:33  warning  Unexpected console statement                                                           no-console
+  329:17  warning  Unexpected console statement                                                           no-console
+  342:9   warning  Unexpected console statement                                                           no-console
+
+E:\Downloads\Anonymous_Chat\src\handlers\summary.js
+   89:9   warning  Unexpected console statement  no-console
+  103:13  warning  Unexpected console statement  no-console
+  117:9   warning  Unexpected console statement  no-console
+  135:9   warning  Unexpected console statement  no-console
+  153:9   warning  Unexpected console statement  no-console
+  168:13  warning  Unexpected console statement  no-console
+  179:9   warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\src\handlers\turnstile.js
+  31:13  warning  Unexpected console statement  no-console
+  60:13  warning  Unexpected console statement  no-console
+  71:9   warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\src\handlers\websocket.js
+    4:8   warning  Async function 'handleWebSocket' has a complexity of 17. Maximum allowed is 15  complexity
+   14:9   warning  Unexpected console statement                                                    no-console
+   21:9   warning  Unexpected console statement                                                    no-console
+   63:13  warning  Unexpected console statement                                                    no-console
+  115:9   warning  Unexpected console statement                                                    no-console
+
+E:\Downloads\Anonymous_Chat\src\middleware\auth.js
+  38:9  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\src\utils\fcm-auth.js
+  48:9  warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\src\utils\logger.js
+  17:9   warning  Unexpected console statement  no-console
+  27:13  warning  Unexpected console statement  no-console
+  40:9   warning  Unexpected console statement  no-console
+  52:9   warning  Unexpected console statement  no-console
+
+E:\Downloads\Anonymous_Chat\src\worker.js
+   83:9   warning  Unexpected console statement                                        no-console
+  156:13  warning  Unexpected console statement                                        no-console
+  171:13  warning  Unexpected console statement                                        no-console
+  222:5   warning  Async method 'fetch' has a complexity of 32. Maximum allowed is 15  complexity
+  225:17  warning  Unexpected console statement                                        no-console
+  276:21  warning  Unexpected console statement                                        no-console
+  330:13  warning  Unexpected console statement                                        no-console
+
+??186 problems (1 error, 185 warnings)
+

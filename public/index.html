@@ -40,16 +40,8 @@
     <meta name="twitter:description" content="익명 실시간 채팅 - Anonymous Real-time Chat">
     <meta name="twitter:image" content="https://kalpha.mmv.kr/ico/og-image.png">
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {}
-            }
-        }
-    </script>
+    <!-- Tailwind CSS (built & purged) -->
+    <link rel="stylesheet" href="/css/tailwind.min.css">
 
     <!-- Cloudflare Turnstile -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
@@ -58,13 +50,10 @@
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/animations.css">
 
-    <!-- Prism.js for code syntax highlighting -->
+    <!-- Prism.js theme (CSS only, JS bundled) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
     <link rel="stylesheet" href="/css/code-highlight.css">
     <link rel="stylesheet" href="/css/themes.css">
-    <script data-manual src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script
-        src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 </head>
 
 <body class="dark bg-gray-900 text-gray-100 min-h-screen flex flex-col">
@@ -648,7 +637,7 @@
     </footer>
 
     <!-- JavaScript Modules -->
-    <script type="module" src="/js/chat.js?v=1.2.0"></script>
+    <script type="module" src="/js/chat.bundle.js"></script>
     <script>
         // Platform info toggle
         const infoToggle = document.getElementById('info-toggle');
