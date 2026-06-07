@@ -84,7 +84,8 @@ export async function verifyAdminToken(token, secret, env) {
         if (!dataPart || !sigPart) return false;
         
         const data = atob(dataPart);
-        const [_password, timestamp] = data.split(':');
+        const parts = data.split(':');
+        const timestamp = parts[parts.length - 1];
         
         // Token expires
         if (Date.now() - parseInt(timestamp) > AUTH.TOKEN_EXPIRY_MS) {

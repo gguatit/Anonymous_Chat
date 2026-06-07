@@ -712,6 +712,12 @@ export class ChatRoom {
             return;
         }
 
+        const editCheck = validateClientMessage(data);
+        if (!editCheck.valid) {
+            this.sendToSession(sessionId, { type: 'error', content: editCheck.error });
+            return;
+        }
+
         if (data.signature) {
             const isValid = await verifyMessageSignature(
                 {
@@ -810,6 +816,11 @@ export class ChatRoom {
             return;
         }
 
+        const deleteCheck = validateClientMessage(data);
+        if (!deleteCheck.valid) {
+            return;
+        }
+
         if (data.sessionId !== sessionId) {
             this.sendToSession(sessionId, {
                 type: 'error',
@@ -860,6 +871,12 @@ export class ChatRoom {
 
     async handleReaction(data, sessionId, HMAC_SECRET) {
         if (!sessionId) return;
+
+        const reactionCheck = validateClientMessage(data);
+        if (!reactionCheck.valid) {
+            this.sendToSession(sessionId, { type: 'error', content: reactionCheck.error });
+            return;
+        }
 
         if (data.sessionId !== sessionId) {
             this.sendToSession(sessionId, {
