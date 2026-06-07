@@ -11,31 +11,7 @@
 //   Properties:    this.lastMetrics, this._errorLogs
 
 import { escapeHtml } from './utils.js';
-
-const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function trapFocus(modalEl) {
-    if (!modalEl) return function cleanup() {};
-    const focusable = Array.from(modalEl.querySelectorAll(FOCUSABLE));
-    if (focusable.length === 0) return function cleanup() {};
-    const firstEl = focusable[0];
-    const lastEl = focusable[focusable.length - 1];
-    firstEl.focus();
-    function handler(e) {
-        if (e.key !== 'Tab') return;
-        if (e.shiftKey && document.activeElement === firstEl) {
-            e.preventDefault();
-            lastEl.focus();
-        } else if (!e.shiftKey && document.activeElement === lastEl) {
-            e.preventDefault();
-            firstEl.focus();
-        }
-    }
-    modalEl.addEventListener('keydown', handler);
-    return function cleanup() {
-        modalEl.removeEventListener('keydown', handler);
-    };
-}
+import { trapFocus } from './admin-utils.js';
 
 const renderMethods = {
 

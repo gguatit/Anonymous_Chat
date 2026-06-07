@@ -2,7 +2,12 @@
 import ApiClient from './api-client.js';
 import { escapeHtml, isValidUrl as _isValidUrl, sanitizeUrl as _sanitizeUrl, formatFileSize as _formatFileSize } from './utils.js';
 import { hideModal } from './admin-utils.js';
-import dataMethods from './admin-data.js';
+import csvMethods from './admin-csv.js';
+import messageMethods from './admin-messages.js';
+import userMethods from './admin-users.js';
+import announceMethods from './admin-announcements.js';
+import logMethods from './admin-logs.js';
+import channelMethods from './admin-channels.js';
 import renderMethods from './admin-render.js';
 
 class AdminDashboard {
@@ -485,6 +490,6 @@ class AdminDashboard {
     }
 }
 
-Object.assign(AdminDashboard.prototype, dataMethods, renderMethods);
+Object.assign(AdminDashboard.prototype, csvMethods, messageMethods, userMethods, announceMethods, logMethods, channelMethods, renderMethods);
 
 window.adminDashboard = new AdminDashboard();

@@ -165,8 +165,8 @@ function hideModal(modalEl) {
   modalEl.classList.add("hidden");
 }
 
-// public/js/admin-data.js
-var dataMethods = {
+// public/js/admin-csv.js
+var csvMethods = {
   async exportCsv() {
     if (!this.sessionToken) {
       alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
@@ -261,246 +261,6 @@ var dataMethods = {
       console.error("Export CSV error:", error);
       alert("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uCF58\uC194\uC744 \uD655\uC778\uD558\uC138\uC694.");
     }
-  },
-  async sendAdminBroadcast() {
-    if (!this.sessionToken) {
-      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
-      return;
-    }
-    const raw = this.adminMessageInput?.value || "";
-    const content = raw.trim();
-    if (!content) {
-      alert("\uBA54\uC2DC\uC9C0\uB97C \uC785\uB825\uD558\uC138\uC694.");
-      return;
-    }
-    if (raw.length > 7500) {
-      alert("\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
-      return;
-    }
-    try {
-      const response = await api_client_default.postRaw("/api/admin/broadcast", { content: raw });
-      if (!response.ok) {
-        const err = await response.json().catch(() => null);
-        console.error("Broadcast failed", err);
-        alert("\uBA54\uC2DC\uC9C0 \uC804\uC1A1\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
-        return;
-      }
-      if (this.adminMessageInput) this.adminMessageInput.value = "";
-      this.refreshData();
-    } catch (error) {
-      console.error("sendAdminBroadcast error:", error);
-      alert("\uBA54\uC2DC\uC9C0 \uC804\uC1A1 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
-    }
-  },
-  async sendAdminAnnounce() {
-    if (!this.sessionToken) {
-      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
-      return;
-    }
-    const raw = this.adminAnnounceInput?.value || "";
-    const content = raw.trim();
-    if (!content) {
-      alert("\uACF5\uC9C0 \uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694.");
-      return;
-    }
-    if (raw.length > 7500) {
-      alert("\uACF5\uC9C0\uC0AC\uD56D\uC740 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
-      return;
-    }
-    const isEmergency = this.emergencyCheckbox?.checked || false;
-    if (isEmergency) {
-      const confirmed = await new Promise((resolve) => {
-        const modal = document.createElement("div");
-        modal.className = "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50";
-        modal.innerHTML = `
-            <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-red-500/30">
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="text-2xl">\u{1F6A8}</span>
-                    <h3 class="text-lg font-bold text-red-400">\uAE34\uAE09 \uACF5\uC9C0 \uD655\uC778</h3>
-                </div>
-                <p class="text-sm text-gray-300 mb-1">\uC815\uB9D0 <span class="text-red-400 font-semibold">\uAE34\uAE09 \uACF5\uC9C0</span>\uB85C \uBC1C\uC1A1\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?</p>
-                <p class="text-xs text-gray-500 mb-4">\uAE34\uAE09 \uACF5\uC9C0\uB294 \uBAA8\uB4E0 \uC0AC\uC6A9\uC790\uB97C \uACF5\uC9C0 \uD398\uC774\uC9C0\uB85C \uAC15\uC81C \uC774\uB3D9\uC2DC\uD0B5\uB2C8\uB2E4.</p>
-                <div class="text-xs text-gray-600 bg-gray-900 rounded p-2 mb-4 max-h-24 overflow-y-auto">${this.escapeHtml(content.substring(0, 200))}${content.length > 200 ? "..." : ""}</div>
-                <div class="flex gap-3 justify-end">
-                    <button class="cancel-btn bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">\uCDE8\uC18C</button>
-                    <button class="confirm-btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">\uAE34\uAE09 \uBC1C\uC1A1</button>
-                </div>
-            </div>`;
-        document.body.appendChild(modal);
-        modal.querySelector(".cancel-btn").onclick = () => {
-          modal.remove();
-          resolve(false);
-        };
-        modal.querySelector(".confirm-btn").onclick = () => {
-          modal.remove();
-          resolve(true);
-        };
-        modal.addEventListener("click", (e) => {
-          if (e.target === modal) {
-            modal.remove();
-            resolve(false);
-          }
-        });
-      });
-      if (!confirmed) return;
-    }
-    const body = { content: raw, isEmergency };
-    if (isEmergency) {
-      const duration = parseInt(this.emergencyDuration?.value || "0");
-      if (duration > 0) {
-        body.emergencyUntil = Date.now() + duration;
-      }
-    }
-    const isScheduled = this.scheduleCheckbox?.checked || false;
-    if (isScheduled && this.scheduleDatetime?.value) {
-      body.scheduleAt = new Date(this.scheduleDatetime.value).getTime();
-      if (body.scheduleAt <= Date.now()) {
-        alert("\uC608\uC57D \uC2DC\uAC04\uC740 \uD604\uC7AC\uBCF4\uB2E4 \uC774\uD6C4\uC5EC\uC57C \uD569\uB2C8\uB2E4.");
-        return;
-      }
-    }
-    const expiryDuration = parseInt(this.announceExpirySelect?.value || "0");
-    if (expiryDuration > 0) {
-      body.expiresAt = Date.now() + expiryDuration;
-    }
-    try {
-      const response = await fetch("/api/admin/announce", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.sessionToken}`
-        },
-        body: JSON.stringify(body)
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => null);
-        console.error("Announce failed", err);
-        alert("\uACF5\uC9C0 \uC804\uC1A1\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
-        return;
-      }
-      const result = await response.json();
-      if (result.sessionsNotified !== void 0) {
-        alert(`\uACF5\uC9C0\uAC00 ${result.sessionsNotified}\uBA85\uC758 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC804\uC1A1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`);
-      } else {
-        alert("\uACF5\uC9C0\uAC00 \uC804\uC1A1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
-      }
-      if (this.adminAnnounceInput) this.adminAnnounceInput.value = "";
-      if (this.emergencyCheckbox) this.emergencyCheckbox.checked = false;
-      if (this.emergencyDuration) this.emergencyDuration.classList.add("hidden");
-      this.refreshData();
-    } catch (error) {
-      console.error("sendAdminAnnounce error:", error);
-      alert("\uACF5\uC9C0 \uC804\uC1A1 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
-    }
-  },
-  async deleteAllMessages() {
-    if (!this.sessionToken) {
-      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
-      return;
-    }
-    const modal = document.createElement("div");
-    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
-    modal.innerHTML = `
-            <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
-                <h3 class="text-xl font-bold text-red-400 mb-3">\u26A0\uFE0F \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C</h3>
-                <p class="text-sm text-gray-300 mb-4">\uC815\uB9D0\uB85C \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?</p>
-                <div class="bg-red-900/20 border border-red-800 rounded-lg p-3 mb-4">
-                    <p class="text-xs text-red-300 font-medium">\uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.</p>
-                    <p class="text-xs text-red-400 mt-1">\uC0AD\uC81C\uB41C \uBA54\uC2DC\uC9C0\uB294 \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC73C\uBA70, \uCCA8\uBD80\uB41C \uD30C\uC77C\uB3C4 \uD568\uAED8 \uC0AD\uC81C\uB429\uB2C8\uB2E4.</p>
-                </div>
-                <p class="text-sm text-gray-300 mb-2">\uACC4\uC18D\uD558\uB824\uBA74 \uC544\uB798 \uBB38\uAD6C\uB97C \uC785\uB825\uD558\uC138\uC694:</p>
-                <div class="flex items-center gap-2 mb-4">
-                    <code class="flex-1 bg-gray-900 text-gray-100 px-3 py-2 rounded text-sm font-mono select-all">DELETE_ALL_MESSAGES</code>
-                    <button class="copy-confirm-text-btn bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded text-sm transition-colors" title="\uBCF5\uC0AC">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                        </svg>
-                    </button>
-                </div>
-                <input id="delete-all-confirm-input" type="text" placeholder="\uC704 \uBB38\uAD6C\uB97C \uC785\uB825\uD558\uC138\uC694" class="w-full bg-gray-900 text-gray-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder-gray-500 border border-gray-600 mb-4" autocomplete="off" maxlength="30">
-                <div id="delete-all-confirm-error" class="hidden text-red-400 text-xs mb-3">\uBB38\uAD6C\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.</div>
-                <div class="flex gap-3">
-                    <button id="delete-all-cancel-btn" class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 rounded-lg transition-colors">\uCDE8\uC18C</button>
-                    <button id="delete-all-confirm-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>\uC0AD\uC81C</button>
-                </div>
-            </div>
-        `;
-    document.body.appendChild(modal);
-    trapFocus(modal);
-    const input = modal.querySelector("#delete-all-confirm-input");
-    const confirmBtn = modal.querySelector("#delete-all-confirm-btn");
-    const cancelBtn = modal.querySelector("#delete-all-cancel-btn");
-    const errorEl = modal.querySelector("#delete-all-confirm-error");
-    const copyBtn = modal.querySelector(".copy-confirm-text-btn");
-    copyBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText("DELETE_ALL_MESSAGES");
-        const original = copyBtn.innerHTML;
-        copyBtn.innerHTML = '<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
-        setTimeout(() => copyBtn.innerHTML = original, 1500);
-      } catch (_e) {
-        const ta = document.createElement("textarea");
-        ta.value = "DELETE_ALL_MESSAGES";
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
-    });
-    input.addEventListener("input", () => {
-      const matched = input.value === "DELETE_ALL_MESSAGES";
-      confirmBtn.disabled = !matched;
-      errorEl.classList.add("hidden");
-      if (matched) {
-        input.classList.remove("focus:ring-red-500", "border-red-500");
-        input.classList.add("focus:ring-green-500", "border-green-500");
-      } else {
-        input.classList.remove("focus:ring-green-500", "border-green-500");
-        input.classList.add("focus:ring-red-500", "border-red-500");
-      }
-    });
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !confirmBtn.disabled) confirmBtn.click();
-      if (e.key === "Escape") modal.remove();
-    });
-    const closeModal = () => modal.remove();
-    cancelBtn.addEventListener("click", closeModal);
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) closeModal();
-    });
-    confirmBtn.addEventListener("click", async () => {
-      if (input.value !== "DELETE_ALL_MESSAGES") {
-        errorEl.classList.remove("hidden");
-        return;
-      }
-      try {
-        const response = await fetch("/api/admin/delete-all-messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${this.sessionToken}`
-          },
-          body: JSON.stringify({ confirmation: "DELETE_ALL_MESSAGES" })
-        });
-        if (!response.ok) {
-          const err = await response.json().catch(() => null);
-          console.error("Delete all messages failed", err);
-          alert("\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uCF58\uC194\uC744 \uD655\uC778\uD558\uC138\uC694.");
-          return;
-        }
-        const result = await response.json();
-        modal.remove();
-        alert(`\u2713 \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0\uAC00 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4. (${result.deletedCount}\uAC1C)`);
-        this.refreshData();
-      } catch (error) {
-        console.error("deleteAllMessages error:", error);
-        modal.remove();
-        alert("\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
-      }
-    });
-    setTimeout(() => input.focus(), 100);
   },
   async exportFilteredCsv() {
     if (!this.sessionToken) {
@@ -627,6 +387,117 @@ var dataMethods = {
       alert("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
     }
   },
+  async exportAuditLogCsv() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/admin/audit-logs", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load audit logs");
+      }
+      const logs = await response.json();
+      const filterSelect = document.getElementById("audit-log-filter");
+      const selectedFilter = filterSelect?.value || "all";
+      let filteredLogs = logs;
+      if (selectedFilter !== "all") {
+        filteredLogs = logs.filter((log) => {
+          if (selectedFilter === "delete_message") {
+            return log.action === "delete_message" || log.action === "admin_delete_message";
+          }
+          return log.action === selectedFilter;
+        });
+      }
+      if (!filteredLogs || filteredLogs.length === 0) {
+        this.showNotification("\uB0B4\uBCF4\uB0BC \uAC10\uC0AC \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "error");
+        return;
+      }
+      const headers = ["timestamp", "action", "details", "metadata"];
+      const escape = (value) => {
+        if (value == null) return "";
+        const str = String(value);
+        return '"' + str.replace(/"/g, '""') + '"';
+      };
+      const rows = filteredLogs.map((log) => [
+        new Date(log.timestamp).toISOString(),
+        log.action,
+        log.details || "",
+        log.metadata ? JSON.stringify(log.metadata) : ""
+      ]);
+      const csvContent = [headers.map((h) => escape(h)).join(",")].concat(rows.map((r) => r.map((cell) => escape(cell)).join(","))).join("\n");
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `audit_logs_${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export audit CSV error:", error);
+      this.showNotification("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.", "error");
+    }
+  },
+  downloadErrorLogs() {
+    if (!this.lastMetrics || !this.lastMetrics.errorLogs || this.lastMetrics.errorLogs.length === 0) {
+      this.showNotification("\uB2E4\uC6B4\uB85C\uB4DC\uD560 \uC624\uB958 \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "error");
+      return;
+    }
+    const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
+    const fileName = `error_logs_${timestamp}.json`;
+    const jsonStr = JSON.stringify(this.lastMetrics.errorLogs, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 0);
+  }
+};
+var admin_csv_default = csvMethods;
+
+// public/js/admin-messages.js
+var messageMethods = {
+  async sendAdminBroadcast() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    const raw = this.adminMessageInput?.value || "";
+    const content = raw.trim();
+    if (!content) {
+      alert("\uBA54\uC2DC\uC9C0\uB97C \uC785\uB825\uD558\uC138\uC694.");
+      return;
+    }
+    if (raw.length > 7500) {
+      alert("\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    try {
+      const response = await api_client_default.postRaw("/api/admin/broadcast", { content: raw });
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        console.error("Broadcast failed", err);
+        alert("\uBA54\uC2DC\uC9C0 \uC804\uC1A1\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      if (this.adminMessageInput) this.adminMessageInput.value = "";
+      this.refreshData();
+    } catch (error) {
+      console.error("sendAdminBroadcast error:", error);
+      alert("\uBA54\uC2DC\uC9C0 \uC804\uC1A1 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
   async editAdminMessage(messageId, newContent) {
     if (!this.sessionToken) {
       alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
@@ -684,6 +555,120 @@ var dataMethods = {
       alert("\uBA54\uC2DC\uC9C0 \uC0AD\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
     }
   },
+  async deleteAllMessages() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    modal.innerHTML = `
+            <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
+                <h3 class="text-xl font-bold text-red-400 mb-3">\u26A0\uFE0F \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C</h3>
+                <p class="text-sm text-gray-300 mb-4">\uC815\uB9D0\uB85C \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?</p>
+                <div class="bg-red-900/20 border border-red-800 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-red-300 font-medium">\uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.</p>
+                    <p class="text-xs text-red-400 mt-1">\uC0AD\uC81C\uB41C \uBA54\uC2DC\uC9C0\uB294 \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC73C\uBA70, \uCCA8\uBD80\uB41C \uD30C\uC77C\uB3C4 \uD568\uAED8 \uC0AD\uC81C\uB429\uB2C8\uB2E4.</p>
+                </div>
+                <p class="text-sm text-gray-300 mb-2">\uACC4\uC18D\uD558\uB824\uBA74 \uC544\uB798 \uBB38\uAD6C\uB97C \uC785\uB825\uD558\uC138\uC694:</p>
+                <div class="flex items-center gap-2 mb-4">
+                    <code class="flex-1 bg-gray-900 text-gray-100 px-3 py-2 rounded text-sm font-mono select-all">DELETE_ALL_MESSAGES</code>
+                    <button class="copy-confirm-text-btn bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded text-sm transition-colors" title="\uBCF5\uC0AC">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                    </button>
+                </div>
+                <input id="delete-all-confirm-input" type="text" placeholder="\uC704 \uBB38\uAD6C\uB97C \uC785\uB825\uD558\uC138\uC694" class="w-full bg-gray-900 text-gray-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder-gray-500 border border-gray-600 mb-4" autocomplete="off" maxlength="30">
+                <div id="delete-all-confirm-error" class="hidden text-red-400 text-xs mb-3">\uBB38\uAD6C\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.</div>
+                <div class="flex gap-3">
+                    <button id="delete-all-cancel-btn" class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 rounded-lg transition-colors">\uCDE8\uC18C</button>
+                    <button id="delete-all-confirm-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>\uC0AD\uC81C</button>
+                </div>
+            </div>
+        `;
+    document.body.appendChild(modal);
+    trapFocus(modal);
+    const input = modal.querySelector("#delete-all-confirm-input");
+    const confirmBtn = modal.querySelector("#delete-all-confirm-btn");
+    const cancelBtn = modal.querySelector("#delete-all-cancel-btn");
+    const errorEl = modal.querySelector("#delete-all-confirm-error");
+    const copyBtn = modal.querySelector(".copy-confirm-text-btn");
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText("DELETE_ALL_MESSAGES");
+        const original = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+        setTimeout(() => copyBtn.innerHTML = original, 1500);
+      } catch (_e) {
+        const ta = document.createElement("textarea");
+        ta.value = "DELETE_ALL_MESSAGES";
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+    });
+    input.addEventListener("input", () => {
+      const matched = input.value === "DELETE_ALL_MESSAGES";
+      confirmBtn.disabled = !matched;
+      errorEl.classList.add("hidden");
+      if (matched) {
+        input.classList.remove("focus:ring-red-500", "border-red-500");
+        input.classList.add("focus:ring-green-500", "border-green-500");
+      } else {
+        input.classList.remove("focus:ring-green-500", "border-green-500");
+        input.classList.add("focus:ring-red-500", "border-red-500");
+      }
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !confirmBtn.disabled) confirmBtn.click();
+      if (e.key === "Escape") modal.remove();
+    });
+    const closeModal = () => modal.remove();
+    cancelBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+    confirmBtn.addEventListener("click", async () => {
+      if (input.value !== "DELETE_ALL_MESSAGES") {
+        errorEl.classList.remove("hidden");
+        return;
+      }
+      try {
+        const response = await fetch("/api/admin/delete-all-messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${this.sessionToken}`
+          },
+          body: JSON.stringify({ confirmation: "DELETE_ALL_MESSAGES" })
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => null);
+          console.error("Delete all messages failed", err);
+          alert("\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uCF58\uC194\uC744 \uD655\uC778\uD558\uC138\uC694.");
+          return;
+        }
+        const result = await response.json();
+        modal.remove();
+        alert(`\u2713 \uBAA8\uB4E0 \uBA54\uC2DC\uC9C0\uAC00 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4. (${result.deletedCount}\uAC1C)`);
+        this.refreshData();
+      } catch (error) {
+        console.error("deleteAllMessages error:", error);
+        modal.remove();
+        alert("\uBAA8\uB4E0 \uBA54\uC2DC\uC9C0 \uC0AD\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+      }
+    });
+    setTimeout(() => input.focus(), 100);
+  }
+};
+var admin_messages_default = messageMethods;
+
+// public/js/admin-users.js
+var userMethods = {
   async kickUser(sessionId, banDuration = 0) {
     if (!this.sessionToken) {
       alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
@@ -725,67 +710,6 @@ IP ${result.ip}\uAC00 ${timeStr}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E
     } catch (error) {
       console.error("kickUser error:", error);
       alert("\uC0AC\uC6A9\uC790 \uAC15\uC81C\uD1F4\uC7A5 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
-    }
-  },
-  async loadBannedIPs() {
-    try {
-      const response = await fetch("/api/admin/banned-ips", {
-        headers: { "Authorization": `Bearer ${this.sessionToken}` }
-      });
-      if (!response.ok) {
-        throw new Error("Failed to load banned IPs");
-      }
-      const bannedList = await response.json();
-      const tbody = document.getElementById("banned-ips-body");
-      if (!tbody) return;
-      if (!bannedList || bannedList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-3 md:px-4 py-8 text-center text-gray-500">\uCC28\uB2E8\uB41C IP\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = bannedList.map((ban) => `
-                <tr class="border-t border-gray-700 md:border-0">
-                    <td data-label="IP \uC8FC\uC18C" class="px-3 md:px-4 py-3 font-mono text-sm break-all">${ban.ip}</td>
-                    <td data-label="\uB0A8\uC740 \uC2DC\uAC04" class="px-3 md:px-4 py-3 text-sm">${this.formatDuration(ban.remainingSeconds * 1e3)}</td>
-                    <td data-label="\uC0AC\uC720" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${ban.reason || "No reason"}</td>
-                    <td data-label="\uCC28\uB2E8 \uC2DC\uAC01" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${new Date(ban.bannedAt).toLocaleString("ko-KR")}</td>
-                    <td data-label="\uC791\uC5C5" class="px-3 md:px-4 py-3 text-center">
-                        <button class="unban-ip-btn bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded" data-ip="${ban.ip}">
-                            \uCC28\uB2E8 \uD574\uC81C
-                        </button>
-                    </td>
-                </tr>
-            `).join("");
-      document.querySelectorAll(".unban-ip-btn").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-          const ip = e.currentTarget.dataset.ip;
-          await this.unbanIP(ip);
-        });
-      });
-    } catch (error) {
-      console.error("Load banned IPs error:", error);
-    }
-  },
-  async unbanIP(ip) {
-    if (!confirm(`IP ${ip}\uC758 \uCC28\uB2E8\uC744 \uD574\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?`)) {
-      return;
-    }
-    try {
-      const response = await fetch("/api/admin/unban-ip", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.sessionToken}`
-        },
-        body: JSON.stringify({ ip })
-      });
-      if (!response.ok) {
-        throw new Error("Failed to unban IP");
-      }
-      alert(`IP ${ip}\uC758 \uCC28\uB2E8\uC774 \uD574\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`);
-      await this.loadBannedIPs();
-    } catch (error) {
-      console.error("Unban IP error:", error);
-      alert("IP \uCC28\uB2E8 \uD574\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
     }
   },
   async showUserDetails(sessionId) {
@@ -866,6 +790,240 @@ IP ${result.ip}\uAC00 ${timeStr}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E
     } catch (error) {
       console.error("Show user details error:", error);
       alert("\uC0AC\uC6A9\uC790 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  async loadBannedIPs() {
+    try {
+      const response = await fetch("/api/admin/banned-ips", {
+        headers: { "Authorization": `Bearer ${this.sessionToken}` }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load banned IPs");
+      }
+      const bannedList = await response.json();
+      const tbody = document.getElementById("banned-ips-body");
+      if (!tbody) return;
+      if (!bannedList || bannedList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-3 md:px-4 py-8 text-center text-gray-500">\uCC28\uB2E8\uB41C IP\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = bannedList.map((ban) => `
+                <tr class="border-t border-gray-700 md:border-0">
+                    <td data-label="IP \uC8FC\uC18C" class="px-3 md:px-4 py-3 font-mono text-sm break-all">${ban.ip}</td>
+                    <td data-label="\uB0A8\uC740 \uC2DC\uAC04" class="px-3 md:px-4 py-3 text-sm">${this.formatDuration(ban.remainingSeconds * 1e3)}</td>
+                    <td data-label="\uC0AC\uC720" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${ban.reason || "No reason"}</td>
+                    <td data-label="\uCC28\uB2E8 \uC2DC\uAC01" class="px-3 md:px-4 py-3 text-sm hidden md:table-cell">${new Date(ban.bannedAt).toLocaleString("ko-KR")}</td>
+                    <td data-label="\uC791\uC5C5" class="px-3 md:px-4 py-3 text-center">
+                        <button class="unban-ip-btn bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded" data-ip="${ban.ip}">
+                            \uCC28\uB2E8 \uD574\uC81C
+                        </button>
+                    </td>
+                </tr>
+            `).join("");
+      document.querySelectorAll(".unban-ip-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const ip = e.currentTarget.dataset.ip;
+          await this.unbanIP(ip);
+        });
+      });
+    } catch (error) {
+      console.error("Load banned IPs error:", error);
+    }
+  },
+  async unbanIP(ip) {
+    if (!confirm(`IP ${ip}\uC758 \uCC28\uB2E8\uC744 \uD574\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?`)) {
+      return;
+    }
+    try {
+      const response = await fetch("/api/admin/unban-ip", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        },
+        body: JSON.stringify({ ip })
+      });
+      if (!response.ok) {
+        throw new Error("Failed to unban IP");
+      }
+      alert(`IP ${ip}\uC758 \uCC28\uB2E8\uC774 \uD574\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`);
+      await this.loadBannedIPs();
+    } catch (error) {
+      console.error("Unban IP error:", error);
+      alert("IP \uCC28\uB2E8 \uD574\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  },
+  createBanModal(sessionId, userIp) {
+    const sessionRows = document.querySelectorAll(".session-row");
+    let sameIpCount = 0;
+    sessionRows.forEach((row) => {
+      const btn = row.querySelector(".kick-user-btn");
+      if (btn && btn.dataset.userIp === userIp) {
+        sameIpCount++;
+      }
+    });
+    const isSharedIP = sameIpCount > 1;
+    const sharedIpWarning = isSharedIP ? `
+            <div class="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg">
+                <p class="text-yellow-400 text-sm font-semibold">\u26A0\uFE0F \uACF5\uC720 IP \uAC10\uC9C0 (${sameIpCount}\uBA85 \uC811\uC18D \uC911)</p>
+                <p class="text-yellow-500 text-xs mt-1">\uAC19\uC740 IP\uB97C \uC0AC\uC6A9\uD558\uB294 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC788\uC2B5\uB2C8\uB2E4. \uCC28\uB2E8 \uC2DC \uD574\uB2F9 \uC138\uC158\uB9CC \uCC28\uB2E8\uB418\uBA70, \uAC19\uC740 IP\uC758 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uB294 \uC601\uD5A5\uC744 \uBC1B\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.</p>
+            </div>
+        ` : "";
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    modal.innerHTML = `
+            <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
+                <h3 class="text-xl font-bold text-gray-100 mb-4">\uC0AC\uC6A9\uC790 \uAC15\uC81C\uD1F4\uC7A5</h3>
+                <div class="mb-4 text-sm text-gray-400">
+                    <p>\uC138\uC158 ID: <span class="text-gray-200">${this.truncateId(sessionId)}</span></p>
+                    <p>IP \uC8FC\uC18C: <span class="text-gray-200">${userIp}</span></p>
+                </div>
+                ${sharedIpWarning}
+                <p class="text-sm text-gray-300 mb-4">\uCC28\uB2E8 \uC2DC\uAC04\uC744 \uC120\uD0DD\uD558\uC138\uC694:</p>
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <button class="ban-option-btn bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="0">
+                        \uC989\uC2DC \uD1F4\uC7A5
+                        <span class="block text-xs opacity-80">\uC7AC\uC811\uC18D \uAC00\uB2A5</span>
+                    </button>
+                    <button class="ban-option-btn bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="30">
+                        30\uCD08 \uCC28\uB2E8
+                        <span class="block text-xs opacity-80">${isSharedIP ? "\uC138\uC158\uB9CC \uCC28\uB2E8" : "\uC784\uC2DC \uCC28\uB2E8"}</span>
+                    </button>
+                    <button class="ban-option-btn bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="300">
+                        5\uBD84 \uCC28\uB2E8
+                        <span class="block text-xs opacity-80">${isSharedIP ? "\uC138\uC158\uB9CC \uCC28\uB2E8" : "\uB2E8\uAE30 \uCC28\uB2E8"}</span>
+                    </button>
+                    <button class="ban-option-btn bg-red-700 hover:bg-red-800 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="600">
+                        10\uBD84 \uCC28\uB2E8
+                        <span class="block text-xs opacity-80">${isSharedIP ? "\uC138\uC158\uB9CC \uCC28\uB2E8" : "\uC7A5\uAE30 \uCC28\uB2E8"}</span>
+                    </button>
+                </div>
+                <button class="cancel-btn w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 rounded-lg transition-colors">
+                    \uCDE8\uC18C
+                </button>
+            </div>
+        `;
+    modal.querySelectorAll(".ban-option-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const banDuration = parseInt(btn.dataset.duration);
+        modal.remove();
+        await this.kickUser(sessionId, banDuration);
+      });
+    });
+    modal.querySelector(".cancel-btn").addEventListener("click", () => {
+      modal.remove();
+    });
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+    return modal;
+  }
+};
+var admin_users_default = userMethods;
+
+// public/js/admin-announcements.js
+var announceMethods = {
+  async sendAdminAnnounce() {
+    if (!this.sessionToken) {
+      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    const raw = this.adminAnnounceInput?.value || "";
+    const content = raw.trim();
+    if (!content) {
+      alert("\uACF5\uC9C0 \uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694.");
+      return;
+    }
+    if (raw.length > 7500) {
+      alert("\uACF5\uC9C0\uC0AC\uD56D\uC740 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
+      return;
+    }
+    const isEmergency = this.emergencyCheckbox?.checked || false;
+    if (isEmergency) {
+      const confirmed = await new Promise((resolve) => {
+        const modal = document.createElement("div");
+        modal.className = "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50";
+        modal.innerHTML = `
+            <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-red-500/30">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-2xl">\u{1F6A8}</span>
+                    <h3 class="text-lg font-bold text-red-400">\uAE34\uAE09 \uACF5\uC9C0 \uD655\uC778</h3>
+                </div>
+                <p class="text-sm text-gray-300 mb-1">\uC815\uB9D0 <span class="text-red-400 font-semibold">\uAE34\uAE09 \uACF5\uC9C0</span>\uB85C \uBC1C\uC1A1\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?</p>
+                <p class="text-xs text-gray-500 mb-4">\uAE34\uAE09 \uACF5\uC9C0\uB294 \uBAA8\uB4E0 \uC0AC\uC6A9\uC790\uB97C \uACF5\uC9C0 \uD398\uC774\uC9C0\uB85C \uAC15\uC81C \uC774\uB3D9\uC2DC\uD0B5\uB2C8\uB2E4.</p>
+                <div class="text-xs text-gray-600 bg-gray-900 rounded p-2 mb-4 max-h-24 overflow-y-auto">${this.escapeHtml(content.substring(0, 200))}${content.length > 200 ? "..." : ""}</div>
+                <div class="flex gap-3 justify-end">
+                    <button class="cancel-btn bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">\uCDE8\uC18C</button>
+                    <button class="confirm-btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">\uAE34\uAE09 \uBC1C\uC1A1</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+        modal.querySelector(".cancel-btn").onclick = () => {
+          modal.remove();
+          resolve(false);
+        };
+        modal.querySelector(".confirm-btn").onclick = () => {
+          modal.remove();
+          resolve(true);
+        };
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) {
+            modal.remove();
+            resolve(false);
+          }
+        });
+      });
+      if (!confirmed) return;
+    }
+    const body = { content: raw, isEmergency };
+    if (isEmergency) {
+      const duration = parseInt(this.emergencyDuration?.value || "0");
+      if (duration > 0) {
+        body.emergencyUntil = Date.now() + duration;
+      }
+    }
+    const isScheduled = this.scheduleCheckbox?.checked || false;
+    if (isScheduled && this.scheduleDatetime?.value) {
+      body.scheduleAt = new Date(this.scheduleDatetime.value).getTime();
+      if (body.scheduleAt <= Date.now()) {
+        alert("\uC608\uC57D \uC2DC\uAC04\uC740 \uD604\uC7AC\uBCF4\uB2E4 \uC774\uD6C4\uC5EC\uC57C \uD569\uB2C8\uB2E4.");
+        return;
+      }
+    }
+    const expiryDuration = parseInt(this.announceExpirySelect?.value || "0");
+    if (expiryDuration > 0) {
+      body.expiresAt = Date.now() + expiryDuration;
+    }
+    try {
+      const response = await fetch("/api/admin/announce", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.sessionToken}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        console.error("Announce failed", err);
+        alert("\uACF5\uC9C0 \uC804\uC1A1\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      const result = await response.json();
+      if (result.sessionsNotified !== void 0) {
+        alert(`\uACF5\uC9C0\uAC00 ${result.sessionsNotified}\uBA85\uC758 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC804\uC1A1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`);
+      } else {
+        alert("\uACF5\uC9C0\uAC00 \uC804\uC1A1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+      }
+      if (this.adminAnnounceInput) this.adminAnnounceInput.value = "";
+      if (this.emergencyCheckbox) this.emergencyCheckbox.checked = false;
+      if (this.emergencyDuration) this.emergencyDuration.classList.add("hidden");
+      this.refreshData();
+    } catch (error) {
+      console.error("sendAdminAnnounce error:", error);
+      alert("\uACF5\uC9C0 \uC804\uC1A1 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
     }
   },
   async loadAnnouncements() {
@@ -982,6 +1140,24 @@ IP ${result.ip}\uAC00 ${timeStr}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E
       alert("\uACF5\uC9C0 \uC804\uD658 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
     }
   },
+  filterAnnouncements(query) {
+    if (!this.lastAnnouncements) return;
+    if (!query) {
+      this.updateAnnouncementsList(this.lastAnnouncements);
+      return;
+    }
+    const filtered = this.lastAnnouncements.filter((acc) => {
+      const content = acc.content.toLowerCase();
+      const timeStr = new Date(acc.timestamp).toLocaleString("ko-KR").toLowerCase();
+      return content.includes(query) || timeStr.includes(query);
+    });
+    this.updateAnnouncementsList(filtered);
+  }
+};
+var admin_announcements_default = announceMethods;
+
+// public/js/admin-logs.js
+var logMethods = {
   async loadAuditLogs() {
     try {
       const response = await fetch("/api/admin/audit-logs", {
@@ -1130,26 +1306,6 @@ IP ${result.ip}\uAC00 ${timeStr}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E
       this.showNotification("\uB85C\uADF8\uC778 \uAE30\uB85D \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", "error");
     }
   },
-  downloadErrorLogs() {
-    if (!this.lastMetrics || !this.lastMetrics.errorLogs || this.lastMetrics.errorLogs.length === 0) {
-      this.showNotification("\uB2E4\uC6B4\uB85C\uB4DC\uD560 \uC624\uB958 \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "error");
-      return;
-    }
-    const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-    const fileName = `error_logs_${timestamp}.json`;
-    const jsonStr = JSON.stringify(this.lastMetrics.errorLogs, null, 2);
-    const blob = new Blob([jsonStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    }, 0);
-  },
   async deleteErrorLogs() {
     if (!this.lastMetrics || !this.lastMetrics.errorLogs || this.lastMetrics.errorLogs.length === 0) {
       this.showNotification("\uC0AD\uC81C\uD560 \uC624\uB958 \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "error");
@@ -1174,63 +1330,12 @@ IP ${result.ip}\uAC00 ${timeStr}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E
       console.error("Error deleting logs:", error);
       this.showNotification("\uC624\uB958 \uB85C\uADF8 \uC0AD\uC81C \uC911 \uBB38\uC81C\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.", "error");
     }
-  },
-  async exportAuditLogCsv() {
-    if (!this.sessionToken) {
-      alert("\uAD00\uB9AC\uC790 \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
-      return;
-    }
-    try {
-      const response = await fetch("/api/admin/audit-logs", {
-        headers: { "Authorization": `Bearer ${this.sessionToken}` }
-      });
-      if (!response.ok) {
-        throw new Error("Failed to load audit logs");
-      }
-      const logs = await response.json();
-      const filterSelect = document.getElementById("audit-log-filter");
-      const selectedFilter = filterSelect?.value || "all";
-      let filteredLogs = logs;
-      if (selectedFilter !== "all") {
-        filteredLogs = logs.filter((log) => {
-          if (selectedFilter === "delete_message") {
-            return log.action === "delete_message" || log.action === "admin_delete_message";
-          }
-          return log.action === selectedFilter;
-        });
-      }
-      if (!filteredLogs || filteredLogs.length === 0) {
-        this.showNotification("\uB0B4\uBCF4\uB0BC \uAC10\uC0AC \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "error");
-        return;
-      }
-      const headers = ["timestamp", "action", "details", "metadata"];
-      const escape = (value) => {
-        if (value == null) return "";
-        const str = String(value);
-        return '"' + str.replace(/"/g, '""') + '"';
-      };
-      const rows = filteredLogs.map((log) => [
-        new Date(log.timestamp).toISOString(),
-        log.action,
-        log.details || "",
-        log.metadata ? JSON.stringify(log.metadata) : ""
-      ]);
-      const csvContent = [headers.map((h) => escape(h)).join(",")].concat(rows.map((r) => r.map((cell) => escape(cell)).join(","))).join("\n");
-      const bom = "\uFEFF";
-      const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `audit_logs_${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Export audit CSV error:", error);
-      this.showNotification("CSV \uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.", "error");
-    }
-  },
+  }
+};
+var admin_logs_default = logMethods;
+
+// public/js/admin-channels.js
+var channelMethods = {
   async loadChannels() {
     try {
       const resp = await fetch("/api/admin/channels", {
@@ -1325,7 +1430,9 @@ IP ${result.ip}\uAC00 ${timeStr}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E
             `;
       const channelDetailModal = document.getElementById("channel-detail-modal");
       channelDetailModal?.classList.remove("hidden");
-      if (channelDetailModal) this._channelModalHide = showModal(channelDetailModal, "#close-channel-detail", document.activeElement);
+      if (channelDetailModal) {
+        this._channelModalHide = showModal(channelDetailModal, "#close-channel-detail", document.activeElement);
+      }
     } catch (error) {
       console.error("viewChannelDetail error:", error);
       this.showNotification("\uCC44\uB110 \uC0C1\uC138 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.", "error");
@@ -1358,116 +1465,11 @@ IP ${result.ip}\uAC00 ${timeStr}\uAC04 \uCC28\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E
       console.error("deleteChannel error:", error);
       this.showNotification("\uCC44\uB110 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", "error");
     }
-  },
-  createBanModal(sessionId, userIp) {
-    const sessionRows = document.querySelectorAll(".session-row");
-    let sameIpCount = 0;
-    sessionRows.forEach((row) => {
-      const btn = row.querySelector(".kick-user-btn");
-      if (btn && btn.dataset.userIp === userIp) {
-        sameIpCount++;
-      }
-    });
-    const isSharedIP = sameIpCount > 1;
-    const sharedIpWarning = isSharedIP ? `
-            <div class="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg">
-                <p class="text-yellow-400 text-sm font-semibold">\u26A0\uFE0F \uACF5\uC720 IP \uAC10\uC9C0 (${sameIpCount}\uBA85 \uC811\uC18D \uC911)</p>
-                <p class="text-yellow-500 text-xs mt-1">\uAC19\uC740 IP\uB97C \uC0AC\uC6A9\uD558\uB294 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC788\uC2B5\uB2C8\uB2E4. \uCC28\uB2E8 \uC2DC \uD574\uB2F9 \uC138\uC158\uB9CC \uCC28\uB2E8\uB418\uBA70, \uAC19\uC740 IP\uC758 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uB294 \uC601\uD5A5\uC744 \uBC1B\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.</p>
-            </div>
-        ` : "";
-    const modal = document.createElement("div");
-    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
-    modal.innerHTML = `
-            <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
-                <h3 class="text-xl font-bold text-gray-100 mb-4">\uC0AC\uC6A9\uC790 \uAC15\uC81C\uD1F4\uC7A5</h3>
-                <div class="mb-4 text-sm text-gray-400">
-                    <p>\uC138\uC158 ID: <span class="text-gray-200">${this.truncateId(sessionId)}</span></p>
-                    <p>IP \uC8FC\uC18C: <span class="text-gray-200">${userIp}</span></p>
-                </div>
-                ${sharedIpWarning}
-                <p class="text-sm text-gray-300 mb-4">\uCC28\uB2E8 \uC2DC\uAC04\uC744 \uC120\uD0DD\uD558\uC138\uC694:</p>
-                <div class="grid grid-cols-2 gap-3 mb-6">
-                    <button class="ban-option-btn bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="0">
-                        \uC989\uC2DC \uD1F4\uC7A5
-                        <span class="block text-xs opacity-80">\uC7AC\uC811\uC18D \uAC00\uB2A5</span>
-                    </button>
-                    <button class="ban-option-btn bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="30">
-                        30\uCD08 \uCC28\uB2E8
-                        <span class="block text-xs opacity-80">${isSharedIP ? "\uC138\uC158\uB9CC \uCC28\uB2E8" : "\uC784\uC2DC \uCC28\uB2E8"}</span>
-                    </button>
-                    <button class="ban-option-btn bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="300">
-                        5\uBD84 \uCC28\uB2E8
-                        <span class="block text-xs opacity-80">${isSharedIP ? "\uC138\uC158\uB9CC \uCC28\uB2E8" : "\uB2E8\uAE30 \uCC28\uB2E8"}</span>
-                    </button>
-                    <button class="ban-option-btn bg-red-700 hover:bg-red-800 text-white font-medium py-3 px-4 rounded-lg transition-colors" data-duration="600">
-                        10\uBD84 \uCC28\uB2E8
-                        <span class="block text-xs opacity-80">${isSharedIP ? "\uC138\uC158\uB9CC \uCC28\uB2E8" : "\uC7A5\uAE30 \uCC28\uB2E8"}</span>
-                    </button>
-                </div>
-                <button class="cancel-btn w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 rounded-lg transition-colors">
-                    \uCDE8\uC18C
-                </button>
-            </div>
-        `;
-    modal.querySelectorAll(".ban-option-btn").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const banDuration = parseInt(btn.dataset.duration);
-        modal.remove();
-        await this.kickUser(sessionId, banDuration);
-      });
-    });
-    modal.querySelector(".cancel-btn").addEventListener("click", () => {
-      modal.remove();
-    });
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        modal.remove();
-      }
-    });
-    return modal;
-  },
-  filterAnnouncements(query) {
-    if (!this.lastAnnouncements) return;
-    if (!query) {
-      this.updateAnnouncementsList(this.lastAnnouncements);
-      return;
-    }
-    const filtered = this.lastAnnouncements.filter((acc) => {
-      const content = acc.content.toLowerCase();
-      const timeStr = new Date(acc.timestamp).toLocaleString("ko-KR").toLowerCase();
-      return content.includes(query) || timeStr.includes(query);
-    });
-    this.updateAnnouncementsList(filtered);
   }
 };
-var admin_data_default = dataMethods;
+var admin_channels_default = channelMethods;
 
 // public/js/admin-render.js
-var FOCUSABLE2 = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-function trapFocus2(modalEl) {
-  if (!modalEl) return function cleanup() {
-  };
-  const focusable = Array.from(modalEl.querySelectorAll(FOCUSABLE2));
-  if (focusable.length === 0) return function cleanup() {
-  };
-  const firstEl = focusable[0];
-  const lastEl = focusable[focusable.length - 1];
-  firstEl.focus();
-  function handler(e) {
-    if (e.key !== "Tab") return;
-    if (e.shiftKey && document.activeElement === firstEl) {
-      e.preventDefault();
-      lastEl.focus();
-    } else if (!e.shiftKey && document.activeElement === lastEl) {
-      e.preventDefault();
-      firstEl.focus();
-    }
-  }
-  modalEl.addEventListener("keydown", handler);
-  return function cleanup() {
-    modalEl.removeEventListener("keydown", handler);
-  };
-}
 var renderMethods = {
   updateMetrics(metrics) {
     this.lastMetrics = metrics;
@@ -1615,7 +1617,7 @@ var renderMethods = {
         const userIp = e.currentTarget.dataset.userIp;
         const modal = this.createBanModal(sessionId, userIp);
         document.body.appendChild(modal);
-        trapFocus2(modal);
+        trapFocus(modal);
       });
     });
   },
@@ -2180,5 +2182,5 @@ var AdminDashboard = class {
     }
   }
 };
-Object.assign(AdminDashboard.prototype, admin_data_default, admin_render_default);
+Object.assign(AdminDashboard.prototype, admin_csv_default, admin_messages_default, admin_users_default, admin_announcements_default, admin_logs_default, admin_channels_default, admin_render_default);
 window.adminDashboard = new AdminDashboard();
