@@ -1,6 +1,7 @@
 // UI Message Rendering mixin
 import { renderCodeBlock, isLikelyCode, CODE_BLOCK_PREFIX, INLINE_CODE_PREFIX, PLACEHOLDER_SUFFIX } from './code-highlight.js';
 import { escapeHtml, isValidUrl as _isValidUrl, sanitizeUrl as _sanitizeUrl, formatFileSize as _formatFileSize } from './utils.js';
+import { UI, MESSAGE_EDIT_WINDOW_MS } from '../../src/config/constants.js';
 
 export const rendering = {
     isValidUrl(url) {
@@ -102,7 +103,7 @@ export const rendering = {
         this.messagesContainer.appendChild(fragment);
 
         const container = this.messagesContainer;
-        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < UI.SCROLL_PROXIMITY_PX;
         if (isAtBottom) {
             this.scrollToBottom();
         } else {
@@ -142,7 +143,7 @@ export const rendering = {
         const isOwnMessage = data.sessionId === sessionId;
         const isAdmin = !!(data.sessionId && String(data.sessionId).startsWith('admin_'));
 
-        const TIME_GAP = 5 * 60 * 1000;
+        const TIME_GAP = UI.MESSAGE_GROUP_TIME_MS;
         const sameAsPrev = this._lastSender !== null
             && this._lastSender === data.sessionId
             && this._lastTime !== null
@@ -159,14 +160,14 @@ export const rendering = {
             minute: '2-digit'
         });
 
-        const canEdit = isOwnMessage && data.timestamp && (Date.now() - data.timestamp < 10 * 60 * 1000);
+        const canEdit = isOwnMessage && data.timestamp && (Date.now() - data.timestamp < MESSAGE_EDIT_WINDOW_MS);
         const senderName = data.nickname || '익명';
 
         let contentHtml = '';
         if (data.replyTo) {
             const replyContent = data.replyTo.content || '[파일]';
             const truncatedReply = replyContent.length > 50
-                ? replyContent.substring(0, 50) + '...'
+                ? replyContent.substring(0, UI.REPLY_PREVIEW_LENGTH) + '...'
                 : replyContent;
             const replyLabel = data.replyTo.isOwnMessage ? '내 메시지' : '익명';
 

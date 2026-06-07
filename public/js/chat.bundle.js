@@ -4400,6 +4400,107 @@ var ApiClient = {
 };
 var api_client_default = ApiClient;
 
+// src/config/constants.js
+var RATE_LIMIT = {
+  MAX_MESSAGES_PER_MINUTE: 30,
+  MAX_CONNECTIONS_PER_IP: 25,
+  MESSAGE_COOLDOWN: 1e3
+  // 1 second between messages
+};
+var SECURITY = {
+  MAX_MESSAGE_LENGTH: 7500,
+  ALLOWED_ORIGINS: [
+    "https://kalpha.mmv.kr",
+    "http://localhost:8787",
+    "http://127.0.0.1:8787"
+  ]
+};
+var CHANNEL = {
+  EMPTY_TTL: 10 * 60 * 1e3,
+  // 10 minutes
+  MAX_NAME_LENGTH: 20
+};
+var MESSAGE_RETENTION_MS = 12 * 60 * 60 * 1e3;
+var MESSAGE_EDIT_WINDOW_MS = 10 * 60 * 1e3;
+var SESSION_TIMEOUT_MS = 30 * 60 * 1e3;
+var MAX_NICKNAME_LENGTH = 12;
+var AUTH = {
+  RATE_LIMIT_EXPIRE: 5 * 60 * 1e3,
+  // 5 minutes
+  MAX_FAILED_ATTEMPTS: 5,
+  KV_TTL_SECONDS: 10 * 60,
+  TOKEN_EXPIRY_MS: 2 * 60 * 60 * 1e3
+  // 2 hours
+};
+var PUSH_SUBSCRIPTION_TTL = 30 * 24 * 60 * 60;
+var UPLOAD = {
+  MAX_BYTES: 50 * 1024 * 1024,
+  // 50MB
+  MAX_BODY_BYTES: 1024 * 1024,
+  // 1MB
+  MAX_FILENAME_LENGTH: 255,
+  MAX_FILETYPE_LENGTH: 100,
+  RATE_LIMIT: { windowMs: 6e4, max: 10 }
+};
+var DEAD_DROP = {
+  TTL_MS: 30 * 60 * 1e3,
+  // 30 minutes
+  MAX_MESSAGE_LENGTH: 1e4
+};
+var ONE_HOUR_MS = 60 * 60 * 1e3;
+var ONE_DAY_MS = 24 * 60 * 60 * 1e3;
+var WS_RECONNECT = {
+  MAX_ATTEMPTS: 10,
+  BASE_DELAY_MS: 1e3,
+  MAX_DELAY_MS: 3e4,
+  HEARTBEAT_VISIBLE: 25e3,
+  HEARTBEAT_HIDDEN: 6e4,
+  HEARTBEAT_TIMEOUT_VISIBLE: 1e4,
+  HEARTBEAT_TIMEOUT_HIDDEN: 3e4
+};
+var FILE_UPLOAD_CLIENT = {
+  MAX_FILES: 10,
+  CONCURRENT_UPLOADS: 3,
+  MAX_BYTES: 100 * 1024 * 1024
+  // 100MB (server-enforced at 50MB)
+};
+var SEARCH_CLIENT = {
+  DEBOUNCE_MS: 300,
+  RESULT_PREVIEW_LENGTH: 200,
+  MAX_RESULTS: 100
+};
+var TURNSTILE_CLIENT = {
+  SESSION_AGE_MS: 4 * 60 * 60 * 1e3,
+  // 4 hours
+  HIDE_DELAY_MS: 800,
+  POLL_MAX_ATTEMPTS: 50,
+  POLL_INTERVAL_MS: 100
+};
+var OG_PREVIEW_CLIENT = {
+  CACHE_SIZE: 50,
+  FETCH_TIMEOUT_MS: 5e3,
+  RATE_LIMIT_DELAY_MS: 150,
+  TRUNCATION_LENGTH: 200,
+  ID_PREFIX_LENGTH: 80
+};
+var UI = {
+  SCROLL_PROXIMITY_PX: 150,
+  MESSAGE_GROUP_TIME_MS: 5 * 60 * 1e3,
+  // 5 minutes
+  REPLY_PREVIEW_LENGTH: 50,
+  LONG_PRESS_MS: 500,
+  ERROR_BANNER_TIMEOUT_MS: 4e3,
+  SYSTEM_MESSAGE_TIMEOUT_MS: 3500,
+  TOAST_DURATION_MS: 3e3,
+  TOAST_FADE_MS: 500,
+  HIGHLIGHT_RING_MS: 2e3,
+  TYPING_EXPIRY_MS: 5e3,
+  TYPING_INACTIVITY_MS: 2e3,
+  TITLE_BLINK_MS: 1e3,
+  CONTEXT_MENU_DELAY_MS: 100,
+  MODAL_FOCUS_DELAY_MS: 100
+};
+
 // public/js/session.js?v=1.0.4
 var SessionManager = class {
   constructor() {
@@ -4432,7 +4533,7 @@ var SessionManager = class {
     return this.nickname;
   }
   setNickname(name) {
-    const safeName = name ? name.trim().substring(0, 12) : "\uC775\uBA85";
+    const safeName = name ? name.trim().substring(0, MAX_NICKNAME_LENGTH) : "\uC775\uBA85";
     this.nickname = safeName || "\uC775\uBA85";
     localStorage.setItem("chatNickname", this.nickname);
     return this.nickname;
@@ -4456,18 +4557,18 @@ var WebSocketManager = class {
     this.sessionId = sessionId;
     this.messageHandler = messageHandler;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 10;
-    this.baseReconnectDelay = 1e3;
+    this.maxReconnectAttempts = WS_RECONNECT.MAX_ATTEMPTS;
+    this.baseReconnectDelay = WS_RECONNECT.BASE_DELAY_MS;
     this.heartbeatInterval = null;
     this.heartbeatTimeout = null;
     this.isReconnecting = false;
     this.hasConnectedBefore = false;
     this.manualClose = false;
     this.channelId = "0";
-    this.visibleHeartbeatInterval = 25e3;
-    this.visibleHeartbeatTimeout = 1e4;
-    this.hiddenHeartbeatInterval = 6e4;
-    this.hiddenHeartbeatTimeout = 3e4;
+    this.visibleHeartbeatInterval = WS_RECONNECT.HEARTBEAT_VISIBLE;
+    this.visibleHeartbeatTimeout = WS_RECONNECT.HEARTBEAT_TIMEOUT_VISIBLE;
+    this.hiddenHeartbeatInterval = WS_RECONNECT.HEARTBEAT_HIDDEN;
+    this.hiddenHeartbeatTimeout = WS_RECONNECT.HEARTBEAT_TIMEOUT_HIDDEN;
   }
   async connect() {
     try {
@@ -4543,8 +4644,7 @@ var WebSocketManager = class {
     }
     const delay = Math.min(
       this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
-      3e4
-      // Max 30 seconds
+      WS_RECONNECT.MAX_DELAY_MS
     );
     this.reconnectAttempts++;
     this.messageHandler.onConnectionChange("reconnecting", this.reconnectAttempts, this.maxReconnectAttempts);
@@ -4906,7 +5006,7 @@ var rendering = {
     }
     this.messagesContainer.appendChild(fragment);
     const container = this.messagesContainer;
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < UI.SCROLL_PROXIMITY_PX;
     if (isAtBottom) {
       this.scrollToBottom();
     } else {
@@ -4939,7 +5039,7 @@ var rendering = {
     }
     const isOwnMessage = data.sessionId === sessionId;
     const isAdmin = !!(data.sessionId && String(data.sessionId).startsWith("admin_"));
-    const TIME_GAP = 5 * 60 * 1e3;
+    const TIME_GAP = UI.MESSAGE_GROUP_TIME_MS;
     const sameAsPrev = this._lastSender !== null && this._lastSender === data.sessionId && this._lastTime !== null && data.timestamp - this._lastTime < TIME_GAP;
     const isGrouped = sameAsPrev && !isAdmin;
     if (isGrouped && this._lastMessageEl) {
@@ -4951,12 +5051,12 @@ var rendering = {
       hour: "2-digit",
       minute: "2-digit"
     });
-    const canEdit = isOwnMessage && data.timestamp && Date.now() - data.timestamp < 10 * 60 * 1e3;
+    const canEdit = isOwnMessage && data.timestamp && Date.now() - data.timestamp < MESSAGE_EDIT_WINDOW_MS;
     const senderName = data.nickname || "\uC775\uBA85";
     let contentHtml = "";
     if (data.replyTo) {
       const replyContent = data.replyTo.content || "[\uD30C\uC77C]";
-      const truncatedReply = replyContent.length > 50 ? replyContent.substring(0, 50) + "..." : replyContent;
+      const truncatedReply = replyContent.length > 50 ? replyContent.substring(0, UI.REPLY_PREVIEW_LENGTH) + "..." : replyContent;
       const replyLabel = data.replyTo.isOwnMessage ? "\uB0B4 \uBA54\uC2DC\uC9C0" : "\uC775\uBA85";
       contentHtml += `
                 <div class="reply-reference cursor-pointer hover:bg-gray-700/50 transition-colors bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs"
@@ -5653,7 +5753,7 @@ var editing = {
     const editBtn = messageDiv.querySelector(".edit-message-btn");
     if (editBtn) {
       const messageTimestamp = parseInt(messageDiv.closest("[data-message]").dataset.timestamp || "0");
-      if (Date.now() - messageTimestamp >= 10 * 60 * 1e3) {
+      if (Date.now() - messageTimestamp >= MESSAGE_EDIT_WINDOW_MS) {
         editBtn.remove();
       }
     }
@@ -5893,7 +5993,7 @@ var UIManager = class {
           for (const node of mutation.addedNodes) {
             if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("data-message")) {
               const container = this.messagesContainer;
-              const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+              const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < UI.SCROLL_PROXIMITY_PX;
               if (isAtBottom) {
                 this.scrollToBottom();
               } else {
@@ -6043,7 +6143,7 @@ var UIManager = class {
       messageDiv.setAttribute("data-loading-summary", "true");
     }
     if (content.includes("\uC785\uC7A5\uD588\uC2B5\uB2C8\uB2E4")) {
-      setTimeout(() => messageDiv.remove(), 3500);
+      setTimeout(() => messageDiv.remove(), UI.SYSTEM_MESSAGE_TIMEOUT_MS);
     }
     return messageDiv;
   }
@@ -6095,7 +6195,7 @@ var UIManager = class {
     this.messagesContainer.appendChild(errorDiv);
     setTimeout(() => {
       errorDiv.remove();
-    }, 4e3);
+    }, UI.ERROR_BANNER_TIMEOUT_MS);
   }
   updateUserCount(count) {
     this.userCount.textContent = count;
@@ -6220,7 +6320,7 @@ var UIManager = class {
     const preview = document.createElement("div");
     preview.id = "reply-preview";
     preview.className = "bg-gray-700/50 border-l-4 border-blue-500 p-2 mb-2 text-sm flex flex-col gap-2";
-    const truncatedContent = this.replyingTo.content.length > 50 ? this.replyingTo.content.substring(0, 50) + "..." : this.replyingTo.content;
+    const truncatedContent = this.replyingTo.content.length > 50 ? this.replyingTo.content.substring(0, UI.REPLY_PREVIEW_LENGTH) + "..." : this.replyingTo.content;
     preview.innerHTML = `
             <div class="flex items-start justify-between gap-2">
                 <div class="flex-1">
@@ -6285,8 +6385,8 @@ var FileUploadManager = class {
     this.uploadedFiles = [];
     this.uploadXhr = null;
     this.isUploading = false;
-    this.maxFileSize = 100 * 1024 * 1024;
-    this.maxFiles = 10;
+    this.maxFileSize = FILE_UPLOAD_CLIENT.MAX_BYTES;
+    this.maxFiles = FILE_UPLOAD_CLIENT.MAX_FILES;
     this.initializeEventListeners();
   }
   initializeEventListeners() {
@@ -6463,7 +6563,7 @@ var FileUploadManager = class {
     }
     this.uploadedFiles = [];
     this.showUploadProgress();
-    const maxConcurrency = 3;
+    const maxConcurrency = FILE_UPLOAD_CLIENT.CONCURRENT_UPLOADS;
     const progressMap = /* @__PURE__ */ new Map();
     const updateTotalProgress = () => {
       let total = 0;
@@ -6965,7 +7065,7 @@ var SearchManager = class {
     this.searchInput.addEventListener("input", () => {
       this.syncTagsFromInput();
       if (this.searchTimeout) clearTimeout(this.searchTimeout);
-      this.searchTimeout = setTimeout(() => this.performSearch(), 300);
+      this.searchTimeout = setTimeout(() => this.performSearch(), SEARCH_CLIENT.DEBOUNCE_MS);
     });
     this.searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -6983,7 +7083,7 @@ var SearchManager = class {
     this.updateTagButtons();
     this.syncInputFromTags();
     if (this.searchTimeout) clearTimeout(this.searchTimeout);
-    this.searchTimeout = setTimeout(() => this.performSearch(), 300);
+    this.searchTimeout = setTimeout(() => this.performSearch(), SEARCH_CLIENT.DEBOUNCE_MS);
   }
   updateTagButtons() {
     this.overlay.querySelectorAll(".search-tag-btn").forEach((btn) => {
@@ -7084,7 +7184,7 @@ var SearchManager = class {
             </div>
         `;
     try {
-      const params = new URLSearchParams({ q: query, limit: "100" });
+      const params = new URLSearchParams({ q: query, limit: String(SEARCH_CLIENT.MAX_RESULTS) });
       const response = await fetch(`/api/search?${params}`);
       if (!response.ok) {
         throw new Error(`\uAC80\uC0C9 \uC2E4\uD328: ${response.status}`);
@@ -7162,7 +7262,7 @@ var SearchManager = class {
         minute: "2-digit"
       });
       const senderName = escapeHtml(msg.nickname || "Anonymous");
-      const contentPreview = msg.content.length > 200 ? msg.content.substring(0, 200) + "..." : msg.content;
+      const contentPreview = msg.content.length > SEARCH_CLIENT.RESULT_PREVIEW_LENGTH ? msg.content.substring(0, SEARCH_CLIENT.RESULT_PREVIEW_LENGTH) + "..." : msg.content;
       const highlightedContent = this.highlightText(contentPreview);
       let fileBadge = "";
       if (msg.hasFile) {
@@ -7423,7 +7523,7 @@ var TurnstileManager = class {
     this.widgetId = null;
     this.STORAGE_KEY = "turnstileVerified";
     this.SESSION_TIMESTAMP_KEY = "turnstileVerifiedAt";
-    this.MAX_SESSION_AGE = 4 * 60 * 60 * 1e3;
+    this.MAX_SESSION_AGE = TURNSTILE_CLIENT.SESSION_AGE_MS;
   }
   isAlreadyVerified() {
     const verified = sessionStorage.getItem(this.STORAGE_KEY);
@@ -7487,7 +7587,7 @@ var TurnstileManager = class {
     setTimeout(() => {
       this.hideModal();
       if (this.onVerified) this.onVerified();
-    }, 800);
+    }, TURNSTILE_CLIENT.HIDE_DELAY_MS);
   }
   showError(message) {
     const errorEl = document.getElementById("turnstile-error");
@@ -7516,7 +7616,7 @@ var TurnstileManager = class {
     } else {
       this.showError("\uBCF4\uC548 \uC778\uC99D \uB85C\uB529 \uC911...");
       let attempts = 0;
-      const maxAttempts = 50;
+      const maxAttempts = TURNSTILE_CLIENT.POLL_MAX_ATTEMPTS;
       const waitInterval = setInterval(() => {
         attempts++;
         if (typeof turnstile !== "undefined") {
@@ -7535,7 +7635,7 @@ var TurnstileManager = class {
           clearInterval(waitInterval);
           this.showError("\uBCF4\uC548 \uC778\uC99D \uB85C\uB529 \uC2E4\uD328. \uD398\uC774\uC9C0\uB97C \uC0C8\uB85C\uACE0\uCE68\uD574\uC8FC\uC138\uC694.");
         }
-      }, 100);
+      }, TURNSTILE_CLIENT.POLL_INTERVAL_MS);
     }
   }
   async handleCallback(token) {
@@ -7576,8 +7676,8 @@ var TurnstileManager = class {
 };
 
 // public/js/og-preview.js?v=1.0.0
-var CACHE_MAX = 50;
-var FETCH_TIMEOUT = 5e3;
+var CACHE_MAX = OG_PREVIEW_CLIENT.CACHE_SIZE;
+var FETCH_TIMEOUT = OG_PREVIEW_CLIENT.FETCH_TIMEOUT_MS;
 var OGPreviewManager = class {
   constructor() {
     this.cache = /* @__PURE__ */ new Map();
@@ -7624,7 +7724,7 @@ var OGPreviewManager = class {
   }
   renderCard(og, url) {
     const title = this._esc(og.title || new URL(url).hostname);
-    const description = og.description ? this._esc(og.description.substring(0, 200)) : "";
+    const description = og.description ? this._esc(og.description.substring(0, OG_PREVIEW_CLIENT.TRUNCATION_LENGTH)) : "";
     const image = og.image || "";
     const siteName = og.siteName ? this._esc(og.siteName) : this._esc(new URL(url).hostname);
     return `
@@ -7647,7 +7747,7 @@ var OGPreviewManager = class {
       const c = url.charCodeAt(i);
       safe += c >= 97 && c <= 122 || c >= 48 && c <= 57 || c === 58 || c === 47 || c === 46 || c === 45 || c === 95 ? url[i] : "_";
     }
-    return "og_" + safe.substring(0, 80);
+    return "og_" + safe.substring(0, OG_PREVIEW_CLIENT.ID_PREFIX_LENGTH);
   }
   enrichUrlLink(aElement) {
     const url = aElement.href;
@@ -7687,7 +7787,7 @@ var OGPreviewManager = class {
     const links = element.querySelectorAll('a[href^="http"]');
     for (const link of links) {
       this.enrichUrlLink(link);
-      await new Promise((r) => setTimeout(r, 150));
+      await new Promise((r) => setTimeout(r, OG_PREVIEW_CLIENT.RATE_LIMIT_DELAY_MS));
     }
   }
   _esc(text) {
@@ -7768,7 +7868,7 @@ var ChatClient = class {
     this.deadDrop = new DeadDropClient();
     this.typingTimeout = null;
     this.lastMessageTime = 0;
-    this.messageRateLimit = 1e3;
+    this.messageRateLimit = RATE_LIMIT.MESSAGE_COOLDOWN;
     this.isTyping = false;
     this.isNicknameLocked = true;
     this.unreadCount = 0;
@@ -8075,8 +8175,8 @@ var ChatClient = class {
         document.body.appendChild(toast);
         setTimeout(() => {
           toast.style.opacity = "0";
-          setTimeout(() => toast.remove(), 500);
-        }, 3e3);
+          setTimeout(() => toast.remove(), UI.TOAST_FADE_MS);
+        }, UI.TOAST_DURATION_MS);
         break;
       }
       case "kicked": {
@@ -8118,7 +8218,7 @@ var ChatClient = class {
           alert("\uAD00\uB9AC\uC790\uC5D0 \uC758\uD574 \uAC15\uC81C\uD1F4\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uD398\uC774\uC9C0\uAC00 \uC0C8\uB85C\uACE0\uCE68\uB429\uB2C8\uB2E4.");
           setTimeout(() => {
             window.location.reload();
-          }, 2e3);
+          }, UI.HIGHLIGHT_RING_MS);
         }
         break;
       }
@@ -8157,7 +8257,7 @@ var ChatClient = class {
       const timeout = setTimeout(() => {
         this.typingUsers.delete(sessionId);
         this.ui.updateTypingIndicator(this.typingUsers);
-      }, 5e3);
+      }, UI.TYPING_EXPIRY_MS);
       this.typingUsers.set(sessionId, { nickname: nickname || "\uC775\uBA85", timeout });
     } else {
       this.typingUsers.delete(sessionId);
@@ -8172,7 +8272,7 @@ var ChatClient = class {
       showCount = !showCount;
     };
     update();
-    this.titleBlinkInterval = setInterval(update, 1e3);
+    this.titleBlinkInterval = setInterval(update, UI.TITLE_BLINK_MS);
   }
   clearUnreadTitle() {
     if (this.titleBlinkInterval) {
@@ -8244,8 +8344,8 @@ var ChatClient = class {
       this.ui.displayError("\uBA54\uC2DC\uC9C0\uB97C \uB108\uBB34 \uBE60\uB974\uAC8C \uC804\uC1A1\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4.");
       return;
     }
-    if (message.length > 7500) {
-      this.ui.displayError("\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
+    if (message.length > SECURITY.MAX_MESSAGE_LENGTH) {
+      this.ui.displayError(`\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 ${SECURITY.MAX_MESSAGE_LENGTH}\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.`);
       return;
     }
     const messageData = {
@@ -8366,15 +8466,15 @@ var ChatClient = class {
           typing: false
         });
       }
-    }, 2e3);
+    }, UI.TYPING_INACTIVITY_MS);
   }
   async editMessage(messageId, newContent) {
     if (!newContent || newContent.trim().length === 0) {
       this.ui.displayError("\uBA54\uC2DC\uC9C0 \uB0B4\uC6A9\uC774 \uBE44\uC5B4\uC788\uC2B5\uB2C8\uB2E4.");
       return;
     }
-    if (newContent.length > 7500) {
-      this.ui.displayError("\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 7500\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
+    if (newContent.length > SECURITY.MAX_MESSAGE_LENGTH) {
+      this.ui.displayError(`\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 ${SECURITY.MAX_MESSAGE_LENGTH}\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.`);
       return;
     }
     const now = Date.now();
@@ -8437,8 +8537,8 @@ var ChatClient = class {
       this.ui.showCreateChannelError("\uCC44\uB110 \uC774\uB984\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
       return;
     }
-    if (name.length > 20) {
-      this.ui.showCreateChannelError("\uCC44\uB110 \uC774\uB984\uC740 \uCD5C\uB300 20\uC790\uC785\uB2C8\uB2E4.");
+    if (name.length > CHANNEL.MAX_NAME_LENGTH) {
+      this.ui.showCreateChannelError(`\uCC44\uB110 \uC774\uB984\uC740 \uCD5C\uB300 ${CHANNEL.MAX_NAME_LENGTH}\uC790\uC785\uB2C8\uB2E4.`);
       return;
     }
     this.ui._channelProcessing = true;

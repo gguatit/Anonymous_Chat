@@ -1,5 +1,6 @@
 // File Upload Manager
 import { formatFileSize, escapeHtml } from './utils.js';
+import { FILE_UPLOAD_CLIENT } from '../../src/config/constants.js';
 
 export class FileUploadManager {
     constructor(apiBaseUrl, uploadEndpoint) {
@@ -22,8 +23,8 @@ export class FileUploadManager {
         this.uploadXhr = null;
         this.isUploading = false;
         
-        this.maxFileSize = 100 * 1024 * 1024; // 100MB
-        this.maxFiles = 10; // 최대 10개 파일
+        this.maxFileSize = FILE_UPLOAD_CLIENT.MAX_BYTES;
+        this.maxFiles = FILE_UPLOAD_CLIENT.MAX_FILES;
         
         this.initializeEventListeners();
     }
@@ -255,7 +256,7 @@ export class FileUploadManager {
 
         this.uploadedFiles = [];
         this.showUploadProgress();
-        const maxConcurrency = 3;
+        const maxConcurrency = FILE_UPLOAD_CLIENT.CONCURRENT_UPLOADS;
         const progressMap = new Map(); // index -> 0~1
 
         const updateTotalProgress = () => {

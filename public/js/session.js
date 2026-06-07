@@ -1,3 +1,5 @@
+import { MAX_NICKNAME_LENGTH } from '../../src/config/constants.js';
+
 // Session management utilities
 export class SessionManager {
     constructor() {
@@ -42,7 +44,7 @@ export class SessionManager {
     }
 
     setNickname(name) {
-        const safeName = name ? name.trim().substring(0, 12) : '익명';
+        const safeName = name ? name.trim().substring(0, MAX_NICKNAME_LENGTH) : '익명';
         this.nickname = safeName || '익명';
         localStorage.setItem('chatNickname', this.nickname);
         return this.nickname;

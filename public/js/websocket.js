@@ -1,3 +1,5 @@
+import { WS_RECONNECT } from '../../src/config/constants.js';
+
 // WebSocket connection manager
 export class WebSocketManager {
     constructor(sessionId, messageHandler) {
@@ -5,8 +7,8 @@ export class WebSocketManager {
         this.sessionId = sessionId;
         this.messageHandler = messageHandler;
         this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 10;
-        this.baseReconnectDelay = 1000;
+        this.maxReconnectAttempts = WS_RECONNECT.MAX_ATTEMPTS;
+        this.baseReconnectDelay = WS_RECONNECT.BASE_DELAY_MS;
         this.heartbeatInterval = null;
         this.heartbeatTimeout = null;
         this.isReconnecting = false;
@@ -14,10 +16,10 @@ export class WebSocketManager {
         this.manualClose = false;
         this.channelId = '0'; // '0' = main room
         // Heartbeat timing (visible vs hidden)
-        this.visibleHeartbeatInterval = 25000;
-        this.visibleHeartbeatTimeout = 10000;
-        this.hiddenHeartbeatInterval = 60000;
-        this.hiddenHeartbeatTimeout = 30000;
+        this.visibleHeartbeatInterval = WS_RECONNECT.HEARTBEAT_VISIBLE;
+        this.visibleHeartbeatTimeout = WS_RECONNECT.HEARTBEAT_TIMEOUT_VISIBLE;
+        this.hiddenHeartbeatInterval = WS_RECONNECT.HEARTBEAT_HIDDEN;
+        this.hiddenHeartbeatTimeout = WS_RECONNECT.HEARTBEAT_TIMEOUT_HIDDEN;
     }
 
     async connect() {
@@ -130,7 +132,7 @@ export class WebSocketManager {
         // Exponential backoff: delay = baseDelay * 2^attempts
         const delay = Math.min(
             this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
-            30000 // Max 30 seconds
+            WS_RECONNECT.MAX_DELAY_MS
         );
 
         this.reconnectAttempts++;

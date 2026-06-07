@@ -1,3 +1,5 @@
+import { TURNSTILE_CLIENT } from '../../src/config/constants.js';
+
 export class TurnstileManager {
     constructor(siteKey, onVerified) {
         this.siteKey = siteKey;
@@ -6,7 +8,7 @@ export class TurnstileManager {
         this.widgetId = null;
         this.STORAGE_KEY = 'turnstileVerified';
         this.SESSION_TIMESTAMP_KEY = 'turnstileVerifiedAt';
-        this.MAX_SESSION_AGE = 4 * 60 * 60 * 1000;
+        this.MAX_SESSION_AGE = TURNSTILE_CLIENT.SESSION_AGE_MS;
     }
 
     isAlreadyVerified() {
@@ -80,7 +82,7 @@ export class TurnstileManager {
         setTimeout(() => {
             this.hideModal();
             if (this.onVerified) this.onVerified();
-        }, 800);
+        }, TURNSTILE_CLIENT.HIDE_DELAY_MS);
     }
 
     showError(message) {
@@ -113,7 +115,7 @@ export class TurnstileManager {
         } else {
             this.showError('보안 인증 로딩 중...');
             let attempts = 0;
-            const maxAttempts = 50;
+            const maxAttempts = TURNSTILE_CLIENT.POLL_MAX_ATTEMPTS;
             const waitInterval = setInterval(() => {
                 attempts++;
                 if (typeof turnstile !== 'undefined') {
@@ -132,7 +134,7 @@ export class TurnstileManager {
                     clearInterval(waitInterval);
                     this.showError('보안 인증 로딩 실패. 페이지를 새로고침해주세요.');
                 }
-            }, 100);
+            }, TURNSTILE_CLIENT.POLL_INTERVAL_MS);
         }
     }
 

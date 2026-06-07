@@ -1,5 +1,6 @@
 // UI Edit Mode mixin
 import { escapeHtml } from './utils.js';
+import { MESSAGE_EDIT_WINDOW_MS } from '../../src/config/constants.js';
 
 export const editing = {
     showEditMode(messageId, currentContent) {
@@ -102,7 +103,7 @@ export const editing = {
         const editBtn = messageDiv.querySelector('.edit-message-btn');
         if (editBtn) {
             const messageTimestamp = parseInt(messageDiv.closest('[data-message]').dataset.timestamp || '0');
-            if (Date.now() - messageTimestamp >= 10 * 60 * 1000) {
+            if (Date.now() - messageTimestamp >= MESSAGE_EDIT_WINDOW_MS) {
                 editBtn.remove();
             }
         }

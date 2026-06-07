@@ -1,5 +1,6 @@
 // UI Manager - handles all DOM interactions
 import { escapeHtml } from './utils.js';
+import { UI } from '../../src/config/constants.js';
 import { rendering } from './ui-render.js';
 import { menus } from './ui-menu.js';
 import { modals } from './ui-modals.js';
@@ -178,7 +179,7 @@ export class UIManager {
                     for (const node of mutation.addedNodes) {
                         if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-message')) {
                             const container = this.messagesContainer;
-                            const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+                            const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < UI.SCROLL_PROXIMITY_PX;
                             if (isAtBottom) {
                                 this.scrollToBottom();
                             } else {
@@ -361,7 +362,7 @@ export class UIManager {
         }
 
         if (content.includes('입장했습니다')) {
-            setTimeout(() => messageDiv.remove(), 3500);
+            setTimeout(() => messageDiv.remove(), UI.SYSTEM_MESSAGE_TIMEOUT_MS);
         }
 
         return messageDiv;
@@ -430,7 +431,7 @@ export class UIManager {
 
         setTimeout(() => {
             errorDiv.remove();
-        }, 4000);
+        }, UI.ERROR_BANNER_TIMEOUT_MS);
     }
 
     updateUserCount(count) {
@@ -588,7 +589,7 @@ export class UIManager {
         preview.className = 'bg-gray-700/50 border-l-4 border-blue-500 p-2 mb-2 text-sm flex flex-col gap-2';
 
         const truncatedContent = this.replyingTo.content.length > 50
-            ? this.replyingTo.content.substring(0, 50) + '...'
+            ? this.replyingTo.content.substring(0, UI.REPLY_PREVIEW_LENGTH) + '...'
             : this.replyingTo.content;
 
         preview.innerHTML = `

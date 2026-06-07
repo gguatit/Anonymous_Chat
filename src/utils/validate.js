@@ -3,6 +3,80 @@ import { CHANNEL, MAX_NICKNAME_LENGTH, UPLOAD, DEAD_DROP, SECURITY } from '../co
 const VALID_TYPES = new Set(['message', 'reaction', 'typing', 'ping', 'edit', 'delete']);
 const VALID_CONTENT_TYPES = new Set(['text', 'image', 'file']);
 
+function validateMessage(data) {
+    if (typeof data.content !== 'string' || data.content.length === 0) {
+        if (!data.file && !data.files) {
+            return { valid: false, error: 'Message content is required' };
+        }
+    }
+    if (data.content && data.content.length > SECURITY.MAX_MESSAGE_LENGTH) {
+        return { valid: false, error: 'Message content too long' };
+    }
+    if (data.contentType && !VALID_CONTENT_TYPES.has(data.contentType)) {
+        return { valid: false, error: 'Invalid content type' };
+    }
+    if (data.file) {
+        const fileCheck = validateFileInfo(data.file);
+        if (!fileCheck.valid) return fileCheck;
+    }
+    if (Array.isArray(data.files)) {
+        for (const f of data.files) {
+            const fileCheck = validateFileInfo(f);
+            if (!fileCheck.valid) return fileCheck;
+        }
+    }
+    return { valid: true };
+}
+
+function validateReaction(data) {
+    if (!data.messageId || typeof data.messageId !== 'string') {
+        return { valid: false, error: 'messageId is required for reactions' };
+    }
+    if (!data.emoji || typeof data.emoji !== 'string') {
+        return { valid: false, error: 'emoji is required for reactions' };
+    }
+    if (data.emoji.length > 10) {
+        return { valid: false, error: 'Emoji too long' };
+    }
+    return { valid: true };
+}
+
+function validateEdit(data) {
+    if (!data.messageId || typeof data.messageId !== 'string') {
+        return { valid: false, error: 'messageId is required for edits' };
+    }
+    if (typeof data.newContent !== 'string' || data.newContent.length === 0) {
+        return { valid: false, error: 'Edit content is required' };
+    }
+    if (data.newContent.length > SECURITY.MAX_MESSAGE_LENGTH) {
+        return { valid: false, error: 'Edit content too long' };
+    }
+    return { valid: true };
+}
+
+function validateDelete(data) {
+    if (!data.messageId || typeof data.messageId !== 'string') {
+        return { valid: false, error: 'messageId is required for delete' };
+    }
+    return { valid: true };
+}
+
+function validateTyping(data) {
+    if (typeof data.typing !== 'boolean') {
+        return { valid: false, error: 'typing must be a boolean' };
+    }
+    return { valid: true };
+}
+
+const VALIDATORS = {
+    message: validateMessage,
+    reaction: validateReaction,
+    edit: validateEdit,
+    delete: validateDelete,
+    typing: validateTyping,
+    ping: () => ({ valid: true }),
+};
+
 export function validateClientMessage(data) {
     if (!data || typeof data !== 'object') {
         return { valid: false, error: 'Invalid message format' };
@@ -12,73 +86,8 @@ export function validateClientMessage(data) {
         return { valid: false, error: `Invalid message type: ${data.type}` };
     }
 
-    switch (data.type) {
-    case 'message':
-        if (typeof data.content !== 'string' || data.content.length === 0) {
-            if (!data.file && !data.files) {
-                return { valid: false, error: 'Message content is required' };
-            }
-        }
-        if (data.content && data.content.length > SECURITY.MAX_MESSAGE_LENGTH) {
-            return { valid: false, error: 'Message content too long' };
-        }
-        if (data.contentType && !VALID_CONTENT_TYPES.has(data.contentType)) {
-            return { valid: false, error: 'Invalid content type' };
-        }
-        if (data.file) {
-            const fileCheck = validateFileInfo(data.file);
-            if (!fileCheck.valid) return fileCheck;
-        }
-        if (Array.isArray(data.files)) {
-            for (const f of data.files) {
-                const fileCheck = validateFileInfo(f);
-                if (!fileCheck.valid) return fileCheck;
-            }
-        }
-        break;
-
-    case 'reaction':
-        if (!data.messageId || typeof data.messageId !== 'string') {
-            return { valid: false, error: 'messageId is required for reactions' };
-        }
-        if (!data.emoji || typeof data.emoji !== 'string') {
-            return { valid: false, error: 'emoji is required for reactions' };
-        }
-        if (data.emoji.length > 10) {
-            return { valid: false, error: 'Emoji too long' };
-        }
-        break;
-
-    case 'edit':
-        if (!data.messageId || typeof data.messageId !== 'string') {
-            return { valid: false, error: 'messageId is required for edits' };
-        }
-        if (typeof data.newContent !== 'string' || data.newContent.length === 0) {
-            return { valid: false, error: 'Edit content is required' };
-        }
-        if (data.newContent.length > SECURITY.MAX_MESSAGE_LENGTH) {
-            return { valid: false, error: 'Edit content too long' };
-        }
-        break;
-
-    case 'delete':
-        if (!data.messageId || typeof data.messageId !== 'string') {
-            return { valid: false, error: 'messageId is required for delete' };
-        }
-        break;
-
-    case 'typing':
-        if (typeof data.typing !== 'boolean') {
-            return { valid: false, error: 'typing must be a boolean' };
-        }
-        break;
-
-    case 'ping':
-        break;
-
-    default:
-        return { valid: false, error: 'Unknown message type' };
-    }
+    const validator = VALIDATORS[data.type];
+    if (validator) return validator(data);
 
     return { valid: true };
 }

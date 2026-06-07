@@ -16,7 +16,7 @@ self.addEventListener('push', (event) => {
     if (event.data) {
         try {
             data = event.data.json();
-        } catch (e) {
+        } catch (_e) {
             data.body = event.data.text();
         }
     }

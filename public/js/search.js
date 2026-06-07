@@ -1,4 +1,5 @@
 import { escapeHtml } from './utils.js';
+import { SEARCH_CLIENT } from '../../src/config/constants.js';
 
 export class SearchManager {
     constructor(onResultClick) {
@@ -117,7 +118,7 @@ export class SearchManager {
         this.searchInput.addEventListener('input', () => {
             this.syncTagsFromInput();
             if (this.searchTimeout) clearTimeout(this.searchTimeout);
-            this.searchTimeout = setTimeout(() => this.performSearch(), 300);
+            this.searchTimeout = setTimeout(() => this.performSearch(), SEARCH_CLIENT.DEBOUNCE_MS);
         });
 
         this.searchInput.addEventListener('keydown', (e) => {
@@ -137,7 +138,7 @@ export class SearchManager {
         this.updateTagButtons();
         this.syncInputFromTags();
         if (this.searchTimeout) clearTimeout(this.searchTimeout);
-        this.searchTimeout = setTimeout(() => this.performSearch(), 300);
+        this.searchTimeout = setTimeout(() => this.performSearch(), SEARCH_CLIENT.DEBOUNCE_MS);
     }
 
     updateTagButtons() {
@@ -250,7 +251,7 @@ syncInputFromTags() {
         `;
 
         try {
-            const params = new URLSearchParams({ q: query, limit: '100' });
+            const params = new URLSearchParams({ q: query, limit: String(SEARCH_CLIENT.MAX_RESULTS) });
             const response = await fetch(`/api/search?${params}`);
             if (!response.ok) {
                 throw new Error(`검색 실패: ${response.status}`);
@@ -334,8 +335,8 @@ syncInputFromTags() {
             });
 
             const senderName = escapeHtml(msg.nickname || 'Anonymous');
-            const contentPreview = msg.content.length > 200
-                ? msg.content.substring(0, 200) + '...'
+            const contentPreview = msg.content.length > SEARCH_CLIENT.RESULT_PREVIEW_LENGTH
+                ? msg.content.substring(0, SEARCH_CLIENT.RESULT_PREVIEW_LENGTH) + '...'
                 : msg.content;
             const highlightedContent = this.highlightText(contentPreview);
 

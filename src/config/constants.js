@@ -129,6 +129,101 @@ export const FORCE_DELETE_DELAY_MS = 1500;
 export const MESSAGE_PREVIEW_COUNT = 20;
 export const MAX_SESSION_ID_LENGTH = 100;
 
+// WebSocket reconnect configuration
+export const WS_RECONNECT = {
+    MAX_ATTEMPTS: 10,
+    BASE_DELAY_MS: 1000,
+    MAX_DELAY_MS: 30000,
+    HEARTBEAT_VISIBLE: 25000,
+    HEARTBEAT_HIDDEN: 60000,
+    HEARTBEAT_TIMEOUT_VISIBLE: 10000,
+    HEARTBEAT_TIMEOUT_HIDDEN: 30000,
+};
+
+// Client-side file upload limits
+export const FILE_UPLOAD_CLIENT = {
+    MAX_FILES: 10,
+    CONCURRENT_UPLOADS: 3,
+    MAX_BYTES: 100 * 1024 * 1024, // 100MB (server-enforced at 50MB)
+};
+
+// Client-side search configuration
+export const SEARCH_CLIENT = {
+    DEBOUNCE_MS: 300,
+    RESULT_PREVIEW_LENGTH: 200,
+    MAX_RESULTS: 100,
+};
+
+// Client-side Turnstile configuration
+export const TURNSTILE_CLIENT = {
+    SESSION_AGE_MS: 4 * 60 * 60 * 1000, // 4 hours
+    HIDE_DELAY_MS: 800,
+    POLL_MAX_ATTEMPTS: 50,
+    POLL_INTERVAL_MS: 100,
+};
+
+// OpenGraph preview client configuration
+export const OG_PREVIEW_CLIENT = {
+    CACHE_SIZE: 50,
+    FETCH_TIMEOUT_MS: 5000,
+    RATE_LIMIT_DELAY_MS: 150,
+    TRUNCATION_LENGTH: 200,
+    ID_PREFIX_LENGTH: 80,
+};
+
+// UI behavior configuration
+export const UI = {
+    SCROLL_PROXIMITY_PX: 150,
+    MESSAGE_GROUP_TIME_MS: 5 * 60 * 1000, // 5 minutes
+    REPLY_PREVIEW_LENGTH: 50,
+    LONG_PRESS_MS: 500,
+    ERROR_BANNER_TIMEOUT_MS: 4000,
+    SYSTEM_MESSAGE_TIMEOUT_MS: 3500,
+    TOAST_DURATION_MS: 3000,
+    TOAST_FADE_MS: 500,
+    HIGHLIGHT_RING_MS: 2000,
+    TYPING_EXPIRY_MS: 5000,
+    TYPING_INACTIVITY_MS: 2000,
+    TITLE_BLINK_MS: 1000,
+    CONTEXT_MENU_DELAY_MS: 100,
+    MODAL_FOCUS_DELAY_MS: 100,
+};
+
+// Ban duration presets (seconds)
+export const BAN_DURATIONS = {
+    THIRTY_SECONDS: 30,
+    FIVE_MINUTES: 300,
+    TEN_MINUTES: 600,
+};
+
+// Admin client configuration
+export const ADMIN_CLIENT = {
+    BROADCAST_REFRESH_MS: 5000,
+    NOTIFICATION_DURATION_MS: 3000,
+    NOTIFICATION_FADE_MS: 350,
+    SESSION_ID_TRUNCATION: 20,
+    UA_TRUNCATION: 40,
+    RECENT_MESSAGES_COUNT: 50,
+    COPY_FEEDBACK_MS: 1500,
+    DEFAULT_SCHEDULE_MINUTES: 5,
+    BAN_DURATION_OPTIONS: [
+        { label: '30초', value: 30 },
+        { label: '5분', value: 300 },
+        { label: '10분', value: 600 },
+    ],
+};
+
+// Sakura animation constants
+export const SAKURA = {
+    PETAL_COUNT: 35,
+    SIZE_MIN: 18,
+    SIZE_RANGE: 24,
+    FALL_MIN_SECONDS: 9,
+    FALL_RANGE_SECONDS: 16,
+    MAX_DELAY_SECONDS: 18,
+    MAX_LEFT_PERCENT: 100,
+};
+
 // Metrics storage (in-memory, per-worker instance)
 export const metrics = {
     totalConnections: 0,

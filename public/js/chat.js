@@ -13,6 +13,7 @@ import { TurnstileManager } from './turnstile.js?v=1.0.0';
 import { OGPreviewManager } from './og-preview.js?v=1.0.0';
 import { ThemeManager } from './theme.js?v=1.0.0';
 import { sendErrorReport } from './utils.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, UI } from '../../src/config/constants.js';
 
 class ChatClient {
     constructor(config = {}) {
@@ -25,7 +26,7 @@ class ChatClient {
         // State
         this.typingTimeout = null;
         this.lastMessageTime = 0;
-        this.messageRateLimit = 1000; // 1 message per second
+        this.messageRateLimit = RATE_LIMIT.MESSAGE_COOLDOWN;
         this.isTyping = false;
         this.isNicknameLocked = true;
         this.unreadCount = 0;
@@ -380,7 +381,7 @@ class ChatClient {
                 toast.className = 'fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-green-800 text-green-100 px-4 py-2 rounded-lg shadow-lg text-sm transition-opacity duration-500';
                 toast.textContent = '긴급 공지가 해제되었습니다.';
                 document.body.appendChild(toast);
-                setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
+                setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), UI.TOAST_FADE_MS); }, UI.TOAST_DURATION_MS);
                 break;
             }
             case 'kicked': {
@@ -422,7 +423,7 @@ class ChatClient {
                     alert('관리자에 의해 강제퇴장되었습니다. 페이지가 새로고침됩니다.');
                     setTimeout(() => {
                         window.location.reload();
-                    }, 2000);
+                    }, UI.HIGHLIGHT_RING_MS);
                 }
                 break;
             }
@@ -463,7 +464,7 @@ class ChatClient {
             const timeout = setTimeout(() => {
                 this.typingUsers.delete(sessionId);
                 this.ui.updateTypingIndicator(this.typingUsers);
-            }, 5000);
+            }, UI.TYPING_EXPIRY_MS);
             this.typingUsers.set(sessionId, { nickname: nickname || '익명', timeout });
         } else {
             this.typingUsers.delete(sessionId);
@@ -482,7 +483,7 @@ class ChatClient {
             showCount = !showCount;
         };
         update();
-        this.titleBlinkInterval = setInterval(update, 1000);
+        this.titleBlinkInterval = setInterval(update, UI.TITLE_BLINK_MS);
     }
 
     clearUnreadTitle() {
@@ -571,8 +572,8 @@ class ChatClient {
         }
 
         // Validate message length (count raw characters, including newlines)
-        if (message.length > 7500) {
-            this.ui.displayError('메시지는 최대 7500자까지 가능합니다.');
+        if (message.length > SECURITY.MAX_MESSAGE_LENGTH) {
+            this.ui.displayError(`메시지는 최대 ${SECURITY.MAX_MESSAGE_LENGTH}자까지 가능합니다.`);
             return;
         }
 
@@ -715,7 +716,7 @@ class ChatClient {
                     typing: false
                 });
             }
-        }, 2000);
+        }, UI.TYPING_INACTIVITY_MS);
     }
 
     async editMessage(messageId, newContent) {
@@ -725,8 +726,8 @@ class ChatClient {
             return;
         }
 
-        if (newContent.length > 7500) {
-            this.ui.displayError('메시지는 최대 7500자까지 가능합니다.');
+        if (newContent.length > SECURITY.MAX_MESSAGE_LENGTH) {
+            this.ui.displayError(`메시지는 최대 ${SECURITY.MAX_MESSAGE_LENGTH}자까지 가능합니다.`);
             return;
         }
 
@@ -810,8 +811,8 @@ class ChatClient {
             this.ui.showCreateChannelError('채널 이름을 입력해주세요.');
             return;
         }
-        if (name.length > 20) {
-            this.ui.showCreateChannelError('채널 이름은 최대 20자입니다.');
+        if (name.length > CHANNEL.MAX_NAME_LENGTH) {
+            this.ui.showCreateChannelError(`채널 이름은 최대 ${CHANNEL.MAX_NAME_LENGTH}자입니다.`);
             return;
         }
 

@@ -1,7 +1,8 @@
 import { escapeHtml } from './utils.js';
+import { OG_PREVIEW_CLIENT } from '../../src/config/constants.js';
 
-const CACHE_MAX = 50;
-const FETCH_TIMEOUT = 5000;
+const CACHE_MAX = OG_PREVIEW_CLIENT.CACHE_SIZE;
+const FETCH_TIMEOUT = OG_PREVIEW_CLIENT.FETCH_TIMEOUT_MS;
 
 export class OGPreviewManager {
     constructor() {
@@ -57,7 +58,7 @@ export class OGPreviewManager {
 
     renderCard(og, url) {
         const title = this._esc(og.title || new URL(url).hostname);
-        const description = og.description ? this._esc(og.description.substring(0, 200)) : '';
+        const description = og.description ? this._esc(og.description.substring(0, OG_PREVIEW_CLIENT.TRUNCATION_LENGTH)) : '';
         const image = og.image || '';
         const siteName = og.siteName ? this._esc(og.siteName) : this._esc(new URL(url).hostname);
 
@@ -82,7 +83,7 @@ export class OGPreviewManager {
             const c = url.charCodeAt(i);
             safe += (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 58 || c === 47 || c === 46 || c === 45 || c === 95 ? url[i] : '_';
         }
-        return 'og_' + safe.substring(0, 80);
+        return 'og_' + safe.substring(0, OG_PREVIEW_CLIENT.ID_PREFIX_LENGTH);
     }
 
     enrichUrlLink(aElement) {
@@ -131,7 +132,7 @@ export class OGPreviewManager {
         const links = element.querySelectorAll('a[href^="http"]');
         for (const link of links) {
             this.enrichUrlLink(link);
-            await new Promise(r => setTimeout(r, 150));
+            await new Promise(r => setTimeout(r, OG_PREVIEW_CLIENT.RATE_LIMIT_DELAY_MS));
         }
     }
 

@@ -30,6 +30,12 @@ export default [
         },
     },
     {
+        files: ['src/**/*.js', 'functions/**/*.js'],
+        rules: {
+            'no-console': 'off',
+        },
+    },
+    {
         ignores: [
             'node_modules/**',
             '.wrangler/**',
