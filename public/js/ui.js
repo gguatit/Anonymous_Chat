@@ -83,9 +83,15 @@ export class UIManager {
             }
         });
 
-        // Empty space right-click for channel menu
+        // Empty space right-click for channel menu, message right-click for context menu
         this.messagesContainer.addEventListener('contextmenu', (e) => {
-            if (!e.target.closest('[data-message]')) {
+            const msgEl = e.target.closest('[data-message-id]');
+            if (msgEl) {
+                e.preventDefault();
+                const messageId = msgEl.getAttribute('data-message-id');
+                const canEdit = msgEl.getAttribute('data-can-edit') === 'true';
+                this.showContextMenu(e, messageId, canEdit);
+            } else if (!e.target.closest('[data-message]')) {
                 e.preventDefault();
                 this.showChannelContextMenu(e);
             }

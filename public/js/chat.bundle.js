@@ -4434,8 +4434,8 @@ var AUTH = {
 };
 var PUSH_SUBSCRIPTION_TTL = 30 * 24 * 60 * 60;
 var UPLOAD = {
-  MAX_BYTES: 50 * 1024 * 1024,
-  // 50MB
+  MAX_BYTES: 250 * 1024 * 1024,
+  // 250MB (file.kalpha.kr limit)
   MAX_BODY_BYTES: 1024 * 1024,
   // 1MB
   MAX_FILENAME_LENGTH: 255,
@@ -4461,8 +4461,8 @@ var WS_RECONNECT = {
 var FILE_UPLOAD_CLIENT = {
   MAX_FILES: 10,
   CONCURRENT_UPLOADS: 3,
-  MAX_BYTES: 100 * 1024 * 1024
-  // 100MB (server-enforced at 50MB)
+  MAX_BYTES: 250 * 1024 * 1024
+  // 250MB
 };
 var SEARCH_CLIENT = {
   DEBOUNCE_MS: 300,
@@ -5914,7 +5914,13 @@ var UIManager = class {
       }
     });
     this.messagesContainer.addEventListener("contextmenu", (e) => {
-      if (!e.target.closest("[data-message]")) {
+      const msgEl = e.target.closest("[data-message-id]");
+      if (msgEl) {
+        e.preventDefault();
+        const messageId = msgEl.getAttribute("data-message-id");
+        const canEdit = msgEl.getAttribute("data-can-edit") === "true";
+        this.showContextMenu(e, messageId, canEdit);
+      } else if (!e.target.closest("[data-message]")) {
         e.preventDefault();
         this.showChannelContextMenu(e);
       }

@@ -84,7 +84,7 @@ export const AI_SUMMARY = {
 
 // File upload constants
 export const UPLOAD = {
-    MAX_BYTES: 50 * 1024 * 1024, // 50MB
+    MAX_BYTES: 250 * 1024 * 1024, // 250MB (file.kalpha.kr limit)
     MAX_BODY_BYTES: 1024 * 1024,  // 1MB
     MAX_FILENAME_LENGTH: 255,
     MAX_FILETYPE_LENGTH: 100,
@@ -144,7 +144,7 @@ export const WS_RECONNECT = {
 export const FILE_UPLOAD_CLIENT = {
     MAX_FILES: 10,
     CONCURRENT_UPLOADS: 3,
-    MAX_BYTES: 100 * 1024 * 1024, // 100MB (server-enforced at 50MB)
+    MAX_BYTES: 250 * 1024 * 1024, // 250MB
 };
 
 // Client-side search configuration

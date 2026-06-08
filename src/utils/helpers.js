@@ -53,6 +53,7 @@ export async function safeJson(request) {
 
 export function isValidFileUrl(url, allowedOrigins = []) {
     if (typeof url !== 'string' || !url) return false;
+    if (url.startsWith('/api/file/')) return true;
     try {
         const parsed = new URL(url);
         if (parsed.protocol !== 'https:') return false;

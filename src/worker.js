@@ -260,6 +260,48 @@ export default {
             const handler = matchRoute(publicRoutes, url.pathname, request.method);
             if (handler) return await handler(request, env, corsHeaders);
 
+            // File download proxy (no auth needed, worker adds API_KEY)
+            if (url.pathname.startsWith('/api/file/') && request.method === 'GET') {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'filedl')) {
+                    return jsonError('Rate limit exceeded', 429, origin);
+                }
+                const fileId = url.pathname.slice('/api/file/'.length);
+                if (!fileId || !/^[a-f0-9-]{32,36}$/.test(fileId)) {
+                    return jsonError('Invalid file ID', 400, origin);
+                }
+                const apiKey = env.FILE_API_KEY;
+                if (!apiKey) {
+                    return jsonError('File service not configured', 503, origin);
+                }
+                try {
+                    const fileResp = await fetch(`https://file.kalpha.kr/api/files/${encodeURIComponent(fileId)}`, {
+                        method: 'GET',
+                        headers: { 'Authorization': `Bearer ${apiKey}` }
+                    });
+                    if (!fileResp.ok) {
+                        return jsonError('File not found', fileResp.status, origin);
+                    }
+                    const respHeaders = new Headers();
+                    const ct = fileResp.headers.get('content-type') || '';
+                    if (ct) respHeaders.set('content-type', ct);
+                    respHeaders.set('cache-control', 'public, max-age=86400');
+                    const cd = fileResp.headers.get('content-disposition');
+                    const isInline = /^image\//.test(ct) || /^video\//.test(ct) || /^audio\//.test(ct) || /^application\/pdf/.test(ct);
+                    if (cd && !isInline) {
+                        respHeaders.set('content-disposition', cd);
+                    } else if (!cd && !isInline) {
+                        respHeaders.set('content-disposition', 'attachment');
+                    }
+                    for (const [k, v] of Object.entries(corsHeaders)) {
+                        respHeaders.set(k, v);
+                    }
+                    return new Response(fileResp.body, { status: 200, headers: respHeaders });
+                } catch (_error) {
+                    console.error('File download proxy error:', _error);
+                    return jsonError('Download failed', 502, origin);
+                }
+            }
+
             if (url.pathname === '/api/upload' && request.method === 'POST') {
                     if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
                         return jsonError('Rate limit exceeded', 429, origin);
@@ -267,18 +309,39 @@ export default {
                 try {
                     const contentLength = parseInt(request.headers.get('content-length') || '0');
                     if (contentLength > UPLOAD.MAX_BYTES) {
-                        return jsonError('File too large (max 50MB)', 413, origin);
+                        return jsonError('File too large (max 250MB)', 413, origin);
                     }
-                    const uploadUrl = env.FILE_UPLOAD_URL || 'https://file.xeon.kr/upload';
+                    const uploadUrl = env.FILE_UPLOAD_URL || 'https://file.kalpha.kr/api/files';
+                    const apiKey = env.FILE_API_KEY;
+                    const fetchHeaders = new Headers(request.headers);
+                    if (apiKey) {
+                        fetchHeaders.set('Authorization', `Bearer ${apiKey}`);
+                    }
                     const upstreamResponse = await fetch(uploadUrl, {
                         method: 'POST',
                         body: request.body,
-                        headers: request.headers
+                        headers: fetchHeaders
                     });
-                    const contentType = upstreamResponse.headers.get('content-type') || 'application/json';
-                    return new Response(upstreamResponse.body, {
-                        status: upstreamResponse.status,
-                        headers: { ...corsHeaders, 'Content-Type': contentType }
+                    if (!upstreamResponse.ok) {
+                        const errBody = await upstreamResponse.text();
+                        return new Response(errBody, {
+                            status: upstreamResponse.status,
+                            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                        });
+                    }
+                    const result = await upstreamResponse.json();
+                    if (result.success && result.data) {
+                        const d = result.data;
+                        return new Response(JSON.stringify({
+                            full_url: `/api/file/${d.id}`,
+                            filename: d.originalFilename,
+                            filesize: d.size,
+                            filetype: d.contentType || 'application/octet-stream'
+                        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+                    }
+                    return new Response(JSON.stringify({ error: 'Unexpected upload response' }), {
+                        status: 502,
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                     });
                 } catch (_error) {
                     console.error('File upload proxy error:', _error);
