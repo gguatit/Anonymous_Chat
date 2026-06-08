@@ -656,7 +656,7 @@ export class ChatRoom {
         }
 
         if (data.file && data.file.url) {
-            if (!isValidFileUrl(data.file.url)) {
+            if (!isValidFileUrl(data.file.url) && !data.file.url.startsWith('/api/file/')) {
                 this.sendToSession(sessionId, {
                     type: 'error',
                     content: 'Invalid file URL'
@@ -674,7 +674,7 @@ export class ChatRoom {
         if (data.files && Array.isArray(data.files) && data.files.length > 0) {
             const validFiles = [];
             for (const f of data.files) {
-                if (!f.url || !isValidFileUrl(f.url)) continue;
+                if (!f.url || (!isValidFileUrl(f.url) && !f.url.startsWith('/api/file/'))) continue;
                 validFiles.push({
                     url: f.url,
                     filename: sanitizeInput(String(f.filename || '')).substring(0, UPLOAD.MAX_FILENAME_LENGTH),

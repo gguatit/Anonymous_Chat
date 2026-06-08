@@ -5,6 +5,7 @@ export function escapeHtml(text) {
 }
 
 export function isValidUrl(url) {
+    if (url.startsWith('/api/file/')) return true;
     try {
         const urlWithProtocol = url.match(/^https?:\/\//) ? url : 'https://' + url;
         const parsed = new URL(urlWithProtocol);

@@ -4734,6 +4734,7 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 function isValidUrl(url) {
+  if (url.startsWith("/api/file/")) return true;
   try {
     const urlWithProtocol = url.match(/^https?:\/\//) ? url : "https://" + url;
     const parsed = new URL(urlWithProtocol);
