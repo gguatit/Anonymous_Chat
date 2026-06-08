@@ -1,6 +1,7 @@
 // Main Chat Client Application
 import './prism-bundle.js';
 import ApiClient from './api-client.js';
+import { escapeHtml } from './utils.js';
 import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
 import { UIManager } from './ui.js?v=1.1.0';
@@ -897,7 +898,7 @@ class ChatClient {
             contentDiv.classList.remove('hidden');
             contentDiv.innerHTML = `
                 <div class="text-green-400 text-xs mb-2">✓ 비밀 메시지가 공개되었습니다 (이 메시지는 삭제되었습니다)</div>
-                <div class="text-gray-100">${this.ui.sanitizeInput(result.message)}</div>
+                <div class="text-gray-100">${escapeHtml(result.message)}</div>
             `;
         } catch (error) {
             console.error('Failed to reveal secret:', error);
