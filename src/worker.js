@@ -332,8 +332,9 @@ export default {
                     const result = await upstreamResponse.json();
                     if (result.success && result.data) {
                         const d = result.data;
+                        const origin = new URL(request.url).origin;
                         return new Response(JSON.stringify({
-                            full_url: `/api/file/${d.id}`,
+                            full_url: `${origin}/api/file/${d.id}`,
                             filename: d.originalFilename,
                             filesize: d.size,
                             filetype: d.contentType || 'application/octet-stream'
