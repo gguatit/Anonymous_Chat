@@ -422,9 +422,8 @@ export class FileUploadManager {
             }
             const result = await resp.json();
             if (!result.success) throw new Error(`Chunk ${partNumber} error: ${result.error?.message}`);
-            const partData = { partNumber: result.data.partNumber, etag: result.data.etag };
-            console.log(`Part ${partNumber} done:`, JSON.stringify(partData));
-            parts.push(partData);
+            console.log(`Part ${partNumber} response:`, JSON.stringify(result));
+            parts.push({ partNumber: result.data.partNumber || partNumber, etag: result.data.etag || result.data.ETag });
             uploaded++;
             if (onProgress) onProgress(uploaded / totalChunks);
         };
@@ -439,11 +438,12 @@ export class FileUploadManager {
 
         // Step 3: Complete
         parts.sort((a, b) => a.partNumber - b.partNumber);
-        console.log('Complete request:', JSON.stringify({ fileId, parts }));
-        const completeResp = await fetch(`/api/upload/${encodeURIComponent(uploadId)}/complete?fileId=${encodeURIComponent(fileId)}`, {
+        const completeBody = JSON.stringify({ fileId, parts });
+        console.log('Complete request:', completeBody.substring(0, 500));
+        const completeResp = await fetch(`/api/upload/${encodeURIComponent(uploadId)}/complete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileId, parts })
+            body: completeBody
         });
         if (!completeResp.ok) {
             const errText = await completeResp.text();
