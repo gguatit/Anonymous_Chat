@@ -82,7 +82,7 @@ Cloudflare Workers 기반 서버리스 아키텍처
 
 #### 인프라
 - **`.dev.vars.example` 완성**: 누락된 환경변수 6종 문서화
-- **파일 업로드 URL 환경변수화**: `FILE_UPLOAD_URL` 추가
+- **파일 업로드 URL 환경변수화**: `FILE_UPLOAD_URL` 추가, `file.kalpha.kr` 연동 (250MB 지원)
 
 ### 2026년 4월 29일 - 채널 시스템 추가
 
@@ -205,12 +205,12 @@ Cloudflare Workers 기반 서버리스 아키텍처
 
 ### 파일 공유 시스템
 
-- 최대 100MB 파일 업로드
+- 최대 250MB 파일 업로드
 - 지원 형식: 이미지, 비디오, 오디오, PDF, 문서
 - 실시간 업로드 진행 상태 표시
 - 이미지 인라인 미리보기
 - 비디오/오디오 스트리밍 재생
-- 외부 API 서버 연동 (file.xeon.kr)
+- 외부 API 서버 연동 (file.kalpha.kr)
 
 ### 답장 및 비밀 메시지
 
@@ -328,7 +328,7 @@ graph TB
     end
     
     subgraph "External Services"
-        F[File Upload API<br/>file.xeon.kr]
+        F[File Upload API<br/>file.kalpha.kr]
         G[Kalpha API<br/>api.kalpha.kr]
     end
     
@@ -354,7 +354,7 @@ graph TB
 3. WebSocket → WSS → Worker → IP 검증 → Durable Object
 4. 메시지 → 클라이언트 검증 → 서버 검증 → 브로드캐스트
 5. 타이핑 → 2초 디바운싱 → 다른 클라이언트에게 전파
-6. 파일 업로드 → Worker `/api/upload` 프록시 → file.xeon.kr → 파일 URL 반환 → 메시지에 첨부
+6. 파일 업로드 → Worker `/api/upload` 프록시 → file.kalpha.kr → 파일 URL 반환 → 메시지에 첨부
 7. 비밀 메시지 저장 → Kalpha API (Dead Drop) → secretId 반환 → targetSessionId와 함께 브로드캐스트
 8. 비밀 메시지 읽기 → targetSessionId 검증 → Kalpha API에서 일회성 조회 및 삭제
 9. 보안 헤더 분석 → 채팅 내 URL 클릭 → Kalpha API (`/security/headers`) → 점수/등급/분석 결과 표시
@@ -413,7 +413,7 @@ sequenceDiagram
 | File Upload Manager | 파일 업로드 및 미리보기 처리 | `public/js/file-upload.js` |
 | Dead Drop Client | 일회성 비밀 메시지 API 클라이언트 | `public/js/dead-drop.js` |
 | Security Headers Manager | URL 보안 헤더 분석 클라이언트 | `public/js/security-headers.js` |
-| External File API | 파일 저장 및 제공 | `file.xeon.kr` |
+| External File API | 파일 저장 및 제공 | `file.kalpha.kr` |
 | Kalpha API | 비밀 메시지(Dead Drop) + 보안 헤더 분석 | `api.kalpha.kr` |
 
 ---
@@ -465,8 +465,12 @@ npx wrangler secret put TURNSTILE_SECRET_KEY
 # Firebase Cloud Messaging (선택)
 npx wrangler secret put FCM_SERVICE_ACCOUNT
 
-# 파일 업로드 URL (선택, 기본값: https://file.xeon.kr/upload)
+# 파일 업로드 URL (선택, 기본값: https://file.kalpha.kr/api/files)
 npx wrangler secret put FILE_UPLOAD_URL
+# 파일 서버 API 키 (필수)
+npx wrangler secret put FILE_API_KEY
+# Kalpha API URL (선택, 보안헤더 검사 등)
+npx wrangler secret put KALPHA_API_URL
 
 # 5. 로컬 개발 환경 설정
 # .dev.vars.example 파일을 복사하여 .dev.vars 생성
@@ -660,7 +664,7 @@ element.textContent = userInput;
 ```
 default-src 'self';
 script-src 'self' https://cdn.tailwindcss.com https://challenges.cloudflare.com;
-connect-src 'self' https://file.xeon.kr https://api.kalpha.kr https://challenges.cloudflare.com wss: ws:;
+connect-src 'self' https://file.kalpha.kr https://api.kalpha.kr https://challenges.cloudflare.com wss: ws:;
 frame-src https://challenges.cloudflare.com;
 object-src 'none';
 ```
@@ -965,21 +969,21 @@ Anonymous_Chat/
 |-----------|--------|------|
 | `/api/upload` | POST | Worker 업로드 프록시 (same-origin, CORS 우회) |
 
-#### 외부 파일 API (file.xeon.kr)
+#### 외부 파일 API (file.kalpha.kr)
 
 | 엔드포인트 | 메서드 | 설명 |
 |-----------|--------|------|
-| `/upload` | POST | 파일 업로드 (multipart/form-data) |
-| `/{id}/{name}` | GET | 업로드된 파일 다운로드 |
-| `/{id}/{name}` | HEAD | 파일 메타데이터 조회 |
+| `/api/files` | POST | 파일 업로드 (multipart/form-data, Bearer 인증, 최대 250MB) |
+| `/api/files/{id}` | GET | 업로드된 파일 다운로드 (Bear 인증, 24시간 보관) |
+| `/api/files/{id}` | DELETE | 파일 삭제 (관리자 전용) |
+| `/api/files/{id}/info` | GET | 파일 메타데이터 조회 (관리자 전용) |
 
-#### 외부 보안 API (api.kalpha.kr)
+#### 외부 Dead Drop API (내부 DO 기반)
 
 | 엔드포인트 | 메서드 | 설명 |
 |-----------|--------|------|
-| `/store` | POST | 일회성 비밀 메시지 저장 |
-| `/read/{id}` | GET | 비밀 메시지 읽기 (읽기 후 삭제, 1hr TTL) |
-| `/security/headers` | GET | URL 보안 헤더 분석 (점수, 등급, 헤더 상태) |
+| `/api/secret-store` | POST | 일회성 비밀 메시지 저장 |
+| `/api/secret-read` | GET | 비밀 메시지 읽기 (읽기 후 삭제, 30분 TTL) |
 
 #### 메트릭 API 응답 예시
 
@@ -996,9 +1000,10 @@ Anonymous_Chat/
 
 ```json
 {
-  "id": "abc123xyz",
-  "name": "image.jpg",
-  "url": "https://file.xeon.kr/abc123xyz/image.jpg"
+  "full_url": "/api/file/abc123-xyz",
+  "filename": "image.jpg",
+  "filesize": 1048576,
+  "filetype": "image/jpeg"
 }
 ```
 
@@ -1011,19 +1016,23 @@ Anonymous_Chat/
 ```bash
 # 린트
 npm run lint
-```
 
-현재 `package.json`에는 `test` 스크립트가 정의되어 있지 않습니다.
+# 유닛 테스트 (57개)
+npm test
+
+# 번들 빌드
+npm run bundle
+
+# CSS 빌드
+npm run css
+```
 
 ### 로컬 테스트
 
 ```bash
-# 로컬 개발 서버 시작
-npm run dev
+# 로컬 개발 서버 시작 (Workers 모드)
+npx wrangler dev
 
-# Wrangler tail로 실시간 로그 확인
-wrangler tail
-```
 
 ### E2E 테스트 (수동)
 

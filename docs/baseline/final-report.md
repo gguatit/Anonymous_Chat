@@ -1,5 +1,7 @@
 # Anonymous_Chat (Kalpha) 품질 개선 최종 보고서
 
+> **참고**: 본 보고서는 초기 개선 작업(Phase 0-4)의 결과입니다. 이후 Phase 5(클라이언트 상수 추출, admin-data 분할), 파일서버 연동 등 추가 개선이 이루어졌습니다. 최신 변경 내역은 [CHANGELOG.md](../../CHANGELOG.md)를 참조하세요.
+
 **작업 브랜치**: `feature/code-quality-performance`
 **총 변경 파일**: 22개 수정, 23개 신규, ~11,964줄 소스코드
 

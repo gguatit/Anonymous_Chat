@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-06-09
+
+### 🔧 코드 품질/성능 전반 개선
+
+- **서버 모듈 분할**: `ChatRoom.js` (2446→1024줄, -58%), admin 핸들러/메시지/공지 모듈 분리
+- **클라이언트 모듈 분할**: `ui.js` (1779→546줄, -69%) 6개 모듈, `admin-data.js` (1432줄) 6개 모듈로 분리
+- **매직 넘버 정리**: 서버 44개 + 클라이언트 60개 하드코딩 상수를 `constants.js`로 중앙화
+- **JSDoc 문서화**: `schema.js`로 타입 정의, 모든 DO 클래스에 JSDoc 추가
+- **Tailwind CSS**: CDN(300KB) → 빌드(45KB)로 최적화
+- **JS 번들링**: ESBuild로 19개 파일 → 2개 번들로 통합
+- **Prism.js**: CDN → 번들 내장 (core + 22개 언어)
+- **이벤트 위임**: 메시지당 5-6개 리스너 → 컨테이너당 5개 (위임 패턴)
+- **입력 검증**: `validate.js` 표준화, 모든 메시지 타입 구조 검증 추가
+- **에러 처리**: `errors.js`로 6가지 혼재된 에러 포맷 → 1가지로 통일
+- **API 클라이언트**: `api-client.js`로 fetch 호출 중앙화
+- **속도 제한**: `rate-limiter.js` lazy init 패턴으로 Workers 호환성 확보
+- **ESLint**: 33개 에러 → 0개, eqeqeq/no-throw-literal/max-depth 규칙 강화
+- **Prettier**: 코드 포맷팅 도입
+- **테스트**: Vitest + 57개 유닛 테스트 추가
+
+### 🐛 버그 수정
+
+- **토큰 만료**: `auth.js` - 토큰 파싱 버그로 만료 검사가 무력화되던 문제 수정
+- **validate.js**: `VALID_TYPES` 누락 ('message' 타입), typing/edit 필드명 오타 수정
+- **이벤트 위임**: 우클릭 컨텍스트 메뉴 사라짐 버그 수정
+- **isEmergencyActive**: admin announcement에서 잘못된 메서드 호출 수정
+- **sanitizeInput**: UI 분할 후 참조 깨짐 → `escapeHtml`로 교체
+
+### 🚀 신규 기능
+
+- **file.kalpha.kr 파일서버 연동**: 외부 API → file.kalpha.kr로 전환, Worker 프록시로 Bearer 인증 처리
+- **파일 업로드 250MB**: 50MB → 250MB로 상향
+- **Kalpha API 연동**: `KALPHA_API_URL` 환경변수 추가, 보안헤더 분석 지원
+
 ## 2026-05-26
 
 ### 🚀 신규 기능
