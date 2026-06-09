@@ -422,7 +422,9 @@ export class FileUploadManager {
             }
             const result = await resp.json();
             if (!result.success) throw new Error(`Chunk ${partNumber} error: ${result.error?.message}`);
-            parts.push({ partNumber: result.data.partNumber, etag: result.data.etag });
+            const partData = { partNumber: result.data.partNumber, etag: result.data.etag };
+            console.log(`Part ${partNumber} done:`, JSON.stringify(partData));
+            parts.push(partData);
             uploaded++;
             if (onProgress) onProgress(uploaded / totalChunks);
         };

@@ -371,10 +371,12 @@ export default {
                         return jsonError('Missing fileId', 400, origin);
                     }
                     const completeUrl = `https://file.kalpha.kr/api/files/chunked/${encodeURIComponent(uploadId)}/complete?fileId=${encodeURIComponent(fileId)}`;
+                    const completeBody = JSON.stringify({ fileId, parts: body.parts });
+                    console.error('[chunk-complete]', uploadId.substring(0, 16), completeBody.substring(0, 300));
                     const resp = await fetch(completeUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                        body: JSON.stringify(body)
+                        body: completeBody
                     });
                     if (!resp.ok) {
                         const errBody = await resp.text();
