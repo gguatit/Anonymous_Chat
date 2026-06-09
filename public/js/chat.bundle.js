@@ -6734,7 +6734,8 @@ var FileUploadManager = class {
       await Promise.all(batch);
     }
     parts.sort((a, b) => a.partNumber - b.partNumber);
-    const completeResp = await fetch(`/api/upload/${encodeURIComponent(uploadId)}/complete`, {
+    console.log("Complete request:", JSON.stringify({ fileId, parts }));
+    const completeResp = await fetch(`/api/upload/${encodeURIComponent(uploadId)}/complete?fileId=${encodeURIComponent(fileId)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileId, parts })

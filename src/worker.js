@@ -363,10 +363,15 @@ export default {
                 if (!apiKey) return jsonError('File service not configured', 503, origin);
                 try {
                     const body = await safeJson(request);
-                    if (!body.fileId || !body.parts) {
-                        return jsonError('Missing fileId or parts', 400, origin);
+                    const fileId = body.fileId || url.searchParams.get('fileId');
+                    if (!body.parts) {
+                        return jsonError('Missing parts', 400, origin);
                     }
-                    const resp = await fetch(`https://file.kalpha.kr/api/files/chunked/${encodeURIComponent(uploadId)}/complete`, {
+                    if (!fileId) {
+                        return jsonError('Missing fileId', 400, origin);
+                    }
+                    const completeUrl = `https://file.kalpha.kr/api/files/chunked/${encodeURIComponent(uploadId)}/complete?fileId=${encodeURIComponent(fileId)}`;
+                    const resp = await fetch(completeUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                         body: JSON.stringify(body)
