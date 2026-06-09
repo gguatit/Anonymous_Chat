@@ -4497,7 +4497,13 @@ var UPLOAD = {
   // 1MB
   MAX_FILENAME_LENGTH: 255,
   MAX_FILETYPE_LENGTH: 100,
-  RATE_LIMIT: { windowMs: 6e4, max: 10 }
+  RATE_LIMIT: { windowMs: 6e4, max: 10 },
+  WORKER_BODY_LIMIT: 100 * 1024 * 1024,
+  // Worker 수신 한계
+  CHUNK_SIZE: 10 * 1024 * 1024,
+  // 기본 청크 10MB
+  CHUNK_CONCURRENCY: 3
+  // 동시 전송 청크 수
 };
 var DEAD_DROP = {
   TTL_MS: 30 * 60 * 1e3,
@@ -6610,6 +6616,9 @@ var FileUploadManager = class {
     }
   }
   async uploadSingleFile(file, onProgress) {
+    if (file.size > UPLOAD.WORKER_BODY_LIMIT) {
+      return this.uploadChunkedFile(file, onProgress);
+    }
     return new Promise((resolve, reject) => {
       try {
         const formData = new FormData();
@@ -6677,6 +6686,71 @@ var FileUploadManager = class {
         reject(error);
       }
     });
+  }
+  async uploadChunkedFile(file, onProgress) {
+    const chunkSize = UPLOAD.CHUNK_SIZE;
+    const totalChunks = Math.ceil(file.size / chunkSize);
+    const concurrency = UPLOAD.CHUNK_CONCURRENCY;
+    const initResp = await fetch("/api/upload/init", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, totalSize: file.size, contentType: file.type })
+    });
+    if (!initResp.ok) throw new Error(`Init failed: ${initResp.status}`);
+    const initData = await initResp.json();
+    if (!initData.success || !initData.data) throw new Error("Invalid init response");
+    const { uploadId, fileId } = initData.data;
+    const parts = [];
+    let uploaded = 0;
+    const sendChunk = async (partNumber) => {
+      const start = (partNumber - 1) * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+      const blob = file.slice(start, end);
+      const resp = await fetch(`/api/upload/${encodeURIComponent(uploadId)}/part?partNumber=${partNumber}&fileId=${encodeURIComponent(fileId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: blob
+      });
+      if (!resp.ok) throw new Error(`Chunk ${partNumber} failed: ${resp.status}`);
+      const result = await resp.json();
+      if (!result.success) throw new Error(`Chunk ${partNumber} error: ${result.error?.message}`);
+      parts[partNumber - 1] = { partNumber: result.data.partNumber, etag: result.data.etag };
+      uploaded++;
+      if (onProgress) onProgress(uploaded / totalChunks);
+    };
+    for (let i = 0; i < totalChunks; i += concurrency) {
+      const batch = [];
+      for (let j = i; j < Math.min(i + concurrency, totalChunks); j++) {
+        batch.push(sendChunk(j + 1));
+      }
+      await Promise.all(batch);
+    }
+    parts.sort((a, b) => a.partNumber - b.partNumber);
+    const completeResp = await fetch(`/api/upload/${encodeURIComponent(uploadId)}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileId, parts })
+    });
+    if (!completeResp.ok) throw new Error(`Complete failed: ${completeResp.status}`);
+    const completeResult = await completeResp.json();
+    let uploadedFileUrl;
+    if (completeResult.full_url) {
+      uploadedFileUrl = completeResult.full_url;
+    } else if (completeResult.url && completeResult.url.startsWith("http")) {
+      uploadedFileUrl = completeResult.url;
+    } else if (completeResult.url) {
+      if (!this.apiBaseUrl) throw new Error("Upload not configured");
+      uploadedFileUrl = `${this.apiBaseUrl}${completeResult.url}`;
+    } else {
+      throw new Error("Invalid upload response");
+    }
+    if (onProgress) onProgress(1);
+    return {
+      url: uploadedFileUrl,
+      filename: file.name,
+      filesize: file.size,
+      filetype: file.type
+    };
   }
   hasFile() {
     return this.selectedFiles.length > 0;

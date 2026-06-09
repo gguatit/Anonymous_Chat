@@ -302,6 +302,100 @@ export default {
                 }
             }
 
+            // Chunked upload proxy routes (file.kalpha.kr)
+            if (url.pathname === '/api/upload/init' && request.method === 'POST') {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
+                    return jsonError('Rate limit exceeded', 429, origin);
+                }
+                const apiKey = env.FILE_API_KEY;
+                if (!apiKey) return jsonError('File service not configured', 503, origin);
+                try {
+                    const body = await safeJson(request);
+                    if (!body.filename || !body.totalSize) {
+                        return jsonError('Missing filename or totalSize', 400, origin);
+                    }
+                    const resp = await fetch('https://file.kalpha.kr/api/files/chunked/init', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify(body)
+                    });
+                    const data = await resp.text();
+                    return new Response(data, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+                } catch (_error) {
+                    console.error('Chunked init error:', _error);
+                    return jsonError('Upload init failed', 502, origin);
+                }
+            }
+
+            const chunkPartMatch = url.pathname.match(/^\/api\/upload\/([a-f0-9-]+)\/part$/);
+            if (chunkPartMatch && request.method === 'POST') {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
+                    return jsonError('Rate limit exceeded', 429, origin);
+                }
+                const uploadId = chunkPartMatch[1];
+                const partNumber = url.searchParams.get('partNumber');
+                const fileId = url.searchParams.get('fileId');
+                const apiKey = env.FILE_API_KEY;
+                if (!apiKey) return jsonError('File service not configured', 503, origin);
+                if (!partNumber || !fileId) return jsonError('Missing partNumber or fileId', 400, origin);
+                try {
+                    const chunkUrl = `https://file.kalpha.kr/api/files/chunked/${encodeURIComponent(uploadId)}/part?partNumber=${encodeURIComponent(partNumber)}&fileId=${encodeURIComponent(fileId)}`;
+                    const resp = await fetch(chunkUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/octet-stream', 'Authorization': `Bearer ${apiKey}` },
+                        body: request.body
+                    });
+                    const data = await resp.text();
+                    return new Response(data, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+                } catch (_error) {
+                    console.error('Chunked part error:', _error);
+                    return jsonError('Upload part failed', 502, origin);
+                }
+            }
+
+            const chunkCompleteMatch = url.pathname.match(/^\/api\/upload\/([a-f0-9-]+)\/complete$/);
+            if (chunkCompleteMatch && request.method === 'POST') {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
+                    return jsonError('Rate limit exceeded', 429, origin);
+                }
+                const uploadId = chunkCompleteMatch[1];
+                const apiKey = env.FILE_API_KEY;
+                if (!apiKey) return jsonError('File service not configured', 503, origin);
+                try {
+                    const body = await safeJson(request);
+                    if (!body.fileId || !body.parts) {
+                        return jsonError('Missing fileId or parts', 400, origin);
+                    }
+                    const resp = await fetch(`https://file.kalpha.kr/api/files/chunked/${encodeURIComponent(uploadId)}/complete`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify(body)
+                    });
+                    if (!resp.ok) {
+                        const errBody = await resp.text();
+                        return new Response(errBody, { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+                    }
+                    const result = await resp.json();
+                    if (result.success && result.data) {
+                        const d = result.data;
+                        const uploadOrigin = new URL(request.url).origin;
+                        return new Response(JSON.stringify({
+                            full_url: `${uploadOrigin}/api/file/${d.id}`,
+                            filename: d.originalFilename,
+                            filesize: d.size,
+                            filetype: d.contentType || 'application/octet-stream'
+                        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+                    }
+                    return new Response(JSON.stringify({ error: 'Unexpected upload response' }), {
+                        status: 502,
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    });
+                } catch (_error) {
+                    console.error('Chunked complete error:', _error);
+                    return jsonError('Upload complete failed', 502, origin);
+                }
+            }
+
             if (url.pathname === '/api/upload' && request.method === 'POST') {
                     if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
                         return jsonError('Rate limit exceeded', 429, origin);

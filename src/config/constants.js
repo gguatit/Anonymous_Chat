@@ -89,6 +89,9 @@ export const UPLOAD = {
     MAX_FILENAME_LENGTH: 255,
     MAX_FILETYPE_LENGTH: 100,
     RATE_LIMIT: { windowMs: 60000, max: 10 },
+    WORKER_BODY_LIMIT: 100 * 1024 * 1024, // Worker 수신 한계
+    CHUNK_SIZE: 10 * 1024 * 1024,         // 기본 청크 10MB
+    CHUNK_CONCURRENCY: 3,                 // 동시 전송 청크 수
 };
 
 // Dead drop constants
