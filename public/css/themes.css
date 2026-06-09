@@ -664,25 +664,57 @@ html[data-theme="sakura"] .sakura-p4 {
 }
 [data-theme] .theme-dark-fixed { border-color: #374151; }
 [data-theme] .theme-dark-fixed .text-gray-100 { color: #f3f4f6; }
+[data-theme] .theme-dark-fixed .text-gray-300 { color: #d1d5db; }
 [data-theme] .theme-dark-fixed .text-gray-400 { color: #9ca3af; }
+
+/* Card background gradients */
+[data-theme] .theme-dark-fixed .from-red-900\/30 { --tw-gradient-from: rgba(127, 29, 29, 0.5); }
+[data-theme] .theme-dark-fixed .to-orange-900\/30 { --tw-gradient-to: rgba(124, 45, 18, 0.5); }
+[data-theme] .theme-dark-fixed .from-green-900\/30 { --tw-gradient-from: rgba(20, 83, 45, 0.5); }
+[data-theme] .theme-dark-fixed .to-teal-900\/30 { --tw-gradient-to: rgba(19, 78, 74, 0.5); }
+[data-theme] .theme-dark-fixed .from-purple-900\/30 { --tw-gradient-from: rgba(88, 28, 135, 0.5); }
+[data-theme] .theme-dark-fixed .to-blue-900\/30 { --tw-gradient-to: rgba(30, 58, 138, 0.5); }
+[data-theme] .theme-dark-fixed .from-emerald-900\/30 { --tw-gradient-from: rgba(6, 78, 59, 0.5); }
+
+/* Card borders */
+[data-theme] .theme-dark-fixed .border-red-700\/50 { border-color: rgba(185, 28, 28, 0.7); }
+[data-theme] .theme-dark-fixed .border-green-700\/50 { border-color: rgba(21, 128, 61, 0.7); }
+[data-theme] .theme-dark-fixed .border-purple-700\/50 { border-color: rgba(126, 34, 206, 0.7); }
+[data-theme] .theme-dark-fixed .border-emerald-700\/50 { border-color: rgba(4, 120, 87, 0.7); }
+
+/* Card hover borders */
+[data-theme] .theme-dark-fixed .hover\:border-red-600:hover { border-color: #dc2626; }
+[data-theme] .theme-dark-fixed .hover\:border-green-600:hover { border-color: #16a34a; }
+[data-theme] .theme-dark-fixed .hover\:border-purple-600:hover { border-color: #9333ea; }
+[data-theme] .theme-dark-fixed .hover\:border-emerald-600:hover { border-color: #059669; }
+
+/* Text colors */
 [data-theme] .theme-dark-fixed .text-red-300 { color: #fca5a5; }
 [data-theme] .theme-dark-fixed .text-red-400 { color: #f87171; }
 [data-theme] .theme-dark-fixed .text-red-500 { color: #ef4444; }
 [data-theme] .theme-dark-fixed .text-green-300 { color: #86efac; }
 [data-theme] .theme-dark-fixed .text-green-400 { color: #4ade80; }
+[data-theme] .theme-dark-fixed .text-green-500 { color: #22c55e; }
+[data-theme] .theme-dark-fixed .text-purple-300 { color: #d8b4fe; }
+[data-theme] .theme-dark-fixed .text-purple-400 { color: #c084fc; }
+[data-theme] .theme-dark-fixed .text-purple-500 { color: #a855f7; }
+[data-theme] .theme-dark-fixed .text-emerald-300 { color: #6ee7b7; }
+[data-theme] .theme-dark-fixed .text-emerald-400 { color: #34d399; }
+[data-theme] .theme-dark-fixed .text-emerald-500 { color: #10b981; }
+
+/* Hover text colors */
 [data-theme] .theme-dark-fixed .group-hover\:text-red-200:hover { color: #fecaca; }
 [data-theme] .theme-dark-fixed .group-hover\:text-red-300:hover { color: #fca5a5; }
 [data-theme] .theme-dark-fixed .group-hover\:text-red-400:hover { color: #f87171; }
 [data-theme] .theme-dark-fixed .group-hover\:text-green-200:hover { color: #bbf7d0; }
 [data-theme] .theme-dark-fixed .group-hover\:text-green-300:hover { color: #86efac; }
-[data-theme] .theme-dark-fixed .from-red-900\/30 { --tw-gradient-from: rgba(127, 29, 29, 0.3); }
-[data-theme] .theme-dark-fixed .to-orange-900\/30 { --tw-gradient-to: rgba(124, 45, 18, 0.3); }
-[data-theme] .theme-dark-fixed .from-green-900\/30 { --tw-gradient-from: rgba(20, 83, 45, 0.3); }
-[data-theme] .theme-dark-fixed .to-teal-900\/30 { --tw-gradient-to: rgba(19, 78, 74, 0.3); }
-[data-theme] .theme-dark-fixed .border-red-700\/50 { border-color: rgba(185, 28, 28, 0.5); }
-[data-theme] .theme-dark-fixed .border-green-700\/50 { border-color: rgba(21, 128, 61, 0.5); }
-[data-theme] .theme-dark-fixed .hover\:border-red-600:hover { border-color: #dc2626; }
-[data-theme] .theme-dark-fixed .hover\:border-green-600:hover { border-color: #16a34a; }
+[data-theme] .theme-dark-fixed .group-hover\:text-green-400:hover { color: #4ade80; }
+[data-theme] .theme-dark-fixed .group-hover\:text-purple-200:hover { color: #e9d5ff; }
+[data-theme] .theme-dark-fixed .group-hover\:text-purple-300:hover { color: #d8b4fe; }
+[data-theme] .theme-dark-fixed .group-hover\:text-purple-400:hover { color: #c084fc; }
+[data-theme] .theme-dark-fixed .group-hover\:text-emerald-200:hover { color: #a7f3d0; }
+[data-theme] .theme-dark-fixed .group-hover\:text-emerald-300:hover { color: #6ee7b7; }
+[data-theme] .theme-dark-fixed .group-hover\:text-emerald-400:hover { color: #34d399; }
 
 /* ============================================================
    Message Bubble Styles
