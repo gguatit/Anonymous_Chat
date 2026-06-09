@@ -6696,7 +6696,11 @@ var FileUploadManager = class {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ filename: file.name, totalSize: file.size, contentType: file.type })
     });
-    if (!initResp.ok) throw new Error(`Init failed: ${initResp.status}`);
+    if (!initResp.ok) {
+      const errText = await initResp.text();
+      console.error("Init response error:", initResp.status, errText);
+      throw new Error(`Init failed: ${initResp.status}`);
+    }
     const initData = await initResp.json();
     if (!initData.success || !initData.data) throw new Error("Invalid init response");
     const { uploadId, fileId } = initData.data;
@@ -6711,10 +6715,14 @@ var FileUploadManager = class {
         headers: { "Content-Type": "application/octet-stream" },
         body: blob
       });
-      if (!resp.ok) throw new Error(`Chunk ${partNumber} failed: ${resp.status}`);
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.error(`Chunk ${partNumber} error:`, resp.status, errText);
+        throw new Error(`Chunk ${partNumber} failed: ${resp.status}`);
+      }
       const result = await resp.json();
       if (!result.success) throw new Error(`Chunk ${partNumber} error: ${result.error?.message}`);
-      parts[partNumber - 1] = { partNumber: result.data.partNumber, etag: result.data.etag };
+      parts.push({ partNumber: result.data.partNumber, etag: result.data.etag });
       uploaded++;
       if (onProgress) onProgress(uploaded / totalChunks);
     };
@@ -6731,7 +6739,11 @@ var FileUploadManager = class {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileId, parts })
     });
-    if (!completeResp.ok) throw new Error(`Complete failed: ${completeResp.status}`);
+    if (!completeResp.ok) {
+      const errText = await completeResp.text();
+      console.error("Complete response error:", completeResp.status, errText);
+      throw new Error(`Complete failed: ${completeResp.status}`);
+    }
     const completeResult = await completeResp.json();
     let uploadedFileUrl;
     if (completeResult.full_url) {
