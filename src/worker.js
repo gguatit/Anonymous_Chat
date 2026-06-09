@@ -327,7 +327,7 @@ export default {
                 }
             }
 
-            const chunkPartMatch = url.pathname.match(/^\/api\/upload\/([a-f0-9-]+)\/part$/);
+            const chunkPartMatch = url.pathname.match(/^\/api\/upload\/([^/]+)\/part$/);
             if (chunkPartMatch && request.method === 'POST') {
                 if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
                     return jsonError('Rate limit exceeded', 429, origin);
@@ -353,7 +353,7 @@ export default {
                 }
             }
 
-            const chunkCompleteMatch = url.pathname.match(/^\/api\/upload\/([a-f0-9-]+)\/complete$/);
+            const chunkCompleteMatch = url.pathname.match(/^\/api\/upload\/([^/]+)\/complete$/);
             if (chunkCompleteMatch && request.method === 'POST') {
                 if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
                     return jsonError('Rate limit exceeded', 429, origin);
