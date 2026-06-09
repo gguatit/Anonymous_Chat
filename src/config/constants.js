@@ -84,14 +84,11 @@ export const AI_SUMMARY = {
 
 // File upload constants
 export const UPLOAD = {
-    MAX_BYTES: 250 * 1024 * 1024, // 250MB (file.kalpha.kr limit)
+    MAX_BYTES: 100 * 1024 * 1024, // 100MB (Worker 수신 한계)
     MAX_BODY_BYTES: 1024 * 1024,  // 1MB
     MAX_FILENAME_LENGTH: 255,
     MAX_FILETYPE_LENGTH: 100,
     RATE_LIMIT: { windowMs: 60000, max: 10 },
-    WORKER_BODY_LIMIT: 100 * 1024 * 1024, // Worker 수신 한계
-    CHUNK_SIZE: 10 * 1024 * 1024,         // 기본 청크 10MB
-    CHUNK_CONCURRENCY: 3,                 // 동시 전송 청크 수
 };
 
 // Dead drop constants
@@ -147,7 +144,7 @@ export const WS_RECONNECT = {
 export const FILE_UPLOAD_CLIENT = {
     MAX_FILES: 10,
     CONCURRENT_UPLOADS: 3,
-    MAX_BYTES: 250 * 1024 * 1024, // 250MB
+    MAX_BYTES: 100 * 1024 * 1024, // 100MB
 };
 
 // Client-side search configuration

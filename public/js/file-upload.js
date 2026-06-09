@@ -1,6 +1,6 @@
 // File Upload Manager
 import { formatFileSize, escapeHtml } from './utils.js';
-import { FILE_UPLOAD_CLIENT, UPLOAD } from '../../src/config/constants.js';
+import { FILE_UPLOAD_CLIENT } from '../../src/config/constants.js';
 
 export class FileUploadManager {
     constructor(apiBaseUrl, uploadEndpoint) {
@@ -302,9 +302,6 @@ export class FileUploadManager {
     }
 
     async uploadSingleFile(file, onProgress) {
-        if (file.size > UPLOAD.WORKER_BODY_LIMIT) {
-            return this.uploadChunkedFile(file, onProgress);
-        }
         return new Promise((resolve, reject) => {
             try {
                 const formData = new FormData();
@@ -380,98 +377,6 @@ export class FileUploadManager {
                 reject(error);
             }
         });
-    }
-
-    async uploadChunkedFile(file, onProgress) {
-        const chunkSize = UPLOAD.CHUNK_SIZE;
-        const totalChunks = Math.ceil(file.size / chunkSize);
-        const concurrency = UPLOAD.CHUNK_CONCURRENCY;
-
-        // Step 1: Initialize
-        const initResp = await fetch('/api/upload/init', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename: file.name, totalSize: file.size, contentType: file.type })
-        });
-        if (!initResp.ok) {
-            const errText = await initResp.text();
-            console.error('Init response error:', initResp.status, errText);
-            throw new Error(`Init failed: ${initResp.status}`);
-        }
-        const initData = await initResp.json();
-        if (!initData.success || !initData.data) throw new Error('Invalid init response');
-        const { uploadId, fileId } = initData.data;
-
-        // Step 2: Upload chunks
-        const parts = [];
-        let uploaded = 0;
-        const sendChunk = async (partNumber) => {
-            const start = (partNumber - 1) * chunkSize;
-            const end = Math.min(start + chunkSize, file.size);
-            const blob = file.slice(start, end);
-
-            const resp = await fetch(`/api/upload/${encodeURIComponent(uploadId)}/part?partNumber=${partNumber}&fileId=${encodeURIComponent(fileId)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/octet-stream' },
-                body: blob
-            });
-            if (!resp.ok) {
-                const errText = await resp.text();
-                console.error(`Chunk ${partNumber} error:`, resp.status, errText);
-                throw new Error(`Chunk ${partNumber} failed: ${resp.status}`);
-            }
-            const result = await resp.json();
-            if (!result.success) throw new Error(`Chunk ${partNumber} error: ${result.error?.message}`);
-            console.log(`Part ${partNumber} response:`, JSON.stringify(result));
-            parts.push({ partNumber: result.data.partNumber || partNumber, etag: result.data.etag || result.data.ETag });
-            uploaded++;
-            if (onProgress) onProgress(uploaded / totalChunks);
-        };
-
-        for (let i = 0; i < totalChunks; i += concurrency) {
-            const batch = [];
-            for (let j = i; j < Math.min(i + concurrency, totalChunks); j++) {
-                batch.push(sendChunk(j + 1));
-            }
-            await Promise.all(batch);
-        }
-
-        // Step 3: Complete
-        parts.sort((a, b) => a.partNumber - b.partNumber);
-        const completeBody = JSON.stringify({ fileId, parts });
-        console.log('Complete request:', completeBody.substring(0, 500));
-        const completeResp = await fetch(`/api/upload/${encodeURIComponent(uploadId)}/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: completeBody
-        });
-        if (!completeResp.ok) {
-            const errText = await completeResp.text();
-            console.error('Complete response error:', completeResp.status, errText);
-            throw new Error(`Complete failed: ${completeResp.status}`);
-        }
-        const completeResult = await completeResp.json();
-
-        let uploadedFileUrl;
-        if (completeResult.full_url) {
-            uploadedFileUrl = completeResult.full_url;
-        } else if (completeResult.url && completeResult.url.startsWith('http')) {
-            uploadedFileUrl = completeResult.url;
-        } else if (completeResult.url) {
-            if (!this.apiBaseUrl) throw new Error('Upload not configured');
-            uploadedFileUrl = `${this.apiBaseUrl}${completeResult.url}`;
-        } else {
-            throw new Error('Invalid upload response');
-        }
-
-        if (onProgress) onProgress(1);
-
-        return {
-            url: uploadedFileUrl,
-            filename: file.name,
-            filesize: file.size,
-            filetype: file.type
-        };
     }
 
     hasFile() {
