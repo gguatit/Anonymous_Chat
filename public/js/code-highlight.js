@@ -140,14 +140,17 @@ export function renderCodeBlock(code, lang, sanitizeFn) {
             try {
                 Prism.highlightElement(codeEl);
             } catch (_e) { /* ignore */ }
-        } else if (!userSpecifiedLang && typeof hljs !== 'undefined') {
+        } else if (typeof hljs !== 'undefined') {
             try {
-                const result = hljs.highlightAuto(trimmedCode);
+                const result = hljs.highlightAuto(trimmedCode, resolvedLang ? [resolvedLang] : undefined);
                 codeEl.innerHTML = result.value;
                 if (result.language) {
-                    codeEl.className += ` language-${result.language}`;
+                    codeEl.className = `hljs language-${result.language}`;
                     const headerLang = codeEl.closest('.code-block-wrapper')?.querySelector('.code-block-lang');
-                    if (headerLang && !displayLang) {
+                    if (!headerLang) {
+                        const header = codeEl.closest('.code-block-wrapper')?.querySelector('.code-block-header');
+                        if (header) header.insertAdjacentHTML('afterbegin', `<span class="code-block-lang">${sanitizeFn(result.language)}</span>`);
+                    } else if (!displayLang) {
                         headerLang.textContent = result.language;
                     }
                 }
