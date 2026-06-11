@@ -3488,8 +3488,8 @@ var OGPreviewManager = class {
 };
 
 // public/js/theme.js?v=1.0.0
-var THEMES = ["dark", "light", "midnight", "ocean", "forest", "amethyst", "sunset", "sakura"];
-var META_COLORS = { dark: "#1F2937", light: "#FFFFFF", midnight: "#1E293B", ocean: "#134E4A", forest: "#14532D", amethyst: "#1A0A2E", sunset: "#292524", sakura: "#FFF5F7" };
+var THEMES = ["dark", "light", "midnight", "amethyst", "sunset", "sakura", "evernight"];
+var META_COLORS = { dark: "#1F2937", light: "#FFFFFF", midnight: "#1E293B", amethyst: "#1A0A2E", sunset: "#292524", sakura: "#FFF5F7", evernight: "#18161C" };
 var ThemeManager = class {
   constructor() {
     this.options = document.querySelectorAll(".theme-option");

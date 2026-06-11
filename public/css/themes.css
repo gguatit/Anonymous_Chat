@@ -260,6 +260,42 @@
   --c-scrollbar: #F4DCE8;
   --sender-sat: 45; --sender-lgt: 30; --sender-alpha: 0.85; --sender-name-sat: 55; --sender-name-lgt: 25;
 }
+
+/* ============================================================
+   Theme: 에버나이트 (EverNight)
+   ============================================================ */
+[data-theme="evernight"] {
+  --c-bg-900: #18161C; --c-bg-800: #231D24; --c-bg-700: #4A324F;
+  --c-bg-600: #6E4E75; --c-bg-500: #8A6A95;
+  --c-tx-100: #E8D5D0; --c-tx-200: #D8A5B8; --c-tx-300: #B28095;
+  --c-tx-400: #6E4E75; --c-tx-500: #4A324F;
+  --c-bd-700: #4A324F; --c-bd-600: #6E4E75;
+  --c-hv-700: #4A324F; --c-hv-600: #6E4E75; --c-hv-500: #8A6A95;
+  --c-blue-600: #6E4E75; --c-blue-400: #9E8EBC; --c-blue-300: #C4B8E0;
+  --c-blue-bg-o: rgba(110,78,117,0.35); --c-blue-ring: #8A6A95;
+  --c-red-600: #5A1D28; --c-red-400: #B2303C; --c-red-300: #D88A98;
+  --c-red-bg-o: rgba(90,29,40,0.5); --c-red-bd: #8F1F2D;
+  --c-gr-600: #4A5A4A; --c-gr-400: #7AB47A; --c-gr-300: #A4D4A4; --c-gr-bd-o: rgba(74,90,74,0.4);
+  --c-ye-600: #7A6A40; --c-ye-400: #C4A05C; --c-ye-300: #E0C890;
+  --c-ye-bg-o: rgba(122,106,64,0.4);
+  --c-em-600: #5A6E5A; --c-em-400: #8CBC8C; --c-em-300: #B4DCB4; --c-em-bd: #6E8E6E;
+  --c-pur-600: #6E4E75; --c-pur-400: #AE8EB8; --c-pur-300: #D4C4DC;
+  --c-te-600: #5A6E6E; --c-te-400: #8CBCBC;
+  --c-in-600: #5A4E7A; --c-in-400: #9C8EC4;
+  --c-or-600: #9C5A30; --c-or-400: #E08A60; --c-or-300: #F4B490;
+  --c-cy-600: #5A7A8A; --c-cy-400: #8CBCCC; --c-cy-bd-o: rgba(90,122,138,0.4);
+  --c-am-600: #9C7A30; --c-am-400: #E0B45C; --c-am-300: #F4D490;
+  --c-pi-400: #C46A8A; --c-pi-300: #E8A4BC;
+  --c-ro-400: #D49CA4;
+  --c-sk-400: #6AA4BC;
+  --c-vi-400: #A48EC4;
+  --c-white: #E8D5D0; --c-black-bg: #18161C; --c-black-o80: rgba(24,22,28,0.85); --c-black-o70: rgba(24,22,28,0.75); --c-black-o60: rgba(24,22,28,0.65);
+  --c-code-bg: #4A324F; --c-code-bd: #6E4E75; --c-code-header: #231D24; --c-code-lang: #B28095; --c-code-code: #E8D5D0;
+  --c-inline-bg: rgba(74,50,79,0.5); --c-inline-code: #E8D5D0; --c-code-copy: #B28095; --c-code-copy-bd: #6E4E75; --c-code-copy-hv: #E8D5D0; --c-code-copy-bg-hv: #6E4E75; --c-code-copy-bd-hv: #8A6A95;
+  --c-scrollbar: #4A324F;
+  --sender-sat: 20; --sender-lgt: 25; --sender-alpha: 0.85; --sender-name-sat: 15; --sender-name-lgt: 55;
+}
+
 /* ============================================================
    Class Mappings — one rule per class, all themes auto-applied
    ============================================================ */
@@ -603,6 +639,59 @@ html[data-theme="sakura"] .sakura-p3 {
 }
 html[data-theme="sakura"] .sakura-p4 {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'%3E%3Cdefs%3E%3CradialGradient id='pg4'%3E%3Cstop offset='0%25' stop-color='%23FFF0F8'/%3E%3Cstop offset='40%25' stop-color='%23FFE0F0'/%3E%3Cstop offset='100%25' stop-color='%23FFCCE0'/%3E%3C/radialGradient%3E%3Cfilter id='sd4'%3E%3CfeDropShadow dx='0' dy='1' stdDeviation='0.5' flood-color='%23D8B0C4' flood-opacity='0.18'/%3E%3C/filter%3E%3C/defs%3E%3Cpath d='M12 1.5 C6 4, 1.5 10, 3 18 C3.5 21, 6 27, 8.5 30 L10.5 30 L12 27 L13.5 30 L15.5 30 C18 27, 20.5 21, 21 18 C22.5 10, 18 4, 12 1.5Z' fill='url(%23pg4)' filter='url(%23sd4)'/%3E%3C/svg%3E");
+}
+
+/* ── EverNight particle effect ── */
+html[data-theme="evernight"] .evernight-particle {
+    position: fixed;
+    top: -15%;
+    z-index: 9998;
+    pointer-events: none;
+    user-select: none;
+    width: var(--p-size);
+    height: var(--p-size);
+    animation-name: var(--drift-anim);
+    animation-duration: var(--fall-duration);
+    animation-delay: var(--fall-delay);
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    opacity: 0;
+}
+@keyframes evDriftL {
+    0%   { transform: translateY(-10vh) rotate(0deg) translateX(-5px); opacity: 0; }
+    5%   { opacity: var(--p-opacity, 0.2); }
+    25%  { transform: translateY(25vh) rotate(60deg) translateX(-15px); }
+    50%  { transform: translateY(55vh) rotate(180deg) translateX(-10px); }
+    75%  { transform: translateY(80vh) rotate(300deg) translateX(-15px); }
+    95%  { transform: translateY(105vh) rotate(420deg) translateX(-5px); }
+    100% { transform: translateY(115vh) rotate(480deg) translateX(-3px); opacity: 0; }
+}
+@keyframes evDriftR {
+    0%   { transform: translateY(-10vh) rotate(0deg) translateX(5px); opacity: 0; }
+    5%   { opacity: var(--p-opacity, 0.2); }
+    25%  { transform: translateY(25vh) rotate(-60deg) translateX(15px); }
+    50%  { transform: translateY(55vh) rotate(-180deg) translateX(10px); }
+    75%  { transform: translateY(80vh) rotate(-300deg) translateX(15px); }
+    95%  { transform: translateY(105vh) rotate(-420deg) translateX(5px); }
+    100% { transform: translateY(115vh) rotate(-480deg) translateX(3px); opacity: 0; }
+}
+@keyframes evDriftSlow {
+    0%   { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
+    5%   { opacity: var(--p-opacity, 0.2); }
+    25%  { transform: translateY(20vh) rotate(30deg); }
+    50%  { transform: translateY(48vh) rotate(90deg); }
+    75%  { transform: translateY(72vh) rotate(180deg); }
+    95%  { transform: translateY(100vh) rotate(270deg); }
+    100% { transform: translateY(115vh) rotate(320deg); opacity: 0; }
+}
+@keyframes evDriftGentle {
+    0%   { transform: translateY(-10vh) rotate(0deg) translateX(0); opacity: 0; }
+    5%   { opacity: var(--p-opacity, 0.2); }
+    25%  { transform: translateY(22vh) rotate(45deg) translateX(8px); }
+    50%  { transform: translateY(50vh) rotate(135deg) translateX(-6px); }
+    75%  { transform: translateY(78vh) rotate(240deg) translateX(4px); }
+    95%  { transform: translateY(102vh) rotate(340deg) translateX(-3px); }
+    100% { transform: translateY(115vh) rotate(400deg) translateX(0); opacity: 0; }
 }
 
 @keyframes sakuraDriftL {
