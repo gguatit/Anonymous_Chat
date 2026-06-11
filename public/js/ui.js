@@ -530,7 +530,7 @@ export class UIManager {
         }
     }
 
-    updateReaction(messageId, emoji, count, reactionSessions, currentSessionId) {
+    updateReaction(messageId, emoji, count, reactedBy, currentSessionId) {
         const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
         if (!messageDiv) return;
 
@@ -559,7 +559,7 @@ export class UIManager {
             bar.appendChild(pill);
         }
 
-        const userReacted = reactionSessions && reactionSessions.includes(currentSessionId);
+        const userReacted = reactedBy === currentSessionId;
         pill.className = userReacted
             ? 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-600 text-white ring-1 ring-blue-400'
             : 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-600 text-gray-200 hover:bg-gray-500';

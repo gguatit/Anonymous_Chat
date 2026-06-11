@@ -929,7 +929,7 @@ export class ChatRoom {
             emoji: data.emoji,
             count: message.reactions[data.emoji] || 0,
             sessionId,
-            reactionSessions: message.reactionSessions[data.emoji] || []
+            reactedBy: sessionId
         });
     }
 

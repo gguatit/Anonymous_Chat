@@ -332,7 +332,7 @@ class ChatClient {
                 this.ui.removeMessage(data.messageId);
                 break;
             case 'message_reaction':
-                this.ui.updateReaction(data.messageId, data.emoji, data.count, data.reactionSessions, this.sessionManager.getSessionId());
+                this.ui.updateReaction(data.messageId, data.emoji, data.count, data.reactedBy, this.sessionManager.getSessionId());
                 break;
             case 'all_messages_deleted':
                 // Clear all messages from UI
