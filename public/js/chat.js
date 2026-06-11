@@ -592,7 +592,9 @@ class ChatClient {
             if (replyingTo.isSecret) {
                 // 비밀 메시지로 보내기 - Dead Drop에 저장
                 try {
+                    console.log('[Secret] Storing message:', trimmedMessage ? trimmedMessage.substring(0, 50) : '[file]');
                     const deadDropResult = await this.deadDrop.store(trimmedMessage || '[파일]');
+                    console.log('[Secret] Store result:', deadDropResult);
                     messageData.replyTo = {
                         messageId: replyingTo.messageId,
                         content: replyingTo.content,
@@ -889,15 +891,28 @@ class ChatClient {
 
         try {
             // Dead Drop에서 메시지 읽기 (한 번만 가능)
+            console.log('[Secret] Reading data for id:', secretId);
             const result = await this.deadDrop.read(secretId);
+            console.log('[Secret] Read result:', result);
 
             // 버튼 숨기고 메시지 표시
             btn.remove();
             contentDiv.classList.remove('hidden');
+            const formatted = this.ui.formatMessageContent(result.message);
             contentDiv.innerHTML = `
                 <div class="text-green-400 text-xs mb-2">✓ 비밀 메시지가 공개되었습니다 (이 메시지는 삭제되었습니다)</div>
-                <div class="text-gray-100">${escapeHtml(result.message)}</div>
+                <div class="text-gray-100 whitespace-pre-wrap">${formatted}</div>
             `;
+            // Trigger syntax highlighting for code blocks
+            setTimeout(() => {
+                contentDiv.querySelectorAll('pre.code-block code[class*="language-"]').forEach(el => {
+                    if (typeof Prism !== 'undefined') {
+                        try { Prism.highlightElement(el); } catch (_e) {}
+                    } else if (typeof hljs !== 'undefined') {
+                        try { hljs.highlightElement(el); } catch (_e) {}
+                    }
+                });
+            }, 50);
         } catch (error) {
             console.error('Failed to reveal secret:', error);
             btn.textContent = '읽기 실패';

@@ -395,7 +395,7 @@ var WebSocketManager = class {
 };
 
 // public/js/utils.js
-function escapeHtml2(text) {
+function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = String(text || "");
   return div.innerHTML;
@@ -746,9 +746,9 @@ var rendering = {
       const replyLabel = data.replyTo.isOwnMessage ? "\uB0B4 \uBA54\uC2DC\uC9C0" : "\uC775\uBA85";
       contentHtml += `
                 <div class="reply-reference cursor-pointer hover:bg-gray-700/50 transition-colors bg-gray-800/50 border-l-2 border-gray-500 pl-2 py-1 mb-2 text-xs"
-                     data-reply-to-id="${escapeHtml2(data.replyTo.messageId || "")}">
+                     data-reply-to-id="${escapeHtml(data.replyTo.messageId || "")}">
                     <div class="text-gray-400">${replyLabel}\uC5D0\uAC8C \uB2F5\uC7A5:</div>
-                    <div class="text-gray-300 italic">${escapeHtml2(truncatedReply)}</div>
+                    <div class="text-gray-300 italic">${escapeHtml(truncatedReply)}</div>
                 </div>
             `;
     }
@@ -762,7 +762,7 @@ var rendering = {
                                 <span class="text-gray-300 text-sm">\uBE44\uBC00 \uBA54\uC2DC\uC9C0</span>
                             </div>
                             <button class="reveal-secret-btn w-full bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded transition-colors text-sm font-medium"
-                                    data-secret-id="${escapeHtml2(data.replyTo.secretId)}">
+                                    data-secret-id="${escapeHtml(data.replyTo.secretId)}">
                                 \uBE44\uBC00 \uBA54\uC2DC\uC9C0 \uC77D\uAE30 (\uD55C \uBC88\uB9CC \uBCFC \uC218 \uC788\uC74C)
                             </button>
                             <div class="secret-message-content hidden mt-3 p-3 bg-gray-800/50 rounded text-sm break-words"></div>
@@ -872,7 +872,7 @@ var rendering = {
   formatMessageContent(content) {
     if (!content) return "";
     if (!/```/.test(content) && isLikelyCode(content)) {
-      return renderCodeBlock(content, "", (text) => escapeHtml2(text));
+      return renderCodeBlock(content, "", (text) => escapeHtml(text));
     }
     let processed = content;
     const codeBlocks = [];
@@ -889,7 +889,7 @@ var rendering = {
       inlineCodes.push(code);
       return placeholder;
     });
-    const sanitized = escapeHtml2(processed);
+    const sanitized = escapeHtml(processed);
     let step1 = sanitized;
     const urlPattern = /(https?:\/\/[^\s<">]+[^\s<".,;)])|(\bwww\.[^\s<">]+[^\s<".,;)])|(\b[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}(?::[0-9]+)?(?:\/[^\s<"]*[^\s<".,;)])?)/gi;
     step1 = step1.replace(urlPattern, (match) => {
@@ -957,11 +957,11 @@ var rendering = {
     }
     for (let i = 0; i < codeBlocks.length; i++) {
       const { lang, code } = codeBlocks[i];
-      formatted = formatted.replace(`${CODE_BLOCK_PREFIX}${i}${PLACEHOLDER_SUFFIX}`, renderCodeBlock(code, lang, (text) => escapeHtml2(text)));
+      formatted = formatted.replace(`${CODE_BLOCK_PREFIX}${i}${PLACEHOLDER_SUFFIX}`, renderCodeBlock(code, lang, (text) => escapeHtml(text)));
     }
     for (let i = 0; i < inlineCodes.length; i++) {
       const code = inlineCodes[i];
-      const safeCode = escapeHtml2(code);
+      const safeCode = escapeHtml(code);
       formatted = formatted.replace(`${INLINE_CODE_PREFIX}${i}${PLACEHOLDER_SUFFIX}`, `<code class="inline-code">${safeCode}</code>`);
     }
     return formatted.replace(/\n/g, "<br>");
@@ -972,7 +972,7 @@ var rendering = {
       return '<div class="text-red-400 text-sm">Invalid file URL</div>';
     }
     const fileType = file.filetype || "";
-    const fileName = escapeHtml2(file.filename || "file");
+    const fileName = escapeHtml(file.filename || "file");
     const fileSize = this.formatFileSize(file.filesize || 0);
     const safeUrl = this.sanitizeUrl(file.url);
     if (fileType.startsWith("image/")) {
@@ -1004,7 +1004,7 @@ var rendering = {
       return `
                 <div class="mt-2">
                     <video controls class="max-w-full max-h-96 rounded-lg border border-gray-600">
-                        <source src="${safeUrl}" type="${escapeHtml2(fileType)}">
+                        <source src="${safeUrl}" type="${escapeHtml(fileType)}">
                         Your browser does not support the video tag.
                     </video>
                     <div class="mt-1 text-xs text-gray-400">
@@ -1017,7 +1017,7 @@ var rendering = {
       return `
                 <div class="mt-2">
                     <audio controls class="w-full max-w-md">
-                        <source src="${safeUrl}" type="${escapeHtml2(fileType)}">
+                        <source src="${safeUrl}" type="${escapeHtml(fileType)}">
                         Your browser does not support the audio tag.
                     </audio>
                     <div class="mt-1 text-xs text-gray-400">
@@ -1052,7 +1052,7 @@ var rendering = {
       const galleryData = btoa(encodeURIComponent(JSON.stringify(images.map((img) => ({ url: img.url, filename: img.filename })))));
       images.forEach((file, index) => {
         const safeUrl = this.sanitizeUrl(file.url);
-        const fileName = escapeHtml2(file.filename || "image");
+        const fileName = escapeHtml(file.filename || "image");
         const showOverlay = index === 5 && images.length > 6;
         const hiddenClass = index >= 6 ? "hidden" : "";
         html += `
@@ -1374,7 +1374,7 @@ var editing = {
             <div class="flex flex-col gap-2">
                 <textarea class="edit-input bg-gray-800 text-gray-100 border border-gray-600 rounded px-2 py-1 text-sm w-full resize-none"
                           rows="2"
-                          maxlength="7500">${escapeHtml2(originalContent)}</textarea>
+                          maxlength="7500">${escapeHtml(originalContent)}</textarea>
                 <div class="flex gap-2 justify-end">
                     <button class="cancel-edit-btn text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded">\uCDE8\uC18C</button>
                     <button class="save-edit-btn text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded">\uC800\uC7A5</button>
@@ -1388,7 +1388,7 @@ var editing = {
     editInput.setSelectionRange(editInput.value.length, editInput.value.length);
     cancelBtn.addEventListener("click", () => {
       if (originalContent) {
-        contentDiv.innerHTML = escapeHtml2(originalContent);
+        contentDiv.innerHTML = escapeHtml(originalContent);
       } else {
         contentDiv.remove();
       }
@@ -1400,7 +1400,7 @@ var editing = {
         return;
       }
       if (newContent === originalContent) {
-        contentDiv.innerHTML = escapeHtml2(originalContent);
+        contentDiv.innerHTML = escapeHtml(originalContent);
         return;
       }
       if (window.chatClient) {
@@ -1912,7 +1912,7 @@ var UIManager = class {
       return;
     }
     this.typingIndicator.classList.remove("hidden");
-    const users = Array.from(typingUsers.values()).map((u) => escapeHtml2(u.nickname || "\uC775\uBA85"));
+    const users = Array.from(typingUsers.values()).map((u) => escapeHtml(u.nickname || "\uC775\uBA85"));
     let text;
     if (count === 1) {
       text = `${users[0]}\uB2D8\uC774 \uC785\uB825 \uC911`;
@@ -2017,7 +2017,7 @@ var UIManager = class {
             <div class="flex items-start justify-between gap-2">
                 <div class="flex-1">
                     <div class="text-xs text-blue-400 mb-1">${this.replyingTo.isOwnMessage ? "\uB0B4 \uBA54\uC2DC\uC9C0" : "\uC775\uBA85"}\uC5D0\uAC8C \uB2F5\uC7A5</div>
-                    <div class="text-gray-300">${escapeHtml2(truncatedContent)}</div>
+                    <div class="text-gray-300">${escapeHtml(truncatedContent)}</div>
                 </div>
                 <button class="cancel-reply-btn text-gray-400 hover:text-white flex-shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2156,7 +2156,7 @@ var FileUploadManager = class {
         const reader = new FileReader();
         reader.onload = (e) => {
           item.innerHTML = `
-                        <img src="${e.target.result}" alt="${escapeHtml2(file.name)}" class="w-full h-full object-cover">
+                        <img src="${e.target.result}" alt="${escapeHtml(file.name)}" class="w-full h-full object-cover">
                         <button class="remove-file-btn absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-xs"
                             data-index="${index}">\xD7</button>
                     `;
@@ -2168,7 +2168,7 @@ var FileUploadManager = class {
                         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        <span class="text-[10px] px-1 truncate w-full text-center">${escapeHtml2(file.name)}</span>
+                        <span class="text-[10px] px-1 truncate w-full text-center">${escapeHtml(file.name)}</span>
                     </div>
                     <button class="remove-file-btn absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-xs"
                         data-index="${index}">\xD7</button>
@@ -2904,8 +2904,8 @@ var SearchManager = class {
   }
   highlightText(text) {
     const textTerms = this.getQueryWithoutTags();
-    if (!text && !textTerms) return escapeHtml2(text || "");
-    const escaped = escapeHtml2(text || "");
+    if (!text && !textTerms) return escapeHtml(text || "");
+    const escaped = escapeHtml(text || "");
     if (!textTerms) return escaped;
     const terms = textTerms.toLowerCase().split(/\s+/).filter((t) => t.length > 0);
     let result = escaped;
@@ -2935,7 +2935,7 @@ var SearchManager = class {
                     <svg class="w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <p class="text-sm">"${escapeHtml2(this.currentQuery)}"\uC5D0 \uB300\uD55C \uAC80\uC0C9 \uACB0\uACFC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</p>
+                    <p class="text-sm">"${escapeHtml(this.currentQuery)}"\uC5D0 \uB300\uD55C \uAC80\uC0C9 \uACB0\uACFC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</p>
                     <p class="text-xs text-gray-600 mt-1">\uB2E4\uB978 \uAC80\uC0C9\uC5B4\uB97C \uC2DC\uB3C4\uD574\uBCF4\uC138\uC694</p>
                 </div>
             `;
@@ -2953,7 +2953,7 @@ var SearchManager = class {
         hour: "2-digit",
         minute: "2-digit"
       });
-      const senderName = escapeHtml2(msg.nickname || "Anonymous");
+      const senderName = escapeHtml(msg.nickname || "Anonymous");
       const contentPreview = msg.content.length > SEARCH_CLIENT.RESULT_PREVIEW_LENGTH ? msg.content.substring(0, SEARCH_CLIENT.RESULT_PREVIEW_LENGTH) + "..." : msg.content;
       const highlightedContent = this.highlightText(contentPreview);
       let fileBadge = "";
@@ -2963,12 +2963,12 @@ var SearchManager = class {
           fileBadge = `<span class="text-xs text-emerald-400 ml-1.5">
                         <svg class="w-3.5 h-3.5 inline-block mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>${escapeHtml2(msg.fileName || "image")}</span>`;
+                        </svg>${escapeHtml(msg.fileName || "image")}</span>`;
         } else {
           fileBadge = `<span class="text-xs text-amber-400 ml-1.5">
                         <svg class="w-3.5 h-3.5 inline-block mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-4.586 4.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.586a4 4 0 105.657 5.657l4.585-4.586"/>
-                        </svg>${escapeHtml2(msg.fileName || "file")}</span>`;
+                        </svg>${escapeHtml(msg.fileName || "file")}</span>`;
         }
       }
       const tagBadges = this.renderTagBadges(msg.tags);
@@ -3194,7 +3194,7 @@ var SecurityHeadersManager = class {
     return url;
   }
   esc(text) {
-    return escapeHtml2(text);
+    return escapeHtml(text);
   }
   open() {
     this.overlay.classList.remove("hidden");
@@ -3483,7 +3483,7 @@ var OGPreviewManager = class {
     }
   }
   _esc(text) {
-    return escapeHtml2(text);
+    return escapeHtml(text);
   }
 };
 
@@ -4052,7 +4052,9 @@ var ChatClient = class {
     if (replyingTo) {
       if (replyingTo.isSecret) {
         try {
+          console.log("[Secret] Storing message:", trimmedMessage ? trimmedMessage.substring(0, 50) : "[file]");
           const deadDropResult = await this.deadDrop.store(trimmedMessage || "[\uD30C\uC77C]");
+          console.log("[Secret] Store result:", deadDropResult);
           messageData.replyTo = {
             messageId: replyingTo.messageId,
             content: replyingTo.content,
@@ -4293,13 +4295,31 @@ var ChatClient = class {
     btn.disabled = true;
     btn.textContent = "\uC77D\uB294 \uC911...";
     try {
+      console.log("[Secret] Reading data for id:", secretId);
       const result = await this.deadDrop.read(secretId);
+      console.log("[Secret] Read result:", result);
       btn.remove();
       contentDiv.classList.remove("hidden");
+      const formatted = this.ui.formatMessageContent(result.message);
       contentDiv.innerHTML = `
                 <div class="text-green-400 text-xs mb-2">\u2713 \uBE44\uBC00 \uBA54\uC2DC\uC9C0\uAC00 \uACF5\uAC1C\uB418\uC5C8\uC2B5\uB2C8\uB2E4 (\uC774 \uBA54\uC2DC\uC9C0\uB294 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4)</div>
-                <div class="text-gray-100">${escapeHtml(result.message)}</div>
+                <div class="text-gray-100 whitespace-pre-wrap">${formatted}</div>
             `;
+      setTimeout(() => {
+        contentDiv.querySelectorAll('pre.code-block code[class*="language-"]').forEach((el) => {
+          if (typeof Prism !== "undefined") {
+            try {
+              Prism.highlightElement(el);
+            } catch (_e) {
+            }
+          } else if (typeof hljs !== "undefined") {
+            try {
+              hljs.highlightElement(el);
+            } catch (_e) {
+            }
+          }
+        });
+      }, 50);
     } catch (error) {
       console.error("Failed to reveal secret:", error);
       btn.textContent = "\uC77D\uAE30 \uC2E4\uD328";
