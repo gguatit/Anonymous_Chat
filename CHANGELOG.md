@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-06-10
+
+### 🚀 신규 기능
+- **Highlight.js 코드 자동 감지**: ```언어 미지정 코드블록에 190개 언어 자동 감지 (Prism 유지)
+- **Kalpha API 연동**: `file.kalpha.kr` 파일서버 + `api.kalpha.kr` API 프록시 연동
+- **파일 업로드 100MB**: Worker 제한에 맞춰 100MB로 통일
+
+### 🔧 개선
+- **Prism CSS 로컬 번들화**: CDN 불안정성 해소 (One Dark 테마)
+- **Prism JS**: 번들 제거 → CDN 글로벌로 복원 (ESBuild 호환성 이슈)
+- **footer 카드 색상**: `themes.css`에서 불투명도 0.3→0.5, 누락 카드 오버라이드 추가
+- **CSP**: `kalpha.kr` iframe 허용, `cdnjs.cloudflare.com` 정리
+
+### 🐛 버그 수정
+- `chat.js`: `this.ui.sanitizeInput` → `escapeHtml` (UI 분할 잔여 버그)
+- `utils.js`: `/api/file/` 프록시 URL 허용
+- `code-highlight.js`: `Prism` → `window.Prism` (ES module strict mode)
+- chunk 업로드 코드 제거 (file.kalpha.kr API 미지원)
+
 ## 2026-06-09
 
 ### 🔧 코드 품질/성능 전반 개선
