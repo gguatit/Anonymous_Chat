@@ -478,9 +478,6 @@ function resolveLangAlias(lang) {
   const lower = lang.toLowerCase();
   return LANG_ALIASES[lower] || lower;
 }
-function getDisplayLang(inputLang, resolvedLang) {
-  return inputLang || resolvedLang || "";
-}
 function detectLanguage(content) {
   const trimmed = content.trim();
   if (/^#include\s*[<"]/m.test(trimmed)) return "cpp";
@@ -510,11 +507,12 @@ function detectLanguage(content) {
 }
 function renderCodeBlock(code, lang, sanitizeFn) {
   const trimmedCode = code.replace(/^\n+|\n+$/g, "");
+  const userSpecifiedLang = !!lang;
   let resolvedLang = resolveLangAlias(lang);
   if (!resolvedLang) {
     resolvedLang = detectLanguage(trimmedCode);
   }
-  const displayLang = getDisplayLang(lang, resolvedLang);
+  const displayLang = userSpecifiedLang ? lang.toLowerCase() : resolvedLang || "";
   const langLabel = displayLang ? `<span class="code-block-lang">${sanitizeFn(displayLang)}</span>` : "";
   const copyBtnId = "copy_" + Math.random().toString(36).substring(2, 9);
   const codeId = "code_" + Math.random().toString(36).substring(2, 9);
@@ -529,9 +527,23 @@ function renderCodeBlock(code, lang, sanitizeFn) {
     </div>`;
   setTimeout(() => {
     const codeEl = document.getElementById(codeId);
-    if (codeEl && typeof Prism !== "undefined" && resolvedLang) {
+    if (!codeEl) return;
+    if (userSpecifiedLang && typeof Prism !== "undefined" && resolvedLang) {
       try {
         Prism.highlightElement(codeEl);
+      } catch (_e) {
+      }
+    } else if (!userSpecifiedLang && typeof hljs !== "undefined") {
+      try {
+        const result = hljs.highlightAuto(trimmedCode);
+        codeEl.innerHTML = result.value;
+        if (result.language) {
+          codeEl.className += ` language-${result.language}`;
+          const headerLang = codeEl.closest(".code-block-wrapper")?.querySelector(".code-block-lang");
+          if (headerLang && !displayLang) {
+            headerLang.textContent = result.language;
+          }
+        }
       } catch (_e) {
       }
     }
