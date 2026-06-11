@@ -163,6 +163,17 @@ export class ChatRoom {
             }
         }
 
+        // Internal DO destruction (called by ChannelRegistry cleanup)
+        if (url.pathname === '/destroy') {
+            if (request.headers.get('X-HMAC-Secret') !== this.env.HMAC_SECRET) {
+                return new Response('Forbidden', { status: 403 });
+            }
+            await this.deleteChannel();
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         const adminResult = await dispatchAdminRoute(this, url, request, HMAC_SECRET);
         if (adminResult !== null) return adminResult;
 

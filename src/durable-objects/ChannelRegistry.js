@@ -1,4 +1,4 @@
-import { CHANNEL } from '../config/constants.js';
+import { CHANNEL, CLEANUP_INTERVAL_MS } from '../config/constants.js';
 import { sanitizeInput, safeJson } from '../utils/helpers.js';
 import { validateChannelName } from '../utils/validate.js';
 
@@ -14,8 +14,9 @@ export class ChannelRegistry {
     constructor(state, env) {
         this.state = state;
         this.env = env;
-        this.channels = new Map(); // slug -> { name, createdBy, createdAt, lastActive }
+        this.channels = new Map();
         this.initialized = false;
+        this.cleanupInterval = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
     }
 
     async initialize() {
@@ -276,4 +277,27 @@ export class ChannelRegistry {
         });
     }
 
+    async cleanup() {
+        if (!this.initialized) return;
+        const now = Date.now();
+        let changed = false;
+
+        for (const [slug, info] of this.channels) {
+            if (now - info.lastActive > CHANNEL.EMPTY_TTL) {
+                this.channels.delete(slug);
+                changed = true;
+                try {
+                    const roomId = this.env.CHAT_ROOM.idFromName('channel:' + slug);
+                    const room = this.env.CHAT_ROOM.get(roomId);
+                    await room.fetch(new Request('https://dummy/destroy', {
+                        headers: { 'X-HMAC-Secret': this.env.HMAC_SECRET }
+                    }));
+                } catch (_e) { /* DO delete best-effort */ }
+            }
+        }
+
+        if (changed) {
+            await this.persist();
+        }
+    }
 }
