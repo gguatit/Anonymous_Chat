@@ -644,54 +644,19 @@ html[data-theme="sakura"] .sakura-p4 {
 /* ── EverNight particle effect ── */
 html[data-theme="evernight"] .evernight-particle {
     position: fixed;
-    top: -15%;
+    top: var(--p-top);
+    left: var(--p-left);
     z-index: 9998;
     pointer-events: none;
     user-select: none;
     width: var(--p-size);
     height: var(--p-size);
-    animation-name: var(--drift-anim);
-    animation-duration: var(--fall-duration);
-    animation-delay: var(--fall-delay);
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    opacity: 0;
+    animation: evFloat 6s ease-in-out infinite alternate;
+    animation-delay: var(--p-delay);
 }
-@keyframes evDriftL {
-    0%   { transform: translateY(-10vh) rotate(0deg) translateX(-5px); opacity: 0; }
-    5%   { opacity: var(--p-opacity, 0.2); }
-    25%  { transform: translateY(25vh) rotate(60deg) translateX(-15px); }
-    50%  { transform: translateY(55vh) rotate(180deg) translateX(-10px); }
-    75%  { transform: translateY(80vh) rotate(300deg) translateX(-15px); }
-    95%  { transform: translateY(105vh) rotate(420deg) translateX(-5px); }
-    100% { transform: translateY(115vh) rotate(480deg) translateX(-3px); opacity: 0; }
-}
-@keyframes evDriftR {
-    0%   { transform: translateY(-10vh) rotate(0deg) translateX(5px); opacity: 0; }
-    5%   { opacity: var(--p-opacity, 0.2); }
-    25%  { transform: translateY(25vh) rotate(-60deg) translateX(15px); }
-    50%  { transform: translateY(55vh) rotate(-180deg) translateX(10px); }
-    75%  { transform: translateY(80vh) rotate(-300deg) translateX(15px); }
-    95%  { transform: translateY(105vh) rotate(-420deg) translateX(5px); }
-    100% { transform: translateY(115vh) rotate(-480deg) translateX(3px); opacity: 0; }
-}
-@keyframes evDriftSlow {
-    0%   { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
-    5%   { opacity: var(--p-opacity, 0.2); }
-    25%  { transform: translateY(20vh) rotate(30deg); }
-    50%  { transform: translateY(48vh) rotate(90deg); }
-    75%  { transform: translateY(72vh) rotate(180deg); }
-    95%  { transform: translateY(100vh) rotate(270deg); }
-    100% { transform: translateY(115vh) rotate(320deg); opacity: 0; }
-}
-@keyframes evDriftGentle {
-    0%   { transform: translateY(-10vh) rotate(0deg) translateX(0); opacity: 0; }
-    5%   { opacity: var(--p-opacity, 0.2); }
-    25%  { transform: translateY(22vh) rotate(45deg) translateX(8px); }
-    50%  { transform: translateY(50vh) rotate(135deg) translateX(-6px); }
-    75%  { transform: translateY(78vh) rotate(240deg) translateX(4px); }
-    95%  { transform: translateY(102vh) rotate(340deg) translateX(-3px); }
-    100% { transform: translateY(115vh) rotate(400deg) translateX(0); opacity: 0; }
+@keyframes evFloat {
+    0%   { transform: translateY(0) translateX(0) rotate(0deg); }
+    100% { transform: translateY(-12px) translateX(8px) rotate(5deg); }
 }
 
 @keyframes sakuraDriftL {

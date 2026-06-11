@@ -1,4 +1,4 @@
-// EverNight Theme - GIF particle effect
+// EverNight Theme - GIF particle effect (static floating)
 (function() {
     let active = false;
     let particles = [];
@@ -9,22 +9,19 @@
         if (active) return;
         active = true;
         const frag = document.createDocumentFragment();
-        const driftWeights = ['evDriftL','evDriftL','evDriftR','evDriftR','evDriftSlow','evDriftGentle'];
         for (let i = 0; i < PARTICLE_COUNT; i++) {
             const el = document.createElement('img');
             el.className = 'evernight-particle';
             el.src = '/assets/evernight-anime.gif';
-            const size = 30 + Math.floor(Math.random() * 28);
-            const duration = 12 + Math.random() * 18;
-            const delay = Math.random() * 20;
-            const left = Math.random() * 100;
-            const drift = driftWeights[Math.floor(Math.random() * driftWeights.length)];
+            const size = 40 + Math.floor(Math.random() * 40);
+            const top = Math.random() * 85;
+            const left = Math.random() * 95;
+            const delay = Math.random() * 4;
             el.style.setProperty('--p-size', size + 'px');
-            el.style.setProperty('--fall-duration', duration.toFixed(1) + 's');
-            el.style.setProperty('--fall-delay', '-' + delay.toFixed(1) + 's');
-            el.style.setProperty('--drift-anim', drift);
-            el.style.left = left + '%';
-            el.style.opacity = (0.15 + Math.random() * 0.2).toFixed(2);
+            el.style.setProperty('--p-top', top + '%');
+            el.style.setProperty('--p-left', left + '%');
+            el.style.setProperty('--p-delay', delay.toFixed(1) + 's');
+            el.style.opacity = (0.12 + Math.random() * 0.12).toFixed(2);
             frag.appendChild(el);
             particles.push(el);
         }
