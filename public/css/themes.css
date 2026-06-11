@@ -726,6 +726,9 @@ html[data-theme="sakura"] .sakura-p4 {
     max-width: 100%;
     min-width: 48px;
     word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
     transition: opacity 0.3s ease;
 }
 

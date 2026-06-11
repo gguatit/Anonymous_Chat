@@ -529,6 +529,7 @@ class ChatClient {
         e.preventDefault();
 
         let message = this.ui.getInputValue();
+        console.log('[sendMessage] submitting, length:', message.length);
         const trimmedMessage = message.trim();
         const hasFile = this.fileUpload.hasFile();
 
