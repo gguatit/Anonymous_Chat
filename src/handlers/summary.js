@@ -86,7 +86,12 @@ async function callAI(env, messages, mode) {
             temperature: AI_SUMMARY.TEMPERATURE
         });
 
-        return result.response || result;
+        const text = result.response || result;
+        if (typeof text === 'object') {
+            console.error('[Summary] Unexpected AI response format:', JSON.stringify(text).substring(0, 200));
+            return String(text?.response || text?.content || text);
+        }
+        return text;
     } catch (primaryErr) {
         console.warn('Primary AI model failed, trying fallback:', primaryErr.message);
 
@@ -100,7 +105,11 @@ async function callAI(env, messages, mode) {
                 temperature: AI_SUMMARY.TEMPERATURE
             });
 
-            return result.response || result;
+            const text = result.response || result;
+            if (typeof text === 'object') {
+                return String(text?.response || text?.content || text);
+            }
+            return text;
         } catch (fallbackErr) {
             console.error('Fallback AI model also failed:', fallbackErr.message);
             throw fallbackErr;
@@ -114,6 +123,10 @@ async function broadcastSummary(env, content, mode) {
             method: 'POST',
             json: { content, mode }
         });
+        if (!resp.ok) {
+            const errText = await resp.text();
+            console.error('Summary: broadcastSummary DO returned', resp.status, errText);
+        }
         return resp.ok;
     } catch (err) {
         console.error('Summary: broadcastSummary DO call failed:', err.message);
@@ -157,6 +170,7 @@ export async function handleSummary(request, env, corsHeaders) {
     } else {
         try {
             summary = await callAI(env, messages, mode);
+            console.error('[Summary] AI response:', String(summary).substring(0, 80));
         } catch (err) {
             console.error('Summary: AI model call failed:', err.message);
             return jsonError('AI 요약 모델이 현재 사용 불가능합니다. 잠시 후 다시 시도해주세요.', 503, request.headers.get('Origin'));
