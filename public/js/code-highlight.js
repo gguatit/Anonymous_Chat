@@ -1,5 +1,10 @@
 // Code Highlight Module - Prism.js 기반 코드 구문 강조 및 자동 감지
 
+// Prism autoloader path (CDN global)
+if (typeof Prism !== 'undefined' && Prism.plugins && Prism.plugins.autoloader) {
+    Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
+}
+
 /**
  * 언어 별칭 → Prism 언어명 매핑
  */
@@ -128,9 +133,9 @@ export function renderCodeBlock(code, lang, sanitizeFn) {
 
     setTimeout(() => {
         const codeEl = document.getElementById(codeId);
-        if (codeEl && typeof window.Prism !== 'undefined' && resolvedLang) {
+        if (codeEl && typeof Prism !== 'undefined' && resolvedLang) {
             try {
-                window.Prism.highlightElement(codeEl);
+                Prism.highlightElement(codeEl);
             } catch (_e) { /* ignore */ }
         }
 

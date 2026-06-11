@@ -1,7 +1,5 @@
 // Main Chat Client Application
-import './prism-bundle.js';
 import ApiClient from './api-client.js';
-import { escapeHtml } from './utils.js';
 import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
 import { UIManager } from './ui.js?v=1.1.0';
