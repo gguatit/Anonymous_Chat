@@ -292,9 +292,8 @@ export const rendering = {
             reactionBar.className = 'reaction-bar flex flex-wrap gap-1 mt-1';
             for (const [emoji, count] of Object.entries(data.reactions)) {
                 if (count > 0) {
-                    const userReacted = data.reactionSessions &&
-                        data.reactionSessions[emoji] &&
-                        data.reactionSessions[emoji].includes(sessionId);
+                    const userReacted = data.reacted &&
+                        data.reacted[emoji] === true;
                     const pill = document.createElement('button');
                     pill.className = 'reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ' +
                         (userReacted

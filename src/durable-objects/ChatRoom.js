@@ -496,7 +496,7 @@ export class ChatRoom {
             if (recentMessages.length > 0) {
                 this.sendToSession(sessionId, {
                     type: 'history',
-                    messages: recentMessages
+                    messages: this._serializeHistoryMessages(recentMessages, sessionId)
                 });
             }
 
@@ -540,7 +540,7 @@ export class ChatRoom {
             if (recentMessages.length > 0) {
                 this.sendToSession(sessionId, {
                     type: 'history',
-                    messages: recentMessages
+                    messages: this._serializeHistoryMessages(recentMessages, sessionId)
                 });
             }
 
@@ -929,8 +929,22 @@ export class ChatRoom {
             emoji: data.emoji,
             count: message.reactions[data.emoji] || 0,
             sessionId,
-            reactedBy: sessionId
-        });
+            reacted: true
+        }, sessionId);
+
+        // Send reacted: false to all other connected clients
+        for (const [sid] of this.sessions) {
+            if (sid !== sessionId) {
+                this.sendToSession(sid, {
+                    type: 'message_reaction',
+                    messageId: data.messageId,
+                    emoji: data.emoji,
+                    count: message.reactions[data.emoji] || 0,
+                    sessionId,
+                    reacted: (message.reactionSessions[data.emoji] || []).includes(sid)
+                });
+            }
+        }
     }
 
     handleTyping(data, sessionId) {
@@ -1047,6 +1061,20 @@ export class ChatRoom {
                 this.typingUsers.delete(sessionId);
             }
         }
+    }
+
+    _serializeHistoryMessages(messages, clientSessionId) {
+        return messages.map(msg => {
+            const clone = { ...msg };
+            if (clone.reactionSessions) {
+                clone.reacted = {};
+                for (const [emoji, sessions] of Object.entries(clone.reactionSessions)) {
+                    clone.reacted[emoji] = Array.isArray(sessions) && sessions.includes(clientSessionId);
+                }
+                delete clone.reactionSessions;
+            }
+            return clone;
+        });
     }
 
     broadcastUserCount() {

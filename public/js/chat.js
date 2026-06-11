@@ -1,4 +1,5 @@
 // Main Chat Client Application
+/* global hljs */
 import ApiClient from './api-client.js';
 import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
@@ -332,7 +333,7 @@ class ChatClient {
                 this.ui.removeMessage(data.messageId);
                 break;
             case 'message_reaction':
-                this.ui.updateReaction(data.messageId, data.emoji, data.count, data.reactedBy, this.sessionManager.getSessionId());
+                this.ui.updateReaction(data.messageId, data.emoji, data.count, data.reacted);
                 break;
             case 'all_messages_deleted':
                 // Clear all messages from UI
@@ -912,9 +913,9 @@ class ChatClient {
             setTimeout(() => {
                 contentDiv.querySelectorAll('pre.code-block code[class*="language-"]').forEach(el => {
                     if (typeof Prism !== 'undefined') {
-                        try { Prism.highlightElement(el); } catch (_e) {}
+                        try { Prism.highlightElement(el); } catch { /* Prism error */ }
                     } else if (typeof hljs !== 'undefined') {
-                        try { hljs.highlightElement(el); } catch (_e) {}
+                        try { hljs.highlightElement(el); } catch { /* hljs error */ }
                     }
                 });
             }, 50);

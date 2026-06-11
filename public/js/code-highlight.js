@@ -1,4 +1,5 @@
 // Code Highlight Module - Prism.js 기반 코드 구문 강조 및 자동 감지
+/* global hljs */
 
 // Prism autoloader path (CDN global)
 if (typeof Prism !== 'undefined' && Prism.plugins && Prism.plugins.autoloader) {
@@ -34,13 +35,6 @@ function resolveLangAlias(lang) {
     if (!lang) return '';
     const lower = lang.toLowerCase();
     return LANG_ALIASES[lower] || lower;
-}
-
-/**
- * 표시용 언어 이름 (헤더 라벨용)
- */
-function getDisplayLang(inputLang, resolvedLang) {
-    return inputLang || resolvedLang || '';
 }
 
 /**

@@ -854,7 +854,7 @@ var rendering = {
       reactionBar.className = "reaction-bar flex flex-wrap gap-1 mt-1";
       for (const [emoji, count] of Object.entries(data.reactions)) {
         if (count > 0) {
-          const userReacted = data.reactionSessions && data.reactionSessions[emoji] && data.reactionSessions[emoji].includes(sessionId);
+          const userReacted = data.reacted && data.reacted[emoji] === true;
           const pill = document.createElement("button");
           pill.className = "reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs " + (userReacted ? "bg-blue-600 text-white ring-1 ring-blue-400" : "bg-gray-600 text-gray-200 hover:bg-gray-500");
           pill.setAttribute("data-emoji", emoji);
@@ -1961,7 +1961,7 @@ var UIManager = class {
       this.scrollButton.classList.add("opacity-100", "pointer-events-auto");
     }
   }
-  updateReaction(messageId, emoji, count, reactedBy, currentSessionId) {
+  updateReaction(messageId, emoji, count, reacted) {
     const messageDiv = this.messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
     if (!messageDiv) return;
     let bar = messageDiv.querySelector(".reaction-bar");
@@ -1986,7 +1986,7 @@ var UIManager = class {
       pill.setAttribute("data-message-id", messageId);
       bar.appendChild(pill);
     }
-    const userReacted = reactedBy === currentSessionId;
+    const userReacted = !!reacted;
     pill.className = userReacted ? "reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-600 text-white ring-1 ring-blue-400" : "reaction-pill inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-600 text-gray-200 hover:bg-gray-500";
     pill.innerHTML = `${emoji} ${count}`;
     if (isNewPill) {
@@ -3818,7 +3818,7 @@ var ChatClient = class {
         this.ui.removeMessage(data.messageId);
         break;
       case "message_reaction":
-        this.ui.updateReaction(data.messageId, data.emoji, data.count, data.reactedBy, this.sessionManager.getSessionId());
+        this.ui.updateReaction(data.messageId, data.emoji, data.count, data.reacted);
         break;
       case "all_messages_deleted":
         this.ui.clearAllMessages();
@@ -4315,12 +4315,12 @@ var ChatClient = class {
           if (typeof Prism !== "undefined") {
             try {
               Prism.highlightElement(el);
-            } catch (_e) {
+            } catch {
             }
           } else if (typeof hljs !== "undefined") {
             try {
               hljs.highlightElement(el);
-            } catch (_e) {
+            } catch {
             }
           }
         });
