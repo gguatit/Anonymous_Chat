@@ -3787,8 +3787,16 @@ var ChatClient = class {
   }
   handleMessage(data) {
     switch (data.type) {
+      case "history":
+        if (data.messages && data.messages.length > 0) {
+          this.ui.displayBatchMessages(data.messages, this.sessionManager.getSessionId());
+          this.ui.scrollToBottom();
+          if (this.ogPreview) {
+            this.ogPreview.enrichMessage(this.ui.messagesContainer);
+          }
+        }
+        break;
       case "message":
-        console.log("[handleMessage] received message, content length:", data.content?.length);
         this.ui.displayMessage(
           data,
           data.sessionId === this.sessionManager.getSessionId(),
@@ -4103,9 +4111,7 @@ var ChatClient = class {
       }
     }
     try {
-      console.log("[sendMessage] WS connected:", this.wsManager.isConnected(), "sending:", messageData.content.substring(0, 30));
       this.wsManager.send(messageData);
-      console.log("[sendMessage] WS send done");
       if (trimmedMessage && !trimmedMessage.startsWith("/")) {
         this._messageHistory.push(trimmedMessage);
         this._historyIndex = this._messageHistory.length;
