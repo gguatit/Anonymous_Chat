@@ -86,12 +86,13 @@ async function callAI(env, messages, mode) {
             temperature: AI_SUMMARY.TEMPERATURE
         });
 
-        const text = result.response || result;
+        const text = typeof result === 'string' ? result
+            : (result?.response || result?.choices?.[0]?.message?.content || result?.content || result?.output || '');
         if (typeof text === 'object') {
             console.error('[Summary] Unexpected AI response format:', JSON.stringify(text).substring(0, 200));
-            return String(text?.response || text?.content || text);
+            return '';
         }
-        return text;
+        return String(text);
     } catch (primaryErr) {
         console.warn('Primary AI model failed, trying fallback:', primaryErr.message);
 
@@ -105,11 +106,12 @@ async function callAI(env, messages, mode) {
                 temperature: AI_SUMMARY.TEMPERATURE
             });
 
-            const text = result.response || result;
+            const text = typeof result === 'string' ? result
+                : (result?.response || result?.choices?.[0]?.message?.content || result?.content || result?.output || '');
             if (typeof text === 'object') {
-                return String(text?.response || text?.content || text);
+                return '';
             }
-            return text;
+            return String(text);
         } catch (fallbackErr) {
             console.error('Fallback AI model also failed:', fallbackErr.message);
             throw fallbackErr;
