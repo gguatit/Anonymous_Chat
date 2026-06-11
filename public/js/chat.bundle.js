@@ -4859,9 +4859,9 @@ function renderCodeBlock(code, lang, sanitizeFn) {
     </div>`;
   setTimeout(() => {
     const codeEl = document.getElementById(codeId);
-    if (codeEl && typeof Prism !== "undefined" && resolvedLang) {
+    if (codeEl && typeof window.Prism !== "undefined" && resolvedLang) {
       try {
-        Prism.highlightElement(codeEl);
+        window.Prism.highlightElement(codeEl);
       } catch (_e) {
       }
     }
