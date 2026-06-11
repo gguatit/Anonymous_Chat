@@ -570,8 +570,10 @@ class ChatClient {
             return;
         }
 
-        // Validate message length (count raw characters, including newlines)
-        if (message.length > SECURITY.MAX_MESSAGE_LENGTH) {
+        // Validate message length (skip for secret replies - content goes to DeadDrop)
+        const replyingTo = this.ui.getReplyingTo();
+        const isSecretReply = replyingTo && replyingTo.isSecret;
+        if (!isSecretReply && message.length > SECURITY.MAX_MESSAGE_LENGTH) {
             this.ui.displayError(`메시지는 최대 ${SECURITY.MAX_MESSAGE_LENGTH}자까지 가능합니다.`);
             return;
         }
@@ -579,15 +581,12 @@ class ChatClient {
         // Prepare message data
         const messageData = {
             type: 'message',
-            // Preserve newlines; sanitization happens server-side and at render time
             content: message || '',
             sessionId: this.sessionManager.getSessionId(),
             nickname: this.sessionManager.getNickname(),
             timestamp: now
         };
 
-        // 답장 정보 추가
-        const replyingTo = this.ui.getReplyingTo();
         if (replyingTo) {
             if (replyingTo.isSecret) {
                 // 비밀 메시지 길이 체크

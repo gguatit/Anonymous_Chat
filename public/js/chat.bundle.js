@@ -112,8 +112,7 @@ var UPLOAD = {
 var DEAD_DROP = {
   TTL_MS: 30 * 60 * 1e3,
   // 30 minutes
-  MAX_MESSAGE_LENGTH: 5e4
-  // 50k chars (~500 lines of code)
+  MAX_MESSAGE_LENGTH: 1e4
 };
 var ONE_HOUR_MS = 60 * 60 * 1e3;
 var ONE_DAY_MS = 24 * 60 * 60 * 1e3;
@@ -4037,19 +4036,19 @@ var ChatClient = class {
       this.ui.displayError("\uBA54\uC2DC\uC9C0\uB97C \uB108\uBB34 \uBE60\uB974\uAC8C \uC804\uC1A1\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4.");
       return;
     }
-    if (message.length > SECURITY.MAX_MESSAGE_LENGTH) {
+    const replyingTo = this.ui.getReplyingTo();
+    const isSecretReply = replyingTo && replyingTo.isSecret;
+    if (!isSecretReply && message.length > SECURITY.MAX_MESSAGE_LENGTH) {
       this.ui.displayError(`\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 ${SECURITY.MAX_MESSAGE_LENGTH}\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.`);
       return;
     }
     const messageData = {
       type: "message",
-      // Preserve newlines; sanitization happens server-side and at render time
       content: message || "",
       sessionId: this.sessionManager.getSessionId(),
       nickname: this.sessionManager.getNickname(),
       timestamp: now
     };
-    const replyingTo = this.ui.getReplyingTo();
     if (replyingTo) {
       if (replyingTo.isSecret) {
         if (trimmedMessage && trimmedMessage.length > DEAD_DROP.MAX_MESSAGE_LENGTH) {
