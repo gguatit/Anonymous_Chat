@@ -112,7 +112,8 @@ var UPLOAD = {
 var DEAD_DROP = {
   TTL_MS: 30 * 60 * 1e3,
   // 30 minutes
-  MAX_MESSAGE_LENGTH: 1e4
+  MAX_MESSAGE_LENGTH: 5e4
+  // 50k chars (~500 lines of code)
 };
 var ONE_HOUR_MS = 60 * 60 * 1e3;
 var ONE_DAY_MS = 24 * 60 * 60 * 1e3;
@@ -4051,6 +4052,10 @@ var ChatClient = class {
     const replyingTo = this.ui.getReplyingTo();
     if (replyingTo) {
       if (replyingTo.isSecret) {
+        if (trimmedMessage && trimmedMessage.length > DEAD_DROP.MAX_MESSAGE_LENGTH) {
+          this.ui.displayError(`\uBE44\uBC00 \uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 ${DEAD_DROP.MAX_MESSAGE_LENGTH.toLocaleString()}\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.`);
+          return;
+        }
         try {
           console.log("[Secret] Storing message:", trimmedMessage ? trimmedMessage.substring(0, 50) : "[file]");
           const deadDropResult = await this.deadDrop.store(trimmedMessage || "[\uD30C\uC77C]");

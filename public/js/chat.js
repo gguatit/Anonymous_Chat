@@ -12,7 +12,7 @@ import { TurnstileManager } from './turnstile.js?v=1.0.0';
 import { OGPreviewManager } from './og-preview.js?v=1.0.0';
 import { ThemeManager } from './theme.js?v=1.0.0';
 import { sendErrorReport } from './utils.js';
-import { RATE_LIMIT, SECURITY, CHANNEL, UI } from '../../src/config/constants.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, UI, DEAD_DROP } from '../../src/config/constants.js';
 
 class ChatClient {
     constructor(config = {}) {
@@ -590,6 +590,11 @@ class ChatClient {
         const replyingTo = this.ui.getReplyingTo();
         if (replyingTo) {
             if (replyingTo.isSecret) {
+                // 비밀 메시지 길이 체크
+                if (trimmedMessage && trimmedMessage.length > DEAD_DROP.MAX_MESSAGE_LENGTH) {
+                    this.ui.displayError(`비밀 메시지는 최대 ${DEAD_DROP.MAX_MESSAGE_LENGTH.toLocaleString()}자까지 가능합니다.`);
+                    return;
+                }
                 // 비밀 메시지로 보내기 - Dead Drop에 저장
                 try {
                     console.log('[Secret] Storing message:', trimmedMessage ? trimmedMessage.substring(0, 50) : '[file]');

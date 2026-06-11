@@ -94,7 +94,7 @@ export const UPLOAD = {
 // Dead drop constants
 export const DEAD_DROP = {
     TTL_MS: 30 * 60 * 1000, // 30 minutes
-    MAX_MESSAGE_LENGTH: 10000,
+    MAX_MESSAGE_LENGTH: 50000, // 50k chars (~500 lines of code)
 };
 
 // General time constants
