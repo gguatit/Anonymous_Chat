@@ -4003,7 +4003,7 @@ var ChatClient = class {
   }
   async handleSubmit(e) {
     e.preventDefault();
-    const message = this.ui.getInputValue();
+    let message = this.ui.getInputValue();
     const trimmedMessage = message.trim();
     const hasFile = this.fileUpload.hasFile();
     if (!trimmedMessage && !hasFile) return;
@@ -4039,8 +4039,8 @@ var ChatClient = class {
     const replyingTo = this.ui.getReplyingTo();
     const isSecretReply = replyingTo && replyingTo.isSecret;
     if (!isSecretReply && message.length > SECURITY.MAX_MESSAGE_LENGTH) {
-      this.ui.displayError(`\uBA54\uC2DC\uC9C0\uB294 \uCD5C\uB300 ${SECURITY.MAX_MESSAGE_LENGTH}\uC790\uAE4C\uC9C0 \uAC00\uB2A5\uD569\uB2C8\uB2E4.`);
-      return;
+      message = message.substring(0, SECURITY.MAX_MESSAGE_LENGTH);
+      this.ui.displayError(`\uBA54\uC2DC\uC9C0\uAC00 \uB108\uBB34 \uAE38\uC5B4 ${SECURITY.MAX_MESSAGE_LENGTH}\uC790\uB85C \uC798\uB838\uC2B5\uB2C8\uB2E4.`, 4e3);
     }
     const messageData = {
       type: "message",

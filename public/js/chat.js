@@ -528,7 +528,7 @@ class ChatClient {
     async handleSubmit(e) {
         e.preventDefault();
 
-        const message = this.ui.getInputValue();
+        let message = this.ui.getInputValue();
         const trimmedMessage = message.trim();
         const hasFile = this.fileUpload.hasFile();
 
@@ -570,12 +570,12 @@ class ChatClient {
             return;
         }
 
-        // Validate message length (skip for secret replies - content goes to DeadDrop)
+        // Truncate long messages (skip for secret replies - content goes to DeadDrop)
         const replyingTo = this.ui.getReplyingTo();
         const isSecretReply = replyingTo && replyingTo.isSecret;
         if (!isSecretReply && message.length > SECURITY.MAX_MESSAGE_LENGTH) {
-            this.ui.displayError(`메시지는 최대 ${SECURITY.MAX_MESSAGE_LENGTH}자까지 가능합니다.`);
-            return;
+            message = message.substring(0, SECURITY.MAX_MESSAGE_LENGTH);
+            this.ui.displayError(`메시지가 너무 길어 ${SECURITY.MAX_MESSAGE_LENGTH}자로 잘렸습니다.`, 4000);
         }
 
         // Prepare message data
