@@ -646,13 +646,17 @@ html[data-theme="evernight"] .evernight-particle {
     position: fixed;
     top: var(--p-top);
     left: var(--p-left);
-    z-index: 9998;
+    z-index: 1;
     pointer-events: none;
     user-select: none;
     width: var(--p-size);
     height: var(--p-size);
     animation: evFloat 6s ease-in-out infinite alternate;
     animation-delay: var(--p-delay);
+}
+html[data-theme="evernight"] #messages-container {
+    position: relative;
+    z-index: 2;
 }
 @keyframes evFloat {
     0%   { transform: translateY(0) translateX(0) rotate(0deg); }

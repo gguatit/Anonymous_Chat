@@ -21,7 +21,6 @@
             el.style.setProperty('--p-top', top + '%');
             el.style.setProperty('--p-left', left + '%');
             el.style.setProperty('--p-delay', delay.toFixed(1) + 's');
-            el.style.opacity = (0.12 + Math.random() * 0.12).toFixed(2);
             frag.appendChild(el);
             particles.push(el);
         }
