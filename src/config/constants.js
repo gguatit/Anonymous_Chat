@@ -23,10 +23,10 @@ export const CHANNEL = {
 
 // Message lifecycle constants
 export const MESSAGE_RETENTION_MS = 12 * 60 * 60 * 1000; // 12 hours
-export const MAX_STORED_MESSAGES = 500;
+export const MAX_STORED_MESSAGES = 2000;
 export const MAX_AUDIT_LOGS = 500;
 export const MESSAGE_EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-export const RECENT_MESSAGES_BATCH = 50;
+export const RECENT_MESSAGES_BATCH = 100;
 
 // Session and cleanup constants
 export const CLEANUP_INTERVAL_MS = 300000; // 5 minutes
