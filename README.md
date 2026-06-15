@@ -175,25 +175,33 @@ wrangler d1 migrations apply anonymous-chat-db
 
 자세한 내용: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 
-```
-┌────────────┐       WebSocket       ┌──────────────┐
-│  Browser   │ ◄──────────────────► │   Worker     │
-│  (chat.js) │      REST/HTTPS       │  (worker.js) │
-└────────────┘                       └──────┬───────┘
-                                            │
-                ┌───────────────────────────┼───────────────────────────┐
-                ▼                           ▼                           ▼
-        ┌──────────────┐           ┌──────────────┐           ┌──────────────┐
-        │  ChatRoom DO │           │ ChannelReg DO│           │ DeadDrop DO  │
-        │ (per channel)│           │ (singleton)  │           │ (singleton)  │
-        └──────┬───────┘           └──────────────┘           └──────────────┘
-               │
-       ┌───────┼────────┐
-       ▼       ▼        ▼
-    ┌─────┐ ┌─────┐  ┌─────┐
-    │ D1  │ │ KV  │  │ AI  │
-    │로그 │ │푸시  │  │요약  │
-    └─────┘ └─────┘  └─────┘
+```mermaid
+flowchart LR
+    Browser[Browser<br/>chat.js]
+
+    subgraph Edge["Cloudflare Edge"]
+        Worker[Worker<br/>worker.js]
+    end
+
+    subgraph DOs["Durable Objects"]
+        ChatRoom[ChatRoom DO<br/>per channel]
+        ChannelReg[ChannelRegistry DO]
+        DeadDrop[DeadDropStore DO]
+    end
+
+    subgraph Storage["Storage"]
+        D1[(D1<br/>logs)]
+        KV[(KV<br/>push)]
+        AI[Workers AI<br/>Qwen]
+    end
+
+    Browser <-->|WS/HTTPS| Worker
+    Worker --> ChatRoom
+    Worker --> ChannelReg
+    Worker --> DeadDrop
+    ChatRoom --> D1
+    ChatRoom --> KV
+    ChatRoom --> AI
 ```
 
 핵심 결정:

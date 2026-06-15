@@ -4,27 +4,44 @@ Anonymous Chat의 시스템 아키텍처 및 데이터 흐름입니다.
 
 ## 시스템 개요
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                        Cloudflare Edge                       │
-│  ┌──────────┐      ┌──────────┐      ┌──────────────────┐   │
-│  │   DNS    │ ───► │  Pages   │ ───► │  Worker (Pages   │   │
-│  │          │      │  (CDN)   │      │  Functions)      │   │
-│  └──────────┘      └──────────┘      └────┬─────────────┘   │
-│                                            │                  │
-│        ┌───────────────────────────────────┼────────────┐    │
-│        │                                   │            │    │
-│        ▼                                   ▼            ▼    │
-│  ┌──────────┐  ┌──────────────────┐  ┌──────────┐  ┌──────┐ │
-│  │ChatRoom  │  │ ChannelRegistry  │  │DeadDrop  │  │  D1  │ │
-│  │   DO     │  │       DO         │  │Store DO  │  │      │ │
-│  │(채널당)  │  │   (singleton)    │  │(singleton)│  │      │ │
-│  └────┬─────┘  └──────────────────┘  └──────────┘  └──────┘ │
-│       │                                                       │
-│       ├────► KV (푸시 구독)                                   │
-│       ├────► Workers AI (요약)                                │
-│       └────► 외부 API (Kalpha: 파일/보안헤더)                │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    Client[브라우저 클라이언트<br/>chat.js / admin.js]
+
+    subgraph Edge["Cloudflare Edge"]
+        DNS[DNS]
+        Pages[Pages CDN<br/>정적 자산]
+        Worker[Worker<br/>worker.js 라우터]
+    end
+
+    subgraph DO["Durable Objects"]
+        ChatRoom["ChatRoom DO<br/>(채널당 1개)"]
+        ChannelReg["ChannelRegistry DO<br/>(singleton)"]
+        DeadDrop["DeadDropStore DO<br/>(singleton)"]
+    end
+
+    subgraph Storage["Storage"]
+        D1[(D1 Database<br/>로그)]
+        KV[(KV<br/>푸시 구독)]
+        AI[Workers AI<br/>Qwen 3 30B]
+    end
+
+    External[외부 API<br/>Kalpha: 파일/보안헤더]
+
+    Client -->|HTTPS/WS| DNS
+    DNS --> Pages
+    Pages --> Worker
+
+    Worker -->|forwardToDO| ChatRoom
+    Worker -->|forwardToDO| ChannelReg
+    Worker -->|forwardToDO| DeadDrop
+
+    ChatRoom -->|INSERT/SELECT| D1
+    ChatRoom -->|KV list| KV
+    ChatRoom -->|AI.run| AI
+    ChatRoom -->|fetch| External
+
+    Worker -->|fetch| External
 ```
 
 ## 컴포넌트
@@ -120,144 +137,131 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 
 ### 1. 메시지 전송 (가장 빈번한 경로)
 
-```
-┌──────┐                              ┌──────┐
-│Client│                              │Server│
-└──┬───┘                              └──┬───┘
-   │ 1. WS: {type:'message',           │
-   │     content, targetSessionId?}    │
-   │────────────────────────────────►   │
-   │                                    │ 2. ChatRoom.handleMessage
-   │                                    │    - validateClientMessage
-   │                                    │    - checkRateLimit (1s/30min)
-   │                                    │    - generateSignature (HMAC)
-   │                                    │    - storage.put('messages')
-   │                                    │    - broadcast({...signature})
-   │                                    │
-   │ ◄─────────────────────────────────│
-   │ 3. broadcast: all sessions        │
-   │                                    │
-   │ 4. throttledPushNotification      │
-   │    - 1.5s throttle                 │
-   │    - sendPushToOfflineUsers       │
-   │      (KV 구독자 순회, VAPID/FCM)
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant DO as ChatRoom DO
+
+    C->>DO: WS: {type:'message', content, targetSessionId?}
+
+    Note over DO: handleMessage
+    DO->>DO: validateClientMessage
+    DO->>DO: checkRateLimit (1s/30min)
+    DO->>DO: generateSignature (HMAC)
+    DO->>DO: storage.put('messages')
+    DO->>DO: broadcast({...signature})
+
+    DO-->>C: broadcast to all sessions
+
+    Note over DO: throttledPushNotification
+    DO->>DO: 1.5s throttle
+    DO->>DO: sendPushToOfflineUsers<br/>(KV 구독자 순회)
 ```
 
 ### 2. WebSocket 핸드셰이크
 
-```
-Client                          Worker                       ChatRoom DO
-  │                                │                              │
-  │ GET /ws?sessionId=&channel=    │                              │
-  │─────────────────────────────►  │                              │
-  │                                │ 1. Origin 검증               │
-  │                                │ 2. sessionId 검증 (정규식)    │
-  │                                │ 3. /api/check-ban (preflight)│
-  │                                │───────────────────────────►  │
-  │                                │                              │ 4. checkBan
-  │                                │ ◄────────────────────────────│
-  │                                │ 5. upgrade → DO              │
-  │ ◄──────────────────────────────│                              │
-  │ 101 Switching Protocols        │                              │
-  │                                                              │
-  │ WS: {type:'join', sessionId}                                 │
-  │─────────────────────────────────────────────────────────────►│
-  │                                                              │ 6. handleJoin
-  │                                                              │    - storage에서 세션 복원
-  │                                                              │    - 50개 히스토리 배치 전송
-  │                                                              │    - broadcast user_count
-  │ ◄────────────────────────────────────────────────────────────│
-  │ WS: {type:'history', messages: [...]}                       │
-  │ WS: {type:'user_count', count: 12}                          │
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant W as Worker
+    participant DO as ChatRoom DO
+
+    C->>W: GET /ws?sessionId=&channel=
+
+    Note over W: 1. Origin 검증<br/>2. sessionId 검증 (정규식)
+    W->>W: 3. /api/check-ban (preflight)
+    W->>DO: checkBan
+    DO-->>W: {banned: false}
+    W-->>C: 101 Switching Protocols
+
+    C->>DO: WS: {type:'join', sessionId}
+
+    Note over DO: handleJoin
+    DO->>DO: storage에서 세션 복원
+    DO->>DO: 50개 히스토리 배치 전송
+    DO->>DO: broadcast user_count
+
+    DO-->>C: WS: {type:'history', messages:[...50개]}
+    DO-->>C: WS: {type:'user_count', count: 12}
 ```
 
 ### 3. 채널 생성/참가
 
-```
-Client                          Worker                  ChannelRegistry DO
-  │                                │                              │
-  │ POST /api/channels/create      │                              │
-  │ {name:'kalpha'}                │                              │
-  │─────────────────────────────►  │                              │
-  │                                │ channelRequest('create')     │
-  │                                │  - X-Admin-Internal-Token    │
-  │                                │───────────────────────────►  │
-  │                                │                              │ 1. toSlug('kalpha')
-  │                                │                              │ 2. 중복 체크
-  │                                │                              │ 3. storage.put
-  │                                │                              │ 4. persist (5초마다)
-  │                                │ ◄────────────────────────────│
-  │                                │ {slug, name, createdAt}      │
-  │ ◄──────────────────────────────│                              │
-  │ {success, slug}                │                              │
-  │                                                              │
-  │ POST /api/channels/join        │                              │
-  │ {slug:'kalpha'}                │                              │
-  │─────────────────────────────►  │                              │
-  │                                │ channelRequest('join')       │
-  │                                │───────────────────────────►  │
-  │                                │                              │ 1. lastActive 갱신
-  │                                │                              │ 2. /touch
-  │                                │ ◄────────────────────────────│
-  │ ◄──────────────────────────────│                              │
-  │ {success}                      │                              │
-  │                                                              │
-  │ GET /ws?channel=kalpha        (다음 연결)                    │
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant W as Worker
+    participant CR as ChannelRegistry DO
+
+    C->>W: POST /api/channels/create {name:'kalpha'}
+    W->>W: channelRequest('create')
+    W->>CR: X-Admin-Internal-Token + /create
+
+    Note over CR: 1. toSlug('kalpha')<br/>2. 중복 체크<br/>3. storage.put<br/>4. persist (5초마다)
+    CR-->>W: {slug, name, createdAt}
+    W-->>C: {success, slug}
+
+    C->>W: POST /api/channels/join {slug:'kalpha'}
+    W->>CR: /touch
+    Note over CR: lastActive 갱신
+    CR-->>W: {success}
+    W-->>C: {success}
+
+    Note over C,CR: 다음 연결: GET /ws?channel=kalpha
 ```
 
 ### 4. AI 요약
 
-```
-Client                          Worker                  ChatRoom DO         Workers AI
-  │                                │                       │                    │
-  │ POST /api/summary              │                       │                    │
-  │ {mode:'summary'}               │                       │                    │
-  │─────────────────────────────►  │                       │                    │
-  │                                │ 1. Rate limit (15s)   │                    │
-  │                                │ 2. fetch /messages/recent              │
-  │                                │  (HMAC 인증)          │                    │
-  │                                │───────────────────►  │                    │
-  │                                │                       │ 1. sessionId 제거 │
-  │                                │ ◄─────────────────────│                    │
-  │                                │ {messages: [50개]}    │                    │
-  │                                │                                            │
-  │                                │ 3. env.AI.run(model, prompt)              │
-  │                                │───────────────────────────────────────────►│
-  │                                │                       │                    │ 4. Qwen 추론
-  │                                │ ◄─────────────────────────────────────────│
-  │                                │ {response}                                  │
-  │                                │                                                       │
-  │                                │ 5. /broadcast-summary                                   │
-  │                                │  (HMAC)              │                    │
-  │                                │───────────────────►  │                    │
-  │                                │                       │ 6. type:'summary'  │
-  │                                │                       │    모든 세션에    │
-  │ ◄──────────────────────────────│ ◄─────────────────────│   broadcast       │
-  │ WS: {type:'summary', text}     │                       │                    │
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant W as Worker
+    participant DO as ChatRoom DO
+    participant AI as Workers AI
+
+    C->>W: POST /api/summary {mode:'summary'}
+
+    Note over W: 1. Rate limit (15s)
+    W->>DO: fetch /messages/recent (HMAC)
+    Note over DO: sessionId 제거
+    DO-->>W: {messages: [50개]}
+
+    W->>AI: env.AI.run(model, prompt)
+    Note over AI: Qwen 추론 (8s timeout)
+    AI-->>W: {response}
+
+    W->>DO: /broadcast-summary (HMAC)
+    Note over DO: type:'summary'<br/>모든 세션에 broadcast
+    DO-->>C: WS: {type:'summary', text}
 ```
 
 ### 5. 푸시 알림 (오프라인 사용자)
 
-```
-ChatRoom DO                        Push Handler                  Push Service
-     │                                  │                              │
-     │ 1. 메시지 broadcast 후            │                              │
-     │    throttledPushNotification      │                              │
-     │────────────────────────────────►  │                              │
-     │                                  │ 2. KV.list() (구독자 순회)   │
-     │                                  │ 3. sendPushToOfflineUsers   │
-     │                                  │ 4. onlineSessionIds 제외    │
-     │                                  │                              │
-     │                                  │ VAPID:                       │
-     │                                  │  - ECDH + aes128gcm         │
-     │                                  │─────────────────────────────►│ Web Push
-     │                                  │                              │
-     │                                  │ FCM:                         │
-     │                                  │  - getFCMAccessToken         │
-     │                                  │  - send FCM v1               │
-     │                                  │─────────────────────────────►│ FCM
-     │                                  │                              │
-     │                                  │ 5. 404/410 → KV 정리        │
+```mermaid
+sequenceDiagram
+    participant DO as ChatRoom DO
+    participant PH as Push Handler
+    participant KV as KV
+    participant VAPID as Web Push
+    participant FCM as FCM v1
+
+    Note over DO: 메시지 broadcast 후<br/>throttledPushNotification
+    DO->>PH: 1. throttledPushNotification
+
+    PH->>KV: 2. KV.list() (구독자 순회)
+    PH->>PH: 3. sendPushToOfflineUsers
+    PH->>PH: 4. onlineSessionIds 제외
+
+    alt VAPID
+        PH->>VAPID: ECDH + aes128gcm
+        VAPID-->>PH: ok
+    else FCM
+        PH->>PH: getFCMAccessToken
+        PH->>FCM: send FCM v1
+        FCM-->>PH: ok
+    end
+
+    Note over PH: 5. 404/410 → KV 정리
 ```
 
 ## 보안 경계
