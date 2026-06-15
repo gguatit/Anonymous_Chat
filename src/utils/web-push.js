@@ -208,11 +208,7 @@ function base64urlDecode(str) {
     str = str.replace(/-/g, '+').replace(/_/g, '/');
     while (str.length % 4) str += '=';
     const binary = atob(str);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
+    return Uint8Array.from(binary, c => c.charCodeAt(0));
 }
 
 function concatArrays(...arrays) {

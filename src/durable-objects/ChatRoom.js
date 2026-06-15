@@ -702,10 +702,9 @@ export class ChatRoom {
 
         this.messages.push(message);
 
-        const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
-        this.messages = this.messages
-            .filter(msg => msg.timestamp > twelveHoursAgo)
-            .slice(-MAX_STORED_MESSAGES);
+        if (this.messages.length > MAX_STORED_MESSAGES) {
+            this.messages = this.messages.slice(-MAX_STORED_MESSAGES);
+        }
 
         await this.state.storage.put('messages', this.messages);
 
@@ -934,28 +933,25 @@ export class ChatRoom {
         message.signature = await generateMessageSignature(message, HMAC_SECRET);
         await this.state.storage.put('messages', this.messages);
 
+        const count = message.reactions[data.emoji] || 0;
+
         this.broadcast({
             type: 'message_reaction',
             messageId: data.messageId,
             emoji: data.emoji,
-            count: message.reactions[data.emoji] || 0,
+            count,
             sessionId,
-            reacted: true
+            reacted: false
         }, sessionId);
 
-        // Send reacted: false to all other connected clients
-        for (const [sid] of this.sessions) {
-            if (sid !== sessionId) {
-                this.sendToSession(sid, {
-                    type: 'message_reaction',
-                    messageId: data.messageId,
-                    emoji: data.emoji,
-                    count: message.reactions[data.emoji] || 0,
-                    sessionId,
-                    reacted: (message.reactionSessions[data.emoji] || []).includes(sid)
-                });
-            }
-        }
+        this.sendToSession(sessionId, {
+            type: 'message_reaction',
+            messageId: data.messageId,
+            emoji: data.emoji,
+            count,
+            sessionId,
+            reacted: true
+        });
     }
 
     handleTyping(data, sessionId) {
@@ -1151,10 +1147,11 @@ export class ChatRoom {
         const initialLength = this.messages.length;
         this.messages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
 
+        let announcementChanged = false;
         if (this.currentAnnouncement && this.currentAnnouncement.isEmergency && this.currentAnnouncement.emergencyUntil && now >= this.currentAnnouncement.emergencyUntil) {
             this.currentAnnouncement.isEmergency = false;
             this.currentAnnouncement.emergencyUntil = null;
-            await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+            announcementChanged = true;
             this.broadcast({ type: 'emergency_cleared' });
         }
 
@@ -1168,7 +1165,7 @@ export class ChatRoom {
             };
             this.broadcast(announcementMessage);
             delete this.currentAnnouncement.scheduleAt;
-            await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
+            announcementChanged = true;
         }
 
         if (this.currentAnnouncement && !this.currentAnnouncement.isEmergency && this.currentAnnouncement.expiresAt && now >= this.currentAnnouncement.expiresAt) {
@@ -1182,6 +1179,10 @@ export class ChatRoom {
             } else {
                 this.currentAnnouncement = null;
             }
+            announcementChanged = true;
+        }
+
+        if (announcementChanged) {
             await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);
         }
 

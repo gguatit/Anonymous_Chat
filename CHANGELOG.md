@@ -62,15 +62,22 @@
 
 #### 개선
 
+- **메시지 반응 broadcast 중복 제거**: `handleReaction`에서 1회 broadcast + N회 for 루프 패턴(2N send)을 broadcast 1회(자기 제외) + 자기에게 별도 발송(N+1 send)으로 단순화합니다. 100명 방에서 1회 반응 시 WebSocket send가 200회에서 101회로 절반 감소합니다.
+- **메시지 push O(n)→O(1)**: `handleMessage`/`handleAdminBroadcast`/`handleBroadcastSummary`의 `push → filter().slice().put` 패턴을 `push → if 초과 시 slice → put`으로 교체합니다. 매 메시지당 O(n) 재생성이 O(1)로 단축되며, retention(12시간) 필터는 cleanup()에 위임하여 동작은 동일합니다.
+- **announcement cleanup put 통합**: cleanup()이 한 사이클에서 `currentAnnouncement`을 1~3회 put하던 것을 변경 플래그(`announcementChanged`)로 모아서 최대 1회만 put합니다. broadcast 순서(변경 → put → broadcast)는 유지됩니다.
+- **base64url 디코딩 최적화**: `web-push.js`의 char-by-char `charCodeAt` 루프를 `Uint8Array.from(binary, c => c.charCodeAt(0))` 한 줄로 교체합니다. 큰 payload에서 GC 압박이 감소합니다.
+
+| 영역 | 변경 전 | 변경 후 |
+|---|---|---|
+| 100명 방 반응 1회 | 200 send | 101 send |
+| 메시지 1개 push | O(n) filter+slice+put | O(1) shift+put |
+| announcement 만료 cleanup | 1~3 put | 1 put |
+| base64url 1KB 디코드 | char 루프 | 일괄 변환 |
+
+#### 개선 (상수)
+
 - **메시지 저장 한도 확대**: `MAX_STORED_MESSAGES`를 500에서 2000으로 상향합니다. 채널당 메모리 사용량 약 4MB / 128MB 한도(3.1%)로 20채널 동시 운영 시 62.5% 사용률입니다.
 - **히스토리 배치 크기 확대**: `RECENT_MESSAGES_BATCH`를 50에서 100으로 상향합니다. 신규 접속/재접속 시 더 많은 최근 메시지를 한 번에 수신합니다.
-
-| 영향 | 수치 |
-|---|---|
-| 메모리 | 채널당 +2.25MB (3.1% → 4MB) |
-| 히스토리 전송 크기 | 75KB → 150KB |
-| 클라이언트 렌더링 | 20ms → 40ms (체감 무영향) |
-| 호환성 | 6개 위치 상수 참조, 자동 전파 |
 
 ---
 

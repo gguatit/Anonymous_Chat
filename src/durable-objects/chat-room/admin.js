@@ -1,4 +1,4 @@
-import { ADMIN, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, FORCE_DELETE_DELAY_MS, MESSAGE_PREVIEW_COUNT } from '../../config/constants.js';
+import { ADMIN, metrics, MAX_STORED_MESSAGES, FORCE_DELETE_DELAY_MS, MESSAGE_PREVIEW_COUNT } from '../../config/constants.js';
 import { sanitizeInput, safeJson, generateMessageSignature } from '../../utils/helpers.js';
 import { isEmergencyActive } from './announcements.js';
 
@@ -167,10 +167,9 @@ export async function handleAdminBroadcast(chatRoom, request, HMAC_SECRET) {
 
         chatRoom.messages.push(message);
 
-        const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
-        chatRoom.messages = chatRoom.messages
-            .filter(msg => msg.timestamp > twelveHoursAgo)
-            .slice(-MAX_STORED_MESSAGES);
+        if (chatRoom.messages.length > MAX_STORED_MESSAGES) {
+            chatRoom.messages = chatRoom.messages.slice(-MAX_STORED_MESSAGES);
+        }
 
         await chatRoom.state.storage.put('messages', chatRoom.messages);
 
@@ -929,10 +928,9 @@ export async function handleBroadcastSummary(chatRoom, request, HMAC_SECRET) {
 
         chatRoom.messages.push(message);
 
-        const twelveHoursAgo = Date.now() - MESSAGE_RETENTION_MS;
-        chatRoom.messages = chatRoom.messages
-            .filter(msg => msg.timestamp > twelveHoursAgo)
-            .slice(-MAX_STORED_MESSAGES);
+        if (chatRoom.messages.length > MAX_STORED_MESSAGES) {
+            chatRoom.messages = chatRoom.messages.slice(-MAX_STORED_MESSAGES);
+        }
 
         await chatRoom.state.storage.put('messages', chatRoom.messages);
 
