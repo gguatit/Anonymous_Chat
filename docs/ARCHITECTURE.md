@@ -1,6 +1,20 @@
 # 아키텍처
 
-Anonymous Chat의 시스템 아키텍처 및 데이터 흐름입니다.
+> Anonymous Chat의 시스템 아키텍처 및 데이터 흐름
+
+---
+
+## 목차
+
+1. [시스템 개요](#시스템-개요)
+2. [컴포넌트](#컴포넌트)
+3. [데이터 흐름](#데이터-흐름)
+4. [보안 경계](#보안-경계)
+5. [빌드 파이프라인](#빌드-파이프라인)
+6. [성능 특성](#성능-특성)
+7. [확장 포인트](#확장-포인트)
+
+---
 
 ## 시스템 개요
 
@@ -44,65 +58,90 @@ flowchart TB
     Worker -->|fetch| External
 ```
 
+---
+
 ## 컴포넌트
 
 ### 1. Worker (`src/worker.js`, 374줄)
 
 Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드, 정적 자산 폴백 처리.
 
-**라우트 테이블**:
-- 20개 공개 엔드포인트 (`/api/*`, `/ws`, `/metrics`, `/health`)
-- 23개 관리자 엔드포인트 (`/api/admin/*`)
-- SPA fallback: 미매칭 경로 → `/index.html` (404는 `ASSETS.fetch`가 반환)
+**라우트 테이블**
 
-**주요 헬퍼**:
-- `matchRoute(routes, pathname, method)` — 선언적 라우트 매칭
-- `channelRequest()` — 3개 채널 핸들러 통합 (DRY)
-- `serveStaticAssets()` — ASSETS 바인딩 + SPA fallback
-- `checkRateLimit()` — Lazy-init rate-limiter (Workers 호환)
+| 분류 | 개수 | 경로 |
+|---|---|---|
+| 공개 엔드포인트 | 20 | `/api/*`, `/ws`, `/metrics`, `/health` |
+| 관리자 엔드포인트 | 23 | `/api/admin/*` |
+| SPA fallback | – | 미매칭 → `/index.html` |
+
+**주요 헬퍼**
+
+| 함수 | 책임 |
+|---|---|
+| `matchRoute()` | 선언적 라우트 매칭 |
+| `channelRequest()` | 3개 채널 핸들러 통합 (DRY) |
+| `serveStaticAssets()` | ASSETS 바인딩 + SPA fallback |
+| `checkRateLimit()` | Lazy-init rate-limiter (Workers 호환) |
+
+---
 
 ### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1080줄)
 
 핵심 WebSocket 핸들러. 채널당 1개 인스턴스 (메인룸 1 + 채널 N).
 
-**책임**:
-- WebSocket 세션 관리 (`sessions` Map, `ipConnections` Map)
-- 메시지 저장 (DO Storage 12시간, 최대 500개)
-- 차단 (IP + SessionID)
-- 공지/긴급공지/스케줄링
-- 메시지 반응 (이모지 토글)
-- 푸시 알림 (오프라인 사용자)
-- AI 요약 (Workers AI 호출)
-- 자동 정리 (5분 주기)
+**책임**
 
-**보조 모듈**:
-- `chat-room/admin.js` (808줄) — 18개 `/admin/*` 라우트
-- `chat-room/messages.js` (184줄) — 검증, 검색, AI sanitization
-- `chat-room/announcements.js` (5줄) — `isEmergencyActive` 헬퍼
+| 영역 | 설명 |
+|---|---|
+| 세션 관리 | `sessions` Map, `ipConnections` Map |
+| 메시지 저장 | DO Storage 12시간, 최대 500개 |
+| 차단 | IP + SessionID |
+| 공지 | 일반/긴급 + 스케줄링 |
+| 반응 | 이모지 토글 |
+| 푸시 | 오프라인 사용자 |
+| AI 요약 | Workers AI 호출 |
+| 자동 정리 | 5분 주기 |
 
-**WebSocket 메시지 타입**:
-- Inbound (7): `ping`, `join`, `message`, `edit`, `delete`, `reaction`, `typing`
-- Outbound (17): `pong`, `banned`, `history`, `announcement`, `system`, `error`, `message`, `message_edited`, `message_deleted`, `message_reaction`, `typing`, `user_count`, `emergency_cleared`, `summary`, `kicked`
+**보조 모듈**
+
+| 파일 | 줄 | 책임 |
+|---|---|---|
+| `chat-room/admin.js` | 808 | 18개 `/admin/*` 라우트 |
+| `chat-room/messages.js` | 184 | 검증, 검색, AI sanitization |
+| `chat-room/announcements.js` | 5 | `isEmergencyActive` 헬퍼 |
+
+**WebSocket 메시지 타입**
+
+| 방향 | 개수 | 타입 |
+|---|---|---|
+| Inbound | 7 | `ping`, `join`, `message`, `edit`, `delete`, `reaction`, `typing` |
+| Outbound | 17 | `pong`, `banned`, `history`, `announcement`, `system`, `error`, `message`, `message_edited`, `message_deleted`, `message_reaction`, `typing`, `user_count`, `emergency_cleared`, `summary`, `kicked` |
+
+---
 
 ### 3. ChannelRegistry Durable Object (`src/durable-objects/ChannelRegistry.js`, 261줄)
 
 채널 메타데이터 싱글톤. slug → 채널 정보 매핑.
 
-**책임**:
+**책임**
 - 채널 생성/조회/삭제
-- lastActive 갱신
+- `lastActive` 갱신
 - 빈 채널 자동 정리 (10분 TTL)
 - 관리자 채널 목록/강제 삭제
+
+---
 
 ### 4. DeadDropStore Durable Object (`src/durable-objects/DeadDropStore.js`, 127줄)
 
 1회성 비밀 메시지 싱글톤.
 
-**특징**:
+**특징**
 - 30분 TTL
 - 1회 읽기 후 영구 삭제
 - 10,000자 제한
 - 404/410으로 만료/소진 구분
+
+---
 
 ### 5. 핸들러 (`src/handlers/`)
 
@@ -116,7 +155,9 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 | `turnstile.js` | 67 | Cloudflare Turnstile 검증 |
 | `health.js` | 15 | `/health`, `/metrics` |
 
-### 6. 미들웨어/유틸 (`src/middleware/`, `src/utils/`)
+---
+
+### 6. 미들웨어/유틸
 
 | 파일 | 책임 |
 |---|---|
@@ -132,6 +173,8 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 | `utils/fcm-auth.js` | Google OAuth JWT for FCM v1 |
 | `config/constants.js` | 모든 매직 넘버 (서버+클라이언트 공유) |
 | `config/cors.js` | CORS 헤더 |
+
+---
 
 ## 데이터 흐름
 
@@ -264,76 +307,99 @@ sequenceDiagram
     Note over PH: 5. 404/410 → KV 정리
 ```
 
+---
+
 ## 보안 경계
 
 ### 인증 토큰 종류
-1. **관리자 토큰** (`auth.js`): `HMAC(secret, base64(id:ts))` 형식. 2시간 만료. KV에 revocation 저장.
-2. **내부 토큰** (`worker.js` ↔ DO): `X-Admin-Internal-Token` 헤더 = `HMAC_SECRET`. SSRF 방지.
-3. **메시지 서명** (`ChatRoom.js`): `HMAC(secret, JSON.stringify({content, sessionId, timestamp}))`. 변조 방지.
+
+| 종류 | 형식 | 위치 | 특징 |
+|---|---|---|---|
+| **관리자 토큰** | `HMAC(secret, base64(id:ts))` | `auth.js` | 2시간 만료, KV revocation |
+| **내부 토큰** | `X-Admin-Internal-Token` | `worker.js` ↔ DO | SSRF 방지 |
+| **메시지 서명** | `HMAC(secret, JSON.stringify({content, sessionId, timestamp}))` | `ChatRoom.js` | 변조 방지 |
 
 ### Rate Limiting
-- **전역**: `src/utils/rate-limiter.js` (per-worker 인메모리, 5분 cleanup)
-- **엔드포인트별**: `API_RATE_LIMIT` 상수 (config, push, turnstile, upload, health, check-ban)
-- **사용자별**: ChatRoom (1초 쿨다운, 분당 30개 슬라이딩 윈도우)
-- **관리자 로그인**: `checkRateLimit`/`incrementRateLimit` (5회/5분 차단)
+
+| 계층 | 위치 | 규칙 |
+|---|---|---|
+| **전역** | `src/utils/rate-limiter.js` | per-worker 인메모리, 5분 cleanup |
+| **엔드포인트별** | `API_RATE_LIMIT` 상수 | config, push, turnstile, upload, health, check-ban |
+| **사용자별** | ChatRoom | 1초 쿨다운, 분당 30개 슬라이딩 윈도우 |
+| **관리자 로그인** | `checkRateLimit`/`incrementRateLimit` | 5회/5분 차단 |
 
 ### 입력 검증
-- **메시지**: `validateClientMessage` (type별 분기)
-- **Dead Drop**: `validateDeadDropMessage` (10000자)
-- **채널명**: `validateChannelName` (≤20자, trim)
-- **닉네임**: `validateNickname` (≤12자, trim)
-- **sessionId**: `validateSessionId` (`[a-zA-Z0-9_-]{1,200}`)
-- **파일**: `validateFileInfo` (url/filename/filetype 길이)
-- **상수**: `sanitizeInput` (제어문자 제거 + 줄바꿈 정규화)
+
+| 입력 | 함수 | 규칙 |
+|---|---|---|
+| 메시지 | `validateClientMessage` | type별 분기 |
+| Dead Drop | `validateDeadDropMessage` | ≤10,000자 |
+| 채널명 | `validateChannelName` | ≤20자, trim |
+| 닉네임 | `validateNickname` | ≤12자, trim |
+| sessionId | `validateSessionId` | `[a-zA-Z0-9_-]{1,200}` |
+| 파일 | `validateFileInfo` | url/filename/filetype 길이 |
+| 상수 | `sanitizeInput` | 제어문자 제거 + 줄바꿈 정규화 |
 
 ### 데이터 보존
-- **메시지**: 12시간 (메모리 + DO Storage)
-- **공지**: 영구 (메모리 + DO Storage)
-- **Dead Drop**: 30분 TTL, 1회 읽기 후 삭제
-- **감사/관리자/오류 로그**: D1 (영구, 30일 자동 정리)
-- **푸시 구독**: 30일 TTL (KV)
-- **차단**: 시간 설정에 따라 만료 (영구 옵션)
+
+| 데이터 | 보존 | 자동 삭제 |
+|---|---|---|
+| 메시지 | 12시간 (메모리 + DO Storage) | ✅ (5분 cleanup) |
+| 공지 | 영구 (메모리 + DO Storage) | 수동 |
+| Dead Drop | 30분 TTL, 1회 읽기 후 삭제 | ✅ TTL |
+| 감사/관리자/오류 로그 | D1 (영구, 30일 자동 정리) | ✅ 10% 확률 정리 |
+| 푸시 구독 | 30일 TTL (KV) | ✅ TTL |
+| 차단 | 시간 설정에 따라 만료 (영구 옵션) | ✅ 만료 시 |
+
+---
 
 ## 빌드 파이프라인
 
+```mermaid
+flowchart LR
+    subgraph Server["서버"]
+        Worker1[src/worker.js<br/>ESM]
+        Middleware[functions/_middleware.js<br/>re-export]
+        Worker1 --> Middleware
+        Middleware --> Runtime[Cloudflare Pages<br/>Functions]
+    end
+
+    subgraph Client["클라이언트"]
+        Chat[public/js/chat.js<br/>+ 19 modules]
+        Admin[public/js/admin.js<br/>+ 9 helpers]
+        Tailwind[tailwind CDN<br/>300KB]
+        TailwindB[tailwind 빌드<br/>45KB]
+
+        Chat -->|esbuild| ChatBundle[chat.bundle.js<br/>40KB]
+        Admin -->|esbuild| AdminBundle[admin.bundle.js<br/>15KB]
+        Tailwind -.->|교체| TailwindB
+    end
 ```
-src/worker.js (ESM)
-        │
-        ▼
-functions/_middleware.js (re-export)
-        │
-        ▼
-Cloudflare Pages Functions (Worker runtime)
 
-public/js/chat.js + 19 modules
-        │
-        ▼ esbuild
-public/js/chat.bundle.js (40KB)
-
-public/js/admin.js + 9 helpers
-        │
-        ▼ esbuild
-public/js/admin.bundle.js (15KB)
-
-public/css/tailwind.min.css (CDN) → 빌드 버전
-```
+---
 
 ## 성능 특성
 
-- **메시지 히스토리 로딩**: 50개, 500ms → 20ms (25배, DocumentFragment)
-- **이벤트 리스너**: 메시지당 5-6개 → 컨테이너 5개 (위임)
-- **Tailwind**: 300KB CDN → 45KB 빌드
-- **번들**: 19개 모듈 → 2개 (chat, admin)
-- **WS Reconnect**: 지수 백오프, 최대 10회/30s
-- **AI Timeout**: 8초 + 15초 레이트리밋
-- **OG Cache**: 1시간 Edge + 50개 클라이언트 메모리
-- **푸시 Throttle**: 1.5초 (debounce)
+| 지표 | 결과 |
+|---|---|
+| 메시지 히스토리 로딩 | 50개, 500ms → **20ms** (25배, DocumentFragment) |
+| 이벤트 리스너 | 메시지당 5-6개 → 컨테이너 5개 (위임) |
+| Tailwind | 300KB CDN → **45KB** 빌드 |
+| 번들 | 19개 모듈 → **2개** (chat, admin) |
+| WS Reconnect | 지수 백오프, 최대 10회/30s |
+| AI Timeout | 8초 + 15초 레이트리밋 |
+| OG Cache | 1시간 Edge + 50개 클라이언트 메모리 |
+| 푸시 Throttle | 1.5초 (debounce) |
+
+---
 
 ## 확장 포인트
 
-- **새 DO**: `src/durable-objects/`에 추가, `wrangler.toml` `[[durable_objects.bindings]]` 등록
-- **새 라우트**: `worker.js` `routes` 배열에 추가
-- **새 핸들러**: `src/handlers/`에 모듈 추가, `worker.js`에서 import
-- **새 상수**: `src/config/constants.js`에 추가 (서버+클라이언트 공유)
-- **새 테마**: `themes.css`에 CSS Custom Properties 추가, `theme.js` `THEMES` 배열에 추가
-- **새 mixin**: `public/js/ui-*.js` 생성, `ui.js` 끝에서 `Object.assign`으로 부착
+| 추가 대상 | 위치 | 절차 |
+|---|---|---|
+| 새 DO | `src/durable-objects/` | `wrangler.toml` `[[durable_objects.bindings]]` 등록 |
+| 새 라우트 | `worker.js` | `routes` 배열에 추가 |
+| 새 핸들러 | `src/handlers/` | 모듈 추가, `worker.js`에서 import |
+| 새 상수 | `src/config/constants.js` | 서버+클라이언트 공유 |
+| 새 테마 | `themes.css` | CSS Custom Properties 추가, `theme.js` `THEMES` 배열에 추가 |
+| 새 mixin | `public/js/ui-*.js` | `ui.js` 끝에서 `Object.assign`으로 부착 |
