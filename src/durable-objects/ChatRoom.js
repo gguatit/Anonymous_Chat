@@ -934,24 +934,18 @@ export class ChatRoom {
         await this.state.storage.put('messages', this.messages);
 
         const count = message.reactions[data.emoji] || 0;
+        const reactedSessions = message.reactionSessions[data.emoji] || [];
 
-        this.broadcast({
-            type: 'message_reaction',
-            messageId: data.messageId,
-            emoji: data.emoji,
-            count,
-            sessionId,
-            reacted: false
-        }, sessionId);
-
-        this.sendToSession(sessionId, {
-            type: 'message_reaction',
-            messageId: data.messageId,
-            emoji: data.emoji,
-            count,
-            sessionId,
-            reacted: true
-        });
+        for (const [sid] of this.sessions) {
+            this.sendToSession(sid, {
+                type: 'message_reaction',
+                messageId: data.messageId,
+                emoji: data.emoji,
+                count,
+                sessionId,
+                reacted: reactedSessions.includes(sid)
+            });
+        }
     }
 
     handleTyping(data, sessionId) {
