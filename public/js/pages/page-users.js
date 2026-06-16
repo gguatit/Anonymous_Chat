@@ -18,9 +18,9 @@ function hideKickUserModal() {
 }
 
 export async function init(core) {
-    document.getElementById('close-user-modal')?.addEventListener('click', () => {
-        document.getElementById('user-details-modal')?.classList.remove('open');
-    });
+    const closeUserModal = () => document.getElementById('user-details-modal')?.classList.remove('open');
+    document.getElementById('close-user-modal')?.addEventListener('click', closeUserModal);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeUserModal(); });
     document.getElementById('close-kick-modal')?.addEventListener('click', hideKickUserModal);
     document.getElementById('cancel-kick-btn')?.addEventListener('click', hideKickUserModal);
     document.getElementById('kick-user-modal')?.addEventListener('click', (e) => {
