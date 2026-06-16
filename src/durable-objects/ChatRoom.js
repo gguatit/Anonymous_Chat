@@ -796,6 +796,14 @@ export class ChatRoom {
         await this.state.storage.put('messages', this.messages);
 
         this.broadcast(message);
+
+        notifyAdmin(this, 'message_created', {
+            messageId: message.messageId,
+            sessionId: message.sessionId,
+            nickname: message.nickname,
+            content: message.content ? message.content.substring(0, 200) : null,
+            timestamp: message.timestamp,
+        });
     }
 
     async handleEdit(data, sessionId, metadata, HMAC_SECRET) {
