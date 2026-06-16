@@ -87,8 +87,8 @@ class AdminCore {
     async handleLogin(e) {
         e.preventDefault();
         const form = e.target;
-        const id = form.querySelector('[name="admin_id"]')?.value || '';
-        const password = form.querySelector('[name="admin_password"]')?.value || '';
+        const id = document.getElementById('admin-id')?.value || '';
+        const password = document.getElementById('admin-password')?.value || '';
         const errorEl = document.getElementById('login-error');
 
         try {
