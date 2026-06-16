@@ -1,5 +1,9 @@
+import { logSecurityEvent as _logSecurityEvent } from './security-logger.js';
+
 const MAX_LOG_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const CLEANUP_PROBABILITY = 0.1;
+
+export { _logSecurityEvent as logSecurityEvent };
 
 export async function logAdminActivity(env, activity) {
     if (!env?.DB_ADMIN) return;

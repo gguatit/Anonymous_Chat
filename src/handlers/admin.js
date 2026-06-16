@@ -1,5 +1,5 @@
 import { sleep, constantTimeCompare } from '../utils/security.js';
-import { logAdminActivity } from '../utils/logger.js';
+import { logAdminActivity, logSecurityEvent } from '../utils/logger.js';
 import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken } from '../middleware/auth.js';
 import { forwardToDO, forwardToChannelDO } from '../utils/do.js';
 import { safeJson } from '../utils/helpers.js';
@@ -8,9 +8,30 @@ import { jsonError, emptyResponse } from '../utils/errors.js';
 
 async function requireAdminAuth(request, env) {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        const hasHeader = authHeader && authHeader.startsWith('Bearer ');
+        if (!hasHeader) {
+            await logSecurityEvent(env, 'ADMIN_NO_TOKEN', {
+                ip: request.headers.get('CF-Connecting-IP') || 'unknown',
+                path: new URL(request.url).pathname,
+                method: request.method,
+                userAgent: request.headers.get('User-Agent'),
+                details: 'No Authorization header',
+            });
+        }
+        return null;
+    }
     const token = authHeader.substring(7);
     const isValid = await verifyAdminToken(token, env.HMAC_SECRET, env);
+    if (!isValid) {
+        await logSecurityEvent(env, 'ADMIN_FORBIDDEN', {
+            ip: request.headers.get('CF-Connecting-IP') || 'unknown',
+            path: new URL(request.url).pathname,
+            method: request.method,
+            userAgent: request.headers.get('User-Agent'),
+            details: 'Invalid or expired admin token',
+        });
+    }
     return isValid ? token : null;
 }
 
@@ -21,6 +42,8 @@ function withAuth(handler) {
         return handler(request, env, corsHeaders);
     };
 }
+
+export { withAuth };
 
 function forwardResponse(response, corsHeaders) {
     return new Response(response.body, {
@@ -45,6 +68,14 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 timestamp
             });
 
+            await logSecurityEvent(env, 'LOGIN_FAIL', {
+                ip: clientIP,
+                userAgent: request.headers.get('User-Agent'),
+                path: '/api/admin/login',
+                method: 'POST',
+                details: 'Rate limit exceeded on login',
+            });
+
             await sleep(1000);
 
             return new Response(JSON.stringify({
@@ -64,6 +95,14 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 reason: 'credentials_not_configured',
                 ip: clientIP,
                 timestamp
+            });
+
+            await logSecurityEvent(env, 'LOGIN_FAIL', {
+                ip: clientIP,
+                userAgent: request.headers.get('User-Agent'),
+                path: '/api/admin/login',
+                method: 'POST',
+                details: 'Credentials not configured',
             });
 
             return new Response(JSON.stringify({
@@ -114,6 +153,15 @@ export async function handleAdminLogin(request, env, corsHeaders) {
             ip: clientIP,
             timestamp,
             userAgent: request.headers.get('User-Agent')
+        });
+
+        await logSecurityEvent(env, 'LOGIN_FAIL', {
+            ip: clientIP,
+            userAgent: request.headers.get('User-Agent'),
+            path: '/api/admin/login',
+            method: 'POST',
+            details: 'Invalid credentials',
+            metadata: { attemptedId: id },
         });
 
         return new Response(JSON.stringify({

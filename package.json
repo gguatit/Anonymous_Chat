@@ -9,7 +9,7 @@
     "build": "npm run css && npm run bundle && npm run lint",
     "deploy": "npm run css && npm run bundle && wrangler deploy",
     "css": "npx tailwindcss -i src/tailwind-input.css -o public/css/tailwind.min.css --minify",
-    "bundle": "npx esbuild public/js/chat.js --bundle --outfile=public/js/chat.bundle.js --format=esm --minify --target=es2020 && npx esbuild public/js/admin.js --bundle --outfile=public/js/admin.bundle.js --format=esm --minify --target=es2020",
+    "bundle": "node esbuild.config.js",
     "lint": "eslint src/ public/js/",
     "lint:fix": "eslint src/ public/js/ --fix",
     "format": "npx prettier --write .",

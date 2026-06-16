@@ -13,6 +13,9 @@ import { handleTurnstileVerify } from './handlers/turnstile.js';
 import { handlePreview } from './handlers/preview.js';
 import { handleSummary } from './handlers/summary.js';
 
+import { logSecurityEvent } from './utils/logger.js';
+import * as security from './handlers/security.js';
+
 import { ChatRoom } from './durable-objects/ChatRoom.js';
 import { ChannelRegistry } from './durable-objects/ChannelRegistry.js';
 import { DeadDropStore } from './durable-objects/DeadDropStore.js';
@@ -54,6 +57,13 @@ const adminRoutes = [
     ['channels', null, admin.handleAdminChannels],
     ['channel-details', null, admin.handleAdminChannelDetails],
     ['channel-delete', 'POST', admin.handleAdminChannelDelete],
+    ['security/events', null, security.handleListEvents],
+    ['security/stats', null, security.handleGetStats],
+    ['security/risk-ips', null, security.handleGetRiskIPs],
+    ['security/events/export', null, security.handleExportCSV],
+    ['security/events/clear', 'POST', security.handleClearEvents],
+    ['security/badge', null, security.handleGetBadge],
+    ['security/block-ip', 'POST', security.handleBlockIP],
 ];
 
 async function channelRequest(request, env, corsHeaders, endpoint, method, errorMsg) {
@@ -252,7 +262,10 @@ export default {
             // Match admin routes: /api/admin/<name>
             if (url.pathname.startsWith(API_PREFIX)) {
                 const name = url.pathname.slice(API_PREFIX.length);
-                const handler = matchRoute(adminRoutes, name, request.method);
+                let handler = matchRoute(adminRoutes, name, request.method);
+                if (!handler && /^security\/events\/\d+$/.test(name)) {
+                    handler = security.handleGetEvent;
+                }
                 if (handler) return await handler(request, env, corsHeaders);
             }
 
@@ -390,6 +403,15 @@ export default {
             // Static assets
             const staticResponse = await serveStaticAssets(request, env, url);
             if (staticResponse) return staticResponse;
+
+            await logSecurityEvent(env, 'ENDPOINT_SCAN', {
+                ip: request.headers.get('CF-Connecting-IP') || 'unknown',
+                path: url.pathname,
+                method: request.method,
+                userAgent: request.headers.get('User-Agent'),
+                country: request.headers.get('CF-IPCountry') || null,
+                details: `Unknown endpoint: ${request.method} ${url.pathname}`,
+            });
 
             return new Response('Not Found', { status: 404 });
 

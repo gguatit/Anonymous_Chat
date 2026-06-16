@@ -1,5 +1,5 @@
 import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH } from '../config/constants.js';
-import { logAuditLog, logErrorLog } from '../utils/logger.js';
+import { logAuditLog, logErrorLog, logSecurityEvent } from '../utils/logger.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
 import { verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl, generateMessageSignature } from '../utils/helpers.js';
 import { validateClientMessage, validateSessionId } from '../utils/validate.js';
@@ -292,6 +292,10 @@ export class ChatRoom {
 
         const currentConnections = this.ipConnections.get(clientIP) || 0;
         if (currentConnections >= RATE_LIMIT.MAX_CONNECTIONS_PER_IP) {
+            await logSecurityEvent(this.env, 'WS_HANDSHAKE_FAIL', {
+                ip: clientIP,
+                details: `Too many connections: ${currentConnections}`,
+            });
             return new Response('Too many connections from this IP', { status: 429 });
         }
 
@@ -380,6 +384,12 @@ export class ChatRoom {
                 console.error('Message handling error:', error);
                 const errorEnv = metadata?.environment || (environment ? environment : {});
                 this.addErrorLog('WS_MESSAGE_PARSE', error, errorEnv, '메시지 처리 중 오류 발생');
+
+                await logSecurityEvent(this.env, 'WS_INVALID_MSG', {
+                    ip: clientIP,
+                    sessionId,
+                    details: `Message parse error: ${error.message}`,
+                });
                 if (sessionId) {
                     this.sendToSession(sessionId, {
                         type: 'error',
@@ -581,6 +591,11 @@ export class ChatRoom {
 
         const msgCheck = validateClientMessage(data);
         if (!msgCheck.valid) {
+            await logSecurityEvent(this.env, 'WS_INVALID_MSG', {
+                ip: metadata.ip,
+                sessionId,
+                details: `Client message validation failed: ${msgCheck.error}`,
+            });
             this.sendToSession(sessionId, {
                 type: 'error',
                 content: msgCheck.error
@@ -600,16 +615,27 @@ export class ChatRoom {
             );
 
             if (!isValid) {
+                await logSecurityEvent(this.env, 'WS_INVALID_MSG', {
+                    ip: metadata.ip,
+                    sessionId,
+                    details: 'Invalid message signature',
+                });
                 this.sendToSession(sessionId, {
                     type: 'error',
                     content: '메시지 무결성 검증 실패'
                 });
                 console.warn('Invalid message signature from session:', sessionId);
+
                 return;
             }
         }
 
         if (data.sessionId !== sessionId) {
+            await logSecurityEvent(this.env, 'WS_INVALID_MSG', {
+                ip: metadata.ip,
+                sessionId,
+                details: `Session ID mismatch: ${data.sessionId} != ${sessionId}`,
+            });
             this.sendToSession(sessionId, {
                 type: 'error',
                 content: '세션 ID가 일치하지 않습니다.'
@@ -628,6 +654,11 @@ export class ChatRoom {
 
         const validationError = validateMessage(data, metadata);
         if (validationError) {
+            await logSecurityEvent(this.env, 'WS_FLOOD', {
+                ip: metadata.ip,
+                sessionId,
+                details: validationError,
+            });
             this.sendToSession(sessionId, {
                 type: 'error',
                 content: validationError

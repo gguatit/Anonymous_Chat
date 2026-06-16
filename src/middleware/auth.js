@@ -1,4 +1,5 @@
 import { AUTH } from '../config/constants.js';
+import { logSecurityEvent } from '../utils/logger.js';
 
 // Rate Limit 체크 (IP당 5회 실패 시 5분간 차단)
 export async function checkRateLimit(env, key) {
@@ -71,32 +72,39 @@ export async function generateAdminToken(password, secret) {
 // Verify admin token
 export async function verifyAdminToken(token, secret, env) {
     try {
-        // 1. 블랙리스트 체크 (무효화된 토큰)
         if (env?.ADMIN_TOKENS) {
             const isRevoked = await env.ADMIN_TOKENS.get(`revoked:${token}`);
             if (isRevoked) {
+                await logSecurityEvent(env, 'TOKEN_INVALID', {
+                    details: 'Token has been revoked',
+                });
                 return false;
             }
         }
-        
-        // 2. 토큰 형식 검증
+
         const [dataPart, sigPart] = token.split('.');
-        if (!dataPart || !sigPart) return false;
-        
+        if (!dataPart || !sigPart) {
+            await logSecurityEvent(env, 'TOKEN_INVALID', {
+                details: 'Malformed token (missing data or signature part)',
+            });
+            return false;
+        }
+
         const data = atob(dataPart);
         const parts = data.split(':');
         const timestamp = parts[parts.length - 1];
-        
-        // Token expires
+
         if (Date.now() - parseInt(timestamp) > AUTH.TOKEN_EXPIRY_MS) {
+            await logSecurityEvent(env, 'TOKEN_EXPIRED', {
+                details: `Token expired (issued at ${timestamp})`,
+            });
             return false;
         }
-        
-        // 3. HMAC 서명 검증
+
         const encoder = new TextEncoder();
         const keyData = encoder.encode(secret);
         const messageData = encoder.encode(data);
-        
+
         const key = await crypto.subtle.importKey(
             'raw',
             keyData,
@@ -104,12 +112,21 @@ export async function verifyAdminToken(token, secret, env) {
             false,
             ['sign']
         );
-        
+
         const signature = await crypto.subtle.sign('HMAC', key, messageData);
         const expectedSig = btoa(String.fromCharCode(...new Uint8Array(signature)));
-        
-        return sigPart === expectedSig;
-    } catch (_e) { /* expected: malformed token */
+
+        const isValid = sigPart === expectedSig;
+        if (!isValid) {
+            await logSecurityEvent(env, 'TOKEN_INVALID', {
+                details: 'HMAC signature mismatch',
+            });
+        }
+        return isValid;
+    } catch (_e) {
+        await logSecurityEvent(env, 'TOKEN_INVALID', {
+            details: `Token parsing error: ${_e.message}`,
+        });
         return false;
     }
 }
