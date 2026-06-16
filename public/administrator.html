@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko" data-theme="dark">
 <head>
     <meta charset="UTF-8">
@@ -12,416 +12,185 @@
         (function(){try{var t=localStorage.getItem('chatTheme');if(t){document.documentElement.setAttribute('data-theme',t);var m=document.getElementById('theme-color-meta');var c={dark:'#1F2937',light:'#FFFFFF',midnight:'#1E293B',ocean:'#134E4A',forest:'#14532D',amethyst:'#1A0A2E',sunset:'#292524',sakura:'#FCE7F3'};if(m&&c[t])m.setAttribute('content',c[t]);}}catch(e){}})();
     </script>
     <style>
-        .stat-card { transition: transform 0.2s; }
-        .stat-card:hover { transform: translateY(-2px); }
-        @media (max-width: 768px) { input, textarea, select { font-size: 16px !important; } }
-        @media (max-width: 640px) {
-            .mobile-hidden { display: none !important; }
-            .table-card-mobile table, .table-card-mobile thead, .table-card-mobile tbody, .table-card-mobile th, .table-card-mobile td, .table-card-mobile tr { display: block; }
-            .table-card-mobile thead tr { position: absolute; top: -9999px; left: -9999px; }
-            .table-card-mobile tr { border-bottom: 1px solid #374151; padding: 8px 0; }
-            .table-card-mobile td { position: relative; padding-left: 40%; text-align: left; white-space: normal; border: none; }
-            .table-card-mobile td::before { content: attr(data-label); position: absolute; left: 8px; width: 35%; font-weight: 600; color: #9CA3AF; white-space: nowrap; }
-        }
-        .skeleton { animation: skeleton-pulse 1.5s ease-in-out infinite; border-radius: 4px; }
-        .skeleton-text { height: 16px; margin-bottom: 8px; }
-        .skeleton-text-lg { height: 20px; margin-bottom: 12px; }
-        .skeleton-text-sm { height: 12px; margin-bottom: 6px; }
-        .skeleton-card { padding: 16px; margin-bottom: 12px; border: 1px solid rgba(75,85,99,0.3); border-radius: 8px; }
-        .skeleton-row { display: flex; align-items: center; gap: 12px; }
-        .skeleton-avatar { width: 40px; height: 40px; border-radius: 50%; }
-        .skeleton-content { flex: 1; }
-        @keyframes skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .mobile-menu { transform: translateX(100%); transition: transform 0.3s ease; }
-        .mobile-menu.active { transform: translateX(0); }
-        [data-theme] .bg-gray-800 { background-color: var(--c-bg-800); }
-        [data-theme] .bg-gray-700 { background-color: var(--c-bg-700); }
-        [data-theme] .bg-gray-700\/50 { background-color: var(--c-bg-700); }
-        [data-theme] .bg-gray-900 { background-color: var(--c-bg-900); }
-        [data-theme] .text-gray-100 { color: var(--c-tx-100); }
-        [data-theme] .text-gray-200 { color: var(--c-tx-200); }
-        [data-theme] .text-gray-300 { color: var(--c-tx-300); }
-        [data-theme] .text-gray-400 { color: var(--c-tx-400); }
-        [data-theme] .text-gray-500 { color: var(--c-bg-500); }
-        [data-theme] .border-gray-700 { border-color: var(--c-bd-700); }
-        [data-theme] .border-gray-600 { border-color: var(--c-bd-600); }
-        [data-theme] .divide-gray-700 > :not([hidden]) ~ :not([hidden]) { border-color: var(--c-bd-700); }
-        [data-theme] .hover\:bg-gray-700:hover { background-color: var(--c-hv-700); }
-        [data-theme] .hover\:bg-gray-600:hover { background-color: var(--c-hv-600); }
-        [data-theme] .hover\:text-gray-200:hover { color: var(--c-tx-200); }
-        [data-theme] .hover\:text-gray-100:hover { color: var(--c-tx-100); }
-        [data-theme] .hover\:text-gray-300:hover { color: var(--c-tx-300); }
-        [data-theme] .skeleton { background: oklch(from var(--c-bg-700) l c h / 0.6); }
-
-        /* Navigation sidebar */
+        [data-theme] .bg-gray-800 { background-color: var(--c-bg-800, #1f2937); }
+        [data-theme] .bg-gray-700 { background-color: var(--c-bg-700, #374151); }
+        [data-theme] .bg-gray-900 { background-color: var(--c-bg-900, #111827); }
+        [data-theme] .text-gray-100 { color: var(--c-tx-100, #f3f4f6); }
+        [data-theme] .text-gray-200 { color: var(--c-tx-200, #e5e7eb); }
+        [data-theme] .text-gray-300 { color: var(--c-tx-300, #d1d5db); }
+        [data-theme] .text-gray-400 { color: var(--c-tx-400, #9ca3af); }
+        [data-theme] .border-gray-700 { border-color: var(--c-bd-700, #374151); }
+        [data-theme] .border-gray-600 { border-color: var(--c-bd-600, #4b5563); }
+        [data-theme] .divide-gray-700 > :not([hidden]) ~ :not([hidden]) { border-color: var(--c-bd-700, #374151); }
+        [data-theme] .hover\:bg-gray-700:hover { background-color: var(--c-hv-700, #374151); }
+        [data-theme] .hover\:bg-gray-600:hover { background-color: var(--c-hv-600, #4b5563); }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; overflow-x: hidden; }
+        #admin-dashboard { display: flex; flex-direction: column; min-height: 100vh; }
+        #dashboard-body { display: flex; flex: 1; }
         #nav-sidebar {
-            display: flex; gap: 2px; flex-wrap: wrap; padding: 0.5rem 1rem;
-            background: var(--c-bg-800, #1f2937); border-bottom: 1px solid var(--c-bd-700, #374151);
-            position: sticky; top: 57px; z-index: 40; margin-bottom: 0.5rem;
+            width: 200px; min-width: 200px; flex-shrink: 0;
+            background: #1f2937; border-right: 1px solid #374151;
+            display: flex; flex-direction: column; padding: 0.5rem 0;
         }
+        [data-theme] #nav-sidebar { background: var(--c-bg-800, #1f2937); border-color: var(--c-bd-700, #374151); }
         .nav-item {
-            display: flex; align-items: center; gap: 4px; padding: 6px 12px;
-            border: none; border-radius: 6px; cursor: pointer; font-size: 13px;
-            background: transparent; color: var(--c-tx-400, #9ca3af);
-            transition: all 0.15s; white-space: nowrap;
+            display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+            border: none; cursor: pointer; font-size: 14px; width: 100%; text-align: left;
+            background: transparent; color: #d1d5db; transition: background 0.15s;
         }
-        .nav-item:hover { background: var(--c-hv-700, #374151); color: var(--c-tx-200, #e5e7eb); }
-        .nav-item.active { background: #3b82f6; color: #fff; }
-        .nav-icon { font-size: 14px; line-height: 1; }
-        .nav-label { font-weight: 500; }
+        [data-theme] .nav-item { color: var(--c-tx-300, #d1d5db); }
+        .nav-item:hover { background: #374151; color: #e5e7eb; }
+        [data-theme] .nav-item:hover { background: var(--c-hv-700, #374151); color: var(--c-tx-200, #e5e7eb); }
+        .nav-item.active { background: rgba(59,130,246,0.15); color: #60a5fa; border-right: 3px solid #3b82f6; }
+        .nav-icon { width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; }
+        .nav-icon svg { width: 18px; height: 18px; }
+        .nav-label { white-space: nowrap; }
         .nav-badge {
-            display: inline-flex; align-items: center; justify-content: center;
-            min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px;
-            font-size: 11px; font-weight: 700; color: #fff; background: #6b7280;
-            margin-left: 2px;
+            margin-left: auto; min-width: 20px; height: 20px; border-radius: 10px;
+            display: none; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700; color: #fff; background: #6b7280; padding: 0 6px;
         }
-        @media (max-width: 640px) {
-            #nav-sidebar { gap: 1px; padding: 0.25rem 0.5rem; overflow-x: auto; flex-wrap: nowrap; }
-            .nav-item { padding: 5px 8px; font-size: 12px; }
-            .nav-label { display: none; }
+        #main-content { flex: 1; min-width: 0; overflow-x: hidden; overflow-y: auto; }
+        .page-section { padding: 1.25rem 1.5rem; }
+        .stat-card {
+            background: #1f2937; border: 1px solid #374151;
+            border-radius: 8px; padding: 1.25rem; transition: transform 0.2s;
         }
-
-        /* Security center */
-        .sec-stat {
-            background: var(--c-bg-700, #374151); border-radius: 8px; padding: 16px;
-            text-align: center; border: 1px solid var(--c-bd-700, #4b5563);
+        [data-theme] .stat-card { background: var(--c-bg-800, #1f2937); border-color: var(--c-bd-700, #374151); }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-icon { width: 28px; height: 28px; opacity: 0.6; flex-shrink: 0; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: #f3f4f6; margin-top: 0.25rem; }
+        .stat-label { font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem; }
+        .panel { background: #1f2937; border: 1px solid #374151; border-radius: 8px; margin-bottom: 1rem; }
+        [data-theme] .panel { background: var(--c-bg-800, #1f2937); border-color: var(--c-bd-700, #374151); }
+        .panel-header { padding: 0.75rem 1rem; border-bottom: 1px solid #374151; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; }
+        [data-theme] .panel-header { border-color: var(--c-bd-700, #374151); }
+        .panel-body { padding: 0.75rem 1rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+        th { text-align: left; padding: 0.5rem 0.75rem; color: #9ca3af; font-weight: 500; background: rgba(55,65,81,0.4); }
+        td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #374151; }
+        tr:last-child td { border-bottom: none; }
+        input, textarea, select { font-family: inherit; }
+        input[type="text"], input[type="password"], input[type="datetime-local"], textarea, select {
+            background: #374151; color: #e5e7eb; border: 1px solid #4b5563;
+            border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 0.8125rem; outline: none;
         }
-        .sec-stat-val { font-size: 28px; font-weight: 700; color: #e5e7eb; }
-        .sec-stat-label { font-size: 12px; color: var(--c-tx-400, #9ca3af); margin-top: 4px; }
-        .sec-stat-critical .sec-stat-val { color: #fca5a5; }
-        .sec-stat-high .sec-stat-val { color: #fdba74; }
-        .sec-stat-medium .sec-stat-val { color: #fde047; }
-        .sev-low { color: #86efac; font-weight: 600; }
-        .sev-medium { color: #fde047; font-weight: 600; }
-        .sev-high { color: #fdba74; font-weight: 600; }
-        .sev-critical { color: #fca5a5; font-weight: 700; }
-        .badge-cat {
-            display: inline-block; padding: 2px 8px; border-radius: 4px;
-            font-size: 11px; font-weight: 600; background: rgba(59,130,246,0.2); color: #93c5fd;
+        [data-theme] input[type="text"], [data-theme] input[type="password"], [data-theme] textarea, [data-theme] select {
+            background: var(--c-bg-700, #374151); color: var(--c-tx-200, #e5e7eb); border-color: var(--c-bd-600, #4b5563);
         }
-        .event-row { cursor: pointer; }
-        .event-row:hover { background: var(--c-hv-700, rgba(55,65,81,0.5)); }
-        .event-detail.hidden { display: none; }
-        .event-detail td { background: var(--c-bg-700, rgba(55,65,81,0.3)); padding: 12px 16px; }
-        .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; font-size: 13px; }
-        .detail-grid div { color: #d1d5db; }
-        .detail-grid strong { color: #9ca3af; }
-        .mono { font-family: monospace; font-size: 12px; }
-        .truncate { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
-        .page-btn {
-            padding: 4px 10px; border: 1px solid var(--c-bd-600, #4b5563);
-            background: transparent; color: var(--c-tx-300, #d1d5db);
-            border-radius: 4px; cursor: pointer; font-size: 13px; margin: 0 2px;
-        }
+        input:focus, textarea:focus, select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+        .btn { display: inline-flex; align-items: center; gap: 4px; padding: 0.4rem 0.75rem; border: none; border-radius: 6px; font-size: 0.8125rem; font-weight: 500; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+        .btn-primary { background: #2563eb; color: #fff; } .btn-primary:hover { background: #1d4ed8; }
+        .btn-danger { background: #dc2626; color: #fff; } .btn-danger:hover { background: #b91c1c; }
+        .btn-success { background: #16a34a; color: #fff; } .btn-success:hover { background: #15803d; }
+        .btn-ghost { background: transparent; color: #9ca3af; } .btn-ghost:hover { background: #374151; color: #e5e7eb; }
+        .btn-sm { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
+        .sec-stat { background: #374151; border-radius: 8px; padding: 1rem; text-align: center; border: 1px solid #4b5563; }
+        [data-theme] .sec-stat { background: var(--c-bg-700, #374151); border-color: var(--c-bd-700, #4b5563); }
+        .sec-stat-val { font-size: 1.5rem; font-weight: 700; color: #e5e7eb; }
+        .sec-stat-label { font-size: 0.6875rem; color: #9ca3af; margin-top: 0.25rem; }
+        .sev-low { color: #86efac; font-weight: 600; } .sev-medium { color: #fde047; font-weight: 600; }
+        .sev-high { color: #fdba74; font-weight: 600; } .sev-critical { color: #fca5a5; font-weight: 700; }
+        .badge-cat { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; background: rgba(59,130,246,0.2); color: #93c5fd; }
+        .mono { font-family: monospace; font-size: 0.75rem; }
+        .page-btn { padding: 4px 10px; border: 1px solid #4b5563; background: transparent; color: #d1d5db; border-radius: 4px; cursor: pointer; font-size: 0.8125rem; }
         .page-btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
-        .btn-sm { padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; border: none; }
-        .btn-red { background: #dc2626; color: #fff; }
-        .btn-red:hover { background: #b91c1c; }
+        .btn-red { background: #dc2626; color: #fff; } .btn-red:hover { background: #b91c1c; }
+        .event-row { cursor: pointer; } .event-row:hover { background: #374151; }
+        .event-detail.hidden { display: none; } .event-detail td { background: #374151; padding: 0.75rem 1rem; }
+        .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; font-size: 0.8125rem; }
+        .skeleton { animation: sk 1.5s ease-in-out infinite; border-radius: 4px; background: rgba(75,85,99,0.4); }
+        .skeleton-text { height: 14px; margin-bottom: 6px; }
+        .skeleton-text-sm { height: 10px; margin-bottom: 4px; }
+        @keyframes sk { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+        #admin-header { background: #1f2937; border-bottom: 1px solid #374151; padding: 0.5rem 1.25rem; z-index: 50; display: flex; justify-content: space-between; align-items: center; }
+        [data-theme] #admin-header { background: var(--c-bg-800, #1f2937); border-color: var(--c-bd-700, #374151); }
+        #mobile-menu-btn { display: none; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 55; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: #1f2937; border: 1px solid #374151; border-radius: 8px; max-width: 700px; width: 100%; max-height: 85vh; overflow-y: auto; }
+        @media (max-width: 768px) {
+            #nav-sidebar { display: none; position: fixed; top: 0; left: 0; bottom: 0; z-index: 45; width: 220px; box-shadow: 4px 0 12px rgba(0,0,0,0.3); }
+            #nav-sidebar.open { display: flex; }
+            #mobile-menu-btn { display: inline-flex; }
+            .page-section { padding: 0.75rem; }
+            .stat-card { padding: 0.75rem; } .stat-value { font-size: 1.25rem; }
+        }
     </style>
 </head>
-<body class="dark bg-gray-900 text-gray-100 min-h-screen">
-    <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-900 text-gray-100">
+    <div id="login-screen">
         <div class="bg-gray-800 rounded-lg shadow-2xl p-8 max-w-md w-full border border-gray-700">
             <div class="text-center mb-6">
                 <h1 class="text-2xl font-bold text-gray-100 mb-2">관리자 로그인</h1>
                 <p class="text-sm text-gray-400">Anonymous Chat Admin Panel</p>
             </div>
             <form id="login-form" class="space-y-4">
-                <div>
-                    <label for="admin-id" class="block text-sm font-medium text-gray-300 mb-2">관리자 ID</label>
-                    <input type="text" id="admin-id" class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="ID를 입력하세요" required autocomplete="username" />
-                </div>
-                <div>
-                    <label for="admin-password" class="block text-sm font-medium text-gray-300 mb-2">관리자 비밀번호</label>
-                    <input type="password" id="admin-password" class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="비밀번호를 입력하세요" required autocomplete="current-password" />
-                </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">로그인</button>
-                <div id="login-error" class="hidden bg-red-900/20 border border-red-700 text-red-400 px-4 py-3 rounded-lg text-sm">ID 또는 비밀번호가 올바르지 않습니다.</div>
+                <div><label for="admin-id" class="block text-sm font-medium text-gray-300 mb-2">관리자 ID</label><input type="text" id="admin-id" class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ID" required autocomplete="username"></div>
+                <div><label for="admin-password" class="block text-sm font-medium text-gray-300 mb-2">관리자 비밀번호</label><input type="password" id="admin-password" class="w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password" required autocomplete="current-password"></div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors">로그인</button>
+                <div id="login-error" class="hidden bg-red-900/20 border border-red-700 text-red-400 px-4 py-3 rounded-lg text-sm"></div>
             </form>
-            <div class="mt-6 pt-6 border-t border-gray-700">
-                <a href="/" class="text-sm text-blue-400 hover:text-blue-300 flex items-center justify-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    채팅으로 돌아가기
-                </a>
-            </div>
+            <div class="mt-6 pt-6 border-t border-gray-700"><a href="/" class="text-sm text-blue-400 hover:text-blue-300 flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>채팅으로 돌아가기</a></div>
         </div>
     </div>
 
-    <div id="admin-dashboard" class="hidden">
-        <header class="bg-gray-800 border-b border-gray-700 py-3 px-4 shadow-lg sticky top-0 z-50">
-            <div class="max-w-7xl mx-auto flex justify-between items-center">
-                <div class="flex items-center gap-2">
-                    <h1 class="text-lg md:text-xl font-bold text-gray-100">관리자</h1>
-                    <span class="bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">ADMIN</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button id="refresh-btn" class="text-gray-400 hover:text-gray-200 transition-colors p-2" title="새로고침">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    </button>
-                    <div class="mobile-hidden flex items-center gap-3">
-                        <span id="last-updated" class="text-xs text-gray-400"></span>
-                        <div class="flex items-center gap-2">
-                            <label for="auto-refresh-toggle" class="text-xs text-gray-400">자동 새로고침</label>
-                            <input type="checkbox" id="auto-refresh-toggle" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
-                            <select id="auto-refresh-interval" class="bg-gray-700 text-gray-300 text-xs border border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="10">10초</option><option value="30" selected>30초</option><option value="60">1분</option><option value="300">5분</option>
-                            </select>
-                        </div>
-                        <button id="export-csv-btn" class="text-gray-400 hover:text-gray-200 transition-colors" title="CSV 내보내기">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3v14a1 1 0 001 1h12a1 1 0 001-1V8.414A2 2 0 0016.586 7L12 2.414A2 2 0 0010.586 2H4a1 1 0 00-1 1z" /></svg>
-                        </button>
-                    </div>
-                    <button id="mobile-menu-btn" class="md:hidden text-gray-400 hover:text-gray-200 transition-colors p-2" title="메뉴">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-                    </button>
-                    <button id="logout-btn" class="text-red-400 hover:text-red-300 transition-colors text-sm">로그아웃</button>
-                </div>
+    <div id="admin-dashboard" style="display:none">
+        <div id="admin-header">
+            <div class="flex items-center gap-3">
+                <button id="mobile-menu-btn" class="btn btn-ghost btn-sm" title="메뉴"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
+                <h1 class="text-lg font-bold text-gray-100">관리자</h1>
+                <span class="bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">ADMIN</span>
             </div>
-        </header>
-
-        <div id="mobile-menu" class="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40 hidden">
-            <div class="mobile-menu fixed right-0 top-0 bottom-0 w-80 bg-gray-800 shadow-2xl overflow-y-auto">
-                <div class="p-4 border-b border-gray-700 flex justify-between items-center">
-                    <h2 class="text-lg font-semibold text-gray-100">설정</h2>
-                    <button id="close-mobile-menu" class="text-gray-400 hover:text-gray-200"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
-                </div>
-                <div class="p-4 space-y-4">
-                    <div><label class="block text-sm font-medium text-gray-300 mb-2">마지막 업데이트</label><p id="mobile-last-updated" class="text-sm text-gray-400">-</p></div>
-                    <div><label for="mobile-auto-refresh" class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" id="mobile-auto-refresh" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">자동 새로고침</label></div>
-                    <div><label class="block text-sm font-medium text-gray-300 mb-2">새로고침 간격</label><select id="mobile-refresh-interval" class="w-full bg-gray-700 text-gray-300 text-sm border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="10">10초</option><option value="30" selected>30초</option><option value="60">1분</option><option value="300">5분</option></select></div>
-                    <button id="mobile-export-csv" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-sm font-medium">CSV 내보내기</button>
-                </div>
+            <div class="flex items-center gap-3">
+                <span id="last-updated" class="text-xs text-gray-400"></span>
+                <label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer"><input type="checkbox" id="auto-refresh-toggle" class="w-3.5 h-3.5 rounded">자동</label>
+                <select id="auto-refresh-interval" class="bg-gray-700 text-gray-300 text-xs border border-gray-600 rounded px-1.5 py-0.5"><option value="10">10초</option><option value="30" selected>30초</option><option value="60">1분</option><option value="300">5분</option></select>
+                <button id="logout-btn" class="btn btn-ghost text-red-400 text-sm">로그아웃</button>
             </div>
         </div>
 
-        <main class="max-w-7xl mx-auto p-3 md:p-6" data-pages>
-
-            <!-- ===== PAGE: MAIN ===== -->
-            <div data-page="main">
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-6">
-                    <div class="stat-card bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-lg p-6">
-                        <div class="flex items-center justify-between mb-2"><h3 class="text-sm font-medium text-blue-100">활성 연결</h3><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg></div>
-                        <p id="stat-active-connections" class="text-3xl font-bold text-white"><span class="skeleton inline-block w-16 h-8 align-middle rounded"></span></p>
-                        <p class="text-xs text-blue-200 mt-1">현재 접속자</p>
+        <div id="dashboard-body">
+            <nav id="nav-sidebar"></nav>
+            <div id="main-content">
+                <div data-page="main" class="page-section">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4">
+                        <div class="stat-card"><div class="flex items-center justify-between"><h3 class="text-sm font-medium text-blue-400">활성 연결</h3><svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div><p id="stat-active-connections" class="stat-value">-</p><p class="stat-label">현재 접속자</p></div>
+                        <div class="stat-card"><div class="flex items-center justify-between"><h3 class="text-sm font-medium text-green-400">총 메시지</h3><svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div><p id="stat-total-messages" class="stat-value">-</p><p class="stat-label">전송된 메시지</p></div>
+                        <div class="stat-card"><div class="flex items-center justify-between"><h3 class="text-sm font-medium text-purple-400">총 접속</h3><svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div><p id="stat-total-connections" class="stat-value">-</p><p class="stat-label">누적 접속</p></div>
+                        <div class="stat-card"><div class="flex items-center justify-between"><h3 class="text-sm font-medium text-red-400">오류</h3><svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><p id="stat-errors" class="stat-value">-</p><p class="stat-label">오류 발생 횟수</p></div>
                     </div>
-                    <div class="stat-card bg-gradient-to-br from-green-600 to-green-700 rounded-lg shadow-lg p-6">
-                        <div class="flex items-center justify-between mb-2"><h3 class="text-sm font-medium text-green-100">총 메시지</h3><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg></div>
-                        <p id="stat-total-messages" class="text-3xl font-bold text-white"><span class="skeleton inline-block w-16 h-8 align-middle rounded"></span></p>
-                        <p class="text-xs text-green-200 mt-1">전송된 메시지</p>
-                    </div>
-                    <div class="stat-card bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg shadow-lg p-6">
-                        <div class="flex items-center justify-between mb-2"><h3 class="text-sm font-medium text-purple-100">총 접속</h3><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg></div>
-                        <p id="stat-total-connections" class="text-3xl font-bold text-white"><span class="skeleton inline-block w-16 h-8 align-middle rounded"></span></p>
-                        <p class="text-xs text-purple-200 mt-1">누적 접속</p>
-                    </div>
-                    <div class="stat-card bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-lg p-6">
-                        <div class="flex items-center justify-between mb-2"><h3 class="text-sm font-medium text-red-100">오류</h3><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div>
-                        <p id="stat-errors" class="text-3xl font-bold text-white"><span class="skeleton inline-block w-16 h-8 align-middle rounded"></span></p>
-                        <p class="text-xs text-red-200 mt-1">오류 발생 횟수</p>
-                    </div>
+                    <div class="panel"><div class="panel-header"><div><h2 class="text-base font-semibold">관리자 로그인 기록</h2><p class="text-xs text-gray-400 mt-0.5">관리자 로그인/로그아웃 내역</p></div><button id="delete-admin-logs-btn" class="btn btn-danger btn-sm">로그 초기화</button></div><div class="panel-body"><div id="admin-login-logs" class="space-y-2 max-h-60 overflow-y-auto"><div class="skeleton skeleton-text w-2/3 rounded"></div><div class="skeleton skeleton-text-sm w-1/2 rounded"></div></div></div></div>
+                    <div class="panel"><div class="panel-header"><h2 class="text-base font-semibold">시스템 정보</h2></div><div class="panel-body"><div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm"><div><p class="text-gray-400 text-xs">서버 시간</p><p id="server-time" class="text-gray-100 font-mono text-sm">-</p></div><div><p class="text-gray-400 text-xs">가동 시간</p><p id="uptime" class="text-gray-100 font-mono text-sm">-</p></div><div><p class="text-gray-400 text-xs">버전</p><p class="text-gray-100 font-mono text-sm">v1.0.0</p></div></div></div></div>
                 </div>
-
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
-                    <div class="p-3 md:p-4 border-b border-gray-700">
-                        <div class="flex items-center justify-between">
-                            <div><h2 class="text-base md:text-lg font-semibold text-gray-100">관리자 로그인 기록</h2><p class="text-xs md:text-sm text-gray-400">관리자 로그인/로그아웃 내역</p></div>
-                            <button id="delete-admin-logs-btn" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors">로그 초기화</button>
-                        </div>
-                    </div>
-                    <div class="p-3 md:p-4"><div id="admin-login-logs" class="space-y-2 max-h-96 overflow-y-auto"><div class="skeleton-loading space-y-3 p-2"><div class="skeleton skeleton-text w-2/3 rounded"></div><div class="skeleton skeleton-text-sm w-1/2 rounded"></div></div></div></div>
+                <div data-page="logs" class="page-section" style="display:none">
+                    <div class="panel"><div class="panel-header"><div><h2 class="text-base font-semibold text-red-400">시스템 오류 로그</h2><p class="text-xs text-gray-400 mt-0.5">최근 서버/클라이언트 에러 (최대 100건)</p></div><div class="flex gap-2 flex-wrap"><select id="error-log-filter" style="width:100px;padding:4px 6px;font-size:12px"><option value="all">전체</option><option value="WS_MESSAGE_PARSE">메시지 파싱</option><option value="CLIENT_ERROR">클라이언트</option><option value="WS_CONNECTION">연결</option><option value="SYSTEM_ERROR">시스템</option><option value="SECURITY">보안</option></select><input type="text" id="error-log-search" placeholder="검색..." style="width:120px;padding:4px 6px;font-size:12px"><button id="download-errors-btn" class="btn btn-primary btn-sm">다운로드</button><button id="delete-errors-btn" class="btn btn-danger btn-sm">초기화</button></div></div><div style="overflow-x:auto"><table><thead><tr><th style="width:140px">발생 시간</th><th style="width:100px">유형</th><th>위치 / 메시지</th><th style="text-align:right;width:60px">상세</th></tr></thead><tbody id="error-logs-list"><tr><td colspan="4" style="text-align:center;padding:2rem;color:#9ca3af">로딩 중...</td></tr></tbody></table></div></div>
+                    <div class="panel"><div class="panel-header"><div><h2 class="text-base font-semibold">감사 로그</h2><p class="text-xs text-gray-400 mt-0.5">최근 관리자 활동 기록</p></div><div class="flex gap-2"><select id="audit-log-filter" style="padding:4px 6px;font-size:12px"><option value="all">전체 활동</option><option value="kick_user">유저 강퇴</option><option value="edit_message">메시지 수정</option><option value="delete_message">메시지 삭제</option><option value="send_announcement">공지 전송</option><option value="UNBAN_IP">IP 차단 해제</option><option value="admin_delete_all_messages">전체 메시지 삭제</option><option value="edit_announcement">공지사항 수정</option><option value="delete_announcement">공지사항 삭제</option></select><button id="export-audit-csv-btn" class="btn btn-success btn-sm">CSV</button><button id="clear-audit-logs-btn" class="btn btn-danger btn-sm">삭제</button></div></div><div class="panel-body"><div id="audit-logs-list" class="space-y-2 max-h-60 overflow-y-auto"><div style="text-align:center;padding:2rem;color:#9ca3af;font-size:0.875rem">로딩 중...</div></div></div></div>
                 </div>
-
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
-                    <div class="p-3 md:p-4 border-b border-gray-700"><h2 class="text-base md:text-lg font-semibold text-gray-100">시스템 정보</h2></div>
-                    <div class="p-3 md:p-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 text-sm">
-                            <div><p class="text-gray-400">서버 시간</p><p id="server-time" class="text-gray-100 font-mono"><span class="skeleton inline-block w-36 h-4 align-middle rounded"></span></p></div>
-                            <div><p class="text-gray-400">가동 시간</p><p id="uptime" class="text-gray-100 font-mono"><span class="skeleton inline-block w-24 h-4 align-middle rounded"></span></p></div>
-                            <div><p class="text-gray-400">Worker 버전</p><p class="text-gray-100 font-mono">v1.0.0</p></div>
-                        </div>
-                    </div>
+                <div data-page="channels" class="page-section" style="display:none">
+                    <div class="panel"><div class="panel-header"><div><h2 class="text-base font-semibold text-emerald-400">채널 관리</h2><p class="text-xs text-gray-400 mt-0.5">현재 활성 채널 목록</p></div><button id="refresh-channels-btn" class="btn btn-primary btn-sm">새로고침</button></div><div style="overflow-x:auto"><table><thead><tr><th>채널 이름</th><th>생성자</th><th style="width:140px">생성일</th><th style="width:70px">접속자</th><th style="width:70px">메시지</th><th style="text-align:right;width:100px">관리</th></tr></thead><tbody id="channels-list"><tr><td colspan="6" style="text-align:center;padding:2rem;color:#9ca3af">로딩 중...</td></tr></tbody></table></div></div>
+                    <div id="channel-detail-modal" class="modal-overlay"><div class="modal-box"><div class="panel-header"><h3 id="channel-detail-title" class="text-base font-semibold">채널 상세</h3><button id="close-channel-detail" class="btn btn-ghost btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div><div id="channel-detail-content" class="panel-body"></div></div></div>
                 </div>
-            </div><!-- end page-main -->
-
-            <!-- ===== PAGE: LOGS ===== -->
-            <div data-page="logs" style="display:none">
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
-                    <div class="p-3 md:p-4 border-b border-gray-700 flex flex-col md:flex-row justify-between md:items-center gap-3">
-                        <div><h2 class="text-base md:text-lg font-semibold text-red-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2 -mt-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>시스템 오류 로그</h2><p class="text-xs md:text-sm text-gray-400">최근 서버 및 클라이언트 측 에러 내역 (최대 100건)</p></div>
-                        <div class="flex flex-wrap gap-2">
-                            <select id="error-log-filter" class="bg-gray-700 text-gray-300 text-xs border border-gray-600 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="all">전체 유형</option><option value="WS_MESSAGE_PARSE">메시지 파싱</option><option value="CLIENT_ERROR">클라이언트 오류</option><option value="WS_CONNECTION">연결 오류</option><option value="SYSTEM_ERROR">시스템 오류</option><option value="SECURITY">보안 오류</option></select>
-                            <input type="text" id="error-log-search" placeholder="메시지 검색..." class="bg-gray-700 text-gray-300 text-xs border border-gray-600 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-32 md:w-48">
-                            <button id="download-errors-btn" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg whitespace-nowrap transition-colors flex items-center shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>로그 다운로드</button>
-                            <button id="delete-errors-btn" class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg whitespace-nowrap transition-colors flex items-center shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>로그 초기화</button>
-                        </div>
-                    </div>
-                    <div class="p-0"><div class="overflow-x-auto"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="text-gray-400 bg-gray-700/50"><tr><th class="px-2 py-2 md:px-4 md:py-3 w-24">발생 시간</th><th class="px-2 py-2 md:px-4 md:py-3 w-32">유형</th><th class="px-2 py-2 md:px-4 md:py-3">발생 위치 / 메시지</th><th class="px-2 py-2 md:px-4 md:py-3 text-right w-20">상세 정보</th></tr></thead><tbody id="error-logs-list" class="divide-y divide-gray-700 text-gray-300"><tr class="skeleton-loading"><td colspan="4" class="px-4 py-8"><div class="skeleton h-4 w-full rounded"></div><div class="skeleton h-4 w-3/4 rounded mt-3"></div></td></tr></tbody></table></div></div>
+                <div data-page="users" class="page-section" style="display:none">
+                    <div class="panel"><div class="panel-header"><div><h2 class="text-base font-semibold">활성 세션</h2><p class="text-xs text-gray-400 mt-0.5">현재 연결된 사용자 목록</p></div></div><div class="panel-body"><div id="active-sessions" class="space-y-2 max-h-96 overflow-y-auto"><div style="text-align:center;padding:2rem;color:#9ca3af;font-size:0.875rem">로딩 중...</div></div></div></div>
+                    <div id="user-details-modal" class="modal-overlay"><div class="modal-box" style="max-width:800px"><div class="panel-header"><h2 class="text-base font-semibold">사용자 상세 정보</h2><button id="close-user-modal" class="btn btn-ghost btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div><div id="user-details-content" class="panel-body"></div></div></div>
                 </div>
-
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
-                    <div class="p-3 md:p-4 border-b border-gray-700 flex flex-col md:flex-row justify-between md:items-center gap-3">
-                        <div><h2 class="text-base md:text-lg font-semibold text-gray-100">감사 로그</h2><p class="text-xs md:text-sm text-gray-400">최근 관리자 활동 기록</p></div>
-                        <select id="audit-log-filter" class="bg-gray-700 text-gray-300 text-sm border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="all">전체 활동</option><option value="kick_user">유저 강퇴</option><option value="edit_message">메시지 수정</option><option value="delete_message">메시지 삭제</option><option value="send_announcement">공지 전송</option><option value="UNBAN_IP">IP 차단 해제</option><option value="admin_delete_all_messages">전체 메시지 삭제</option><option value="edit_announcement">공지사항 수정</option><option value="delete_announcement">공지사항 삭제</option></select>
-                        <button id="export-audit-csv-btn" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">CSV 내보내기</button>
-                        <button id="clear-audit-logs-btn" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">로그 삭제</button>
-                    </div>
-                    <div class="p-3 md:p-4"><div id="audit-logs-list" class="space-y-2 max-h-96 overflow-y-auto"><div class="skeleton-loading space-y-4 p-2"><div class="skeleton skeleton-text w-3/4 rounded"></div><div class="skeleton skeleton-text-sm w-1/2 rounded mt-2"></div></div></div></div>
+                <div data-page="messages" class="page-section" style="display:none">
+                    <div class="panel"><div class="panel-header"><div><h2 class="text-base font-semibold">최근 메시지</h2><p class="text-xs text-gray-400 mt-0.5">최근 50개 메시지</p></div></div><div class="panel-body"><div class="mb-3"><label for="admin-message-input" class="block text-sm font-medium text-gray-300 mb-2">관리자 메시지 전송</label><div class="flex flex-col md:flex-row gap-2"><textarea id="admin-message-input" rows="2" maxlength="7500" class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" placeholder="메시지 입력 (최대 7500자)"></textarea><button id="admin-send-btn" class="btn btn-primary self-start">전송</button></div></div><div class="mb-3"><button id="delete-all-messages-btn" class="btn btn-danger w-full justify-center text-sm">모든 메시지 삭제</button></div><div id="recent-messages" class="space-y-2 max-h-96 overflow-y-auto"><div style="text-align:center;padding:2rem;color:#9ca3af;font-size:0.875rem">로딩 중...</div></div></div></div>
                 </div>
-            </div><!-- end page-logs -->
-
-            <!-- ===== PAGE: CHANNELS ===== -->
-            <div data-page="channels" style="display:none">
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
-                    <div class="p-3 md:p-4 border-b border-gray-700 flex flex-col md:flex-row justify-between md:items-center gap-3">
-                        <div><h2 class="text-base md:text-lg font-semibold text-emerald-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2 -mt-1" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" /></svg>채널 관리</h2><p class="text-xs md:text-sm text-gray-400">현재 활성 채널 목록 및 상세 정보</p></div>
-                        <button id="refresh-channels-btn" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg transition-colors">새로고침</button>
-                    </div>
-                    <div class="p-0"><div id="channels-list-container" class="overflow-x-auto table-card-mobile"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="text-gray-400 bg-gray-700/50"><tr><th class="px-2 py-2 md:px-4 md:py-3">채널 이름</th><th class="px-2 py-2 md:px-4 md:py-3">생성자</th><th class="px-2 py-2 md:px-4 md:py-3">생성일</th><th class="px-2 py-2 md:px-4 md:py-3">접속자</th><th class="px-2 py-2 md:px-4 md:py-3">메시지</th><th class="px-2 py-2 md:px-4 md:py-3 text-right">관리</th></tr></thead><tbody id="channels-list" class="divide-y divide-gray-700 text-gray-300"><tr class="skeleton-loading"><td colspan="6" class="px-4 py-6"><div class="skeleton h-4 w-full rounded mb-3"></div><div class="skeleton h-4 w-2/3 rounded mb-3"></div></td></tr></tbody></table></div></div>
+                <div data-page="announcements" class="page-section" style="display:none">
+                    <div class="panel"><div class="panel-header"><div><h2 class="text-base font-semibold text-yellow-400">공지사항 관리</h2><p class="text-xs text-gray-400 mt-0.5">전체 공지 내역</p></div></div><div class="panel-body"><div class="mb-3 pb-3 border-b border-gray-700"><label for="admin-announce-input" class="block text-sm font-medium text-yellow-300 mb-2">공지사항 전송</label><textarea id="admin-announce-input" rows="2" maxlength="7500" class="w-full bg-gray-700 text-yellow-100 border border-yellow-600/50 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none mb-2" placeholder="공지사항 내용 (최대 7500자)"></textarea><div class="flex justify-between items-center"><span id="announce-char-count" class="text-xs text-gray-500">0/7500</span></div><button id="announce-preview-btn" type="button" class="text-xs text-blue-400 hover:text-blue-300 underline mt-1">미리보기</button><div id="announce-preview" class="hidden mt-2 p-3 bg-gray-750 rounded border border-gray-600 max-h-32 overflow-y-auto"><p class="text-xs text-gray-400 mb-1">미리보기</p><div id="announce-preview-content" class="text-sm text-gray-200 whitespace-pre-wrap"></div></div><div class="flex items-center gap-3 flex-wrap mt-2"><label class="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer"><input type="checkbox" id="emergency-checkbox" class="rounded bg-gray-700 border-gray-600 text-red-500">긴급공지</label><select id="emergency-duration" class="hidden bg-gray-700 text-gray-200 border border-gray-600 rounded px-2 py-1 text-xs"><option value="3600000">1시간</option><option value="21600000">6시간</option><option value="86400000">24시간</option><option value="0">무기한</option></select><label class="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer"><input type="checkbox" id="schedule-checkbox" class="rounded bg-gray-700 border-gray-600 text-purple-500">예약 발송</label><input type="datetime-local" id="schedule-datetime" class="hidden bg-gray-700 text-gray-200 border border-gray-600 rounded px-2 py-1 text-xs"><select id="announce-expiry-select" class="bg-gray-700 text-gray-200 border border-gray-600 rounded px-2 py-1 text-xs"><option value="0">만료 없음</option><option value="3600000">1시간 후</option><option value="86400000">24시간 후</option><option value="604800000">7일 후</option><option value="2592000000">30일 후</option></select><button id="admin-announce-btn" class="btn btn-sm" style="background:#ca8a04;color:#fff">전송</button></div></div><div class="mb-3"><input type="text" id="announce-search" class="w-full bg-gray-700 text-gray-200 border border-gray-600 rounded px-3 py-1.5 text-xs" placeholder="공지 검색 (내용/날짜)..."></div><div id="announcement-list" class="space-y-3 max-h-96 overflow-y-auto"><div style="text-align:center;padding:2rem;color:#9ca3af;font-size:0.875rem">로딩 중...</div></div></div></div>
                 </div>
-                <div id="channel-detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
-                    <div class="bg-gray-800 rounded-lg shadow-xl border border-gray-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                        <div class="p-4 md:p-6 border-b border-gray-700 flex justify-between items-center"><h3 id="channel-detail-title" class="text-lg font-semibold text-emerald-400">채널 상세 정보</h3><button id="close-channel-detail" class="text-gray-400 hover:text-gray-200 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
-                        <div id="channel-detail-content" class="p-4 md:p-6 space-y-4"></div>
-                    </div>
+                <div data-page="bans" class="page-section" style="display:none">
+                    <div class="panel"><div class="panel-header"><div><h2 class="text-base font-semibold">IP 차단 목록</h2><p class="text-xs text-gray-400 mt-0.5">현재 차단된 IP 주소</p></div></div><div class="panel-body"><div style="overflow-x:auto"><table><thead><tr><th>IP 주소</th><th>남은 시간</th><th class="hidden md:table-cell">사유</th><th class="hidden md:table-cell">차단 시각</th><th style="text-align:center">작업</th></tr></thead><tbody id="banned-ips-body"><tr><td colspan="5" style="text-align:center;padding:2rem;color:#9ca3af">로딩 중...</td></tr></tbody></table></div></div></div>
                 </div>
-            </div><!-- end page-channels -->
-
-            <!-- ===== PAGE: USERS ===== -->
-            <div data-page="users" style="display:none">
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
-                    <div class="p-3 md:p-4 border-b border-gray-700">
-                        <div class="flex items-center justify-between flex-wrap gap-2">
-                            <div><h2 class="text-base md:text-lg font-semibold text-gray-100">활성 세션</h2><p class="text-xs md:text-sm text-gray-400">현재 연결된 사용자 목록</p></div>
-                            <button id="export-filtered-csv-btn" class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 md:px-3 py-2 rounded-lg whitespace-nowrap" title="필터링된 데이터 내보내기"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline md:mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3v14a1 1 0 001 1h12a1 1 0 001-1V8.414A2 2 0 0016.586 7L12 2.414A2 2 0 0010.586 2H4a1 1 0 00-1 1z" /></svg><span class="hidden md:inline">필터 내보내기</span></button>
-                        </div>
-                    </div>
-                    <div class="p-3 md:p-4"><div id="active-sessions" class="space-y-2 max-h-96 overflow-y-auto"><div class="skeleton-loading space-y-4 p-2"><div class="skeleton-card"><div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton skeleton-text w-2/3 rounded"></div><div class="skeleton skeleton-text-sm w-1/2 rounded"></div></div></div></div></div></div></div>
+                <div data-page="security" class="page-section" style="display:none">
+                    <div class="panel"><div class="panel-header"><div><h2 class="text-base font-semibold">보안 이벤트 센터</h2></div><div class="flex gap-2"><button id="security-refresh-btn" class="btn btn-primary btn-sm">새로고침</button><button id="security-export-btn" class="btn btn-success btn-sm">CSV</button><button id="security-clear-btn" class="btn btn-danger btn-sm">90일+ 삭제</button></div></div><div class="panel-body"><div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" id="security-stats"><div class="sec-stat"><div class="sec-stat-val">-</div><div class="sec-stat-label">24h 이벤트</div></div><div class="sec-stat"><div class="sec-stat-val" style="color:#fca5a5">-</div><div class="sec-stat-label">Critical</div></div><div class="sec-stat"><div class="sec-stat-val" style="color:#fdba74">-</div><div class="sec-stat-label">High</div></div><div class="sec-stat"><div class="sec-stat-val" style="color:#fde047">-</div><div class="sec-stat-label">Medium</div></div></div><div class="flex flex-wrap gap-2 mb-4"><select id="security-category-filter" style="padding:4px 6px;font-size:12px"><option value="">전체 카테고리</option><option value="auth">인증</option><option value="endpoint">엔드포인트</option><option value="input">입력값</option><option value="websocket">웹소켓</option><option value="system">시스템</option></select><select id="security-severity-filter" style="padding:4px 6px;font-size:12px"><option value="">전체 심각도</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select><input type="text" id="security-search" placeholder="이벤트 검색..." style="width:130px;padding:4px 6px;font-size:12px"><input type="text" id="security-ip-filter" placeholder="IP 검색..." style="width:110px;padding:4px 6px;font-size:12px"></div><div style="overflow-x:auto" class="mb-4"><table><thead><tr><th style="width:40px">#</th><th>카테고리</th><th>심각도</th><th>IP</th><th>경로</th><th>내용</th><th style="width:150px">시간</th></tr></thead><tbody id="security-events-body"><tr><td colspan="7" style="text-align:center;padding:2rem;color:#9ca3af">로딩 중...</td></tr></tbody></table></div><div id="security-pagination" class="flex justify-center gap-1 mb-4"></div><div class="panel"><div class="panel-header"><h3 class="text-base font-semibold text-orange-400">위험 IP (상위 10)</h3></div><div style="overflow-x:auto"><table><thead><tr><th>IP</th><th>위험 점수</th><th>이벤트 수</th><th style="text-align:center">작업</th></tr></thead><tbody id="risk-ips-body"><tr><td colspan="4" style="text-align:center;padding:1rem;color:#9ca3af">로딩 중...</td></tr></tbody></table></div></div></div></div>
                 </div>
-                <div id="user-details-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
-                    <div class="bg-gray-800 rounded-lg shadow-2xl border border-gray-700 max-w-3xl w-full max-h-[95vh] overflow-y-auto">
-                        <div class="p-4 md:p-6 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-gray-800 z-10"><h2 class="text-lg md:text-xl font-semibold text-gray-100">사용자 상세 정보</h2><button id="close-user-modal" class="text-gray-400 hover:text-gray-200 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
-                        <div id="user-details-content" class="p-4 md:p-6"><div class="skeleton-loading space-y-4"><div class="skeleton skeleton-text-lg w-1/3 rounded"></div><div class="skeleton skeleton-text w-full rounded"></div><div class="skeleton skeleton-text-sm w-1/2 rounded"></div></div></div>
-                    </div>
-                </div>
-            </div><!-- end page-users -->
-
-            <!-- ===== PAGE: MESSAGES ===== -->
-            <div data-page="messages" style="display:none">
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
-                    <div class="p-3 md:p-4 border-b border-gray-700"><h2 class="text-base md:text-lg font-semibold text-gray-100">최근 메시지</h2><p class="text-xs md:text-sm text-gray-400">최근 50개 메시지</p></div>
-                    <div class="p-3 md:p-4">
-                        <div class="mb-3">
-                            <label for="admin-message-input" class="block text-sm font-medium text-gray-300 mb-2">관리자 메시지 전송</label>
-                            <div class="flex flex-col md:flex-row gap-2">
-                                <textarea id="admin-message-input" rows="2" maxlength="7500" class="flex-1 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" placeholder="관리자 메시지 입력 (최대 7500자)"></textarea>
-                                <button id="admin-send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap self-start">메시지 전송</button>
-                            </div>
-                        </div>
-                        <div class="mb-3 pb-3 border-b border-gray-700">
-                            <button id="delete-all-messages-btn" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">모든 메시지 삭제</button>
-                            <p class="text-xs text-red-400 mt-1 text-center">이 작업은 되돌릴 수 없습니다</p>
-                        </div>
-                        <div id="recent-messages" class="space-y-2 max-h-96 overflow-y-auto"><div class="skeleton-loading space-y-4 p-2"><div class="skeleton-card"><div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton skeleton-text w-3/4 rounded"></div><div class="skeleton skeleton-text-sm w-1/2 rounded"></div></div></div></div></div></div>
-                    </div>
-                </div>
-            </div><!-- end page-messages -->
-
-            <!-- ===== PAGE: ANNOUNCEMENTS ===== -->
-            <div data-page="announcements" style="display:none">
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
-                    <div class="flex items-center justify-between p-3 md:p-4 border-b border-gray-700"><h2 class="text-base md:text-lg font-semibold flex items-center gap-2 text-yellow-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>공지사항 관리</h2><p class="text-xs md:text-sm text-gray-400">전체 공지 내역</p></div>
-                    <div class="p-3 md:p-4">
-                        <div class="mb-3 pb-3 border-b border-gray-700">
-                            <label for="admin-announce-input" class="block text-sm font-medium text-yellow-300 mb-2">공지사항 전송</label>
-                            <textarea id="admin-announce-input" rows="2" maxlength="7500" class="w-full bg-gray-700 text-yellow-100 border border-yellow-600/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-yellow-500 resize-none mb-2" placeholder="공지사항 내용 입력 (최대 7500자)"></textarea>
-                            <div class="flex justify-between items-center mt-1"><span id="announce-char-count" class="text-xs text-gray-500">0 / 7500</span></div>
-                            <button id="announce-preview-btn" type="button" class="text-xs text-blue-400 hover:text-blue-300 underline mt-1">미리보기</button>
-                            <div id="announce-preview" class="hidden mt-2 p-3 bg-gray-750 rounded border border-gray-600 max-h-32 overflow-y-auto"><p class="text-xs text-gray-400 mb-1">미리보기</p><div id="announce-preview-content" class="text-sm text-gray-200 whitespace-pre-wrap"></div></div>
-                            <div class="flex items-center gap-3 flex-wrap mt-2">
-                                <label class="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer"><input type="checkbox" id="emergency-checkbox" class="rounded bg-gray-700 border-gray-600 text-red-500 focus:ring-red-500">긴급공지로 발송</label>
-                                <select id="emergency-duration" class="hidden bg-gray-700 text-gray-200 border border-gray-600 rounded px-2 py-1 text-xs focus:outline-none"><option value="3600000">1시간</option><option value="21600000">6시간</option><option value="86400000">24시간</option><option value="0">무기한</option></select>
-                                <label class="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer"><input type="checkbox" id="schedule-checkbox" class="rounded bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-500">예약 발송</label>
-                                <input type="datetime-local" id="schedule-datetime" class="hidden bg-gray-700 text-gray-200 border border-gray-600 rounded px-2 py-1 text-xs focus:outline-none">
-                                <select id="announce-expiry-select" class="bg-gray-700 text-gray-200 border border-gray-600 rounded px-2 py-1 text-xs focus:outline-none"><option value="0">만료 없음</option><option value="3600000">1시간 후</option><option value="86400000">24시간 후</option><option value="604800000">7일 후</option><option value="2592000000">30일 후</option></select>
-                                <button id="admin-announce-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">공지 전송</button>
-                            </div>
-                        </div>
-                        <div class="mb-3"><input type="text" id="announce-search" class="w-full bg-gray-700 text-gray-200 border border-gray-600 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500" placeholder="공지 검색 (내용/날짜)..."></div>
-                        <div id="announcement-list" class="space-y-3 max-h-96 overflow-y-auto"><div class="skeleton-loading space-y-3 p-2"><div class="skeleton-card"><div class="skeleton skeleton-text-lg w-2/3 rounded"></div><div class="skeleton skeleton-text w-full rounded mt-3"></div></div></div></div>
-                    </div>
-                </div>
-            </div><!-- end page-announcements -->
-
-            <!-- ===== PAGE: BANS ===== -->
-            <div data-page="bans" style="display:none">
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
-                    <div class="p-3 md:p-4 border-b border-gray-700"><h2 class="text-base md:text-lg font-semibold text-gray-100">IP 차단 목록</h2><p class="text-xs md:text-sm text-gray-400">현재 차단된 IP 주소 목록</p></div>
-                    <div class="p-3 md:p-4">
-                        <div id="banned-ips-list" class="overflow-x-auto table-card-mobile">
-                            <table class="w-full text-sm"><thead class="bg-gray-700 text-gray-300"><tr><th class="px-3 md:px-4 py-2 text-left">IP 주소</th><th class="px-3 md:px-4 py-2 text-left">남은 시간</th><th class="px-3 md:px-4 py-2 text-left hidden md:table-cell">사유</th><th class="px-3 md:px-4 py-2 text-left hidden md:table-cell">차단 시각</th><th class="px-3 md:px-4 py-2 text-center">작업</th></tr></thead>
-                            <tbody id="banned-ips-body" class="text-gray-300"><tr class="skeleton-loading"><td colspan="5" class="px-3 md:px-4 py-6"><div class="skeleton h-4 w-full rounded mb-3"></div><div class="skeleton h-4 w-2/3 rounded mb-3"></div></td></tr></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div><!-- end page-bans -->
-
-            <!-- ===== PAGE: SECURITY ===== -->
-            <div data-page="security" style="display:none">
-                <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-4 md:mb-6">
-                    <div class="p-3 md:p-4 border-b border-gray-700 flex flex-col md:flex-row justify-between md:items-center gap-2">
-                        <h2 class="text-base md:text-lg font-semibold text-gray-100">보안 이벤트 센터</h2>
-                        <div class="flex gap-2">
-                            <button id="security-refresh-btn" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors">새로고침</button>
-                            <button id="security-export-btn" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors">CSV 내보내기</button>
-                            <button id="security-clear-btn" class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors">90일+ 삭제</button>
-                        </div>
-                    </div>
-                    <div class="p-3 md:p-4">
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" id="security-stats">
-                            <div class="sec-stat"><div class="sec-stat-val">-</div><div class="sec-stat-label">24h 이벤트</div></div>
-                            <div class="sec-stat sec-stat-critical"><div class="sec-stat-val">-</div><div class="sec-stat-label">Critical</div></div>
-                            <div class="sec-stat sec-stat-high"><div class="sec-stat-val">-</div><div class="sec-stat-label">High</div></div>
-                            <div class="sec-stat sec-stat-medium"><div class="sec-stat-val">-</div><div class="sec-stat-label">Medium</div></div>
-                        </div>
-
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            <select id="security-category-filter" class="bg-gray-700 text-gray-300 text-sm border border-gray-600 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">전체 카테고리</option>
-                                <option value="auth">인증</option><option value="endpoint">엔드포인트</option>
-                                <option value="input">입력값</option><option value="websocket">웹소켓</option><option value="system">시스템</option>
-                            </select>
-                            <select id="security-severity-filter" class="bg-gray-700 text-gray-300 text-sm border border-gray-600 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">전체 심각도</option>
-                                <option value="low">Low</option><option value="medium">Medium</option>
-                                <option value="high">High</option><option value="critical">Critical</option>
-                            </select>
-                            <input type="text" id="security-search" placeholder="이벤트 타입 검색..." class="bg-gray-700 text-gray-300 text-sm border border-gray-600 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-32 md:w-48">
-                            <input type="text" id="security-ip-filter" placeholder="IP 검색..." class="bg-gray-700 text-gray-300 text-sm border border-gray-600 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-28 md:w-36">
-                        </div>
-
-                        <div class="mb-4" id="security-events-table">
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left text-sm">
-                                    <thead class="text-gray-400 bg-gray-700/50"><tr><th class="px-2 py-2">#</th><th class="px-2 py-2">카테고리</th><th class="px-2 py-2">심각도</th><th class="px-2 py-2">IP</th><th class="px-2 py-2">경로</th><th class="px-2 py-2">내용</th><th class="px-2 py-2">시간</th></tr></thead>
-                                    <tbody id="security-events-body" class="divide-y divide-gray-700 text-gray-300"><tr><td colspan="7" style="padding:2rem;text-align:center;color:#94a3b8">로딩 중...</td></tr></tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div id="security-pagination" class="flex justify-center gap-1 mb-4"></div>
-
-                        <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700">
-                            <div class="p-3 md:p-4 border-b border-gray-700"><h3 class="text-base font-semibold text-orange-400">위험 IP (상위 10)</h3></div>
-                            <div class="p-0">
-                                <table class="w-full text-sm"><thead class="text-gray-400 bg-gray-700/50"><tr><th class="px-3 py-2 text-left">IP</th><th class="px-3 py-2 text-left">위험 점수</th><th class="px-3 py-2 text-left">이벤트 수</th><th class="px-3 py-2 text-center">작업</th></tr></thead>
-                                <tbody id="risk-ips-body" class="divide-y divide-gray-700 text-gray-300"><tr><td colspan="4" style="padding:1rem;text-align:center;color:#94a3b8">로딩 중...</td></tr></tbody></table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div><!-- end page-security -->
-
-        </main>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="/js/admin-core.bundle.js"></script>
