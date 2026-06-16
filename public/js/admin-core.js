@@ -18,7 +18,6 @@ class AdminCore {
         this.autoRefreshInterval = null;
         this.pageModules = {};
         this.initPromise = null;
-        this._switching = false;
     }
 
     getToken() { return this.sessionToken; }
@@ -80,7 +79,6 @@ class AdminCore {
     }
 
     _onHashChange() {
-        if (this._switching) return;
         const pageId = this._currentHash();
         if (!this._validPage(pageId)) {
             location.replace('#main');
@@ -115,9 +113,8 @@ class AdminCore {
 
     navigateTo(pageId) {
         if (!this._validPage(pageId)) return;
-        this._switching = true;
+        if (location.hash === '#' + pageId) return;
         location.hash = '#' + pageId;
-        this._switching = false;
     }
 
     async handleLogin(e) {
@@ -133,15 +130,11 @@ class AdminCore {
                 this.dashboard.style.display = '';
                 this.renderNav();
                 this.startAutoRefresh();
-                // Navigate to the hash page (or main)
-                this._switching = true;
-                const hash = this._currentHash();
-                this._switching = false;
-                if (hash === 'main' || !location.hash) {
+                if (!location.hash || !this._validPage(this._currentHash())) {
                     location.replace('#main');
+                } else {
+                    this._onHashChange();
                 }
-                // Trigger hash handling
-                this._onHashChange();
             } else {
                 errorEl.textContent = data?.error || '로그인 실패';
                 errorEl.style.display = 'block';
