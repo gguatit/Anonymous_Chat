@@ -103,7 +103,7 @@
         .event-row { cursor: pointer; } .event-row:hover { background: #374151; }
         .event-detail.hidden { display: none; } .event-detail td { background: #374151; padding: 0.75rem 1rem; }
         .msg-row { position: relative; }
-        .msg-row .msg-delete-btn { opacity: 0; transition: opacity 0.15s; }
+        .msg-row .msg-delete-btn { opacity: 0; transition: opacity 0.15s; top: 50%; transform: translateY(-50%); }
         .msg-row:hover .msg-delete-btn { opacity: 1; }
         .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; font-size: 0.8125rem; }
         .skeleton { animation: sk 1.5s ease-in-out infinite; border-radius: 4px; background: rgba(75,85,99,0.4); }
