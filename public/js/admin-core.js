@@ -15,10 +15,10 @@ class AdminCore {
     constructor() {
         this.sessionToken = localStorage.getItem('admin_token');
         if (this.sessionToken) { ApiClient.setToken(this.sessionToken); }
-        this.currentPage = 'main';
         this.autoRefreshInterval = null;
         this.pageModules = {};
         this.initPromise = null;
+        this._switching = false;
     }
 
     getToken() { return this.sessionToken; }
@@ -39,15 +39,15 @@ class AdminCore {
             if (!loginForm) return;
             loginForm.addEventListener('submit', (e) => this.handleLogin(e));
 
-            // Mobile menu toggle
             const mb = document.getElementById('mobile-menu-btn');
             const nav = document.getElementById('nav-sidebar');
             mb?.addEventListener('click', () => nav?.classList.toggle('open'));
-
-            // Close sidebar when clicking a nav item on mobile
             nav?.addEventListener('click', (e) => {
                 if (e.target.closest('.nav-item')) nav.classList.remove('open');
             });
+
+            // Hash-based routing
+            window.addEventListener('hashchange', () => this._onHashChange());
 
             if (!this.sessionToken) {
                 this.loginScreen.style.display = 'flex';
@@ -60,8 +60,8 @@ class AdminCore {
                 if (!data || !data.valid) throw new Error('Token invalid');
                 this.showDashboard();
                 this.renderNav();
-                await this.registerPage('main');
                 this.startAutoRefresh();
+                this._onHashChange();
             } catch (_e) {
                 this.setToken(null);
                 this.loginScreen.style.display = 'flex';
@@ -69,6 +69,55 @@ class AdminCore {
             }
         })();
         return this.initPromise;
+    }
+
+    _currentHash() {
+        return location.hash.replace(/^#/, '') || 'main';
+    }
+
+    _validPage(id) {
+        return PAGES.some(p => p.id === id);
+    }
+
+    _onHashChange() {
+        if (this._switching) return;
+        const pageId = this._currentHash();
+        if (!this._validPage(pageId)) {
+            location.replace('#main');
+            return;
+        }
+        this._switchPage(pageId);
+    }
+
+    async _switchPage(pageId) {
+        this.currentPage = pageId;
+        this.updateNavActive(pageId);
+        document.querySelectorAll('[data-page]').forEach(el => {
+            el.style.display = el.dataset.page === pageId ? '' : 'none';
+        });
+        document.getElementById('nav-sidebar')?.classList.remove('open');
+
+        if (!this.pageModules[pageId]) {
+            const importer = PAGE_IMPORTERS[pageId];
+            if (importer) {
+                try {
+                    const mod = await importer();
+                    this.pageModules[pageId] = mod;
+                } catch (err) {
+                    console.error('Failed to load page:', pageId, err);
+                    return;
+                }
+            }
+        }
+        const mod = this.pageModules[pageId];
+        if (mod?.init) await mod.init(this);
+    }
+
+    navigateTo(pageId) {
+        if (!this._validPage(pageId)) return;
+        this._switching = true;
+        location.hash = '#' + pageId;
+        this._switching = false;
     }
 
     async handleLogin(e) {
@@ -83,8 +132,16 @@ class AdminCore {
                 this.loginScreen.style.display = 'none';
                 this.dashboard.style.display = '';
                 this.renderNav();
-                await this.registerPage('main');
                 this.startAutoRefresh();
+                // Navigate to the hash page (or main)
+                this._switching = true;
+                const hash = this._currentHash();
+                this._switching = false;
+                if (hash === 'main' || !location.hash) {
+                    location.replace('#main');
+                }
+                // Trigger hash handling
+                this._onHashChange();
             } else {
                 errorEl.textContent = data?.error || '로그인 실패';
                 errorEl.style.display = 'block';
@@ -100,6 +157,7 @@ class AdminCore {
         this.stopAutoRefresh();
         this.loginScreen.style.display = 'flex';
         this.dashboard.style.display = 'none';
+        location.hash = '';
     }
 
     showDashboard() {
@@ -117,37 +175,17 @@ class AdminCore {
                 <span class="nav-badge" data-badge="${p.id}">0</span>
             </button>
         `).join('');
-        this.updateNavActive('main');
-    }
-
-    navigateTo(pageId) {
-        this.currentPage = pageId;
-        this.updateNavActive(pageId);
-        document.querySelectorAll('[data-page]').forEach(el => {
-            el.style.display = el.dataset.page === pageId ? '' : 'none';
+        nav.addEventListener('click', (e) => {
+            const btn = e.target.closest('.nav-item');
+            if (btn) this.navigateTo(btn.dataset.page);
         });
-        // Close mobile sidebar after navigation
-        document.getElementById('nav-sidebar')?.classList.remove('open');
-        this.registerPage(pageId);
+        this.updateNavActive(this._currentHash());
     }
 
     updateNavActive(pageId) {
         document.querySelectorAll('.nav-item').forEach(el => {
             el.classList.toggle('active', el.dataset.page === pageId);
         });
-    }
-
-    async registerPage(pageId) {
-        if (this.pageModules[pageId]) return;
-        const importer = PAGE_IMPORTERS[pageId];
-        if (!importer) return;
-        try {
-            const mod = await importer();
-            this.pageModules[pageId] = mod;
-            if (mod?.init) await mod.init(this);
-        } catch (err) {
-            console.error('Failed to load page:', pageId, err);
-        }
     }
 
     startAutoRefresh() {
@@ -166,10 +204,7 @@ class AdminCore {
     }
 
     stopAutoRefresh() {
-        if (this.autoRefreshInterval) {
-            clearInterval(this.autoRefreshInterval);
-            this.autoRefreshInterval = null;
-        }
+        if (this.autoRefreshInterval) { clearInterval(this.autoRefreshInterval); this.autoRefreshInterval = null; }
     }
 
     updateLastUpdated() {
