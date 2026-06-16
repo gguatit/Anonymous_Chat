@@ -191,8 +191,8 @@ export function renderRecentMessages(messages) {
     container.innerHTML = messages.reverse().map(msg => {
         const isAdmin = msg.sessionId && String(msg.sessionId).startsWith('admin_');
         const adminBadge = isAdmin ? '<span class="text-xs font-semibold text-yellow-300 bg-yellow-900/20 px-2 py-0.5 rounded">관리자</span>' : '';
-        return `<div class="p-3 ${isAdmin ? 'bg-yellow-900/5 border border-yellow-800' : 'bg-gray-700'} rounded-lg group relative" data-msg-id="${h(msg.messageId)}">
-            <button class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 hover:bg-red-500 text-white rounded p-1 leading-none" data-delete-msg="${h(msg.messageId)}" title="메시지 삭제">
+        return `<div class="p-3 ${isAdmin ? 'bg-yellow-900/5 border border-yellow-800' : 'bg-gray-700'} rounded-lg msg-row relative" data-msg-id="${h(msg.messageId)}">
+            <button class="absolute top-2 right-2 opacity-0 msg-delete-btn transition-opacity bg-red-600 hover:bg-red-500 text-white rounded p-1 leading-none" data-delete-msg="${h(msg.messageId)}" title="메시지 삭제">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
             </button>
             <div class="flex items-start justify-between mb-1">
