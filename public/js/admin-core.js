@@ -19,6 +19,8 @@ class AdminCore {
         this.pageModules = {};
         this.initPromise = null;
         this._toggleSetupDone = false;
+        this._navListenerBound = false;
+        this._helpersSetup = false;
     }
 
     getToken() { return this.sessionToken; }
@@ -42,12 +44,16 @@ class AdminCore {
             const mb = document.getElementById('mobile-menu-btn');
             const nav = document.getElementById('nav-sidebar');
             mb?.addEventListener('click', () => nav?.classList.toggle('open'));
-            nav?.addEventListener('click', (e) => {
-                if (e.target.closest('.nav-item')) nav.classList.remove('open');
+
+            // Auto-refresh interval change handler
+            document.getElementById('auto-refresh-interval')?.addEventListener('change', () => {
+                this.startAutoRefresh();
             });
 
             // Hash-based routing
             window.addEventListener('hashchange', () => this._onHashChange());
+
+            this._setupGlobalHelpers();
 
             if (!this.sessionToken) {
                 this.loginScreen.style.display = 'flex';
@@ -156,6 +162,20 @@ class AdminCore {
         location.hash = '';
     }
 
+    _setupGlobalHelpers() {
+        if (this._helpersSetup) return;
+        this._helpersSetup = true;
+        window._adminUnbanIP = async (ip) => {
+            if (!confirm(`${ip} 차단을 해제하시겠습니까?`)) return;
+            try {
+                await ApiClient.post('/api/admin/unban-ip', { ip });
+                this.showNotification('차단 해제 완료', 'success');
+                const mod = this.pageModules[this.currentPage];
+                if (mod?.refresh) mod.refresh(this);
+            } catch { this.showNotification('차단 해제 실패', 'error'); }
+        };
+    }
+
     showDashboard() {
         this.loginScreen.style.display = 'none';
         this.dashboard.style.display = '';
@@ -171,10 +191,16 @@ class AdminCore {
                 <span class="nav-badge" data-badge="${p.id}">0</span>
             </button>
         `).join('');
-        nav.addEventListener('click', (e) => {
-            const btn = e.target.closest('.nav-item');
-            if (btn) this.navigateTo(btn.dataset.page);
-        });
+        if (!this._navListenerBound) {
+            this._navListenerBound = true;
+            nav.addEventListener('click', (e) => {
+                const btn = e.target.closest('.nav-item');
+                if (btn) {
+                    this.navigateTo(btn.dataset.page);
+                    nav.classList.remove('open');
+                }
+            });
+        }
         this.updateNavActive(this._currentHash());
     }
 

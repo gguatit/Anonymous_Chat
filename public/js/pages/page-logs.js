@@ -14,7 +14,6 @@ export async function init(core) {
     document.getElementById('audit-log-filter')?.addEventListener('change', loadAuditLogs);
     document.getElementById('export-audit-csv-btn')?.addEventListener('click', () => exportAuditCsv(core));
     document.getElementById('clear-audit-logs-btn')?.addEventListener('click', () => clearAuditLogs(core));
-    document.getElementById('delete-admin-logs-btn')?.addEventListener('click', () => deleteLoginLogs(core));
 
     await loadErrorLogs(core);
     await loadAuditLogs();
@@ -56,12 +55,6 @@ async function downloadErrors(core) {
 async function deleteErrors(core) {
     if (!confirm('모든 에러 로그를 삭제하시겠습니까?')) return;
     try { await ApiClient.post('/api/admin/delete-error-logs'); await loadErrorLogs(core); core.showNotification('삭제됨', 'success'); }
-    catch { core.showNotification('삭제 실패', 'error'); }
-}
-
-async function deleteLoginLogs(core) {
-    if (!confirm('관리자 로그인 로그를 삭제하시겠습니까?')) return;
-    try { await ApiClient.post('/api/admin/delete-logs'); await loadLoginLogs(); core.showNotification('삭제 완료', 'success'); }
     catch { core.showNotification('삭제 실패', 'error'); }
 }
 

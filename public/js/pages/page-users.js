@@ -12,11 +12,6 @@ export async function init(core) {
         try { await ApiClient.post('/api/admin/kick-user', { sessionId: sid }); core.showNotification('킥 완료', 'success'); await refresh(core); }
         catch { core.showNotification('킥 실패', 'error'); }
     };
-    window._adminUnbanIP = async (ip) => {
-        if (!confirm(`${ip} 차단을 해제하시겠습니까?`)) return;
-        try { await ApiClient.post('/api/admin/unban-ip', { ip }); core.showNotification('차단 해제 완료', 'success'); await refresh(core); }
-        catch { core.showNotification('차단 해제 실패', 'error'); }
-    };
     window._showUserDetails = async (sid) => {
         try {
             const data = await ApiClient.get(`/api/admin/user-details?sessionId=${sid}`);
