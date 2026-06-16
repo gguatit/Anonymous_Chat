@@ -32,20 +32,23 @@
             width: 200px; min-width: 200px; flex-shrink: 0;
             background: #1f2937; border-right: 1px solid #374151;
             display: flex; flex-direction: column; padding: 0.5rem 0;
+            overflow-y: auto;
         }
         [data-theme] #nav-sidebar { background: var(--c-bg-800, #1f2937); border-color: var(--c-bd-700, #374151); }
         .nav-item {
-            display: flex; align-items: center; gap: 8px; padding: 10px 16px;
-            border: none; cursor: pointer; font-size: 14px; width: 100%; text-align: left;
-            background: transparent; color: #d1d5db; transition: background 0.15s;
+            display: flex !important; align-items: center; gap: 8px;
+            padding: 10px 16px; border: none; cursor: pointer;
+            font-size: 14px; width: 100%; text-align: left;
+            background: transparent; color: #d1d5db !important;
+            transition: background 0.15s; border-radius: 0;
+            font-family: inherit; line-height: 1.4;
         }
-        [data-theme] .nav-item { color: var(--c-tx-300, #d1d5db); }
-        .nav-item:hover { background: #374151; color: #e5e7eb; }
-        [data-theme] .nav-item:hover { background: var(--c-hv-700, #374151); color: var(--c-tx-200, #e5e7eb); }
-        .nav-item.active { background: rgba(59,130,246,0.15); color: #60a5fa; border-right: 3px solid #3b82f6; }
-        .nav-icon { width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; }
+        .nav-item svg { flex-shrink: 0; }
+        .nav-item:hover { background: #374151 !important; color: #e5e7eb !important; }
+        .nav-item.active { background: rgba(59,130,246,0.15) !important; color: #60a5fa !important; border-right: 3px solid #3b82f6; }
+        .nav-icon { width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .nav-icon svg { width: 18px; height: 18px; }
-        .nav-label { white-space: nowrap; }
+        .nav-label { white-space: nowrap; flex: 1; }
         .nav-badge {
             margin-left: auto; min-width: 20px; height: 20px; border-radius: 10px;
             display: none; align-items: center; justify-content: center;
