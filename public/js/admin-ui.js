@@ -1,7 +1,35 @@
-import { escapeHtml } from './utils.js';
+import { escapeHtml, formatFileSize } from './utils.js';
 
 const h = escapeHtml;
 const _now = () => Date.now();
+
+function _renderFile(file) {
+    if (!file || !file.url) return '';
+    const ext = (file.filetype || '').toLowerCase();
+    const name = h(file.filename || 'file');
+    const size = formatFileSize(file.filesize || 0);
+    const url = file.url;
+    if (ext.startsWith('image/')) {
+        return `<div class="mt-2"><a href="${h(url)}" target="_blank" rel="noopener"><img src="${h(url)}" alt="${name}" class="max-w-full max-h-48 rounded border border-gray-600 object-contain cursor-pointer hover:opacity-90 transition-opacity" loading="lazy"></a><div class="mt-0.5 text-xs text-gray-400">${name} · ${size}</div></div>`;
+    }
+    if (ext.startsWith('video/')) {
+        return `<div class="mt-2"><video controls class="max-w-full max-h-48 rounded border border-gray-600"><source src="${h(url)}" type="${h(ext)}"></video><div class="mt-0.5 text-xs text-gray-400">${name} · ${size}</div></div>`;
+    }
+    if (ext.startsWith('audio/')) {
+        return `<div class="mt-2"><audio controls class="w-full max-w-md"><source src="${h(url)}" type="${h(ext)}"></audio><div class="mt-0.5 text-xs text-gray-400">${name} · ${size}</div></div>`;
+    }
+    return `<div class="mt-2"><a href="${h(url)}" download="${name}" class="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><div class="text-left"><div class="text-sm font-medium">${name}</div><div class="text-xs text-gray-400">${size}</div></div></a></div>`;
+}
+
+function _renderFiles(msg) {
+    let html = '';
+    if (msg.files && Array.isArray(msg.files) && msg.files.length > 0) {
+        for (const f of msg.files) html += _renderFile(f);
+    } else if (msg.file && msg.file.url) {
+        html += _renderFile(msg.file);
+    }
+    return html;
+}
 
 function tr(id) { return id && id.length > 20 ? id.substring(0, 20) + '...' : id || 'Unknown'; }
 
@@ -199,7 +227,8 @@ export function renderRecentMessages(messages) {
                 <div class="flex items-center gap-2"><span class="text-xs font-mono text-gray-400">${tr(msg.sessionId)}</span>${adminBadge}</div>
                 <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</span>
             </div>
-            <p class="text-sm text-gray-200 break-words whitespace-pre-wrap">${h(msg.content || '')}</p>
+            ${msg.content ? `<p class="text-sm text-gray-200 break-words whitespace-pre-wrap">${h(msg.content)}</p>` : ''}
+            ${_renderFiles(msg)}
             ${msg.editedAt ? '<span class="text-xs text-yellow-500">(수정됨)</span>' : ''}
         </div>`;
     }).join('');
