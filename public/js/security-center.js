@@ -118,13 +118,12 @@ function renderRiskIPs() {
 
 async function loadEvents() {
     try {
-        const params = new URLSearchParams({ page: securityState.page, limit: securityState.limit });
+        const params = new URLSearchParams({ page: securityState.page, limit: securityState.limit.toString() });
         if (securityState.category) params.set('category', securityState.category);
         if (securityState.severity) params.set('severity', securityState.severity);
         if (securityState.search) params.set('search', securityState.search);
         if (securityState.ip) params.set('ip', securityState.ip);
-        const res = await ApiClient.get(`/api/admin/security/events?${params}`);
-        const data = await res.json();
+        const data = await ApiClient.get(`/api/admin/security/events?${params}`);
         securityState.events = data.events || [];
         securityState.total = data.total || 0;
         securityState.page = data.page || 1;
@@ -135,16 +134,15 @@ async function loadEvents() {
 
 async function loadStats() {
     try {
-        const res = await ApiClient.get('/api/admin/security/stats');
-        securityState.stats = await res.json();
+        const data = await ApiClient.get('/api/admin/security/stats');
+        securityState.stats = data;
         renderStats();
     } catch (_e) { /* ignore */ }
 }
 
 async function loadRiskIPs() {
     try {
-        const res = await ApiClient.get('/api/admin/security/risk-ips');
-        const data = await res.json();
+        const data = await ApiClient.get('/api/admin/security/risk-ips');
         securityState.riskIPs = data.riskIPs || [];
         renderRiskIPs();
     } catch (_e) { /* ignore */ }
@@ -152,8 +150,8 @@ async function loadRiskIPs() {
 
 async function loadBadge() {
     try {
-        const res = await ApiClient.get('/api/admin/security/badge');
-        securityState.badge = await res.json();
+        const data = await ApiClient.get('/api/admin/security/badge');
+        securityState.badge = data;
         updateBadgeDisplay();
     } catch (_e) { /* ignore */ }
 }
@@ -176,7 +174,7 @@ async function exportCSV() {
     try {
         const params = new URLSearchParams();
         if (securityState.category) params.set('category', securityState.category);
-        const res = await ApiClient.get(`/api/admin/security/events/export?${params}`);
+        const res = await ApiClient.getRaw(`/api/admin/security/events/export?${params}`);
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -189,9 +187,8 @@ async function exportCSV() {
 async function clearOldEvents() {
     if (!confirm('90일 이상 된 보안 이벤트를 모두 삭제하시겠습니까?')) return;
     try {
-        const res = await ApiClient.post('/api/admin/security/events/clear');
-        const data = await res.json();
-        _core?.showNotification(`${data.deleted || 0}개 이벤트 삭제됨`, 'success');
+        const data = await ApiClient.post('/api/admin/security/events/clear');
+        _core?.showNotification(`${data?.deleted || 0}개 이벤트 삭제됨`, 'success');
         loadEvents(); loadStats();
     } catch (_e) { _core?.showNotification('이벤트 삭제 실패', 'error'); }
 }

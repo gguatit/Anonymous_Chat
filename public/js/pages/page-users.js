@@ -1,46 +1,34 @@
 import ApiClient from '../api-client.js';
-import renderMethods from '../admin-render.js';
+import * as ui from '../admin-ui.js';
 
 export async function init(core) {
     document.getElementById('close-user-modal')?.addEventListener('click', () => {
         const m = document.getElementById('user-details-modal');
-        if (m) hideModalStyles(m);
+        if (m) m.classList.add('hidden');
     });
 
-    window._adminKickUser = async (sessionId) => {
+    window._adminKickUser = async (sid) => {
         if (!confirm('이 사용자를 킥하시겠습니까?')) return;
-        try {
-            await ApiClient.post('/api/admin/kick-user', { sessionId });
-            core.showNotification('사용자 킥 완료', 'success');
-            await refresh(core);
-        } catch (_e) { core.showNotification('킥 실패', 'error'); }
+        try { await ApiClient.post('/api/admin/kick-user', { sessionId: sid }); core.showNotification('킥 완료', 'success'); await refresh(core); }
+        catch { core.showNotification('킥 실패', 'error'); }
     };
     window._adminUnbanIP = async (ip) => {
         if (!confirm(`${ip} 차단을 해제하시겠습니까?`)) return;
-        try {
-            await ApiClient.post('/api/admin/unban-ip', { ip });
-            core.showNotification('차단 해제 완료', 'success');
-            await refresh(core);
-        } catch (_e) { core.showNotification('차단 해제 실패', 'error'); }
+        try { await ApiClient.post('/api/admin/unban-ip', { ip }); core.showNotification('차단 해제 완료', 'success'); await refresh(core); }
+        catch { core.showNotification('차단 해제 실패', 'error'); }
     };
 
     await refresh(core);
 }
 
-function hideModalStyles(modal) {
-    if (modal) modal.classList.add('hidden');
-}
-
 export async function refresh(core) {
     try {
-        const res = await ApiClient.get('/api/admin/sessions');
-        const data = await res.json();
-        renderMethods.renderActiveSessions(data.sessions || []);
+        const data = await ApiClient.get('/api/admin/sessions');
+        ui.renderActiveSessions(data.sessions || []);
     } catch (_e) { /* ignore */ }
     try {
-        const bansRes = await ApiClient.get('/api/admin/banned-ips');
-        const bansData = await bansRes.json();
-        renderMethods.renderBannedIPs(bansData.ips || []);
+        const data = await ApiClient.get('/api/admin/banned-ips');
+        ui.renderBannedIPs(data.ips || []);
     } catch (_e) { /* ignore */ }
     core.updateLastUpdated();
 }
