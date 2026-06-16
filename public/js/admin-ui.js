@@ -252,11 +252,11 @@ export function renderAnnouncements(announcements) {
     }
     container.innerHTML = announcements.map(a => {
         const ts = new Date(a.timestamp).toLocaleString('ko-KR');
-        const emergency = a.isEmergency ? '<span class="text-xs bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded-full ml-1">긴급</span>' : '';
+        const emergency = a.isEmergency ? '<span class="text-xs bg-red-600 text-white font-bold border border-red-500 px-1.5 py-0.5 rounded ml-1 animate-pulse">긴급</span>' : '';
         const content = h(a.content).replace(/\n/g, '<br>').replace(/(https?:\/\/[^\s<>"']+)/g, '<a href="$1" target="_blank" rel="noopener" class="text-blue-400 hover:text-blue-300 underline break-all">$1</a>');
-        return `<div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4 ${a.isEmergency ? 'border border-red-700/50' : ''}">
-            <div class="flex-1"><div class="text-xs text-gray-400 mb-1">${ts}${emergency}</div><div class="text-sm text-gray-200">${content}</div></div>
-        </div>`;
+        return a.isEmergency
+            ? `<div class="bg-red-900/30 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-red-500"><div class="flex-1"><div class="text-xs text-red-300 font-semibold mb-1">${ts}${emergency}</div><div class="text-sm text-red-100">${content}</div></div></div>`
+            : `<div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4"><div class="flex-1"><div class="text-xs text-gray-400 mb-1">${ts}</div><div class="text-sm text-gray-200">${content}</div></div></div>`;
     }).join('');
 }
 
