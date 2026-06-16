@@ -36,3 +36,17 @@ export async function refresh(core) {
     } catch (_e) { /* ignore */ }
     core.updateLastUpdated();
 }
+
+export function handleEvent(core, action, payload) {
+    if (action === 'message_deleted') {
+        const el = document.querySelector(`[data-msg-id="${payload?.messageId}"]`);
+        if (el) {
+            el.style.transition = 'opacity 0.2s, transform 0.2s';
+            el.style.opacity = '0';
+            el.style.transform = 'scale(0.95)';
+            setTimeout(() => { if (el.parentNode) el.remove(); }, 200);
+        }
+    } else {
+        refresh(core);
+    }
+}

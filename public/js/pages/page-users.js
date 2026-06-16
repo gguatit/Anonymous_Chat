@@ -63,3 +63,7 @@ export async function refresh(core) {
     } catch (_e) { /* ignore */ }
     core.updateLastUpdated();
 }
+
+export function handleEvent(core, _action, _payload) {
+    refresh(core);
+}

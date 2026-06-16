@@ -2,6 +2,15 @@ import { ADMIN, metrics, MAX_STORED_MESSAGES, FORCE_DELETE_DELAY_MS, MESSAGE_PRE
 import { sanitizeInput, safeJson, generateMessageSignature } from '../../utils/helpers.js';
 import { isEmergencyActive } from './announcements.js';
 
+export function notifyAdmin(chatRoom, action, payload = {}) {
+    chatRoom.broadcastToObservers({
+        type: 'admin_event',
+        action,
+        payload,
+        timestamp: Date.now(),
+    });
+}
+
 export async function dispatchAdminRoute(chatRoom, url, request, HMAC_SECRET) {
     if (url.pathname === '/admin/metrics') {
         return new Response(JSON.stringify({
@@ -175,6 +184,8 @@ export async function handleAdminBroadcast(chatRoom, request, HMAC_SECRET) {
 
         chatRoom.broadcast(message);
 
+        notifyAdmin(chatRoom, 'message_created', { messageId, sessionId: message.sessionId });
+
         return new Response(JSON.stringify({ success: true, message }), {
             headers: { 'Content-Type': 'application/json' }
         });
@@ -286,6 +297,8 @@ export async function handleAdminDeleteMessage(chatRoom, request) {
             messageId
         });
 
+        notifyAdmin(chatRoom, 'message_deleted', { messageId, sessionId: messageToDelete.sessionId });
+
         await chatRoom.addAuditLog('admin_delete_message', `Admin deleted message ${messageId} from user ${messageToDelete.sessionId}`, {
             messageId,
             originalSessionId: messageToDelete.sessionId,
@@ -326,6 +339,8 @@ export async function handleAdminDeleteAllMessages(chatRoom, request) {
         chatRoom.broadcast({
             type: 'all_messages_deleted'
         });
+
+        notifyAdmin(chatRoom, 'all_messages_deleted', { count: messageCount });
 
         await chatRoom.addAuditLog('admin_delete_all_messages', `Admin deleted all messages (${messageCount} messages)`, {
             deletedCount: messageCount
@@ -371,6 +386,10 @@ export async function handleAdminForceDelete(chatRoom, request) {
                 console.error('Error sending channel_deleted:', e);
             }
         }
+
+        notifyAdmin(chatRoom, 'channel_deleted', {
+            channelSlug: chatRoom.channelSlug,
+        });
 
         await new Promise(resolve => setTimeout(resolve, FORCE_DELETE_DELAY_MS));
 
@@ -563,6 +582,13 @@ export async function handleAdminKickUser(chatRoom, request) {
             banType
         });
 
+        notifyAdmin(chatRoom, 'user_kicked', {
+            sessionId,
+            ip: clientIP,
+            banDuration,
+            banned: banDuration > 0,
+        });
+
         return new Response(JSON.stringify({
             success: true,
             banned: banDuration > 0,
@@ -642,6 +668,8 @@ export async function handleAdminAnnounce(chatRoom, request) {
             isEmergency
         });
 
+        notifyAdmin(chatRoom, 'announcement_sent', { content: content.substring(0, 200), isEmergency, sessionsNotified: notified });
+
         return new Response(JSON.stringify({
             success: true,
             sessionsNotified: notified
@@ -714,6 +742,8 @@ export async function handleAdminEditAnnounce(chatRoom, request) {
             isEmergency
         });
 
+        notifyAdmin(chatRoom, 'announcement_edited', { timestamp, isEmergency });
+
         return new Response(JSON.stringify({ success: true }), {
             headers: { 'Content-Type': 'application/json' }
         });
@@ -767,6 +797,8 @@ export async function handleAdminDeleteAnnounce(chatRoom, request) {
         await chatRoom.addAuditLog('delete_announcement', `Deleted announcement from timestamp ${timestamp}`, {
             timestamp
         });
+
+        notifyAdmin(chatRoom, 'announcement_deleted', { timestamp });
 
         return new Response(JSON.stringify({ success: true }), {
             headers: { 'Content-Type': 'application/json' }
@@ -870,6 +902,8 @@ export async function handleAdminUnbanIP(chatRoom, request) {
         }
 
         await chatRoom.addAuditLog('UNBAN_IP', `Unbanned IP: ${ip || 'N/A'}, Session: ${sessionId || 'N/A'}`);
+
+        notifyAdmin(chatRoom, 'ip_unbanned', { ip, sessionId, unbanToken });
 
         return new Response(JSON.stringify({ success: true, unbanIp, unbanSession, unbanToken }), {
             headers: { 'Content-Type': 'application/json' }

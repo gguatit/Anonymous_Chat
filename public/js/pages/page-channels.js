@@ -38,3 +38,7 @@ export async function refresh(core) {
     await loadChannels();
     core.updateLastUpdated();
 }
+
+export function handleEvent(core, _action, _payload) {
+    refresh(core);
+}

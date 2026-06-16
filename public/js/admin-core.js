@@ -21,6 +21,8 @@ class AdminCore {
         this._toggleSetupDone = false;
         this._navListenerBound = false;
         this._helpersSetup = false;
+        this.observerWs = null;
+        this._userJoinThrottle = new Map();
     }
 
     getToken() { return this.sessionToken; }
@@ -67,6 +69,7 @@ class AdminCore {
                 this.showDashboard();
                 this.renderNav();
                 this.startAutoRefresh();
+                this.connectObserver();
                 this._onHashChange();
             } catch (_e) {
                 this.setToken(null);
@@ -157,9 +160,76 @@ class AdminCore {
     handleLogout() {
         this.setToken(null);
         this.stopAutoRefresh();
+        this.disconnectObserver();
         this.loginScreen.style.display = 'flex';
         this.dashboard.style.display = 'none';
         location.hash = '';
+    }
+
+    connectObserver() {
+        if (this.observerWs && this.observerWs.readyState === WebSocket.OPEN) return;
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const obsId = 'admin_obs_' + (this.sessionToken || '').substring(0, 16);
+        const wsUrl = `${protocol}//${location.host}/ws?sessionId=${encodeURIComponent(obsId)}`;
+
+        const ws = new WebSocket(wsUrl);
+        this.observerWs = ws;
+
+        ws.addEventListener('message', (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'admin_event') {
+                    this._dispatchEvent(data.action, data.payload);
+                }
+            } catch (_e) { /* ignore */ }
+        });
+
+        ws.addEventListener('close', () => {
+            this.observerWs = null;
+            setTimeout(() => {
+                if (this.sessionToken) this.connectObserver();
+            }, 10000);
+        });
+
+        ws.addEventListener('error', () => {
+            this.observerWs = null;
+        });
+    }
+
+    disconnectObserver() {
+        if (this.observerWs) {
+            this.observerWs.close();
+            this.observerWs = null;
+        }
+    }
+
+    _dispatchEvent(action, payload) {
+        let shouldRefresh = false;
+        if (action === 'user_joined' || action === 'user_left') {
+            const sid = payload?.sessionId;
+            const now = Date.now();
+            const last = this._userJoinThrottle.get(sid) || 0;
+            if (now - last < 1000) return;
+            this._userJoinThrottle.set(sid, now);
+            shouldRefresh = true;
+        } else if (action === 'user_kicked' || action === 'ip_banned' || action === 'ip_unbanned' || action === 'session_unbanned' || action === 'token_expired') {
+            shouldRefresh = true;
+        } else if (action === 'message_created' || action === 'message_deleted' || action === 'all_messages_deleted') {
+            shouldRefresh = true;
+        } else if (action === 'channel_deleted') {
+            shouldRefresh = true;
+        } else if (action.startsWith('announcement_')) {
+            shouldRefresh = true;
+        }
+
+        if (shouldRefresh) {
+            const mod = this.pageModules[this.currentPage];
+            if (mod?.handleEvent) {
+                mod.handleEvent(this, action, payload);
+            } else if (mod?.refresh) {
+                mod.refresh(this);
+            }
+        }
     }
 
     _setupGlobalHelpers() {
@@ -175,6 +245,23 @@ class AdminCore {
                 const mod = this.pageModules[this.currentPage];
                 if (mod?.refresh) mod.refresh(this);
             } catch { this.showNotification('차단 해제 실패', 'error'); }
+        };
+        window._adminDeleteMessage = async (messageId, el) => {
+            if (!confirm('이 메시지를 삭제하시겠습니까?')) return;
+            if (el) {
+                el.style.transition = 'opacity 0.2s, transform 0.2s';
+                el.style.opacity = '0.3';
+                el.style.transform = 'translateX(-10px)';
+                setTimeout(() => { if (el.parentNode) el.remove(); }, 200);
+            }
+            try {
+                await ApiClient.post('/api/admin/delete-message', { messageId });
+                this.showNotification('메시지 삭제 완료', 'success');
+            } catch {
+                this.showNotification('메시지 삭제 실패', 'error');
+                const mod = this.pageModules[this.currentPage];
+                if (mod?.refresh) mod.refresh(this);
+            }
         };
     }
 

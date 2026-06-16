@@ -4,7 +4,7 @@ import { sendPushToOfflineUsers } from '../handlers/push.js';
 import { verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl, generateMessageSignature } from '../utils/helpers.js';
 import { validateClientMessage, validateSessionId } from '../utils/validate.js';
 
-import { dispatchAdminRoute, handleCheckBan, handleBroadcastSummary } from './chat-room/admin.js';
+import { dispatchAdminRoute, handleCheckBan, handleBroadcastSummary, notifyAdmin } from './chat-room/admin.js';
 import { validateMessage, sanitizeContentForAI, generateSessionId, extractErrorLocation, searchMessages } from './chat-room/messages.js';
 import { isEmergencyActive } from './chat-room/announcements.js';
 
@@ -22,6 +22,7 @@ export class ChatRoom {
         this.bannedIPs = new Map();
         this.bannedSessions = new Map();
         this.bannedTokens = new Map();
+        this.observers = new Set();
         this.currentAnnouncement = null;
         this.announcementHistory = [];
         this.auditLogs = [];
@@ -298,6 +299,7 @@ export class ChatRoom {
 
         const wsUrl = new URL(request.url);
         const banToken = wsUrl.searchParams.get('token');
+        const isObserver = (wsUrl.searchParams.get('sessionId') || '').startsWith('admin_obs_');
         if (banToken) {
             const tokenBan = this.bannedTokens.get(banToken);
             if (tokenBan) {
@@ -332,7 +334,7 @@ export class ChatRoom {
         const pair = new WebSocketPair();
         const [client, server] = Object.values(pair);
 
-        await this.handleSession(server, clientIP, HMAC_SECRET, environment);
+        await this.handleSession(server, clientIP, HMAC_SECRET, environment, isObserver);
 
         return new Response(null, {
             status: 101,
@@ -340,8 +342,19 @@ export class ChatRoom {
         });
     }
 
-    async handleSession(websocket, clientIP, HMAC_SECRET, environment) {
+    async handleSession(websocket, clientIP, HMAC_SECRET, environment, isObserver = false) {
         websocket.accept();
+
+        if (isObserver) {
+            this.observers.add(websocket);
+            websocket.addEventListener('close', () => {
+                this.observers.delete(websocket);
+            });
+            websocket.addEventListener('error', () => {
+                this.observers.delete(websocket);
+            });
+            return;
+        }
 
         let sessionId = null;
         let metadata = null;
@@ -454,6 +467,12 @@ export class ChatRoom {
 
                 metrics.activeConnections--;
                 this.broadcastUserCount();
+
+                this.broadcastToObservers({
+                    type: 'admin_event',
+                    action: 'user_left',
+                    payload: { sessionId, ip: clientIP },
+                });
 
                 if (this.channelSlug !== '0' && this.sessions.size === 0) {
                     this.emptySince = Date.now();
@@ -579,6 +598,13 @@ export class ChatRoom {
             metrics.activeConnections++;
 
             this.broadcastUserCount();
+
+            const maskedIP = clientIP ? clientIP.replace(/\.\d+\.\d+$/, '.***.***') : 'unknown';
+            this.broadcastToObservers({
+                type: 'admin_event',
+                action: 'user_joined',
+                payload: { sessionId, nickname: metadata.nickname || '', ip: maskedIP, timestamp: now },
+            });
 
             if (!existingMetadata) {
                 this.sendToSession(sessionId, {
@@ -1090,6 +1116,20 @@ export class ChatRoom {
         }
     }
 
+    broadcastToObservers(message) {
+        const dead = [];
+        for (const ws of this.observers) {
+            try {
+                ws.send(JSON.stringify(message));
+            } catch (_e) {
+                dead.push(ws);
+            }
+        }
+        for (const ws of dead) {
+            this.observers.delete(ws);
+        }
+    }
+
     throttledPushNotification(message) {
         this.pushThrottleQueue.push(message);
 
@@ -1164,6 +1204,7 @@ export class ChatRoom {
         }
         if (bansChanged) {
             await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+            notifyAdmin(this, 'ip_unbanned', { reason: 'expired' });
         }
 
         let sessionBansChanged = false;
@@ -1175,6 +1216,7 @@ export class ChatRoom {
         }
         if (sessionBansChanged) {
             await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
+            notifyAdmin(this, 'session_unbanned', { reason: 'expired' });
         }
 
         let tokenBansChanged = false;
@@ -1186,6 +1228,7 @@ export class ChatRoom {
         }
         if (tokenBansChanged) {
             await this.state.storage.put('bannedTokens', Array.from(this.bannedTokens.entries()));
+            notifyAdmin(this, 'token_expired', { reason: 'expired' });
         }
 
         let sessionsRemoved = false;

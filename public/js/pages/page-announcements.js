@@ -66,3 +66,7 @@ export async function refresh(core) {
     await loadAnnouncements();
     core.updateLastUpdated();
 }
+
+export function handleEvent(core, _action, _payload) {
+    refresh(core);
+}
