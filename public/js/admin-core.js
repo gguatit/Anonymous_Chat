@@ -18,6 +18,7 @@ class AdminCore {
         this.autoRefreshInterval = null;
         this.pageModules = {};
         this.initPromise = null;
+        this._toggleSetupDone = false;
     }
 
     getToken() { return this.sessionToken; }
@@ -101,14 +102,16 @@ class AdminCore {
                 try {
                     const mod = await importer();
                     this.pageModules[pageId] = mod;
+                    if (mod?.init) await mod.init(this);
                 } catch (err) {
                     console.error('Failed to load page:', pageId, err);
                     return;
                 }
             }
+        } else {
+            const mod = this.pageModules[pageId];
+            if (mod?.refresh) await mod.refresh(this);
         }
-        const mod = this.pageModules[pageId];
-        if (mod?.init) await mod.init(this);
     }
 
     navigateTo(pageId) {
@@ -185,15 +188,22 @@ class AdminCore {
         this.stopAutoRefresh();
         const interval = parseInt(document.getElementById('auto-refresh-interval')?.value || '30') * 1000;
         const toggle = document.getElementById('auto-refresh-toggle');
-        toggle?.addEventListener('change', (e) => {
-            if (e.target.checked) this.startAutoRefresh();
-            else this.stopAutoRefresh();
-        });
-        if (!toggle?.checked) return;
+        if (!toggle) return;
+        this._setupAutoRefreshToggle(toggle);
+        if (!toggle.checked) return;
         this.autoRefreshInterval = setInterval(() => {
             const mod = this.pageModules[this.currentPage];
             if (mod?.refresh) mod.refresh(this);
         }, interval);
+    }
+
+    _setupAutoRefreshToggle(toggle) {
+        if (this._toggleSetupDone) return;
+        this._toggleSetupDone = true;
+        toggle.addEventListener('change', (e) => {
+            if (e.target.checked) this.startAutoRefresh();
+            else this.stopAutoRefresh();
+        });
     }
 
     stopAutoRefresh() {

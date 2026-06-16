@@ -21,8 +21,16 @@ export async function init(core) {
             const emergency = document.getElementById('emergency-checkbox')?.checked;
             const schedule = document.getElementById('schedule-checkbox')?.checked;
             const expires = document.getElementById('announce-expiry-select')?.value || '0';
-            const scheduledAt = schedule ? (document.getElementById('schedule-datetime')?.value || null) : null;
-            await ApiClient.post('/api/admin/announce', { content, emergency, scheduledAt, expiresIn: parseInt(expires) });
+            const expiresInt = parseInt(expires);
+            const scheduleAt = schedule ? (document.getElementById('schedule-datetime')?.value || null) : null;
+            const emergencyUntil = emergency && expiresInt > 0 ? Date.now() + expiresInt : null;
+            const expiresAt = !emergency && expiresInt > 0 ? Date.now() + expiresInt : null;
+            await ApiClient.post('/api/admin/announce', {
+                content, emergency,
+                scheduleAt: scheduleAt ? new Date(scheduleAt).getTime() : null,
+                expiresAt,
+                emergencyUntil,
+            });
             input.value = '';
             core.showNotification('공지사항 전송 완료', 'success');
             await refresh(core);
@@ -43,9 +51,14 @@ export async function init(core) {
 
 async function loadAnnouncements() {
     try {
-        const search = document.getElementById('announce-search')?.value || '';
-        const data = await ApiClient.get(`/api/announcements?search=${encodeURIComponent(search)}`);
-        ui.renderAnnouncements(Array.isArray(data) ? data : (data.announcements || []));
+        const search = (document.getElementById('announce-search')?.value || '').toLowerCase();
+        const data = await ApiClient.get('/api/announcements');
+        const list = Array.isArray(data) ? data : (data.announcements || []);
+        const filtered = search ? list.filter(a =>
+            (a.content || '').toLowerCase().includes(search) ||
+            (a.timestamp ? new Date(a.timestamp).toLocaleString('ko-KR') : '').includes(search)
+        ) : list;
+        ui.renderAnnouncements(filtered);
     } catch (_e) { /* ignore */ }
 }
 

@@ -238,7 +238,7 @@ export function renderChannelDetail(channel) {
             <div><span class="text-gray-400">상태:</span> ${channel.status || 'active'}</div>
         </div>
     `;
-    modal.classList.remove('hidden');
+    modal.classList.add('open');
 }
 
 export function formatErrorLogsText(logs) {

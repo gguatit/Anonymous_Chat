@@ -488,16 +488,32 @@ export const handleAdminAuditLogs = withAuth(async (request, env, corsHeaders) =
     }
 
     try {
-        const { results } = await env.DB_ADMIN.prepare(
-            'SELECT action, details, timestamp, metadata FROM audit_logs ORDER BY timestamp DESC LIMIT 100'
-        ).all();
+        const url = new URL(request.url);
+        const filter = url.searchParams.get('filter') || 'all';
+        let query = 'SELECT action, details, timestamp, metadata FROM audit_logs';
+        const binds = [];
 
-        const logs = (results || []).map(r => ({
-            timestamp: r.timestamp,
-            action: r.action,
-            details: r.details,
-            metadata: r.metadata ? JSON.parse(r.metadata) : {}
-        }));
+        if (filter !== 'all') {
+            query += ' WHERE action = ?';
+            binds.push(filter);
+        }
+        query += ' ORDER BY timestamp DESC LIMIT 100';
+
+        const { results } = await env.DB_ADMIN.prepare(query).bind(...binds).all();
+
+        const logs = (results || []).map(r => {
+            let meta = {};
+            try { meta = r.metadata ? JSON.parse(r.metadata) : {}; } catch (_e) { /* ignore */ }
+            return {
+                type: r.action,
+                action: r.action,
+                description: r.details,
+                details: r.details,
+                ip: meta.ip || meta.admin_ip || null,
+                admin_ip: meta.admin_ip || meta.ip || null,
+                timestamp: r.timestamp,
+            };
+        });
 
         return new Response(JSON.stringify(logs), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }

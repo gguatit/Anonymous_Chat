@@ -24,7 +24,7 @@ export async function init(core) {
 
 function hideDetail() {
     const m = document.getElementById('channel-detail-modal');
-    if (m) m.classList.add('hidden');
+    if (m) m.classList.remove('open');
 }
 
 async function loadChannels() {

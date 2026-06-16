@@ -187,7 +187,8 @@ async function exportCSV() {
 async function clearOldEvents() {
     if (!confirm('90일 이상 된 보안 이벤트를 모두 삭제하시겠습니까?')) return;
     try {
-        const data = await ApiClient.post('/api/admin/security/events/clear');
+        const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+        const data = await ApiClient.post('/api/admin/security/events/clear', { before: ninetyDaysAgo });
         _core?.showNotification(`${data?.deleted || 0}개 이벤트 삭제됨`, 'success');
         loadEvents(); loadStats();
     } catch (_e) { _core?.showNotification('이벤트 삭제 실패', 'error'); }

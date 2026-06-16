@@ -10,56 +10,26 @@ export async function init(core) {
     document.getElementById('export-audit-csv-btn')?.addEventListener('click', () => exportAuditCsv(core));
     document.getElementById('clear-audit-logs-btn')?.addEventListener('click', () => clearAuditLogs(core));
 
-    const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
-    const mobileAutoRefresh = document.getElementById('mobile-auto-refresh');
-    const mobileRefreshInterval = document.getElementById('mobile-refresh-interval');
-    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-    const mobileMenu = document.getElementById('mobile-menu');
-    const closeMobileMenu = document.getElementById('close-mobile-menu');
-
-    mobileMenuBtn?.addEventListener('click', () => { mobileMenu?.classList.remove('hidden'); setTimeout(() => mobileMenu?.querySelector('.mobile-menu')?.classList.add('active'), 10); });
-    closeMobileMenu?.addEventListener('click', () => { mobileMenu?.querySelector('.mobile-menu')?.classList.remove('active'); setTimeout(() => mobileMenu?.classList.add('hidden'), 300); });
-    mobileMenu?.addEventListener('click', (e) => { if (e.target === mobileMenu) { mobileMenu?.querySelector('.mobile-menu')?.classList.remove('active'); setTimeout(() => mobileMenu?.classList.add('hidden'), 300); } });
-    mobileAutoRefresh?.addEventListener('change', (e) => { if (autoRefreshToggle) autoRefreshToggle.checked = e.target.checked; });
-    mobileRefreshInterval?.addEventListener('change', (e) => { const ai = document.getElementById('auto-refresh-interval'); if (ai) ai.value = e.target.value; });
-
-    document.getElementById('export-csv-btn')?.addEventListener('click', () => core.navigateTo('logs'));
-
     await refresh(core);
 }
 
 async function refresh(core) {
-    core.updateLastUpdated();
-    await loadMetrics();
-    await loadAdminLoginLogs();
-    await loadErrorLogs();
-}
-
-async function loadMetrics() {
-    try {
-        const data = await ApiClient.get('/api/admin/metrics');
-        ui.updateMetrics(data);
-        if (data.errorLogs) ui.renderErrorLogs(data.errorLogs);
-    } catch (_e) { /* ignore */ }
-}
-
-async function loadAdminLoginLogs() {
+    let metrics = null;
+    try { metrics = await ApiClient.get('/api/admin/metrics'); } catch (_e) { /* ignore */ }
+    if (metrics) {
+        ui.updateMetrics(metrics);
+        if (metrics.errorLogs) ui.renderErrorLogs(metrics.errorLogs);
+    }
     try {
         const data = await ApiClient.get('/api/admin/logs');
         ui.renderAdminLoginLogs(data.logs || []);
     } catch (_e) { /* ignore */ }
-}
-
-async function loadErrorLogs() {
-    try {
-        const data = await ApiClient.get('/api/admin/metrics');
-        ui.renderErrorLogs(data.errorLogs || []);
-    } catch (_e) { /* ignore */ }
+    core.updateLastUpdated();
 }
 
 async function deleteLoginLogs(core) {
     if (!confirm('모든 관리자 로그인 로그를 삭제하시겠습니까?')) return;
-    try { await ApiClient.post('/api/admin/delete-logs'); loadAdminLoginLogs(); core.showNotification('삭제 완료', 'success'); }
+    try { await ApiClient.post('/api/admin/delete-logs'); core.showNotification('삭제 완료', 'success'); }
     catch { core.showNotification('삭제 실패', 'error'); }
 }
 
@@ -74,7 +44,7 @@ async function downloadErrorLogs(core) {
 
 async function deleteErrorLogs(core) {
     if (!confirm('모든 에러 로그를 삭제하시겠습니까?')) return;
-    try { await ApiClient.post('/api/admin/delete-error-logs'); loadErrorLogs(); core.showNotification('에러 로그 삭제됨', 'success'); }
+    try { await ApiClient.post('/api/admin/delete-error-logs'); core.showNotification('에러 로그 삭제됨', 'success'); }
     catch { core.showNotification('삭제 실패', 'error'); }
 }
 

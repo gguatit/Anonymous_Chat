@@ -21,7 +21,7 @@ export async function init(core) {
     });
     deleteAllBtn?.addEventListener('click', async () => {
         if (!confirm('전체 메시지를 삭제하시겠습니까?')) return;
-        try { await ApiClient.post('/api/admin/delete-all-messages'); core.showNotification('삭제 완료', 'success'); await refresh(core); }
+        try { await ApiClient.post('/api/admin/delete-all-messages', { confirmation: 'DELETE_ALL_MESSAGES' }); core.showNotification('삭제 완료', 'success'); await refresh(core); }
         catch { core.showNotification('삭제 실패', 'error'); }
     });
 
