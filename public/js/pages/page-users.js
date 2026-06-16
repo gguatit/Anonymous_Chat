@@ -24,11 +24,11 @@ export async function init(core) {
 export async function refresh(core) {
     try {
         const data = await ApiClient.get('/api/admin/sessions');
-        ui.renderActiveSessions(data.sessions || []);
+        ui.renderActiveSessions(Array.isArray(data) ? data : (data.sessions || []));
     } catch (_e) { /* ignore */ }
     try {
         const data = await ApiClient.get('/api/admin/banned-ips');
-        ui.renderBannedIPs(data.ips || []);
+        ui.renderBannedIPs(Array.isArray(data) ? data : (data.ips || []));
     } catch (_e) { /* ignore */ }
     core.updateLastUpdated();
 }

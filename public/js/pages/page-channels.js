@@ -30,7 +30,7 @@ function hideDetail() {
 async function loadChannels() {
     try {
         const data = await ApiClient.get('/api/admin/channels');
-        ui.renderChannels(data.channels || []);
+        ui.renderChannels(Array.isArray(data) ? data : (data.channels || []));
     } catch (_e) { /* ignore */ }
 }
 

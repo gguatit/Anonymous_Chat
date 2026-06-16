@@ -31,7 +31,8 @@ export async function init(core) {
 export async function refresh(core) {
     try {
         const data = await ApiClient.get('/api/admin/messages?limit=50');
-        ui.renderRecentMessages(data.messages || []);
+        const msgs = Array.isArray(data) ? data : (data.messages || []);
+        ui.renderRecentMessages(msgs);
     } catch (_e) { /* ignore */ }
     core.updateLastUpdated();
 }

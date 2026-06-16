@@ -45,7 +45,7 @@ async function loadAnnouncements() {
     try {
         const search = document.getElementById('announce-search')?.value || '';
         const data = await ApiClient.get(`/api/admin/announcements?search=${encodeURIComponent(search)}`);
-        ui.renderAnnouncements(data.announcements || []);
+        ui.renderAnnouncements(Array.isArray(data) ? data : (data.announcements || []));
     } catch (_e) { /* ignore */ }
 }
 

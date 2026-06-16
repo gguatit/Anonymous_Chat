@@ -40,7 +40,7 @@ async function loadAuditLogs() {
 async function loadLoginLogs() {
     try {
         const data = await ApiClient.get('/api/admin/logs');
-        ui.renderAdminLoginLogs(data.logs || []);
+        ui.renderAdminLoginLogs(Array.isArray(data) ? data : (data.logs || []));
     } catch (_e) { /* ignore */ }
 }
 
