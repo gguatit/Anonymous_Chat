@@ -71,10 +71,8 @@ class AdminCore {
         }
 
         try {
-            const result = await ApiClient.post('/api/admin/verify');
-            if (!result.ok) throw new Error('Token invalid');
-            const data = await result.json();
-            if (!data.valid) throw new Error('Token invalid');
+            const data = await ApiClient.post('/api/admin/verify');
+            if (!data || !data.valid) throw new Error('Token invalid');
             return true;
         } catch (_e) {
             this.setToken(null);
@@ -92,10 +90,9 @@ class AdminCore {
         const errorEl = document.getElementById('login-error');
 
         try {
-            const result = await ApiClient.post('/api/admin/login', { id, password });
-            const data = await result.json();
+            const data = await ApiClient.post('/api/admin/login', { id, password });
 
-            if (data.success && data.token) {
+            if (data && data.success && data.token) {
                 this.setToken(data.token);
                 this.loginScreen.style.display = 'none';
                 this.dashboard.style.display = 'flex';
@@ -103,7 +100,7 @@ class AdminCore {
                 this.registerPage('main');
                 this.startAutoRefresh();
             } else {
-                errorEl.textContent = data.error || '로그인 실패';
+                errorEl.textContent = data?.error || '로그인 실패';
                 errorEl.style.display = 'block';
             }
         } catch (_err) {
