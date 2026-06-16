@@ -449,18 +449,23 @@ export const handleAdminUnbanIP = withAuth(async (request, env, corsHeaders) => 
     try {
         const body = await safeJson(request);
         const ip = body.ip;
+        const sessionId = body.sessionId;
 
-        if (!ip) {
-            return jsonError('Missing IP address', 400, request.headers.get('Origin'));
+        if (!ip && !sessionId) {
+            return jsonError('Missing ip or sessionId', 400, request.headers.get('Origin'));
         }
+
+        const json = {};
+        if (ip) json.ip = ip;
+        if (sessionId) json.sessionId = sessionId;
 
         const response = await forwardToDO(env, '/admin/unban-ip', {
             method: 'POST',
-            json: { ip }
+            json,
         });
         return forwardResponse(response, corsHeaders);
     } catch (_e) {
-        return jsonError('Failed to unban IP', 500, request.headers.get('Origin'));
+        return jsonError('Failed to unban', 500, request.headers.get('Origin'));
     }
 });
 

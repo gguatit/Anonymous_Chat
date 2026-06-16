@@ -769,21 +769,35 @@ export async function handleAdminDeleteAnnounce(chatRoom, request) {
 
 export async function handleAdminBannedIPs(chatRoom) {
     const now = Date.now();
-    const bannedList = [];
+    const ips = [];
+    const sessions = [];
 
-    for (const [ip, banInfo] of chatRoom.bannedIPs.entries()) {
-        if (now < banInfo.bannedUntil) {
-            bannedList.push({
+    for (const [ip, b] of chatRoom.bannedIPs.entries()) {
+        if (now < b.bannedUntil) {
+            ips.push({
                 ip,
-                bannedUntil: banInfo.bannedUntil,
-                remainingSeconds: Math.ceil((banInfo.bannedUntil - now) / 1000),
-                reason: banInfo.reason || 'No reason provided',
-                bannedAt: banInfo.bannedAt || (banInfo.bannedUntil - (banInfo.duration || 0) * 1000)
+                bannedUntil: b.bannedUntil,
+                remainingSeconds: Math.ceil((b.bannedUntil - now) / 1000),
+                reason: b.reason || 'No reason provided',
+                bannedAt: b.bannedAt || (b.bannedUntil - (b.duration || 0) * 1000),
             });
         }
     }
 
-    return new Response(JSON.stringify(bannedList), {
+    for (const [sessionId, b] of chatRoom.bannedSessions.entries()) {
+        if (now < b.bannedUntil) {
+            sessions.push({
+                sessionId,
+                ip: b.ip,
+                bannedUntil: b.bannedUntil,
+                remainingSeconds: Math.ceil((b.bannedUntil - now) / 1000),
+                reason: b.reason || 'No reason provided',
+                bannedAt: b.bannedAt || (b.bannedUntil - (b.duration || 0) * 1000),
+            });
+        }
+    }
+
+    return new Response(JSON.stringify({ ips, sessions }), {
         headers: { 'Content-Type': 'application/json' }
     });
 }
@@ -792,25 +806,42 @@ export async function handleAdminUnbanIP(chatRoom, request) {
     try {
         const data = await safeJson(request);
         const ip = data.ip;
+        const sessionId = data.sessionId;
 
-        if (!ip) {
-            return new Response(JSON.stringify({ error: 'Missing IP' }), {
+        let unbanIp = false;
+        let unbanSession = false;
+
+        if (ip) {
+            chatRoom.bannedIPs.delete(ip);
+            unbanIp = true;
+        }
+        if (sessionId) {
+            chatRoom.bannedSessions.delete(sessionId);
+            unbanSession = true;
+        }
+
+        if (!unbanIp && !unbanSession) {
+            return new Response(JSON.stringify({ error: 'Missing ip or sessionId' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
 
-        chatRoom.bannedIPs.delete(ip);
-        await chatRoom.state.storage.put('bannedIPs', Array.from(chatRoom.bannedIPs.entries()));
+        if (unbanIp) {
+            await chatRoom.state.storage.put('bannedIPs', Array.from(chatRoom.bannedIPs.entries()));
+        }
+        if (unbanSession) {
+            await chatRoom.state.storage.put('bannedSessions', Array.from(chatRoom.bannedSessions.entries()));
+        }
 
-        await chatRoom.addAuditLog('UNBAN_IP', `Unbanned IP: ${ip}`);
+        await chatRoom.addAuditLog('UNBAN_IP', `Unbanned IP: ${ip || 'N/A'}, Session: ${sessionId || 'N/A'}`);
 
-        return new Response(JSON.stringify({ success: true }), {
+        return new Response(JSON.stringify({ success: true, unbanIp, unbanSession }), {
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (error) {
-        console.error('unban ip error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to unban IP' }), {
+        console.error('unban error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to unban' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });

@@ -165,10 +165,12 @@ class AdminCore {
     _setupGlobalHelpers() {
         if (this._helpersSetup) return;
         this._helpersSetup = true;
-        window._adminUnbanIP = async (ip) => {
-            if (!confirm(`${ip} 차단을 해제하시겠습니까?`)) return;
+        window._adminUnbanIP = async (target) => {
+            const { sessionId, ip } = target || {};
+            if (!sessionId && !ip) return;
+            if (!confirm('차단을 해제하시겠습니까?')) return;
             try {
-                await ApiClient.post('/api/admin/unban-ip', { ip });
+                await ApiClient.post('/api/admin/unban-ip', { sessionId, ip });
                 this.showNotification('차단 해제 완료', 'success');
                 const mod = this.pageModules[this.currentPage];
                 if (mod?.refresh) mod.refresh(this);

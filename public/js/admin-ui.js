@@ -93,23 +93,50 @@ export function renderAuditLogs(logs) {
     `).join('');
 }
 
-export function renderBannedIPs(ips) {
+export function renderBannedIPs(data) {
+    const ips = Array.isArray(data) ? data : (data?.ips || []);
     const tbody = document.getElementById('banned-ips-body');
     if (!tbody) return;
     if (!ips || ips.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">차단된 IP가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:1rem;text-align:center;color:#9ca3af">차단된 IP가 없습니다.</td></tr>';
         return;
     }
     tbody.innerHTML = ips.map(ip => {
-        const remaining = ip.remainingMs ? (ip.remainingMs === -1 ? '영구' : dur(ip.remainingMs)) : '-';
+        const remaining = ip.remainingSeconds > 0 ? dur(ip.remainingSeconds * 1000) : '-';
         return `<tr>
-            <td class="px-3 md:px-4 py-2 font-mono text-sm">${h(ip.ip)}</td>
-            <td class="px-3 md:px-4 py-2 text-sm">${remaining}</td>
-            <td class="px-3 md:px-4 py-2 text-sm hidden md:table-cell">${h(ip.reason || '-')}</td>
-            <td class="px-3 md:px-4 py-2 text-sm hidden md:table-cell">${ip.timestamp ? new Date(ip.timestamp).toLocaleString('ko-KR') : '-'}</td>
-            <td class="px-3 md:px-4 py-2 text-center"><button class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded" onclick="window._adminUnbanIP&&window._adminUnbanIP('${h(ip.ip)}')">해제</button></td>
+            <td class="mono text-sm">${h(ip.ip)}</td>
+            <td class="text-sm">${remaining}</td>
+            <td class="text-sm hidden md:table-cell">${h(ip.reason || '-')}</td>
+            <td class="text-sm hidden md:table-cell">${ip.bannedAt ? new Date(ip.bannedAt).toLocaleString('ko-KR') : '-'}</td>
+            <td class="text-center"><button class="btn-sm btn-red" data-unban-ip="${h(ip.ip)}">해제</button></td>
         </tr>`;
     }).join('');
+    tbody.querySelectorAll('[data-unban-ip]').forEach(b => {
+        b.addEventListener('click', () => window._adminUnbanIP?.({ ip: b.dataset.unbanIp }));
+    });
+}
+
+export function renderBannedSessions(sessions) {
+    const tbody = document.getElementById('banned-users-body');
+    if (!tbody) return;
+    if (!sessions || sessions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:1rem;text-align:center;color:#9ca3af">차단된 세션이 없습니다.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = sessions.map(s => {
+        const remaining = s.remainingSeconds > 0 ? dur(s.remainingSeconds * 1000) : '-';
+        const sid = s.sessionId || '';
+        return `<tr>
+            <td class="mono text-xs">${sid.substring(0, 20)}${sid.length > 20 ? '...' : ''}</td>
+            <td class="mono text-xs">${h(s.ip || '-')}</td>
+            <td class="text-sm">${remaining}</td>
+            <td class="text-sm">${h(s.reason || '-')}</td>
+            <td class="text-center"><button class="btn-sm btn-red" data-unban-session="${h(sid)}">해제</button></td>
+        </tr>`;
+    }).join('');
+    tbody.querySelectorAll('[data-unban-session]').forEach(b => {
+        b.addEventListener('click', () => window._adminUnbanIP?.({ sessionId: b.dataset.unbanSession }));
+    });
 }
 
 export function renderActiveSessions(sessions) {
@@ -133,7 +160,7 @@ export function renderActiveSessions(sessions) {
             </div>
             <div class="flex items-center gap-3">
                 <div class="text-right"><p class="text-xs text-gray-400">${s.messageCount || 0} 메시지</p><p class="text-xs text-gray-500">접속: ${dur(_now() - s.joinTime)}</p></div>
-                <button class="kick-user-btn bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded" data-sid="${h(s.sessionId)}">
+                <button class="kick-user-btn bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded" data-sid="${h(s.sessionId)}" data-ip="${h(s.ip || '')}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg> 퇴장
                 </button>
             </div>
@@ -149,7 +176,7 @@ export function renderActiveSessions(sessions) {
     container.querySelectorAll('.kick-user-btn').forEach(b => {
         b.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (window._adminKickUser) window._adminKickUser(b.dataset.sid);
+            if (window._adminKickUser) window._adminKickUser(b.dataset.sid, b.dataset.ip);
         });
     });
 }

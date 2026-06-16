@@ -1,17 +1,43 @@
 import ApiClient from '../api-client.js';
 import * as ui from '../admin-ui.js';
 
+let _kickTargetSessionId = null;
+
+function showKickUserModal(sid, ip) {
+    _kickTargetSessionId = sid;
+    const elSid = document.getElementById('kick-modal-sessionid');
+    const elIp = document.getElementById('kick-modal-ip');
+    if (elSid) elSid.textContent = sid;
+    if (elIp) elIp.textContent = ip || 'N/A';
+    document.getElementById('kick-user-modal')?.classList.add('open');
+}
+
+function hideKickUserModal() {
+    document.getElementById('kick-user-modal')?.classList.remove('open');
+    _kickTargetSessionId = null;
+}
+
 export async function init(core) {
     document.getElementById('close-user-modal')?.addEventListener('click', () => {
-        const m = document.getElementById('user-details-modal');
-        if (m) m.classList.remove('open');
+        document.getElementById('user-details-modal')?.classList.remove('open');
+    });
+    document.getElementById('close-kick-modal')?.addEventListener('click', hideKickUserModal);
+    document.getElementById('cancel-kick-btn')?.addEventListener('click', hideKickUserModal);
+    document.getElementById('kick-user-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'kick-user-modal') hideKickUserModal();
+    });
+    document.getElementById('confirm-kick-btn')?.addEventListener('click', async () => {
+        if (!_kickTargetSessionId) return;
+        const duration = parseInt(document.querySelector('input[name="kick-duration"]:checked')?.value || '0');
+        try {
+            await ApiClient.post('/api/admin/kick-user', { sessionId: _kickTargetSessionId, banDuration: duration });
+            core.showNotification(duration === 0 ? '퇴장 처리됨' : `${Math.round(duration / 60)}분 차단됨`, 'success');
+            hideKickUserModal();
+            await refresh(core);
+        } catch { core.showNotification('강퇴 실패', 'error'); }
     });
 
-    window._adminKickUser = async (sid) => {
-        if (!confirm('이 사용자를 킥하시겠습니까?')) return;
-        try { await ApiClient.post('/api/admin/kick-user', { sessionId: sid }); core.showNotification('킥 완료', 'success'); await refresh(core); }
-        catch { core.showNotification('킥 실패', 'error'); }
-    };
+    window._adminKickUser = (sid, ip) => showKickUserModal(sid, ip);
     window._showUserDetails = async (sid) => {
         try {
             const data = await ApiClient.get(`/api/admin/user-details?sessionId=${sid}`);
