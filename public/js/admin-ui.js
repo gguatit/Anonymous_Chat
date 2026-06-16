@@ -207,7 +207,7 @@ export function renderChannels(channels) {
             <td class="px-2 py-2 md:px-4 md:py-3 text-xs text-gray-400">${date}</td>
             <td class="px-2 py-2 md:px-4 md:py-3 text-sm">${ch.connections ?? '-'}</td>
             <td class="px-2 py-2 md:px-4 md:py-3 text-sm">${ch.messageCount ?? '-'}</td>
-            <td class="px-2 py-2 md:px-4 md:py-3 text-right">
+            <td class="px-2 py-2 md:px-4 md:py-3 text-right whitespace-nowrap" style="vertical-align:middle">
                 <button class="view-channel-btn text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded mr-1" data-slug="${h(ch.slug)}" data-name="${h(ch.name)}">상세</button>
                 <button class="delete-channel-btn text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded" data-slug="${h(ch.slug)}" data-name="${h(ch.name)}">삭제</button>
             </td>
