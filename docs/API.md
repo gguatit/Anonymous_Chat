@@ -1,6 +1,6 @@
 # API 명세
 
-43개 HTTP 엔드포인트의 명세입니다. 모든 응답은 CORS 헤더를 포함합니다 (`src/config/cors.js`).
+51개 HTTP 엔드포인트의 명세입니다. 모든 응답은 CORS 헤더를 포함합니다 (`src/config/cors.js`).
 
 **기본 URL**: `https://api.kalpha.kr` (프로덕션) | `http://localhost:8788` (개발)
 
@@ -18,7 +18,7 @@
   - [1.6 푸시 알림](#16-푸시-알림)
   - [1.7 보안](#17-보안)
   - [1.8 시스템](#18-시스템)
-- [2. 관리자 엔드포인트](#2-관리자-엔드포인트-23개-bearer-인증)
+- [2. 관리자 엔드포인트](#2-관리자-엔드포인트-31개-bearer-인증)
   - [2.1 인증](#21-인증)
   - [2.2 메트릭/세션/메시지](#22-메트릭세션메시지)
   - [2.3 메시지 관리](#23-메시지-관리)
@@ -26,6 +26,7 @@
   - [2.5 공지사항](#25-공지사항)
   - [2.6 채널 관리](#26-채널-관리)
   - [2.7 로그](#27-로그)
+  - [2.8 보안 이벤트](#28-보안-이벤트)
 - [3. WebSocket 메시지 프로토콜](#3-websocket-메시지-프로토콜)
 - [4. 에러 응답 형식](#4-에러-응답-형식)
 - [5. Rate Limit 상수](#5-rate-limit-상수)
@@ -798,6 +799,137 @@ Liveness probe.
 ```
 
 **참고**: 명세상 `GET`만 지원 (응답 본문). 삭제도 동일 엔드포인트 사용 시 `POST` (별도 확인 필요).
+
+---
+
+### 2.8 보안 이벤트
+
+#### 2.8.1 이벤트 목록 조회
+
+`GET /api/admin/security/events?page=1&limit=50&category=auth&severity=high&search=&ip=`
+
+**Query Params**:
+
+| 파라미터 | 타입 | 기본값 | 설명 |
+|---|---|---|---|
+| `page` | number | `1` | 페이지 번호 (1-base) |
+| `limit` | number | `50` | 페이지당 항목 수 |
+| `category` | string | `""` | 필터: `auth`, `endpoint`, `input`, `websocket`, `system` |
+| `severity` | string | `""` | 필터: `low`, `medium`, `high`, `critical` |
+| `search` | string | `""` | 이벤트 타입 텍스트 검색 |
+| `ip` | string | `""` | IP 주소 검색 |
+
+**Response 200**:
+```json
+{
+  "events": [
+    {
+      "id": 1,
+      "event_type": "LOGIN_FAIL",
+      "category": "auth",
+      "severity": "high",
+      "severity_score": 60,
+      "ip": "203.0.113.42",
+      "path": "/api/admin/login",
+      "method": "POST",
+      "user_agent": "Mozilla/5.0...",
+      "country": "KR",
+      "session_id": null,
+      "details": "Invalid credentials",
+      "metadata": null,
+      "timestamp": 1717890123000
+    }
+  ],
+  "total": 42,
+  "page": 1
+}
+```
+
+#### 2.8.2 24시간 통계
+
+`GET /api/admin/security/stats`
+
+**Response 200**:
+```json
+{
+  "last24h": 128,
+  "byCategory": [
+    { "category": "auth", "count": 45 },
+    { "category": "input", "count": 32 }
+  ],
+  "bySeverity": [
+    { "severity": "high", "count": 23 },
+    { "severity": "medium", "count": 67 }
+  ]
+}
+```
+
+#### 2.8.3 위험 IP 목록
+
+`GET /api/admin/security/risk-ips`
+
+**Response 200**:
+```json
+{
+  "riskIPs": [
+    { "ip": "203.0.113.42", "score": 85.5, "eventCount": 23 },
+    { "ip": "198.51.100.7", "score": 62.0, "eventCount": 15 }
+  ]
+}
+```
+
+#### 2.8.4 이벤트 상세
+
+`GET /api/admin/security/events/:id`
+
+**Response 200**: 단일 이벤트 + 동일 IP의 최근 이벤트 5개
+
+```json
+{
+  "event": { "id": 1, ... },
+  "relatedEvents": [{ "id": 2, ... }, { "id": 5, ... }]
+}
+```
+
+**Response 404**: 존재하지 않는 이벤트 ID
+
+#### 2.8.5 90일+ 이벤트 삭제
+
+`POST /api/admin/security/events/clear`
+
+**Response 200**:
+```json
+{ "success": true, "deleted": 15 }
+```
+
+#### 2.8.6 CSV 내보내기
+
+`GET /api/admin/security/events/export?category=auth`
+
+**Response 200**: `text/csv` BLOB 다운로드
+
+#### 2.8.7 배지 카운트
+
+`GET /api/admin/security/badge`
+
+**Response 200**:
+```json
+{ "critical": 3, "high": 8, "medium": 21 }
+```
+
+#### 2.8.8 위험 IP 차단
+
+`POST /api/admin/security/block-ip`
+
+**Request Body**:
+```json
+{ "ip": "203.0.113.42" }
+```
+
+**Response 200**:
+```json
+{ "success": true, "ip": "203.0.113.42", "banned": true }
+```
 
 ---
 

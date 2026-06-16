@@ -9,6 +9,7 @@
 - [개요](#개요)
 - [범례](#범례)
 - [릴리스](#릴리스)
+  - [2026-06-16](#2026-06-16)
   - [2026-06-15](#2026-06-15)
   - [2026-06-10](#2026-06-10)
   - [2026-06-09](#2026-06-09)
@@ -34,8 +35,8 @@
 | 항목 | 값 |
 |---|---|
 | 시작일 | 2025-12-19 |
-| 최근 업데이트 | 2026-06-10 |
-| 릴리스 수 | 16 |
+| 최근 업데이트 | 2026-06-16 |
+| 릴리스 수 | 17 |
 | 카테고리 | 신규 기능 / 개선 / 버그 수정 / 보안 / 인프라 / 문서 / 아키텍처 / 디자인 / 코드 품질 |
 
 ---
@@ -57,6 +58,33 @@
 ---
 
 ## 릴리스
+
+### 2026-06-16
+
+#### 신규 기능
+
+- **보안 이벤트 로그 시스템**: `security_events` D1 테이블(7개 인덱스, 90일 보존)로 22종 보안 이벤트를 실시간 기록합니다. XSS/SQL/경로 탐색 패턴 매칭(`security-classifier.js`), 시간 가중치 + IP당 카테고리 다양성 기반 위험 점수 알고리즘(`risk-scorer.js`), 60초 IP당 이벤트 중복 제거 및 10% 확률 90일 자동 정리(`security-logger.js`)를 포함합니다.
+- **보안 이벤트 API 8개 엔드포인트**: `/api/admin/security/*`로 이벤트 목록(페이지네이션+필터), 24시간 통계, 위험 IP 상위 10, 이벤트 상세, 90일+ 일괄 삭제, CSV 내보내기, 배지 카운트, 위험 IP 1-click 차단을 제공합니다.
+- **보안 로깅 10지점 자동화**: 관리자 로그인 실패(rate limit/invalid creds/not configured), 관리자 토큰 무효/만료/미제공, WebSocket 핸드셰이크 실패/플러드/무효 메시지, 404 엔드포인트 스캔을 자동 감지하여 `security_events`에 기록합니다.
+- **관리자 페이지 8탭 SPA 리팩토링**: 사이드바 네비게이션(대시보드/사용자/메시지/공지사항/채널/차단/로그/보안) + 동적 lazy loading(`admin-core.js`). 보안센터 탭에서 이벤트 로그 조회/필터/CSV 내보내기/위험 IP 차단이 가능합니다.
+- **esbuild 10번들 분할 빌드**: `esbuild.config.js`로 `splitting: true` ESM 10개 번들(chunk 공유). 기존 inline esbuild 호출을 단일 config 파일로 대체했습니다.
+
+#### 아키텍처
+
+- **보안 모듈 신설**: `src/constants/security-events.js`(22종 이벤트) / `src/utils/security-classifier.js`(패턴 매칭) / `src/utils/risk-scorer.js`(위험 점수) / `src/utils/security-logger.js`(D1 쓰기) / `src/middleware/input-validator.js`(요청/WS 검증) / `src/middleware/security-middleware.js`(컨텍스트 생성) / `src/handlers/security.js`(API 8종)
+- **관리자 프론트엔드 재구성**: `admin-core.js`(인증+네비게이션), `admin-main.js`(대시보드), `security-center.js`(보안센터), `pages/page-*.js`(6개 페이지 래퍼), `administrator.html` `data-page` 기반 섹션 전환
+- **데이터베이스**: `migrations/003_create_security_events.sql` — security_events 테이블 + 인덱스 6개(timestamp, ip, category, severity_score, event_type, ip_recent partial)
+
+#### 테스트
+
+- 보안 분류기 10건(`test/security-classifier.test.js`), 위험 점수 8건(`test/risk-scorer.test.js`), 보안 로거 8건(`test/security-logger.test.js`), 보안 API 23건(`test/security-routes.test.js`)
+- 총 105건 통과 (9개 테스트 파일)
+
+#### 버그 수정
+
+- **로그인 폼 선택자**: `admin-core.js`의 `[name="admin_id"]`/`[name="admin_password"]` 선택자를 `getElementById`로 변경. administrator.html input에 `name` 속성 누락으로 빈 값 전송 → 401 반환되던 문제를 수정했습니다.
+
+---
 
 ### 2026-06-15
 

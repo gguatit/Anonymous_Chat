@@ -36,11 +36,19 @@ flowchart TB
 
     subgraph Storage["Storage"]
         D1[(D1 Database<br/>로그)]
+        D1_sec[(D1<br/>security_events)]
         KV[(KV<br/>푸시 구독)]
         AI[Workers AI<br/>Qwen 3 30B]
     end
 
     External[외부 API<br/>Kalpha: 파일/보안헤더]
+
+    subgraph Security["보안 모니터링"]
+        Classifier[security-classifier<br/>XSS/SQL/경로 탐색]
+        Scorer[risk-scorer<br/>위험 IP 점수]
+        SecLogger[security-logger<br/>D1 쓰기 + dedup]
+        SecAPI[handlers/security<br/>API 8종]
+    end
 
     Client -->|HTTPS/WS| DNS
     DNS --> Pages
@@ -55,7 +63,13 @@ flowchart TB
     ChatRoom -->|AI.run| AI
     ChatRoom -->|fetch| External
 
+    Worker -->|log event| Classifier
+    Classifier -->|score| Scorer
+    Scorer -->|write| SecLogger
+    SecLogger -->|INSERT| D1_sec
+    SecAPI -->|SELECT| D1_sec
     Worker -->|fetch| External
+    Worker -->|security API| SecAPI
 ```
 
 ---
@@ -162,17 +176,23 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 | 파일 | 책임 |
 |---|---|
 | `middleware/auth.js` | HMAC 토큰 발급/검증, Rate limit |
+| `middleware/input-validator.js` | 요청/WS 입력 패턴 검증 (XSS/SQL/경로 탐색) |
+| `middleware/security-middleware.js` | 보안 컨텍스트 생성 및 이벤트 로깅 헬퍼 |
 | `utils/do.js` | DO 라우팅 (`getChatRoom`, `getChannelRoom`, `forwardToDO`) |
 | `utils/validate.js` | 메시지/채널/닉네임/세션/Dead Drop 검증 |
 | `utils/errors.js` | `jsonError`, `jsonSuccess`, `textError`, `emptyResponse` |
 | `utils/helpers.js` | `sanitizeInput`, HMAC 헬퍼, `safeJson` |
 | `utils/rate-limiter.js` | 메모리 기반 윈도우 카운터 |
 | `utils/security.js` | `constantTimeCompare`, `isAllowedOrigin` |
-| `utils/logger.js` | D1 admin/audit/error 로거 |
+| `utils/security-classifier.js` | XSS/SQL/경로 탐색 패턴 매칭 (22종 이벤트 분류) |
+| `utils/risk-scorer.js` | 시간 가중치 + 카테고리 다양성 기반 위험 IP 점수 |
+| `utils/security-logger.js` | D1 security_events 쓰기 + 60초 dedup + 90일 정리 |
+| `utils/logger.js` | D1 admin/audit/error 로거 + security event re-export |
 | `utils/web-push.js` | VAPID JWT + RFC 8291 암호화 |
 | `utils/fcm-auth.js` | Google OAuth JWT for FCM v1 |
 | `config/constants.js` | 모든 매직 넘버 (서버+클라이언트 공유) |
 | `config/cors.js` | CORS 헤더 |
+| `constants/security-events.js` | 22종 보안 이벤트 정의 (카테고리/심각도/점수) |
 
 ---
 
@@ -348,6 +368,7 @@ sequenceDiagram
 | 공지 | 영구 (메모리 + DO Storage) | 수동 |
 | Dead Drop | 30분 TTL, 1회 읽기 후 삭제 | ✅ TTL |
 | 감사/관리자/오류 로그 | D1 (영구, 30일 자동 정리) | ✅ 10% 확률 정리 |
+| 보안 이벤트 | D1 (security_events, 90일 보존) | ✅ 10% 확률 정리 |
 | 푸시 구독 | 30일 TTL (KV) | ✅ TTL |
 | 차단 | 시간 설정에 따라 만료 (영구 옵션) | ✅ 만료 시 |
 
@@ -366,12 +387,12 @@ flowchart LR
 
     subgraph Client["클라이언트"]
         Chat[public/js/chat.js<br/>+ 19 modules]
-        Admin[public/js/admin.js<br/>+ 9 helpers]
-        Tailwind[tailwind CDN<br/>300KB]
+        Admin[public/js/admin-core.js<br/>+ 10 modules]
         TailwindB[tailwind 빌드<br/>45KB]
 
-        Chat -->|esbuild| ChatBundle[chat.bundle.js<br/>40KB]
-        Admin -->|esbuild| AdminBundle[admin.bundle.js<br/>15KB]
+        Chat -->|esbuild| ChatBundle[chat.bundle.js]
+        Admin -->|esbuild| AdminCore[admin-core.bundle.js]
+        Admin -->|esbuild| AdminPages[admin-*.bundle.js<br/>+ security-center.bundle.js<br/>10 bundles total]
         Tailwind -.->|교체| TailwindB
     end
 ```
