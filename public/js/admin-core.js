@@ -130,11 +130,11 @@ class AdminCore {
                 this.dashboard.style.display = '';
                 this.renderNav();
                 this.startAutoRefresh();
-                if (!location.hash || !this._validPage(this._currentHash())) {
+                const hash = this._currentHash();
+                if (!hash || !this._validPage(hash)) {
                     location.replace('#main');
-                } else {
-                    this._onHashChange();
                 }
+                this._switchPage(this._currentHash());
             } else {
                 errorEl.textContent = data?.error || '로그인 실패';
                 errorEl.style.display = 'block';

@@ -3,26 +3,29 @@ import { logSecurityEvent, clearDedupCache } from '../src/utils/security-logger.
 import { SECURITY_EVENTS } from '../src/constants/security-events.js';
 
 function createMockEnv() {
-    const preparedStmt = {
-        _boundValues: [],
-        bind(...values) {
-            this._boundValues = values;
-            return this;
-        },
-        async run() {
-            return { success: true };
-        },
-    };
-
     const called = [];
     const db = {
         prepare(sql) {
-            called.push({ sql, start: sql.substring(0, 30) });
-            return preparedStmt;
+            const stmt = {
+                _boundValues: [],
+                bind(...values) {
+                    this._boundValues = values;
+                    return this;
+                },
+                async run() {
+                    return { success: true };
+                },
+            };
+            called.push({ sql, start: sql.substring(0, 30), stmt });
+            return stmt;
         },
     };
+    return { DB_ADMIN: db, _called: called };
+}
 
-    return { DB_ADMIN: db, _called: called, _stmt: preparedStmt };
+function lastInsertBindings(env) {
+    const insertCall = env._called.findLast((c) => c.start.includes('INSERT'));
+    return insertCall?.stmt?._boundValues || [];
 }
 
 describe('security-logger', () => {
@@ -45,7 +48,7 @@ describe('security-logger', () => {
         const insertCall = env._called.find((c) => c.start.includes('INSERT'));
         expect(insertCall).toBeDefined();
 
-        const bound = env._stmt._boundValues;
+        const bound = lastInsertBindings(env);
         expect(bound[0]).toBe(SECURITY_EVENTS.LOGIN_FAIL.type);
         expect(bound[1]).toBe(SECURITY_EVENTS.LOGIN_FAIL.category);
         expect(bound[2]).toBe(SECURITY_EVENTS.LOGIN_FAIL.severity);
@@ -111,7 +114,7 @@ describe('security-logger', () => {
             metadata: { field: 'message', pattern: 'DROP' },
         });
 
-        const bound = env._stmt._boundValues;
+        const bound = lastInsertBindings(env);
         expect(bound[6]).toBe('RU');
         expect(bound[9]).toBe('abc123');
         expect(bound[10]).toBe("'; DROP TABLE users;");
