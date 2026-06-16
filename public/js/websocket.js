@@ -24,15 +24,20 @@ export class WebSocketManager {
 
     async connect() {
         try {
+            // Read ban tokens from localStorage
+            const banToken = localStorage.getItem('kick_token');
+
             // Check if IP or session is banned before attempting WebSocket connection
-            const banCheckResponse = await fetch(`/api/check-ban?sessionId=${encodeURIComponent(this.sessionId)}`);
+            let banCheckUrl = `/api/check-ban?sessionId=${encodeURIComponent(this.sessionId)}`;
+            if (banToken) {
+                banCheckUrl += `&token=${encodeURIComponent(banToken)}`;
+            }
+            const banCheckResponse = await fetch(banCheckUrl);
             const banStatus = await banCheckResponse.json();
 
             if (banStatus.banned) {
                 this.messageHandler.onError(`접속이 차단되었습니다. ${banStatus.remainingSeconds}초 후에 다시 시도해주세요.`);
                 this.messageHandler.onConnectionChange('banned');
-
-                // 차단 시간 동안 재접속 시도하지 않음
                 return;
             }
 
@@ -41,6 +46,9 @@ export class WebSocketManager {
             let wsUrl = `${protocol}//${window.location.host}/ws?sessionId=${encodeURIComponent(this.sessionId)}`;
             if (this.channelId && this.channelId !== '0') {
                 wsUrl += `&channel=${encodeURIComponent(this.channelId)}`;
+            }
+            if (banToken) {
+                wsUrl += `&token=${encodeURIComponent(banToken)}`;
             }
 
             this.ws = new WebSocket(wsUrl);
@@ -58,6 +66,9 @@ export class WebSocketManager {
 
     handleOpen() {
         this.reconnectAttempts = 0;
+
+        // Connection succeeded - clear any stale ban tokens
+        this.clearKickToken();
 
         // Send join message with reconnection flag
         this.send({
@@ -92,6 +103,11 @@ export class WebSocketManager {
                 return;
             }
 
+            // Store kick token if kicked
+            if (data.type === 'kicked' && data.token) {
+                this.storeKickToken(data.token);
+            }
+
             this.messageHandler.onMessage(data);
         } catch (error) {
             console.error('Error parsing message:', error);
@@ -107,15 +123,23 @@ export class WebSocketManager {
         // Don't reconnect if:
         // - manually closed (disconnect() called)
         // - code 1008 = admin kick (Policy Violation)
-        // - clean close
         const isAdminKick = event.code === 1008;
-        // Reconnect more aggressively: only stop if manually closed or kicked by admin
         if (!this.manualClose && !isAdminKick) {
             this.isReconnecting = true;
             this.scheduleReconnect();
         }
 
         this.manualClose = false;
+    }
+
+    storeKickToken(token) {
+        if (token) {
+            localStorage.setItem('kick_token', token);
+        }
+    }
+
+    clearKickToken() {
+        localStorage.removeItem('kick_token');
     }
 
     handleError(error) {

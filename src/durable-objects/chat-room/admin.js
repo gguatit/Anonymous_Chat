@@ -440,9 +440,11 @@ export async function handleAdminKickUser(chatRoom, request) {
 
         const ipConnectionCount = clientIP ? (chatRoom.ipConnections.get(clientIP) || 0) : 0;
         const isSharedIP = ipConnectionCount > 1;
+        let banToken = null;
 
         if (banDuration > 0) {
             const bannedUntil = Date.now() + (banDuration * 1000);
+            banToken = crypto.randomUUID();
 
             chatRoom.bannedSessions.set(sessionId, {
                 bannedUntil,
@@ -450,6 +452,14 @@ export async function handleAdminKickUser(chatRoom, request) {
                 ip: clientIP
             });
             await chatRoom.state.storage.put('bannedSessions', Array.from(chatRoom.bannedSessions.entries()));
+
+            chatRoom.bannedTokens.set(banToken, {
+                bannedUntil,
+                reason: 'Admin kick',
+                ip: clientIP,
+                sessionId,
+            });
+            await chatRoom.state.storage.put('bannedTokens', Array.from(chatRoom.bannedTokens.entries()));
 
             if (clientIP && !isSharedIP) {
                 chatRoom.bannedIPs.set(clientIP, {
@@ -468,7 +478,8 @@ export async function handleAdminKickUser(chatRoom, request) {
                             content: `관리자에 의해 ${banDuration}초간 차단되었습니다.`,
                             banDuration,
                             permanent: true,
-                            sessionBan: true
+                            sessionBan: true,
+                            token: banToken,
                         }));
                         websocket.close(1008, 'Kicked by admin');
                     } catch (e) {
@@ -498,7 +509,8 @@ export async function handleAdminKickUser(chatRoom, request) {
                                 type: 'kicked',
                                 content: `관리자에 의해 ${banDuration}초간 차단되었습니다.`,
                                 banDuration,
-                                permanent: true
+                                permanent: true,
+                                token: banToken,
                             }));
                             ws.close(1008, 'Kicked by admin');
                         } catch (e) {
@@ -557,7 +569,8 @@ export async function handleAdminKickUser(chatRoom, request) {
             banDuration,
             ip: clientIP,
             sharedIP: isSharedIP,
-            banType
+            banType,
+            token: banToken,
         }), {
             headers: { 'Content-Type': 'application/json' }
         });
@@ -797,7 +810,20 @@ export async function handleAdminBannedIPs(chatRoom) {
         }
     }
 
-    return new Response(JSON.stringify({ ips, sessions }), {
+    const tokens = [];
+    for (const [token, b] of chatRoom.bannedTokens.entries()) {
+        if (now < b.bannedUntil) {
+            tokens.push({
+                token,
+                ip: b.ip,
+                bannedUntil: b.bannedUntil,
+                remainingSeconds: Math.ceil((b.bannedUntil - now) / 1000),
+                reason: b.reason || 'No reason provided',
+            });
+        }
+    }
+
+    return new Response(JSON.stringify({ ips, sessions, tokens }), {
         headers: { 'Content-Type': 'application/json' }
     });
 }
@@ -807,9 +833,11 @@ export async function handleAdminUnbanIP(chatRoom, request) {
         const data = await safeJson(request);
         const ip = data.ip;
         const sessionId = data.sessionId;
+        const token = data.token;
 
         let unbanIp = false;
         let unbanSession = false;
+        let unbanToken = false;
 
         if (ip) {
             chatRoom.bannedIPs.delete(ip);
@@ -819,9 +847,13 @@ export async function handleAdminUnbanIP(chatRoom, request) {
             chatRoom.bannedSessions.delete(sessionId);
             unbanSession = true;
         }
+        if (token) {
+            chatRoom.bannedTokens.delete(token);
+            unbanToken = true;
+        }
 
-        if (!unbanIp && !unbanSession) {
-            return new Response(JSON.stringify({ error: 'Missing ip or sessionId' }), {
+        if (!unbanIp && !unbanSession && !unbanToken) {
+            return new Response(JSON.stringify({ error: 'Missing ip, sessionId, or token' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -833,10 +865,13 @@ export async function handleAdminUnbanIP(chatRoom, request) {
         if (unbanSession) {
             await chatRoom.state.storage.put('bannedSessions', Array.from(chatRoom.bannedSessions.entries()));
         }
+        if (unbanToken) {
+            await chatRoom.state.storage.put('bannedTokens', Array.from(chatRoom.bannedTokens.entries()));
+        }
 
         await chatRoom.addAuditLog('UNBAN_IP', `Unbanned IP: ${ip || 'N/A'}, Session: ${sessionId || 'N/A'}`);
 
-        return new Response(JSON.stringify({ success: true, unbanIp, unbanSession }), {
+        return new Response(JSON.stringify({ success: true, unbanIp, unbanSession, unbanToken }), {
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (error) {
@@ -886,7 +921,24 @@ export async function handleAdminAuditLogs(chatRoom) {
 export async function handleCheckBan(chatRoom, url, request) {
     const ip = url.searchParams.get('ip') || request.headers.get('CF-Connecting-IP') || 'unknown';
     const sessionId = url.searchParams.get('sessionId');
+    const token = url.searchParams.get('token');
     const now = Date.now();
+
+    if (token) {
+        const tokenBan = chatRoom.bannedTokens.get(token);
+        if (tokenBan && now < tokenBan.bannedUntil) {
+            const remainingSeconds = Math.ceil((tokenBan.bannedUntil - now) / 1000);
+            return new Response(JSON.stringify({
+                banned: true,
+                remainingSeconds,
+                message: `차단되었습니다. ${remainingSeconds}초 후 해제됩니다.`,
+                token,
+            }), { headers: { 'Content-Type': 'application/json' } });
+        } else if (tokenBan) {
+            chatRoom.bannedTokens.delete(token);
+            await chatRoom.state.storage.put('bannedTokens', Array.from(chatRoom.bannedTokens.entries()));
+        }
+    }
 
     if (sessionId) {
         const sessionBanInfo = chatRoom.bannedSessions.get(sessionId);

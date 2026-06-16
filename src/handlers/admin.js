@@ -450,14 +450,16 @@ export const handleAdminUnbanIP = withAuth(async (request, env, corsHeaders) => 
         const body = await safeJson(request);
         const ip = body.ip;
         const sessionId = body.sessionId;
+        const token = body.token;
 
-        if (!ip && !sessionId) {
-            return jsonError('Missing ip or sessionId', 400, request.headers.get('Origin'));
+        if (!ip && !sessionId && !token) {
+            return jsonError('Missing ip, sessionId, or token', 400, request.headers.get('Origin'));
         }
 
         const json = {};
         if (ip) json.ip = ip;
         if (sessionId) json.sessionId = sessionId;
+        if (token) json.token = token;
 
         const response = await forwardToDO(env, '/admin/unban-ip', {
             method: 'POST',

@@ -21,6 +21,7 @@ export class ChatRoom {
         this.startTime = Date.now();
         this.bannedIPs = new Map();
         this.bannedSessions = new Map();
+        this.bannedTokens = new Map();
         this.currentAnnouncement = null;
         this.announcementHistory = [];
         this.auditLogs = [];
@@ -77,6 +78,11 @@ export class ChatRoom {
         const bannedSessions = await this.state.storage.get('bannedSessions');
         if (bannedSessions) {
             this.bannedSessions = new Map(bannedSessions);
+        }
+
+        const bannedTokens = await this.state.storage.get('bannedTokens');
+        if (bannedTokens) {
+            this.bannedTokens = new Map(bannedTokens);
         }
 
         if (this.env?.DB_ADMIN) {
@@ -287,6 +293,30 @@ export class ChatRoom {
             } else {
                 this.bannedIPs.delete(clientIP);
                 await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
+            }
+        }
+
+        const wsUrl = new URL(request.url);
+        const banToken = wsUrl.searchParams.get('token');
+        if (banToken) {
+            const tokenBan = this.bannedTokens.get(banToken);
+            if (tokenBan) {
+                const now = Date.now();
+                if (now < tokenBan.bannedUntil) {
+                    const remainingSeconds = Math.ceil((tokenBan.bannedUntil - now) / 1000);
+                    return new Response(JSON.stringify({
+                        error: 'banned',
+                        message: `차단되었습니다. ${remainingSeconds}초 후 해제됩니다.`,
+                        remainingSeconds,
+                        token: banToken,
+                    }), {
+                        status: 403,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                } else {
+                    this.bannedTokens.delete(banToken);
+                    await this.state.storage.put('bannedTokens', Array.from(this.bannedTokens.entries()));
+                }
             }
         }
 
@@ -1145,6 +1175,17 @@ export class ChatRoom {
         }
         if (sessionBansChanged) {
             await this.state.storage.put('bannedSessions', Array.from(this.bannedSessions.entries()));
+        }
+
+        let tokenBansChanged = false;
+        for (const [token, banInfo] of this.bannedTokens.entries()) {
+            if (now >= banInfo.bannedUntil) {
+                this.bannedTokens.delete(token);
+                tokenBansChanged = true;
+            }
+        }
+        if (tokenBansChanged) {
+            await this.state.storage.put('bannedTokens', Array.from(this.bannedTokens.entries()));
         }
 
         let sessionsRemoved = false;
