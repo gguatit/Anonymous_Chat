@@ -234,13 +234,8 @@ export const handleAdminDeleteErrorLogs = withAuth(async (request, env, corsHead
     return forwardResponse(response, corsHeaders);
 });
 
-export async function handleAdminLogout(request, env, corsHeaders) {
+export const handleAdminLogout = withAuth(async (request, env, corsHeaders) => {
     const authHeader = request.headers.get('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return emptyResponse(401, request.headers.get('Origin'));
-    }
-
     const token = authHeader.substring(7);
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
 
@@ -259,7 +254,7 @@ export async function handleAdminLogout(request, env, corsHeaders) {
     return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
-}
+});
 
 export const handleAdminLogs = withAuth(async (request, env, corsHeaders) => {
     if (!env?.DB_ADMIN) {
