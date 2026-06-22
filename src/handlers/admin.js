@@ -206,7 +206,9 @@ export const handleAdminSessions = withAuth(async (request, env, corsHeaders) =>
 });
 
 export const handleAdminMessages = withAuth(async (request, env, corsHeaders) => {
-    const response = await forwardToDO(env, '/admin/messages', {
+    const url = new URL(request.url);
+    const search = url.search || '';
+    const response = await forwardToDO(env, `/admin/messages${search}`, {
         headers: { 'X-Admin-Internal-Token': env.HMAC_SECRET }
     });
     return forwardResponse(response, corsHeaders);

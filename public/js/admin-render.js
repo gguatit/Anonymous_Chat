@@ -369,8 +369,8 @@ const renderMethods = {
                     <td class="px-2 py-2 md:px-4 md:py-3 font-medium text-emerald-300">${escapeHtml(ch.name)}</td>
                     <td class="px-2 py-2 md:px-4 md:py-3 text-xs text-gray-400">${escapeHtml(ch.createdBy || '-')}</td>
                     <td class="px-2 py-2 md:px-4 md:py-3 text-xs text-gray-400">${date}</td>
-                    <td class="px-2 py-2 md:px-4 md:py-3"><span class="channel-users" data-slug="${escapeHtml(ch.slug)}">-</span></td>
-                    <td class="px-2 py-2 md:px-4 md:py-3"><span class="channel-messages" data-slug="${escapeHtml(ch.slug)}">-</span></td>
+                    <td class="px-2 py-2 md:px-4 md:py-3 text-sm">${ch.activeConnections ?? 0}</td>
+                    <td class="px-2 py-2 md:px-4 md:py-3 text-sm">${ch.totalMessages ?? 0}</td>
                     <td class="px-2 py-2 md:px-4 md:py-3 text-right">
                         <button class="view-channel-btn text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded mr-1" data-slug="${escapeHtml(ch.slug)}" data-name="${escapeHtml(ch.name)}">상세</button>
                         <button class="delete-channel-btn text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded" data-slug="${escapeHtml(ch.slug)}" data-name="${escapeHtml(ch.name)}">삭제</button>
@@ -386,9 +386,6 @@ const renderMethods = {
         tbody.querySelectorAll('.delete-channel-btn').forEach(btn => {
             btn.addEventListener('click', () => this.deleteChannel(btn.dataset.slug, btn.dataset.name));
         });
-
-        // Load live stats for each channel
-        channels.forEach(ch => this.loadChannelStats(ch.slug));
     },
 
 };

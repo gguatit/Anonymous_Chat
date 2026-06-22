@@ -1,6 +1,7 @@
 import { ADMIN, metrics, MAX_STORED_MESSAGES, FORCE_DELETE_DELAY_MS, MESSAGE_PREVIEW_COUNT } from '../../config/constants.js';
 import { sanitizeInput, safeJson, generateMessageSignature } from '../../utils/helpers.js';
 import { isEmergencyActive } from './announcements.js';
+import { isLikelyCode } from './messages.js';
 
 export function notifyAdmin(chatRoom, action, payload = {}) {
     chatRoom.broadcastToObservers({
@@ -13,6 +14,7 @@ export function notifyAdmin(chatRoom, action, payload = {}) {
 
 export async function dispatchAdminRoute(chatRoom, url, request, HMAC_SECRET) {
     if (url.pathname === '/admin/metrics') {
+        await chatRoom.ensureLogsLoaded();
         return new Response(JSON.stringify({
             activeConnections: chatRoom.sessions.size,
             totalMessages: chatRoom.messages.length,
@@ -26,6 +28,7 @@ export async function dispatchAdminRoute(chatRoom, url, request, HMAC_SECRET) {
     }
 
     if (url.pathname === '/admin/info') {
+        await chatRoom.ensureLogsLoaded();
         const sessions = chatRoom.getSessionList();
         return new Response(JSON.stringify({
             slug: chatRoom.channelSlug || '0',
@@ -49,7 +52,12 @@ export async function dispatchAdminRoute(chatRoom, url, request, HMAC_SECRET) {
     }
 
     if (url.pathname === '/admin/messages') {
-        return new Response(JSON.stringify(chatRoom.messages), {
+        const requested = parseInt(url.searchParams.get('limit') || '0', 10);
+        const limit = isNaN(requested) || requested <= 0 ? 2000 : Math.min(200, requested);
+        const messages = chatRoom.messages.length > limit
+            ? chatRoom.messages.slice(-limit)
+            : chatRoom.messages;
+        return new Response(JSON.stringify(messages), {
             headers: { 'Content-Type': 'application/json' }
         });
     }
@@ -156,7 +164,8 @@ export async function handleAdminBroadcast(chatRoom, request, HMAC_SECRET) {
             content: sanitizeInput(content || ''),
             sessionId: `admin_${adminId}`,
             timestamp: Date.now(),
-            editedAt: null
+            editedAt: null,
+            _codeHint: isLikelyCode(content || '')
         };
 
         if (file && file.url) {
@@ -945,6 +954,7 @@ export async function handleAdminUserDetails(chatRoom, url) {
 }
 
 export async function handleAdminAuditLogs(chatRoom) {
+    await chatRoom.ensureLogsLoaded();
     const logs = chatRoom.auditLogs.slice(-ADMIN.LOG_FETCH_LIMIT).reverse();
 
     return new Response(JSON.stringify(logs), {

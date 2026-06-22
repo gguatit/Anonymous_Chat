@@ -1,6 +1,7 @@
 import { SECURITY, RATE_LIMIT, ONE_MINUTE_MS, MESSAGE_RETENTION_MS } from '../../config/constants.js';
 
-export function isLikelyCode(content) {
+export function isLikelyCode(content, cachedHint) {
+    if (cachedHint !== undefined) return cachedHint;
     if (!content || typeof content !== 'string') return false;
     if (/```/.test(content)) return true;
     const trimmed = content.trim();
@@ -140,7 +141,7 @@ export function searchMessages(messages, query, limit) {
                         break;
                     }
                 } else if (tag === 'code') {
-                    if (!isLikelyCode(msg.content || '')) {
+                    if (!isLikelyCode(msg.content || '', msg._codeHint)) {
                         matchesAllTags = false;
                         break;
                     }
@@ -187,7 +188,7 @@ export function searchMessages(messages, query, limit) {
                 tagList.push('files');
             }
         }
-        if (isLikelyCode(msg.content || '')) {
+        if (isLikelyCode(msg.content || '', msg._codeHint)) {
             tagList.push('code');
         }
         if (containsUrl(msg.content || '')) {

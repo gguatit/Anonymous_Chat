@@ -88,7 +88,7 @@ export class ChannelRegistry {
         return new Response('Not Found', { status: 404 });
     }
 
-    handleAdminChannels() {
+    async handleAdminChannels() {
         const now = Date.now();
         const list = Array.from(this.channels.entries())
             .filter(([slug]) => !/^\d+$/.test(String(slug))) // Defensive: skip numeric keys
@@ -100,9 +100,43 @@ export class ChannelRegistry {
                 lastActive: info.lastActive,
                 age: now - info.createdAt
             }));
-        return new Response(JSON.stringify({ channels: list }), {
+
+        if (list.length === 0) {
+            return new Response(JSON.stringify({ channels: [] }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const statsResults = await Promise.allSettled(
+            list.map(ch => this.fetchChannelInfo(ch.slug))
+        );
+
+        const enriched = list.map((ch, i) => {
+            const r = statsResults[i];
+            if (r.status === 'fulfilled' && r.value) {
+                return {
+                    ...ch,
+                    activeConnections: r.value.activeConnections ?? 0,
+                    totalMessages: r.value.totalMessages ?? 0
+                };
+            }
+            return { ...ch, activeConnections: 0, totalMessages: 0 };
+        });
+
+        return new Response(JSON.stringify({ channels: enriched }), {
             headers: { 'Content-Type': 'application/json' }
         });
+    }
+
+    async fetchChannelInfo(slug) {
+        const roomName = 'channel:' + slug;
+        const id = this.env.CHAT_ROOM.idFromName(roomName);
+        const room = this.env.CHAT_ROOM.get(id);
+        const resp = await room.fetch(new Request('https://dummy/admin/info', {
+            headers: { 'X-HMAC-Secret': this.env.HMAC_SECRET || '' }
+        }));
+        if (!resp.ok) return null;
+        return await resp.json();
     }
 
     async handleAdminDelete(request) {

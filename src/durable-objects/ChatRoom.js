@@ -5,7 +5,7 @@ import { verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl, genera
 import { validateClientMessage, validateSessionId } from '../utils/validate.js';
 
 import { dispatchAdminRoute, handleCheckBan, handleBroadcastSummary, notifyAdmin } from './chat-room/admin.js';
-import { validateMessage, sanitizeContentForAI, generateSessionId, extractErrorLocation, searchMessages } from './chat-room/messages.js';
+import { validateMessage, sanitizeContentForAI, generateSessionId, extractErrorLocation, searchMessages, isLikelyCode } from './chat-room/messages.js';
 import { isEmergencyActive } from './chat-room/announcements.js';
 
 export class ChatRoom {
@@ -27,9 +27,11 @@ export class ChatRoom {
         this.announcementHistory = [];
         this.auditLogs = [];
         this.errorLogs = [];
+        this.logsLoaded = false;
         this.MAX_ERROR_LOGS = MAX_AUDIT_LOGS;
         this.pushThrottleTimer = null;
         this.pushThrottleQueue = [];
+        this._searchCache = null;
 
         this.channelSlug = '0';
         this.emptySince = null;
@@ -71,71 +73,67 @@ export class ChatRoom {
             }
         }
 
-        const bannedIPs = await this.state.storage.get('bannedIPs');
-        if (bannedIPs) {
-            this.bannedIPs = new Map(bannedIPs);
+        const bannedData = await this.state.storage.get(['bannedIPs', 'bannedSessions', 'bannedTokens']);
+        if (bannedData && bannedData.bannedIPs) {
+            this.bannedIPs = new Map(bannedData.bannedIPs);
+        }
+        if (bannedData && bannedData.bannedSessions) {
+            this.bannedSessions = new Map(bannedData.bannedSessions);
+        }
+        if (bannedData && bannedData.bannedTokens) {
+            this.bannedTokens = new Map(bannedData.bannedTokens);
         }
 
-        const bannedSessions = await this.state.storage.get('bannedSessions');
-        if (bannedSessions) {
-            this.bannedSessions = new Map(bannedSessions);
+        const announcementData = await this.state.storage.get(['currentAnnouncement', 'announcementHistory']);
+        if (announcementData && announcementData.currentAnnouncement) {
+            this.currentAnnouncement = announcementData.currentAnnouncement;
         }
-
-        const bannedTokens = await this.state.storage.get('bannedTokens');
-        if (bannedTokens) {
-            this.bannedTokens = new Map(bannedTokens);
-        }
-
-        if (this.env?.DB_ADMIN) {
-            try {
-                const { results } = await this.env.DB_ADMIN.prepare(
-                    'SELECT action, details, timestamp, metadata FROM audit_logs ORDER BY timestamp DESC LIMIT ?'
-                ).bind(MAX_AUDIT_LOGS).all();
-                if (results && results.length > 0) {
-                    this.auditLogs = results.map(r => ({
-                        timestamp: r.timestamp,
-                        action: r.action,
-                        details: r.details,
-                        metadata: r.metadata ? JSON.parse(r.metadata) : {}
-                    })).reverse();
-                }
-            } catch (e) {
-                console.error('Failed to load audit logs from D1:', e);
-            }
-        }
-
-        if (this.env?.DB_ADMIN) {
-            try {
-                const { results } = await this.env.DB_ADMIN.prepare(
-                    'SELECT type, message, stack_trace, location, environment, context, timestamp FROM error_logs ORDER BY timestamp DESC LIMIT ?'
-                ).bind(this.MAX_ERROR_LOGS).all();
-                if (results && results.length > 0) {
-                    this.errorLogs = results.map(r => ({
-                        timestamp: r.timestamp,
-                        type: r.type,
-                        message: r.message,
-                        stackTrace: r.stack_trace,
-                        location: r.location,
-                        environment: r.environment ? JSON.parse(r.environment) : {},
-                        context: r.context
-                    }));
-                }
-            } catch (e) {
-                console.error('Failed to load error logs from D1:', e);
-            }
-        }
-
-        const announcement = await this.state.storage.get('currentAnnouncement');
-        if (announcement) {
-            this.currentAnnouncement = announcement;
-        }
-
-        const announcementHistory = await this.state.storage.get('announcementHistory');
-        if (announcementHistory) {
-            this.announcementHistory = announcementHistory;
+        if (announcementData && announcementData.announcementHistory) {
+            this.announcementHistory = announcementData.announcementHistory;
         }
 
         this.initialized = true;
+    }
+
+    async ensureLogsLoaded() {
+        if (this.logsLoaded) return;
+        this.logsLoaded = true;
+        if (!this.env?.DB_ADMIN) return;
+
+        try {
+            const { results } = await this.env.DB_ADMIN.prepare(
+                'SELECT action, details, timestamp, metadata FROM audit_logs ORDER BY timestamp DESC LIMIT ?'
+            ).bind(MAX_AUDIT_LOGS).all();
+            if (results && results.length > 0) {
+                this.auditLogs = results.map(r => ({
+                    timestamp: r.timestamp,
+                    action: r.action,
+                    details: r.details,
+                    metadata: r.metadata ? JSON.parse(r.metadata) : {}
+                })).reverse();
+            }
+        } catch (e) {
+            console.error('Failed to load audit logs from D1:', e);
+        }
+
+        try {
+            const { results } = await this.env.DB_ADMIN.prepare(
+                'SELECT type, message, stack_trace, location, environment, context, timestamp FROM error_logs ORDER BY timestamp DESC LIMIT ?'
+            ).bind(this.MAX_ERROR_LOGS).all();
+            if (results && results.length > 0) {
+                this.errorLogs = results.map(r => ({
+                    timestamp: r.timestamp,
+                    type: r.type,
+                    message: r.message,
+                    stackTrace: r.stack_trace,
+                    location: r.location,
+                    environment: r.environment ? JSON.parse(r.environment) : {},
+                    context: r.context
+                }));
+            }
+        } catch (e) {
+            console.error('Failed to load error logs from D1:', e);
+        }
     }
 
     getSessionList() {
@@ -212,7 +210,19 @@ export class ChatRoom {
             await this.initializeMessages();
             const query = url.searchParams.get('q') || '';
             const limit = Math.min(parseInt(url.searchParams.get('limit') || String(SEARCH.DEFAULT_LIMIT)), SEARCH.MAX_LIMIT);
+
+            const normalizedQuery = query.toLowerCase().trim().replace(/\s+/g, ' ');
+            const cacheKey = `${limit}|${normalizedQuery}`;
+            const now = Date.now();
+            if (this._searchCache && this._searchCache.key === cacheKey && now - this._searchCache.ts < 5000) {
+                return new Response(JSON.stringify(this._searchCache.value), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
             const result = searchMessages(this.messages, query, limit);
+            this._searchCache = { key: cacheKey, value: result, ts: now };
+
             return new Response(JSON.stringify(result), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -736,7 +746,8 @@ export class ChatRoom {
             sessionId,
             nickname: sanitizeInput(data.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH),
             timestamp: Date.now(),
-            editedAt: null
+            editedAt: null,
+            _codeHint: isLikelyCode(typeof data.content === 'string' ? data.content : '')
         };
 
         if (data.replyTo) {
