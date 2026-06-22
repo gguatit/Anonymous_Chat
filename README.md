@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/License-Commercial-blue.svg)](./COMMERCIAL_LICENSE.md)
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](./SECURITY.md)
-[![Tests](https://img.shields.io/badge/Tests-57%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/Tests-112%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
 
 Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 채팅 서비스입니다.
 회원가입 없이 닉네임만으로 즉시 참여하며, **12시간 후 모든 메시지는 자동 소멸**합니다.
@@ -162,7 +162,8 @@ wrangler d1 migrations apply anonymous-chat-db
 │   │   ├── ui.js + ui-*.js       # UI 매니저 + 5 mixin
 │   │   ├── admin.js + admin-*.js # 관리자 + 8 helper
 │   │   ├── api-client.js         # fetch wrapper
-│   │   ├── websocket.js          # WS 매니저
+│   │   ├── websocket.js          # WS 매니저 (재연결, heartbeat, ephemeral 서명)
+│   │   ├── signature.js          # Web Crypto HMAC-SHA256 서명
 │   │   ├── session.js            # 세션/닉네임
 │   │   ├── theme.js              # 7 테마
 │   │   ├── file-upload.js        # 업로드 (100MB)
@@ -178,7 +179,7 @@ wrangler d1 migrations apply anonymous-chat-db
 │   │   └── utils.js              # 공통 유틸
 │   └── css/                      # 테마 + 애니메이션
 │
-├── test/                         # Vitest 57 cases
+├── test/                         # Vitest 112 cases (10 파일)
 ├── migrations/                   # D1 스키마
 ├── functions/                    # Pages Functions 브리지
 ├── docs/                         # 상세 문서
@@ -226,6 +227,7 @@ flowchart LR
 |---|---|
 | **WebSocket은 DO에서 직접 처리** | Sticky session 보장 |
 | **HMAC-SHA256 메시지 서명** | 클라이언트 → DO 메시지 변조 방지 |
+| **Ephemeral Token 모델** | 세션별 32바이트 secret, 핸드셰이크 1회 전달, close 시 폐기 |
 | **`X-Admin-Internal-Token`** | Worker ↔ DO 내부 통신 (SSRF 방지) |
 | **채널 = 별도 DO 인스턴스** | 메타데이터는 `ChannelRegistry`에 |
 
@@ -240,7 +242,7 @@ flowchart LR
 | D1 파라미터 바인딩 | SQL Injection 방지 |
 | 상수 시간 비교 | 타이밍 공격 방지 |
 | 입력 sanitization | `sanitizeInput`, `escapeHtml` |
-| 메시지 서명 검증 | HMAC-SHA256 |
+| 메시지 서명 검증 | HMAC-SHA256 + Ephemeral Token (세션별 secret 폐기) |
 | Rate Limiting | 다층 적용 |
 | 보안 헤더 | CSP · HSTS · COOP · COEP |
 | Cloudflare Turnstile | 봇 방지 |

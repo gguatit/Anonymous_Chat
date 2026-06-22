@@ -205,12 +205,14 @@ sequenceDiagram
     participant C as Client
     participant DO as ChatRoom DO
 
-    C->>DO: WS: {type:'message', content, targetSessionId?}
+    C->>DO: WS: {type:'message', content, signature<br/>=HMAC(sessionSecret, ...)}
 
     Note over DO: handleMessage
     DO->>DO: validateClientMessage
     DO->>DO: checkRateLimit (1s/30min)
-    DO->>DO: generateSignature (HMAC)
+    DO->>DO: sessionSecret 조회 (Map)
+    DO->>DO: HMAC(sessionSecret, payload) 재계산 후 비교
+    DO->>DO: generateMessageSignature (HMAC_SECRET,<br/>metadata for broadcast)
     DO->>DO: storage.put('messages')
     DO->>DO: broadcast({...signature})
 
@@ -221,7 +223,7 @@ sequenceDiagram
     DO->>DO: sendPushToOfflineUsers<br/>(KV 구독자 순회)
 ```
 
-### 2. WebSocket 핸드셰이크
+### 2. WebSocket 핸드셰이크 (Ephemeral Token)
 
 ```mermaid
 sequenceDiagram
@@ -243,9 +245,18 @@ sequenceDiagram
     DO->>DO: storage에서 세션 복원
     DO->>DO: 50개 히스토리 배치 전송
     DO->>DO: broadcast user_count
-
+    DO->>DO: 32바이트 랜덤 secret 생성<br/>Map<sessionId, secret> 저장
+    DO-->>C: WS: {type:'handshake', secret:'<64hex>'}
     DO-->>C: WS: {type:'history', messages:[...50개]}
     DO-->>C: WS: {type:'user_count', count: 12}
+
+    Note over C: secret 메모리 보관
+    C->>DO: WS: {type:'message', content, signature<br/>=HMAC(secret, {content,sessionId,timestamp})}
+
+    Note over DO: handleMessage<br/>1. sessionSecret 조회<br/>2. 서명 재계산 후 비교<br/>3. 불일치 시 거부
+    DO-->>C: WS: {type:'message', message, signature}
+
+    Note over DO: close 시 Map에서 secret 폐기
 ```
 
 ### 3. 채널 생성/참가
@@ -337,7 +348,7 @@ sequenceDiagram
 |---|---|---|---|
 | **관리자 토큰** | `HMAC(secret, base64(id:ts))` | `auth.js` | 2시간 만료, KV revocation |
 | **내부 토큰** | `X-Admin-Internal-Token` | `worker.js` ↔ DO | SSRF 방지 |
-| **메시지 서명** | `HMAC(secret, JSON.stringify({content, sessionId, timestamp}))` | `ChatRoom.js` | 변조 방지 |
+| **메시지 서명 (Ephemeral Token)** | `HMAC(sessionSecret, JSON.stringify({content, sessionId, timestamp}))` | `ChatRoom.js` + `signature.js` | 32바이트 세션별 secret, 핸드셰이크 1회 전달, close 시 폐기 |
 
 ### Rate Limiting
 

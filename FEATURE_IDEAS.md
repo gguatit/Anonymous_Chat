@@ -440,7 +440,7 @@ Anonymous Chat 프로젝트에 추가할 수 있는 기능 목록입니다. 모�
 | 입력 검증 | `src/utils/validate.js` |
 | XSS/CSRF 방어 | `escapeHtml`, CSP |
 | Rate Limiting | 전역 + 엔드포인트별 |
-| 메시지 변조 방지 | HMAC-signed |
+| 메시지 변조 방지 | Ephemeral Token (HMAC-SHA256 + 세션별 secret 폐기) |
 | SQL Injection 방지 | D1 파라미터 바인딩 |
 | SSRF 방지 | 내부 API 토큰 |
 | 타이밍 공격 방지 | 상수 시간 비교 |

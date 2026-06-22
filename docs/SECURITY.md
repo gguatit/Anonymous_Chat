@@ -79,12 +79,25 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
   - SSRF 방지 (URL 파라미터로 DO 라우팅 탈취 불가)
   - 적용 위치: `src/utils/do.js:forwardToDO`, `forwardToChannelDO`
 
-### 1.4 메시지 서명
-- ✅ **HMAC-SHA256** (`src/utils/helpers.js:generateMessageSignature`)
-  - 서명 대상: `{content, sessionId, timestamp}`
+### 1.4 메시지 서명 (Ephemeral Token)
+- ✅ **HMAC-SHA256** (`src/utils/helpers.js:generateMessageSignature`, `public/js/signature.js:generateClientSignature`)
+  - 서명 대상: `{content, sessionId, timestamp}` (수정 시 `{newContent, messageId, sessionId, timestamp}`)
   - 클라이언트 → 서버 메시지 변조 방지
   - DO가 `handleMessage`/`handleEdit`에서 검증
+- ✅ **Ephemeral Token 모델** (2026-06-22 강화)
+  - 서버는 `join` 시 세션별 32바이트 랜덤 `sessionSecret` 생성 → `Map<sessionId, secret>`에 저장
+  - 핸드셰이크 메시지로 클라이언트에 1회 전달: `{type:'handshake', secret:'<64hex>'}`
+  - 클라이언트는 이후 `message`/`edit` 송신 시 `sessionSecret`으로 HMAC 자동 서명
+  - WebSocket `close` 시 서버는 즉시 `Map`에서 secret 폐기
 - ✅ **서명 누락 시 거부** (생략 불가)
+  - 클라이언트가 `signature` 미포함 시 서버가 `sessionSecret`으로 자동 생성 후 비교
+  - 불일치 시 메시지 거부 + `INVALID_SIGNATURE` 보안 이벤트 기록
+- ✅ **서명 우회 불가능**
+  - 세션ID만으로는 위조 불가 (별도 secret 필요)
+  - 다른 세션의 secret 사용 불가 (세션별 격리)
+  - 세션 종료 후 재사용 불가 (close 시 폐기)
+- ✅ **검증 위치**: `src/durable-objects/ChatRoom.js:handleMessage:698-734`, `handleEdit:883-907`
+- ✅ **클라이언트 서명 모듈**: `public/js/signature.js` (Web Crypto API, async HMAC)
 
 ## 2. 입력 검증
 
@@ -240,7 +253,7 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` — Web Push
 - `TURNSTILE_SECRET_KEY` — Turnstile 서버 검증
 - `FCM_SERVICE_ACCOUNT` — FCM v1 인증
-- `HMAC_SECRET` — 내부 토큰, 메시지 서명
+- `HMAC_SECRET` — 내부 토큰 (Worker↔DO, 관리자 인증 토큰). 메시지 서명은 2026-06-22부터 Ephemeral Token(`sessionSecret`)으로 분리됨.
 - `FILE_UPLOAD_URL` — Kalpha 파일 API
 - `KALPHA_API_URL` — Kalpha 보안 헤더 API
 

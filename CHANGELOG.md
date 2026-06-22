@@ -9,6 +9,7 @@
 - [개요](#개요)
 - [범례](#범례)
 - [릴리스](#릴리스)
+  - [2026-06-22](#2026-06-22)
   - [2026-06-16](#2026-06-16)
   - [2026-06-15](#2026-06-15)
   - [2026-06-10](#2026-06-10)
@@ -35,8 +36,8 @@
 | 항목 | 값 |
 |---|---|
 | 시작일 | 2025-12-19 |
-| 최근 업데이트 | 2026-06-16 |
-| 릴리스 수 | 17 |
+| 최근 업데이트 | 2026-06-22 |
+| 릴리스 수 | 18 |
 | 카테고리 | 신규 기능 / 개선 / 버그 수정 / 보안 / 인프라 / 문서 / 아키텍처 / 디자인 / 코드 품질 |
 
 ---
@@ -58,6 +59,23 @@
 ---
 
 ## 릴리스
+
+### 2026-06-22
+
+#### 보안
+
+- **메시지 HMAC 서명 검증 무력화 결함 수정 (A안)**: 서버가 `if (data.signature)` 옵션 체크로 클라이언트 미서명 메시지를 그대로 통과시키던 C-1 결함을, 자동 생성 + 무조건 검증 방식으로 변경. `handleMessage`/`handleEdit`에서 `sessionSecret`이 있으면 자동 서명 생성 후 비교. 커밋 `5a97c8f`.
+- **Ephemeral Token 모델로 메시지 무결성 강화 (B안)**: `HMAC_SECRET` 다목적 재사용(H-1)과 세션ID만으로 다른 사용자 사칭 가능했던 근본 문제를 해결. 서버는 `join` 시 세션별 32바이트 랜덤 `sessionSecret`을 `Map<sessionId, secret>`에 저장하고 `handshake` 메시지로 클라이언트에 전달, WebSocket `close` 시 즉시 폐기. 클라이언트는 `public/js/signature.js` (Web Crypto API)로 자동 HMAC-SHA256 서명. 세션ID만 아는 공격자는 secret이 없어 위조 불가. 커밋 `c8201c4`.
+- **CORS 화이트리스트 우회 결함 제거**: 매칭 실패 시 `ALLOWED_ORIGINS[0]`로 폴백하던 C-2 결함을 빈 객체 반환으로 변경. 미허가 origin은 CORS 헤더 없이 응답. 커밋 `5298357`.
+
+#### 개선
+
+- **정적 자산 캐시 헤더 추가**: `public/_headers`에 `/js/*`와 `/css/*` 경로 `Cache-Control: public, max-age=3600, must-revalidate` 설정. esbuild 산출물에 해시가 없어 1년 immutable은 cache busting 위험이 있어 1시간 단축. 커밋 `f9b2d20`, `2e97efb`.
+
+#### 인프라
+
+- **신규 클라이언트 모듈 `public/js/signature.js`**: Web Crypto API 기반 HMAC-SHA256 서명 헬퍼. `generateClientSignature(message, secret)` → 64자 hex.
+- **`src/durable-objects/ChatRoom.js`에 `sessionSecrets: Map<sessionId, string>` 추가**: 핸드셰이크/검증/close 폐기 라이프사이클.
 
 ### 2026-06-16
 

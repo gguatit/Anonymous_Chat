@@ -31,7 +31,7 @@ Anonymous Chat의 개발 환경 설정 및 워크플로우입니다.
 | 테스트 | Vitest |
 | 린트 | ESLint (flat config) |
 | 포맷터 | Prettier |
-| 코드 통계 | 서버 28파일/9,789줄, 클라이언트 32파일/6,877줄, 테스트 57케이스 |
+| 코드 통계 | 서버 33파일/6,305줄, 클라이언트 35+파일/8,685줄, 테스트 112케이스 (10파일) |
 
 ---
 
@@ -82,7 +82,8 @@ cp .dev.vars.example .dev.vars
 - `public/js/ui.js` — UI 매니저 + 5 mixin (render, menu, modal, edit, lightbox)
 - `public/js/admin.js` — 관리자 + 8 helper (csv, messages, users, channels, logs, announcements, render, utils)
 - `public/js/api-client.js` — fetch wrapper
-- `public/js/websocket.js` — WebSocket 매니저 (재연결, heartbeat)
+- `public/js/websocket.js` — WebSocket 매니저 (재연결, heartbeat, ephemeral 서명)
+- `public/js/signature.js` — Web Crypto API 기반 HMAC-SHA256 클라이언트 서명 헬퍼
 - `public/js/session.js` — 세션 ID, 닉네임
 - `public/js/theme.js` — 7 테마
 - `public/js/file-upload.js` — 파일 업로드 (100MB, 클립보드, 드래그앤드롭)
@@ -103,12 +104,17 @@ cp .dev.vars.example .dev.vars
 - `public/css/prism-tomorrow.css` — Prism One Dark
 - `public/css/tailwind.min.css` — 빌드된 Tailwind
 
-### 3.3 테스트
+### 3.3 테스트 (10 파일, 112 cases)
 - `test/client-utils.test.js` — 14 cases (escapeHtml, isValidUrl, sanitizeUrl, formatFileSize)
 - `test/constants.test.js` — 10 cases (RATE_LIMIT, AI_SUMMARY, ...)
 - `test/helpers.test.js` — 12 cases (sanitizeInput, arrayBufferToHex, isValidFileUrl)
-- `test/rate-limiter.test.js` — 10 cases
-- `test/security.test.js` — 11 cases (constantTimeCompare, isAllowedOrigin)
+- `test/rate-limiter.test.js` — 9 cases
+- `test/security.test.js` — 12 cases (constantTimeCompare, isAllowedOrigin)
+- `test/security-classifier.test.js` — 9 cases (XSS/SQL/PathTraverse)
+- `test/security-logger.test.js` — 8 cases (D1 INSERT, dedup, cleanup)
+- `test/security-routes.test.js` — 23 cases (Security 핸들러 7종 + Middleware 3종 + Input Validator 7종)
+- `test/risk-scorer.test.js` — 8 cases (시간 가중치, 카테고리 보너스)
+- `test/admin-handlers.test.js` — 7 cases (handleAdminLogout 인증/토큰)
 
 ### 3.4 기타
 - `migrations/` — D1 스키마 (2개: admin_logs, log_tables)

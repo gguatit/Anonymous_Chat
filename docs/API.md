@@ -935,24 +935,41 @@ Liveness probe.
 
 ## 3. WebSocket 메시지 프로토콜
 
+### 3.0 핸드셰이크 (Ephemeral Token)
+
+`join` 수신 후 서버는 세션별 32바이트 ephemeral secret을 발급하여 클라이언트에 1회 전달합니다. 클라이언트는 이 secret을 메모리에 보관하고 이후 `message`/`edit` 송신 시 HMAC-SHA256 서명에 사용합니다. WebSocket `close` 시 즉시 폐기됩니다.
+
+```json
+{ "type": "handshake", "secret": "<64 hex chars>" }
+```
+
 ### 3.1 클라이언트 → 서버 (inbound)
 
 ```typescript
 type ClientMessage =
   | { type: 'ping' }
   | { type: 'join'; sessionId: string; isReconnect?: boolean; nickname?: string }
-  | { type: 'message'; content: string; targetSessionId?: string; signature?: string }
-  | { type: 'edit'; messageId: string; content: string; signature?: string }
+  | { type: 'message'; content: string; sessionId: string; timestamp: number; signature: string }
+  | { type: 'edit'; messageId: string; content: string; sessionId: string; timestamp: number; signature: string }
   | { type: 'delete'; messageId: string }
   | { type: 'reaction'; messageId: string; emoji: string }
   | { type: 'typing'; isTyping: boolean };
 ```
+
+- `message`/`edit`의 `signature`는 **필수**입니다 (2026-06-22 강화).
+  - 클라이언트(`public/js/signature.js`)가 `handshake.secret`으로 자동 생성
+  - 미포함 시 서버가 `sessionSecret`으로 자동 생성 후 비교
+  - 불일치 시 거부 + `INVALID_SIGNATURE` 보안 이벤트 기록
+- 서명 페이로드:
+  - `message`: `HMAC-SHA256(sessionSecret, JSON.stringify({content, sessionId, timestamp}))`
+  - `edit`: `HMAC-SHA256(sessionSecret, JSON.stringify({newContent, messageId, sessionId, timestamp}))`
 
 ### 3.2 서버 → 클라이언트 (outbound)
 
 ```typescript
 type ServerMessage =
   | { type: 'pong' }
+  | { type: 'handshake'; secret: string }   // join 직후 1회
   | { type: 'banned'; permanent: boolean; message?: string }
   | { type: 'history'; messages: StoredMessage[] }
   | { type: 'announcement'; announcement: Announcement }
