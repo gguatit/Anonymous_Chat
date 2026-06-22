@@ -1,4 +1,7 @@
 import { WS_RECONNECT } from '../../src/config/constants.js';
+import { generateClientSignature } from './signature.js';
+
+const SIGNED_MESSAGE_TYPES = new Set(['message', 'edit']);
 
 // WebSocket connection manager
 export class WebSocketManager {
@@ -15,6 +18,7 @@ export class WebSocketManager {
         this.hasConnectedBefore = false;
         this.manualClose = false;
         this.channelId = '0'; // '0' = main room
+        this.sessionSecret = null;
         // Heartbeat timing (visible vs hidden)
         this.visibleHeartbeatInterval = WS_RECONNECT.HEARTBEAT_VISIBLE;
         this.visibleHeartbeatTimeout = WS_RECONNECT.HEARTBEAT_TIMEOUT_VISIBLE;
@@ -103,6 +107,12 @@ export class WebSocketManager {
                 return;
             }
 
+            // Store ephemeral session secret for message signing
+            if (data.type === 'handshake' && data.secret) {
+                this.sessionSecret = data.secret;
+                return;
+            }
+
             // Store kick token if kicked
             if (data.type === 'kicked' && data.token) {
                 this.storeKickToken(data.token);
@@ -169,8 +179,22 @@ export class WebSocketManager {
 
     send(data) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify(data));
+            this._sendSigned(data);
         }
+    }
+
+    async _sendSigned(data) {
+        if (SIGNED_MESSAGE_TYPES.has(data.type) && this.sessionSecret && !data.signature) {
+            try {
+                data.signature = await generateClientSignature(
+                    { content: data.content ?? data.newContent, sessionId: data.sessionId, timestamp: data.timestamp },
+                    this.sessionSecret
+                );
+            } catch (err) {
+                console.error('Failed to sign message:', err);
+            }
+        }
+        this.ws.send(JSON.stringify(data));
     }
 
     isConnected() {
@@ -257,6 +281,7 @@ export class WebSocketManager {
     disconnect() {
         this.manualClose = true;
         this.stopHeartbeat();
+        this.sessionSecret = null;
         if (this.ws) {
             this.ws.close();
         }

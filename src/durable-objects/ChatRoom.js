@@ -13,6 +13,7 @@ export class ChatRoom {
         this.state = state;
         this.env = env;
         this.sessions = new Map();
+        this.sessionSecrets = new Map();
         this.ipConnections = new Map();
         this.userMetadata = new Map();
         this.typingUsers = new Set();
@@ -466,6 +467,7 @@ export class ChatRoom {
                 if (this.sessions.get(sessionId) !== websocket) return;
 
                 this.sessions.delete(sessionId);
+                this.sessionSecrets.delete(sessionId);
                 this.typingUsers.delete(sessionId);
 
                 const currentCount = this.ipConnections.get(clientIP) || 0;
@@ -641,6 +643,17 @@ export class ChatRoom {
             }
         }
 
+        if (!this.sessionSecrets.has(sessionId)) {
+            const bytes = new Uint8Array(32);
+            crypto.getRandomValues(bytes);
+            const sessionSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            this.sessionSecrets.set(sessionId, sessionSecret);
+        }
+        this.sendToSession(sessionId, {
+            type: 'handshake',
+            secret: this.sessionSecrets.get(sessionId)
+        });
+
         setSession(sessionId, metadata);
     }
 
@@ -670,10 +683,30 @@ export class ChatRoom {
         }
 
         if (!data.signature) {
-            data.signature = await generateMessageSignature(
-                { content: data.content, sessionId: data.sessionId, timestamp: data.timestamp },
-                HMAC_SECRET
-            );
+            await logSecurityEvent(this.env, 'WS_INVALID_MSG', {
+                ip: metadata.ip,
+                sessionId,
+                details: 'Missing message signature (ephemeral token required)',
+            });
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '메시지 서명이 필요합니다.'
+            });
+            return;
+        }
+
+        const sessionSecret = this.sessionSecrets.get(sessionId);
+        if (!sessionSecret) {
+            await logSecurityEvent(this.env, 'WS_INVALID_MSG', {
+                ip: metadata.ip,
+                sessionId,
+                details: 'No ephemeral session secret found',
+            });
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '세션이 초기화되지 않았습니다. 재연결이 필요합니다.'
+            });
+            return;
         }
 
         const isValid = await verifyMessageSignature(
@@ -683,7 +716,7 @@ export class ChatRoom {
                 timestamp: data.timestamp
             },
             data.signature,
-            HMAC_SECRET
+            sessionSecret
         );
 
         if (!isValid) {
@@ -840,10 +873,20 @@ export class ChatRoom {
         }
 
         if (!data.signature) {
-            data.signature = await generateMessageSignature(
-                { content: data.newContent, sessionId: data.sessionId, timestamp: data.timestamp },
-                HMAC_SECRET
-            );
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '수정 요청 서명이 필요합니다.'
+            });
+            return;
+        }
+
+        const sessionSecret = this.sessionSecrets.get(sessionId);
+        if (!sessionSecret) {
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '세션이 초기화되지 않았습니다. 재연결이 필요합니다.'
+            });
+            return;
         }
 
         const isValid = await verifyMessageSignature(
@@ -853,7 +896,7 @@ export class ChatRoom {
                 timestamp: data.timestamp
             },
             data.signature,
-            HMAC_SECRET
+            sessionSecret
         );
 
         if (!isValid) {
