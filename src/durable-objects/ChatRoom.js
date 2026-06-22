@@ -669,31 +669,36 @@ export class ChatRoom {
             return;
         }
 
-        if (data.signature) {
-            const isValid = await verifyMessageSignature(
-                {
-                    content: data.content,
-                    sessionId: data.sessionId,
-                    timestamp: data.timestamp
-                },
-                data.signature,
+        if (!data.signature) {
+            data.signature = await generateMessageSignature(
+                { content: data.content, sessionId: data.sessionId, timestamp: data.timestamp },
                 HMAC_SECRET
             );
+        }
 
-            if (!isValid) {
-                await logSecurityEvent(this.env, 'WS_INVALID_MSG', {
-                    ip: metadata.ip,
-                    sessionId,
-                    details: 'Invalid message signature',
-                });
-                this.sendToSession(sessionId, {
-                    type: 'error',
-                    content: '메시지 무결성 검증 실패'
-                });
-                console.warn('Invalid message signature from session:', sessionId);
+        const isValid = await verifyMessageSignature(
+            {
+                content: data.content,
+                sessionId: data.sessionId,
+                timestamp: data.timestamp
+            },
+            data.signature,
+            HMAC_SECRET
+        );
 
-                return;
-            }
+        if (!isValid) {
+            await logSecurityEvent(this.env, 'WS_INVALID_MSG', {
+                ip: metadata.ip,
+                sessionId,
+                details: 'Invalid message signature',
+            });
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '메시지 무결성 검증 실패'
+            });
+            console.warn('Invalid message signature from session:', sessionId);
+
+            return;
         }
 
         if (data.sessionId !== sessionId) {
@@ -834,25 +839,30 @@ export class ChatRoom {
             return;
         }
 
-        if (data.signature) {
-            const isValid = await verifyMessageSignature(
-                {
-                    content: data.newContent,
-                    sessionId: data.sessionId,
-                    timestamp: data.timestamp
-                },
-                data.signature,
+        if (!data.signature) {
+            data.signature = await generateMessageSignature(
+                { content: data.newContent, sessionId: data.sessionId, timestamp: data.timestamp },
                 HMAC_SECRET
             );
+        }
 
-            if (!isValid) {
-                this.sendToSession(sessionId, {
-                    type: 'error',
-                    content: '메시지 수정 요청 검증 실패'
-                });
-                console.warn('Invalid edit signature from session:', sessionId);
-                return;
-            }
+        const isValid = await verifyMessageSignature(
+            {
+                content: data.newContent,
+                sessionId: data.sessionId,
+                timestamp: data.timestamp
+            },
+            data.signature,
+            HMAC_SECRET
+        );
+
+        if (!isValid) {
+            this.sendToSession(sessionId, {
+                type: 'error',
+                content: '메시지 수정 요청 검증 실패'
+            });
+            console.warn('Invalid edit signature from session:', sessionId);
+            return;
         }
 
         if (data.sessionId !== sessionId) {
