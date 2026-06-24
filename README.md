@@ -293,3 +293,5 @@ npm run deploy   # 빌드 + wrangler pages deploy
 | [docs/SECURITY.md](./docs/SECURITY.md) | 보안 체크리스트 |
 | [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) | 배포 가이드 |
 | [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) | 개발 가이드 |
+| [portfolio/PRESENTATION.md](./portfolio/PRESENTATION.md) | 발표 자료 (학교/포트폴리오용) |
+| [portfolio/QNA.md](./portfolio/QNA.md) | 발표 Q&A 모음집 (심층 답변) |
