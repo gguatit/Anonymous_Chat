@@ -57,6 +57,66 @@
 | 현황 | admin-handlers.test.js의 logout 테스트에서 간접 검증만 수행 |
 | 접근 | `generateAdminToken`, `verifyAdminToken`, `revokeToken` 각각 단위 테스트 |
 
+#### 21. [HIGH] ChatRoom admin DO route handler 테스트
+
+| 항목 | 내용 |
+|------|------|
+| 대상 | `chat-room/admin.js` (1075줄, 18개 route) |
+| 현황 | 0% 커버리지 |
+| 접근 | handleAdminMetrics, handleAdminSessions, handleAdminBroadcast, handleAdminKickUser 우선 |
+
+#### 22. [HIGH] ChatRoom messages 모듈 테스트
+
+| 항목 | 내용 |
+|------|------|
+| 대상 | `chat-room/messages.js` (212줄) - searchMessages, validateMessage, sanitizeContentForAI, isLikelyCode |
+| 현황 | 0% 커버리지 |
+| 접근 | 검색(키워드+태그), rate limit 검증, AI 컨텐츠 필터링 |
+
+#### 23. [HIGH] Handler 모듈 직접 테스트 (6개)
+
+| 파일 | 줄 | 우선순위 | 대상 |
+|------|-----|----------|------|
+| `handlers/admin.js` | 608 | High | login, verify, ban/unban, handleAdminLogs, handleAdminAnnouncements |
+| `handlers/push.js` | 319 | High | VAPID 키 제공, 구독/해지/재구독, 오프라인 푸시 전송 |
+| `handlers/websocket.js` | 121 | Medium | WS 업그레이드, 차단 사전 확인, Origin 검증 |
+| `handlers/summary.js` | 189 | Medium | AI 요약 4모드, 모델 fallback, rate limit |
+| `handlers/preview.js` | 148 | Low | OG 태그 파싱, URL rate limit, 캐시 |
+| `handlers/turnstile.js` | 77 | Low | Turnstile 토큰 검증 |
+
+#### 24. [MEDIUM] utils/validate.js 나머지 validator 테스트
+
+| 현황 | 전테스트 (edit, delete, typing, ping, channel, nickname, file, session, deadDrop 8종) |
+| 접근 | 각 validator의 valid/invalid 케이스, 경계값 |
+
+#### 25. [MEDIUM] utils/helpers.js HMAC/safeJson 테스트
+
+| 대상 | `generateMessageSignature`, `verifyMessageSignature`, `safeJson`, `isValidFileUrl` |
+| 현황 | sanitizeInput만 테스트됨 |
+
+#### 26. [MEDIUM] utils/fcm-auth.js + web-push.js 테스트
+
+| 대상 | JWT 생성, OAuth 토큰 교환 (fcm-auth), VAPID JWT + RFC8291 암호화 (web-push) |
+| 현황 | 0% 커버리지 |
+| 접근 | Web Crypto API mock, ES256/RS256 검증 |
+
+#### 27. [LOW] 클라이언트 순수 로직 모듈 테스트
+
+| 파일 | 줄 | 대상 |
+|------|-----|------|
+| `public/js/signature.js` | 27 | generateClientSignature (Web Crypto) |
+| `public/js/session.js` | 64 | sessionId 생성/복원, 닉네임 관리 |
+| `public/js/api-client.js` | 78 | fetch wrapper (get/post/put/del) |
+
+#### 28. [LOW] 서버 소형 유틸 테스트 (4개)
+
+| 파일 | 줄 | 대상 |
+|------|-----|------|
+| `utils/errors.js` | 27 | jsonError/jsonSuccess/textError/emptyResponse |
+| `utils/do.js` | 47 | getChatRoom, forwardToDO |
+| `config/cors.js` | 20 | getCorsHeaders, handleCorsPreflightResponse |
+| `handlers/health.js` | 17 | /health, /metrics |
+
 ---
 
 ### Group 2: 코드 품질
@@ -228,6 +288,9 @@
 | 7 | ChatRoom 모듈 추가 분할 |
 | 11 | FCM 토큰 캐싱 |
 | 12 | 하드코딩 환경변수화 |
+| 21 | ChatRoom admin DO route handler 테스트 |
+| 22 | ChatRoom messages 모듈 테스트 |
+| 23 | Handler 모듈 직접 테스트 (6개) |
 
 ### Medium (점진적)
 | # | 과제 |
@@ -238,14 +301,19 @@
 | 14 | CSRF 보호 강화 |
 | 17 | vitest coverage 임계치 |
 | 18 | D1 schema 정리 |
+| 24 | validate.js 나머지 validator |
+| 25 | helpers.js HMAC/safeJson |
+| 26 | fcm-auth.js + web-push.js |
 
 ### Low (여유 시)
 | # | 과제 |
 |---|------|
+| 10 | OG Preview 파서 강화 |
 | 15 | Health check 심화 |
 | 16 | DO cleanup 간격 |
 | 19 | deploy.sh 개선 |
-| 10 | OG Preview 파서 강화 |
+| 27 | 클라이언트 순수 로직 (signature/session/api-client) |
+| 28 | 서버 소형 유틸 (errors/do/cors/health) |
 
 ---
 
@@ -255,4 +323,6 @@
 |------|------|
 | 2025-11-17 | 최초 작성 (기능 아이디어 33개) |
 | 2026-06-15 | 코드베이스 재검증 기반 갱신 |
-| 2026-07-13 | 코드베이스 전면 분석 기반 개선 과제로 전환 (20개 과제) |
+| 2026-07-13 | 코드베이스 전면 분석 기반 개선 과제로 전환 |
+| 2026-07-13 | #1(DO 테스트), #9(Pretter/ESLint), #20(문서 정합성) 완료 |
+| 2026-07-13 | #2(E2E) 제외, #21~28 테스트 커버리지 항목 8개 추가 (총 28개) |
