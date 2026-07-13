@@ -32,22 +32,14 @@
 
 ### Group 1: 테스트 보강
 
-#### 1. [CRITICAL] Durable Object 단위 테스트 작성
+#### 1. [DONE] Durable Object 단위 테스트 작성 (2026-07-13)
 
 | 항목 | 내용 |
 |------|------|
 | 대상 | ChatRoom (1435줄), ChannelRegistry (337줄), DeadDropStore (144줄) |
-| 현황 | 0% 커버리지. 프로젝트 전체 로직의 약 45%가 테스트 없음 |
+| 현황 | 47개 테스트 케이스 추가 (chat-room 20, channel-registry 15, dead-drop-store 12). 총 159 tests, 0 failures |
 | 접근 | Vitest + DO 모킹 (storage, WebSocket, D1, KV) |
-| 우선 | ChatRoom.handleMessage, handleEdit, handleReaction, cleanup |
-
-#### 2. [HIGH] 통합/E2E 테스트 작성
-
-| 항목 | 내용 |
-|------|------|
-| 대상 | WebSocket 메시지 흐름, 관리자 워크플로우, 채널 CRUD, 푸시 알림 |
-| 접근 | `wrangler dev` 환경에서 Playwright 또는 miniflare 테스트 |
-| 우선 | 메시지 전송-서명검증-브로드캐스트 체인, 로그인-차단-재접속 시나리오 |
+| 우선 | ChatRoom.handleMessage, handleEdit, handleReaction, cleanup, handleJoin |
 
 #### 3. [HIGH] Worker 라우터 및 핸들러 테스트
 
@@ -227,15 +219,9 @@
 
 ## 우선순위 요약
 
-### Critical (즉시)
-| # | 과제 |
-|---|------|
-| 1 | DO 단위 테스트 작성 |
-
 ### High (다음 릴리스)
 | # | 과제 |
 |---|------|
-| 2 | 통합/E2E 테스트 |
 | 3 | Worker 라우터/핸들러 테스트 |
 | 5 | 데드 코드 제거 |
 | 6 | 관리자 대시보드 단일화 |
