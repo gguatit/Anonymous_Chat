@@ -76,7 +76,7 @@ flowchart TB
 
 ## 컴포넌트
 
-### 1. Worker (`src/worker.js`, 374줄)
+### 1. Worker (`src/worker.js`, 424줄)
 
 Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드, 정적 자산 폴백 처리.
 
@@ -99,7 +99,7 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 
 ---
 
-### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1080줄)
+### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1435줄)
 
 핵심 WebSocket 핸들러. 채널당 1개 인스턴스 (메인룸 1 + 채널 N).
 
@@ -120,8 +120,8 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 
 | 파일 | 줄 | 책임 |
 |---|---|---|
-| `chat-room/admin.js` | 808 | 18개 `/admin/*` 라우트 |
-| `chat-room/messages.js` | 184 | 검증, 검색, AI sanitization |
+| `chat-room/admin.js` | 1075 | 18개 `/admin/*` 라우트 |
+| `chat-room/messages.js` | 212 | 검증, 검색, AI sanitization |
 | `chat-room/announcements.js` | 5 | `isEmergencyActive` 헬퍼 |
 
 **WebSocket 메시지 타입**
@@ -133,7 +133,7 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 
 ---
 
-### 3. ChannelRegistry Durable Object (`src/durable-objects/ChannelRegistry.js`, 261줄)
+### 3. ChannelRegistry Durable Object (`src/durable-objects/ChannelRegistry.js`, 337줄)
 
 채널 메타데이터 싱글톤. slug → 채널 정보 매핑.
 
@@ -145,7 +145,7 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 
 ---
 
-### 4. DeadDropStore Durable Object (`src/durable-objects/DeadDropStore.js`, 127줄)
+### 4. DeadDropStore Durable Object (`src/durable-objects/DeadDropStore.js`, 144줄)
 
 1회성 비밀 메시지 싱글톤.
 
@@ -161,13 +161,13 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 
 | 파일 | 줄 | 책임 |
 |---|---|---|
-| `admin.js` | 458 | 23개 `/api/admin/*` 핸들러 (withAuth 미들웨어) |
-| `websocket.js` | 112 | WebSocket 업그레이드 + 차단 사전 확인 |
-| `push.js` | 270 | VAPID/FCM 구독 관리 + 발송 |
-| `summary.js` | 159 | Workers AI 요약 (4 모드, 15초 레이트리밋) |
-| `preview.js` | 126 | OG 태그 스크래퍼 (Edge cache 1시간) |
-| `turnstile.js` | 67 | Cloudflare Turnstile 검증 |
-| `health.js` | 15 | `/health`, `/metrics` |
+| `admin.js` | 608 | 23개 `/api/admin/*` 핸들러 (withAuth 미들웨어) |
+| `websocket.js` | 121 | WebSocket 업그레이드 + 차단 사전 확인 |
+| `push.js` | 319 | VAPID/FCM 구독 관리 + 발송 |
+| `summary.js` | 189 | Workers AI 요약 (4 모드, 15초 레이트리밋) |
+| `preview.js` | 148 | OG 태그 스크래퍼 (Edge cache 1시간) |
+| `turnstile.js` | 77 | Cloudflare Turnstile 검증 |
+| `health.js` | 17 | `/health`, `/metrics` |
 
 ---
 

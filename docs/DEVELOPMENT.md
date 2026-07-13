@@ -62,7 +62,7 @@ cp .dev.vars.example .dev.vars
 - `src/durable-objects/ChannelRegistry.js` — 채널 메타데이터
 - `src/durable-objects/DeadDropStore.js` — 비밀 메시지
 - `src/durable-objects/chat-room/` — ChatRoom 보조 (admin, messages, announcements)
-- `src/utils/` — 11개 유틸 (validate, errors, helpers, rate-limiter, security, ...)
+- `src/utils/` — 12개 유틸 (validate, errors, helpers, rate-limiter, security, ...)
 - `src/config/constants.js` — 모든 매직 넘버 (서버+클라이언트 공유)
 - `src/config/cors.js` — CORS 헤더
 - `src/schema.js` — JSDoc 타입 정의 (런타임 영향 없음)
@@ -117,7 +117,7 @@ cp .dev.vars.example .dev.vars
 - `test/admin-handlers.test.js` — 7 cases (handleAdminLogout 인증/토큰)
 
 ### 3.4 기타
-- `migrations/` — D1 스키마 (2개: admin_logs, log_tables)
+- `migrations/` — D1 스키마 (3개: admin_logs, log_tables, security_events)
 - `functions/_middleware.js` — Pages Functions 브리지
 - `docs/` — 상세 문서
 - `wrangler.toml` — Cloudflare 설정
@@ -125,7 +125,7 @@ cp .dev.vars.example .dev.vars
 - `eslint.config.js` — ESLint flat config
 - `.prettierrc` — Prettier 설정
 - `vitest.config.js` — Vitest 설정
-- `build.js` — esbuild 번들 스크립트
+- `esbuild.config.js` — esbuild 번들 스크립트
 
 ## 4. 명령어
 
@@ -164,7 +164,7 @@ npm run deploy         # 빌드 + wrangler pages deploy
 
 ### 5.1 JavaScript
 - ESM 모듈 (`import`/`export`)
-- 들여쓰기: 4 spaces
+- 들여쓰기: 2 spaces (Prettier)
 - 따옴표: 작은따옴표 (`'`) 기본, JSX 속성은 큰따옴표
 - 세미콜론: 항상
 - `===`/`!==` (느슨한 비교 금지)

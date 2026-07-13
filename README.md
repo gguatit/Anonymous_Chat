@@ -81,7 +81,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
 | **푸시** | Web Push (VAPID) + FCM v1 |
 | **빌드** | esbuild (`chat.bundle.js`, `admin.bundle.js`) |
-| **테스트** | Vitest (57 cases) |
+| **테스트** | Vitest (112 cases) |
 | **린팅** | ESLint + Prettier |
 | **프론트** | 바닐라 JS (모듈식) · CSS Custom Properties 테마 · Tailwind(빌드) |
 
@@ -136,12 +136,12 @@ wrangler d1 migrations apply anonymous-chat-db
 ```
 .
 ├── src/                          # Worker (서버)
-│   ├── worker.js                 # 메인 라우터 (374줄)
+│   ├── worker.js                 # 메인 라우터 (424줄)
 │   ├── schema.js                 # JSDoc 타입 정의
 │   ├── config/                   # 상수/설정
 │   ├── handlers/                 # HTTP 핸들러
 │   ├── durable-objects/          # 3개 DO 클래스
-│   │   ├── ChatRoom.js           # WebSocket 채팅 (1080줄)
+│   │   ├── ChatRoom.js           # WebSocket 채팅 (1435줄)
 │   │   ├── ChannelRegistry.js    # 채널 메타데이터
 │   │   ├── DeadDropStore.js      # 비밀 메시지
 │   │   └── chat-room/            # ChatRoom 보조
@@ -158,7 +158,7 @@ wrangler d1 migrations apply anonymous-chat-db
 │   ├── manifest.json             # PWA 매니페스트
 │   ├── _headers                  # 보안 헤더
 │   ├── js/                       # 클라이언트 모듈
-│   │   ├── chat.js               # 메인 (1023줄)
+│   │   ├── chat.js               # 메인 (1147줄)
 │   │   ├── ui.js + ui-*.js       # UI 매니저 + 5 mixin
 │   │   ├── admin.js + admin-*.js # 관리자 + 8 helper
 │   │   ├── api-client.js         # fetch wrapper

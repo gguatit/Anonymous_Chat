@@ -31,7 +31,7 @@ Anonymous Chat 프로젝트에 기여하는 방법입니다.
 
 ### 사전 확인
 
-1. [CHANGELOG.md](./CHANGELOG.md) / [FEATURE_IDEAS.md](./FEATURE_IDEAS.md)에 동일 내용 없음 확인
+1. [CHANGELOG.md](./CHANGELOG.md)에 동일 내용 없음 확인
 2. [docs/](./docs/) 디렉토리에서 관련 문서 확인
 3. 중복 이슈 검색
 
@@ -194,9 +194,14 @@ chore: 의존성 업데이트
 | `client-utils.test.js` | 14 | escapeHtml, isValidUrl, sanitizeUrl, formatFileSize |
 | `constants.test.js` | 10 | 모든 공유 상수 |
 | `helpers.test.js` | 12 | sanitizeInput, arrayBufferToHex, isValidFileUrl |
-| `rate-limiter.test.js` | 10 | rate-limiter 전 기능 |
-| `security.test.js` | 11 | constantTimeCompare, isAllowedOrigin |
-| **합계** | **57** | – |
+| `rate-limiter.test.js` | 9 | rate-limiter 전 기능 |
+| `security.test.js` | 12 | constantTimeCompare, isAllowedOrigin |
+| `security-classifier.test.js` | 9 | XSS/SQL/경로 탐색 패턴 매칭 |
+| `risk-scorer.test.js` | 8 | 시간 가중치 + 카테고리 다양성 위험 점수 |
+| `security-logger.test.js` | 8 | D1 INSERT, dedup, cleanup |
+| `security-routes.test.js` | 23 | Security API 8종 + Middleware + Input Validator |
+| `admin-handlers.test.js` | 7 | handleAdminLogout 인증/토큰 |
+| **합계** | **112** | -- |
 
 ---
 
