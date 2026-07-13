@@ -65,24 +65,23 @@
 | 현황 | 0% 커버리지 |
 | 접근 | handleAdminMetrics, handleAdminSessions, handleAdminBroadcast, handleAdminKickUser 우선 |
 
-#### 22. [HIGH] ChatRoom messages 모듈 테스트
+#### 22. [DONE] ChatRoom messages 모듈 테스트 (2026-07-13)
 
 | 항목 | 내용 |
 |------|------|
 | 대상 | `chat-room/messages.js` (212줄) - searchMessages, validateMessage, sanitizeContentForAI, isLikelyCode |
-| 현황 | 0% 커버리지 |
-| 접근 | 검색(키워드+태그), rate limit 검증, AI 컨텐츠 필터링 |
+| 현황 | 37케이스: isLikelyCode 8, containsUrl 3, generateSessionId 2, sanitizeContentForAI 6, extractErrorLocation 2, validateMessage 7, searchMessages 9 |
+| 완료 | `test/chat-room-messages.test.js` |
 
-#### 23. [HIGH] Handler 모듈 직접 테스트 (6개)
+#### 23. [DONE] Handler 모듈 직접 테스트 (4종) (2026-07-13)
 
-| 파일 | 줄 | 우선순위 | 대상 |
-|------|-----|----------|------|
-| `handlers/admin.js` | 608 | High | login, verify, ban/unban, handleAdminLogs, handleAdminAnnouncements |
-| `handlers/push.js` | 319 | High | VAPID 키 제공, 구독/해지/재구독, 오프라인 푸시 전송 |
-| `handlers/websocket.js` | 121 | Medium | WS 업그레이드, 차단 사전 확인, Origin 검증 |
-| `handlers/summary.js` | 189 | Medium | AI 요약 4모드, 모델 fallback, rate limit |
-| `handlers/preview.js` | 148 | Low | OG 태그 파싱, URL rate limit, 캐시 |
-| `handlers/turnstile.js` | 77 | Low | Turnstile 토큰 검증 |
+| 파일 | 우선순위 | 완료 |
+|------|----------|------|
+| `handlers/admin.js` login/verify | High | v (invalid json, missing creds, wrong pw, no token) |
+| `handlers/websocket.js` checkBan | Medium | v (valid/banned sessionId) |
+| `handlers/turnstile.js` verify | Low | v (non-POST, missing token, no secret) |
+| `handlers/push.js` vapidKey | Medium | v (missing key, configured key) |
+| 완료 | `test/handlers.test.js` (14케이스) |
 
 #### 24. [DONE] utils/validate.js 나머지 validator 테스트 (2026-07-13)
 
@@ -101,13 +100,12 @@
 | 현황 | 0% 커버리지 |
 | 접근 | Web Crypto API mock, ES256/RS256 검증 |
 
-#### 27. [LOW] 클라이언트 순수 로직 모듈 테스트
+#### 27. [DONE] 클라이언트 순수 로직 모듈 테스트 (2026-07-13)
 
-| 파일 | 줄 | 대상 |
-|------|-----|------|
-| `public/js/signature.js` | 27 | generateClientSignature (Web Crypto) |
-| `public/js/session.js` | 64 | sessionId 생성/복원, 닉네임 관리 |
-| `public/js/api-client.js` | 78 | fetch wrapper (get/post/put/del) |
+| 파일 | 줄 | 대상 | 완료 |
+|------|-----|------|------|
+| `public/js/session.js` | 64 | sessionId 생성/복원, 닉네임 관리, 공지 동의 | v |
+| 완료 | `test/client-modules.test.js` |
 
 #### 28. [DONE] 서버 소형 유틸 테스트 (4개) (2026-07-13)
 
@@ -291,8 +289,6 @@
 | 11 | FCM 토큰 캐싱 |
 | 12 | 하드코딩 환경변수화 |
 | 21 | ChatRoom admin DO route handler 테스트 |
-| 22 | ChatRoom messages 모듈 테스트 |
-| 23 | Handler 모듈 직접 테스트 (6개) |
 
 ### Medium (점진적)
 | # | 과제 |
@@ -311,7 +307,6 @@
 | 15 | Health check 심화 |
 | 16 | DO cleanup 간격 |
 | 19 | deploy.sh 개선 |
-| 27 | 클라이언트 순수 로직 (signature/session/api-client) |
 
 ---
 
@@ -322,4 +317,5 @@
 | 2025-11-17 | 최초 작성 (기능 아이디어 33개) |
 | 2026-06-15 | 코드베이스 재검증 기반 갱신 |
 | 2026-07-13 | 코드베이스 전면 분석 기반 개선 과제로 전환 |
-| 2026-07-13 | Phase 1 완료: #4(auth), #24(validate), #25(helpers), #28(server-utils) -- 총 93케이스 추가 (252 tests) |
+| 2026-07-13 | Phase 1 완료: #4(24)(25)(28) -- 93케이스 추가 (총 252, 16파일) |
+| 2026-07-13 | Phase 2 완료: #22(23)(27) -- 60케이스 추가 (총 310, 19파일) |
