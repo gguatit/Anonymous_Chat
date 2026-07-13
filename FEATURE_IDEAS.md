@@ -49,13 +49,13 @@
 | 현황 | `handlers/admin.js` 중 logout만 테스트. 나머지 22개 admin 핸들러 미테스트 |
 | 접근 | Miniflare DurableObject stub + D1/KV 모킹 |
 
-#### 4. [MEDIUM] Auth 미들웨어 직접 테스트
+#### 4. [DONE] Auth 미들웨어 직접 테스트 (2026-07-13)
 
 | 항목 | 내용 |
 |------|------|
 | 대상 | `middleware/auth.js` (132줄) - HMAC 토큰 생성/검증/폐기 |
-| 현황 | admin-handlers.test.js의 logout 테스트에서 간접 검증만 수행 |
-| 접근 | `generateAdminToken`, `verifyAdminToken`, `revokeToken` 각각 단위 테스트 |
+| 현황 | 20케이스: generateAdminToken 3, verifyAdminToken 7, revokeToken 2, checkRateLimit 4, incrementRateLimit 4 |
+| 완료 | `test/auth.test.js` |
 
 #### 21. [HIGH] ChatRoom admin DO route handler 테스트
 
@@ -84,15 +84,16 @@
 | `handlers/preview.js` | 148 | Low | OG 태그 파싱, URL rate limit, 캐시 |
 | `handlers/turnstile.js` | 77 | Low | Turnstile 토큰 검증 |
 
-#### 24. [MEDIUM] utils/validate.js 나머지 validator 테스트
+#### 24. [DONE] utils/validate.js 나머지 validator 테스트 (2026-07-13)
 
-| 현황 | 전테스트 (edit, delete, typing, ping, channel, nickname, file, session, deadDrop 8종) |
-| 접근 | 각 validator의 valid/invalid 케이스, 경계값 |
+| 현황 | 44케이스: message 6, reaction 4, edit 4, delete 2, typing 2, ping 1, fileInfo 7, channelName 5, nickname 4, deadDrop 4, sessionId 5 |
+| 완료 | `test/validate-extra.test.js` |
 
-#### 25. [MEDIUM] utils/helpers.js HMAC/safeJson 테스트
+#### 25. [DONE] utils/helpers.js HMAC/safeJson 테스트 (2026-07-13)
 
-| 대상 | `generateMessageSignature`, `verifyMessageSignature`, `safeJson`, `isValidFileUrl` |
-| 현황 | sanitizeInput만 테스트됨 |
+| 대상 | `generateMessageSignature`, `verifyMessageSignature`, `safeJson` |
+| 현황 | 8케이스 추가 (기존 12 -> 총 20). HMAC 생성/검증/변조/비밀키 불일치 5, safeJson 2, isValidFileUrl 보강 1 |
+| 완료 | `test/helpers.test.js` 확장 |
 
 #### 26. [MEDIUM] utils/fcm-auth.js + web-push.js 테스트
 
@@ -108,14 +109,15 @@
 | `public/js/session.js` | 64 | sessionId 생성/복원, 닉네임 관리 |
 | `public/js/api-client.js` | 78 | fetch wrapper (get/post/put/del) |
 
-#### 28. [LOW] 서버 소형 유틸 테스트 (4개)
+#### 28. [DONE] 서버 소형 유틸 테스트 (4개) (2026-07-13)
 
-| 파일 | 줄 | 대상 |
-|------|-----|------|
-| `utils/errors.js` | 27 | jsonError/jsonSuccess/textError/emptyResponse |
-| `utils/do.js` | 47 | getChatRoom, forwardToDO |
-| `config/cors.js` | 20 | getCorsHeaders, handleCorsPreflightResponse |
-| `handlers/health.js` | 17 | /health, /metrics |
+| 파일 | 줄 | 대상 | 완료 |
+|------|-----|------|------|
+| `utils/errors.js` | 27 | jsonError/jsonSuccess/textError/emptyResponse/extractErrorMessage | v |
+| `utils/do.js` | 47 | getChatRoom, forwardToDO | v |
+| `config/cors.js` | 20 | getCorsHeaders, handleCorsPreflightResponse | v |
+| `handlers/health.js` | 17 | /health, /metrics | v |
+| 완료 | `test/server-utils.test.js` (21케이스) |
 
 ---
 
@@ -295,14 +297,11 @@
 ### Medium (점진적)
 | # | 과제 |
 |---|------|
-| 4 | Auth 미들웨어 직접 테스트 |
 | 8 | Rate Limiter 문서화 |
 | 13 | 관리자 토큰 비밀번호 분리 |
 | 14 | CSRF 보호 강화 |
 | 17 | vitest coverage 임계치 |
 | 18 | D1 schema 정리 |
-| 24 | validate.js 나머지 validator |
-| 25 | helpers.js HMAC/safeJson |
 | 26 | fcm-auth.js + web-push.js |
 
 ### Low (여유 시)
@@ -313,7 +312,6 @@
 | 16 | DO cleanup 간격 |
 | 19 | deploy.sh 개선 |
 | 27 | 클라이언트 순수 로직 (signature/session/api-client) |
-| 28 | 서버 소형 유틸 (errors/do/cors/health) |
 
 ---
 
@@ -324,5 +322,4 @@
 | 2025-11-17 | 최초 작성 (기능 아이디어 33개) |
 | 2026-06-15 | 코드베이스 재검증 기반 갱신 |
 | 2026-07-13 | 코드베이스 전면 분석 기반 개선 과제로 전환 |
-| 2026-07-13 | #1(DO 테스트), #9(Pretter/ESLint), #20(문서 정합성) 완료 |
-| 2026-07-13 | #2(E2E) 제외, #21~28 테스트 커버리지 항목 8개 추가 (총 28개) |
+| 2026-07-13 | Phase 1 완료: #4(auth), #24(validate), #25(helpers), #28(server-utils) -- 총 93케이스 추가 (252 tests) |

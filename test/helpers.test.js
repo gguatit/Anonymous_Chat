@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
-import { sanitizeInput, arrayBufferToHex, isValidFileUrl } from '../src/utils/helpers.js';
+import { sanitizeInput, arrayBufferToHex, isValidFileUrl, generateMessageSignature, verifyMessageSignature, safeJson } from '../src/utils/helpers.js';
 
 describe('sanitizeInput', () => {
     it('should return empty for non-string input', () => {
@@ -70,5 +70,73 @@ describe('isValidFileUrl', () => {
 
     it('should match origin prefix for allowed origins', () => {
         expect(isValidFileUrl('https://cdn.example.com/path/file.jpg', ['https://cdn.example.com'])).toBe(true);
+    });
+
+    it('should allow /api/file/ prefix regardless of protocol', () => {
+        expect(isValidFileUrl('/api/file/abc123')).toBe(true);
+        expect(isValidFileUrl('/api/file/xyz789?token=a')).toBe(true);
+    });
+});
+
+describe('generateMessageSignature and verifyMessageSignature', () => {
+    it('generates a hex signature', async () => {
+        const sig = await generateMessageSignature(
+            { content: 'hello', sessionId: 's1', timestamp: 1000 },
+            'test-secret'
+        );
+        expect(typeof sig).toBe('string');
+        expect(sig.length).toBe(64);
+        expect(/^[0-9a-f]+$/.test(sig)).toBe(true);
+    });
+
+    it('verifies a valid signature', async () => {
+        const msg = { content: 'hello', sessionId: 's1', timestamp: 1000 };
+        const sig = await generateMessageSignature(msg, 'secret');
+        const valid = await verifyMessageSignature(msg, sig, 'secret');
+        expect(valid).toBe(true);
+    });
+
+    it('rejects a signature with wrong secret', async () => {
+        const msg = { content: 'hello', sessionId: 's1', timestamp: 1000 };
+        const sig = await generateMessageSignature(msg, 'secret-a');
+        const valid = await verifyMessageSignature(msg, sig, 'secret-b');
+        expect(valid).toBe(false);
+    });
+
+    it('rejects a tampered message', async () => {
+        const msg = { content: 'hello', sessionId: 's1', timestamp: 1000 };
+        const sig = await generateMessageSignature(msg, 'secret');
+        const tampered = { content: 'hacked', sessionId: 's1', timestamp: 1000 };
+        const valid = await verifyMessageSignature(tampered, sig, 'secret');
+        expect(valid).toBe(false);
+    });
+
+    it('rejects a signature with tampered content', async () => {
+        const msg1 = { content: 'msg1', sessionId: 's1', timestamp: 1000 };
+        const sig = await generateMessageSignature(msg1, 'secret');
+        const msg2 = { content: 'msg2', sessionId: 's1', timestamp: 1000 };
+        const valid = await verifyMessageSignature(msg2, sig, 'secret');
+        expect(valid).toBe(false);
+    });
+});
+
+describe('safeJson', () => {
+    it('parses valid JSON request body', async () => {
+        const req = new Request('https://example.com', {
+            method: 'POST',
+            body: JSON.stringify({ key: 'value' }),
+            headers: { 'Content-Type': 'application/json', 'Content-Length': '20' }
+        });
+        const data = await safeJson(req);
+        expect(data.key).toBe('value');
+    });
+
+    it('throws for oversized body', async () => {
+        const req = new Request('https://example.com', {
+            method: 'POST',
+            body: '{}',
+            headers: { 'Content-Length': String(200 * 1024 * 1024) }
+        });
+        await expect(safeJson(req)).rejects.toThrow('Request body too large');
     });
 });
