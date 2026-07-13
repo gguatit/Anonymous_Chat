@@ -102,13 +102,14 @@
 | 현황 | `rate-limiter.js`는 Isolate 단위로만 상태 공유. Workers 요청 분산 시 제한 약화 |
 | 방향 | 코드 주석 + SECURITY.md에 한계 명시. Durable Object 기반 Rate Limiter로 전환 검토 |
 
-#### 9. [MEDIUM] Prettier/ESLint 들여쓰기 불일치
+#### 9. [DONE] Prettier/ESLint 들여쓰기 불일치 (2026-07-13)
 
 | 항목 | 내용 |
 |------|------|
 | `.prettierrc` | `tabWidth: 2` |
 | `docs/DEVELOPMENT.md` | "들여쓰기: 4 spaces" |
 | 방향 | `.prettierrc` 기준으로 `DEVELOPMENT.md` 수정 (실제 코드베이스가 따르는 포맷터 우선) |
+| 완료 | `DEVELOPMENT.md` 5.1절 "들여쓰기: 4 spaces" -> "2 spaces (Prettier)" |
 
 #### 10. [LOW] OG Preview 파서 강화
 
@@ -197,30 +198,30 @@
 
 ### Group 5: 문서 정합성
 
-#### 20. [LOW] 문서 줄 수 정기 검증
+#### 20. [DONE] 문서 줄 수 정기 검증 (2026-07-13)
 
-| 문서 | 잘못된 값 | 실제 값 |
-|------|----------|---------|
-| README.md | worker.js 374줄 | 424줄 |
-| README.md | ChatRoom.js 1080줄 | 1435줄 |
-| README.md | chat.js 1023줄 | 1147줄 |
-| ARCHITECTURE.md | worker.js 374줄 | 424줄 |
-| ARCHITECTURE.md | ChatRoom.js 1080줄 | 1435줄 |
-| ARCHITECTURE.md | chat-room/admin.js 808줄 | 1075줄 |
-| ARCHITECTURE.md | chat-room/messages.js 184줄 | 212줄 |
-| ARCHITECTURE.md | handlers/admin.js 458줄 | 608줄 |
-| ARCHITECTURE.md | handlers/websocket.js 112줄 | 121줄 |
-| ARCHITECTURE.md | handlers/push.js 270줄 | 319줄 |
-| ARCHITECTURE.md | handlers/summary.js 159줄 | 189줄 |
-| ARCHITECTURE.md | handlers/preview.js 126줄 | 148줄 |
-| ARCHITECTURE.md | handlers/turnstile.js 67줄 | 77줄 |
-| ARCHITECTURE.md | DeadDropStore.js 127줄 | 144줄 |
-| ARCHITECTURE.md | ChannelRegistry.js 261줄 | 337줄 |
-| DEVELOPMENT.md | 마이그레이션 2개 | 3개 |
-| DEVELOPMENT.md | 들여쓰기 4 spaces | 2 spaces (Prettier) |
-| DEVELOPMENT.md | build.js 참조 | esbuild.config.js |
-| CONTRIBUTING.md | 테스트 57 cases | 111 cases |
-| SECURITY.md | 알려진 제약 1개 | 4개 |
+| 문서 | 잘못된 값 | 실제 값 | 수정 |
+|------|----------|---------|------|
+| README.md | worker.js 374줄 | 424줄 | v |
+| README.md | ChatRoom.js 1080줄 | 1435줄 | v |
+| README.md | chat.js 1023줄 | 1147줄 | v |
+| ARCHITECTURE.md | worker.js 374줄 | 424줄 | v |
+| ARCHITECTURE.md | ChatRoom.js 1080줄 | 1435줄 | v |
+| ARCHITECTURE.md | chat-room/admin.js 808줄 | 1075줄 | v |
+| ARCHITECTURE.md | chat-room/messages.js 184줄 | 212줄 | v |
+| ARCHITECTURE.md | handlers/admin.js 458줄 | 608줄 | v |
+| ARCHITECTURE.md | handlers/websocket.js 112줄 | 121줄 | v |
+| ARCHITECTURE.md | handlers/push.js 270줄 | 319줄 | v |
+| ARCHITECTURE.md | handlers/summary.js 159줄 | 189줄 | v |
+| ARCHITECTURE.md | handlers/preview.js 126줄 | 148줄 | v |
+| ARCHITECTURE.md | handlers/turnstile.js 67줄 | 77줄 | v |
+| ARCHITECTURE.md | DeadDropStore.js 127줄 | 144줄 | v |
+| ARCHITECTURE.md | ChannelRegistry.js 261줄 | 337줄 | v |
+| DEVELOPMENT.md | 마이그레이션 2개 | 3개 | v |
+| DEVELOPMENT.md | 들여쓰기 4 spaces | 2 spaces (Prettier) | v |
+| DEVELOPMENT.md | build.js 참조 | esbuild.config.js | v |
+| CONTRIBUTING.md | 테스트 57 cases | 112 cases | v |
+| SECURITY.md | 알려진 제약 1개 | 4개 | v |
 
 ---
 
@@ -247,7 +248,6 @@
 |---|------|
 | 4 | Auth 미들웨어 직접 테스트 |
 | 8 | Rate Limiter 문서화 |
-| 9 | Prettier/ESLint 불일치 |
 | 13 | 관리자 토큰 비밀번호 분리 |
 | 14 | CSRF 보호 강화 |
 | 17 | vitest coverage 임계치 |
@@ -259,7 +259,6 @@
 | 15 | Health check 심화 |
 | 16 | DO cleanup 간격 |
 | 19 | deploy.sh 개선 |
-| 20 | 문서 줄 수 검증 |
 | 10 | OG Preview 파서 강화 |
 
 ---
