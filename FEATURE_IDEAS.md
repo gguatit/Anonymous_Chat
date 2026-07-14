@@ -121,13 +121,14 @@
 
 ### Group 2: 코드 품질
 
-#### 5. [HIGH] 데드 코드 제거
+#### 5. [DONE] 데드 코드 제거 (2026-07-14)
 
-| 위치 | 내용 |
-|------|------|
-| `src/middleware/security-middleware.js` (46줄) | 전체 미사용. 어떤 파일에서도 import하지 않음 |
-| `src/middleware/input-validator.js` 일부 | `validateRequestInput` 함수 미호출. ChatRoom의 WS 경로만 `classifyContent` 간접 사용 |
-| `public/css/themes.css` | `ocean`, `forest` 테마 CSS 정의되어 있으나 `theme.js`에 등록 안 됨 (UI에서 선택 불가) |
+| 위치 | 내용 | 처리 |
+|------|------|------|
+| `src/middleware/security-middleware.js` (46줄) | 전체 미사용. 어떤 파일에서도 import하지 않음 | 파일 삭제 |
+| `src/middleware/input-validator.js` (73줄) | `validateRequestInput`/`validateWSMessage` 둘 다 `src/` 내부에서 미호출 (테스트에서만 참조) | 파일 삭제 |
+| `test/security-routes.test.js` | 위 두 모듈 대상 테스트 블록 | 제거 (Security Routes 핸들러 테스트 23건 유지) |
+| `public/css/themes.css` | `ocean`, `forest` 테마 CSS 정의되어 있으나 `theme.js`에 등록 안 됨 (UI에서 선택 불가) | `theme.js` THEMES/META_COLORS 및 `index.html` 버튼 추가로 활성화 |
 
 #### 6. [HIGH] 관리자 대시보드 단일화
 
@@ -147,12 +148,13 @@
 | | admin 도 kick/announcement/message-management로 추가 분할 |
 | 참고 | 2026-06-09에 `ChatRoom.js` 2446줄에서 1024줄로 1차 분할 완료. 추가 분할 필요 |
 
-#### 8. [MEDIUM] In-memory Rate Limiter 문서화
+#### 8. [DONE] In-memory Rate Limiter 문서화 (2026-07-14)
 
 | 항목 | 내용 |
 |------|------|
 | 현황 | `rate-limiter.js`는 Isolate 단위로만 상태 공유. Workers 요청 분산 시 제한 약화 |
-| 방향 | 코드 주석 + SECURITY.md에 한계 명시. Durable Object 기반 Rate Limiter로 전환 검토 |
+| 완료 | `rate-limiter.js`에 JSDoc 한계 설명 추가, `SECURITY.md` 4.1절에 ⚠️ 한계 명시 |
+| 미착수 | Durable Object 기반 Rate Limiter로 전환은 별도 과제로 남김 (전역 강제 필요 시) |
 
 #### 9. [DONE] Prettier/ESLint 들여쓰기 불일치 (2026-07-13)
 
@@ -204,13 +206,13 @@
 | `push.js:239` | KV list 작업에 try/catch 없음 | 래핑 후 early return |
 | `admin.js:222-228` | D1 에러 무음 처리 (로그만 찍고 클라이언트에 미전파) | 에러 상태 반환 또는 응답에 포함 |
 
-#### 33. [MEDIUM] Magic Number 문서화
+#### 33. [DONE] Magic Number 문서화 (2026-07-14)
 
-| 상수 | 위치 | 현황 |
+| 상수 | 위치 | 완료 |
 |------|------|------|
-| `MESSAGE_COOLDOWN: 1000` | constants.js:5 | 주석 없음 - 왜 1초? |
-| `MAX_MESSAGE_LENGTH: 7500` | constants.js:10 | 주석 없음 - 왜 7500자? |
-| `/^[a-f0-9-]{32,36}$/` | worker.js:282 | File ID 검증 regex - 상수화 필요 |
+| `MESSAGE_COOLDOWN: 1000` | constants.js | 주석 추가 (스팸 방지 vs 정상 타이핑 속도 근거) |
+| `MAX_MESSAGE_LENGTH: 7500` | constants.js | 주석 추가 (코드/로그 붙여넣기 허용 vs payload 상한 근거) |
+| `/^[a-f0-9-]{32,36}$/` | worker.js | `UPLOAD.FILE_ID_PATTERN`로 상수화 + UUID 형식 설명 주석 |
 
 ---
 
@@ -281,12 +283,12 @@
 | 현황 | 002 마이그레이션에서 `admin_activity_logs`로 대체됨. `admin_logs`는 orphaned |
 | 방향 | 004 마이그레이션으로 `admin_logs` DROP 또는 migration 정리 문서화 |
 
-#### 19. [LOW] deploy.sh 개선
+#### 19. [DONE] deploy.sh 개선 (2026-07-14)
 
 | 항목 | 내용 |
 |------|------|
 | 현황 | `deploy.sh`는 dry-run만 수행. 실제 배포는 Pages Git integration에 의존 |
-| 방향 | 파일명을 `pre-deploy-check.sh`로 변경하거나, 실제 배포 로직 추가 |
+| 완료 | `pre-deploy-check.sh`로 파일명 변경, 헤더 주석/echo 문구를 실제 동작(검증 전용)에 맞게 수정 |
 
 ---
 
@@ -329,7 +331,6 @@
 ### High (다음 릴리스)
 | # | 과제 |
 |---|------|
-| 5 | 데드 코드 제거 |
 | 6 | 관리자 대시보드 단일화 |
 | 7 | ChatRoom 모듈 추가 분할 |
 | 11 | FCM 토큰 캐싱 |
@@ -340,13 +341,11 @@
 ### Medium (점진적)
 | # | 과제 |
 |---|------|
-| 8 | Rate Limiter 문서화 |
 | 13 | 관리자 토큰 비밀번호 분리 |
 | 14 | CSRF 보호 강화 |
 | 17 | vitest coverage 임계치 |
 | 18 | D1 schema 정리 |
 | 32 | 에러 처리 강화 |
-| 33 | Magic Number 문서화 |
 
 ### Low (여유 시)
 | # | 과제 |
@@ -354,7 +353,14 @@
 | 10 | OG Preview 파서 강화 |
 | 15 | Health check 심화 |
 | 16 | DO cleanup 간격 |
-| 19 | deploy.sh 개선 |
+
+### 완료 (Phase 0, 2026-07-14)
+| # | 과제 |
+|---|------|
+| 5 | 데드 코드 제거 (security-middleware.js, input-validator.js 삭제, ocean/forest 테마 UI 활성화) |
+| 8 | Rate Limiter 문서화 (JSDoc + SECURITY.md 한계 명시) |
+| 19 | deploy.sh 개선 (pre-deploy-check.sh로 이름/설명 정정) |
+| 33 | Magic Number 문서화 (MESSAGE_COOLDOWN, MAX_MESSAGE_LENGTH 주석, FILE_ID_PATTERN 상수화) |
 
 ---
 
@@ -369,3 +375,4 @@
 | 2026-07-13 | Phase 2: #22(23)(27) 58케이스 (총 310, 19파일) |
 | 2026-07-13 | Phase 3: #3(21)(26) 22케이스 (총 332, 22파일). 테스트 완료 |
 | 2026-07-14 | 코드 품질 재분석: #29(console 93개), #30(중복), #31(긴 함수), #32(에러), #33(magic number) 추가 |
+| 2026-07-14 | Phase 0 완료: #5(데드 코드 2파일 삭제+ocean/forest 테마 활성화), #8(rate limiter 문서화), #19(deploy.sh→pre-deploy-check.sh), #33(magic number 주석+상수화). 테스트 320개 통과 |

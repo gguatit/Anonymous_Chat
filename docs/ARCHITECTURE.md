@@ -176,8 +176,6 @@ Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드,
 | 파일 | 책임 |
 |---|---|
 | `middleware/auth.js` | HMAC 토큰 발급/검증, Rate limit |
-| `middleware/input-validator.js` | 요청/WS 입력 패턴 검증 (XSS/SQL/경로 탐색) |
-| `middleware/security-middleware.js` | 보안 컨텍스트 생성 및 이벤트 로깅 헬퍼 |
 | `utils/do.js` | DO 라우팅 (`getChatRoom`, `getChannelRoom`, `forwardToDO`) |
 | `utils/validate.js` | 메시지/채널/닉네임/세션/Dead Drop 검증 |
 | `utils/errors.js` | `jsonError`, `jsonSuccess`, `textError`, `emptyResponse` |

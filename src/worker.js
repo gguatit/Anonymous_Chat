@@ -279,7 +279,7 @@ export default {
                     return jsonError('Rate limit exceeded', 429, origin);
                 }
                 const fileId = url.pathname.slice('/api/file/'.length);
-                if (!fileId || !/^[a-f0-9-]{32,36}$/.test(fileId)) {
+                if (!fileId || !UPLOAD.FILE_ID_PATTERN.test(fileId)) {
                     return jsonError('Invalid file ID', 400, origin);
                 }
                 const apiKey = env.FILE_API_KEY;

@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listEvents, getStats, getRiskIPs, getEvent, clearEvents, exportCSV, getBadge, blockRecommendedIP } from '../src/handlers/security.js';
-import { createSecurityContext, logAuthFailure, logEndpointEvent, logWSEvent } from '../src/middleware/security-middleware.js';
-import { validateRequestInput, validateWSMessage } from '../src/middleware/input-validator.js';
+import { listEvents, getStats, getRiskIPs, getEvent, clearEvents, exportCSV, getBadge } from '../src/handlers/security.js';
 
 function mockEnv() {
     const db = {
@@ -167,119 +165,6 @@ describe('Security Routes', () => {
             expect(body.high).toBe(5);
             expect(body.medium).toBe(3);
             expect(body.critical).toBe(2);
-        });
-    });
-});
-
-describe('Security Middleware', () => {
-    let env;
-    beforeEach(() => {
-        env = mockEnv();
-    });
-
-    describe('createSecurityContext', () => {
-        it('extracts IP, path, method from request', () => {
-            const req = new Request('https://example.com/api/test', {
-                headers: {
-                    'CF-Connecting-IP': '10.0.0.1',
-                    'User-Agent': 'TestBot/1.0',
-                    'CF-IPCountry': 'US',
-                }
-            });
-            const ctx = createSecurityContext(req);
-            expect(ctx.ip).toBe('10.0.0.1');
-            expect(ctx.path).toBe('/api/test');
-            expect(ctx.method).toBe('GET');
-            expect(ctx.userAgent).toBe('TestBot/1.0');
-            expect(ctx.country).toBe('US');
-        });
-
-        it('falls back to unknown for missing IP', () => {
-            const req = new Request('https://example.com/api/test');
-            const ctx = createSecurityContext(req);
-            expect(ctx.ip).toBe('unknown');
-        });
-    });
-
-    describe('logAuthFailure', () => {
-        it('does not throw without DB_ADMIN', async () => {
-            await expect(
-                logAuthFailure({}, { ip: '1.2.3.4', path: '/test', method: 'POST' }, 'LOGIN_FAIL', 'test')
-            ).resolves.toBeUndefined();
-        });
-    });
-
-    describe('logEndpointEvent', () => {
-        it('does not throw without DB_ADMIN', async () => {
-            await expect(
-                logEndpointEvent({}, { ip: '1.2.3.4', path: '/scan', method: 'GET' }, 'ENDPOINT_SCAN', 'probe')
-            ).resolves.toBeUndefined();
-        });
-    });
-
-    describe('logWSEvent', () => {
-        it('does not throw without DB_ADMIN', async () => {
-            await expect(
-                logWSEvent({}, 'WS_FLOOD', '1.2.3.4', 'rate limit', 'session-123')
-            ).resolves.toBeUndefined();
-        });
-    });
-});
-
-describe('Input Validator', () => {
-    let env;
-    beforeEach(() => {
-        env = mockEnv();
-    });
-
-    describe('validateRequestInput', () => {
-        it('passes clean input without logging', async () => {
-            const url = new URL('https://example.com/api/chat');
-            await expect(
-                validateRequestInput(env, url, 'hello world', '1.2.3.4', 'GET', 'Mozilla/5.0')
-            ).resolves.toBeUndefined();
-        });
-
-        it('detects and logs XSS in query params', async () => {
-            const url = new URL('https://example.com/api/chat?msg=<img+src=x+onerror=alert(1)>');
-            await expect(
-                validateRequestInput(env, url, null, '1.2.3.4', 'GET', 'Mozilla/5.0')
-            ).resolves.toBeUndefined();
-        });
-
-        it('detects path traversal in URL', async () => {
-            const url = new URL('https://example.com/../../etc/passwd');
-            await expect(
-                validateRequestInput(env, url, null, '1.2.3.4', 'GET', 'Mozilla/5.0')
-            ).resolves.toBeUndefined();
-        });
-
-        it('skips logging without DB_ADMIN', async () => {
-            const emptyEnv = {};
-            const url = new URL('https://example.com/api/chat?msg=<script>');
-            await expect(
-                validateRequestInput(emptyEnv, url, null, '1.2.3.4', 'GET', 'Mozilla/5.0')
-            ).resolves.toBeUndefined();
-        });
-    });
-
-    describe('validateWSMessage', () => {
-        it('passes clean message', async () => {
-            await expect(
-                validateWSMessage(env, 'hello world', '1.2.3.4', 'session-1')
-            ).resolves.toBeUndefined();
-        });
-
-        it('detects XSS in message', async () => {
-            await expect(
-                validateWSMessage(env, '<script>alert(1)</script>', '1.2.3.4', 'session-1')
-            ).resolves.toBeUndefined();
-        });
-
-        it('skips null message', async () => {
-            await expect(
-                validateWSMessage(env, null, '1.2.3.4', 'session-1')
-            ).resolves.toBeUndefined();
         });
     });
 });

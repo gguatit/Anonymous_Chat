@@ -1,10 +1,13 @@
 #!/bin/bash
 
-# Deploy script for Cloudflare Workers and Pages
+# Pre-deploy validation for Anonymous Chat (Cloudflare Workers + Pages).
+# This script does NOT deploy anything. It only validates wrangler auth and
+# worker syntax (via `wrangler deploy --dry-run`), then prints deployment
+# instructions. Actual deployment happens via Cloudflare Pages Git integration.
 
 set -e
 
-echo "🚀 Anonymous Chat Deployment Script"
+echo "🔍 Anonymous Chat Pre-Deploy Check"
 echo "===================================="
 
 # Check if wrangler is installed

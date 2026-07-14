@@ -4,6 +4,11 @@ import { CLEANUP_INTERVAL_MS } from '../config/constants.js';
  * Creates a rate limiter with automatic stale entry cleanup.
  * Replaces the inline checkRateLimit in worker.js with a managed instance.
  *
+ * LIMITATION: state is held in-memory per Worker isolate. Cloudflare may run
+ * multiple isolates for the same Worker across colos/concurrent requests, so
+ * this limiter caps abuse per-isolate, not globally. It reduces load but is
+ * not a hard guarantee. For a global limit, move state to a Durable Object.
+ *
  * @param {number} [cleanupIntervalMs] - How often to purge expired entries (default: CLEANUP_INTERVAL_MS)
  * @returns {{ checkRateLimit: Function, cleanup: Function, destroy: Function }}
  */

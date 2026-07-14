@@ -2,11 +2,13 @@
 export const RATE_LIMIT = {
     MAX_MESSAGES_PER_MINUTE: 30,
     MAX_CONNECTIONS_PER_IP: 25,
-    MESSAGE_COOLDOWN: 1000, // 1 second between messages
+    // 1s cooldown: fast enough for normal typing, slow enough to block spam/flood scripts.
+    MESSAGE_COOLDOWN: 1000,
 };
 
 // Security configuration
 export const SECURITY = {
+    // 7500 chars: generous for pasted code/logs while capping storage/broadcast payload size.
     MAX_MESSAGE_LENGTH: 7500,
     ALLOWED_ORIGINS: [
         'https://kalpha.mmv.kr',
@@ -89,6 +91,8 @@ export const UPLOAD = {
     MAX_FILENAME_LENGTH: 255,
     MAX_FILETYPE_LENGTH: 100,
     RATE_LIMIT: { windowMs: 60000, max: 10 },
+    // File IDs are UUIDs (with or without dashes): 32 hex chars, or 36 with dashes.
+    FILE_ID_PATTERN: /^[a-f0-9-]{32,36}$/,
 };
 
 // Dead drop constants

@@ -165,6 +165,9 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 - ✅ **전역** (`src/utils/rate-limiter.js`)
   - 인메모리, 5분 cleanup, per-worker 인스턴스
   - Stale entry 자동 제거
+  - ⚠️ **한계**: 상태가 Worker 아이소레이트 단위로만 유지됨. Cloudflare가 동일 Worker에
+    대해 여러 아이소레이트를 동시 실행하면 제한이 아이소레이트별로 나뉘어 실제 한도보다
+    느슨해질 수 있음. 전역 강제가 필요하면 Durable Object 기반으로 전환 검토 (FEATURE_IDEAS.md #8)
 - ✅ **엔드포인트별** (`API_RATE_LIMIT` 상수)
   - config, push, turnstile, upload, health, check-ban, logs/error
 - ✅ **사용자별 (메시지)** (ChatRoom DO)
