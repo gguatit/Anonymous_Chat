@@ -170,6 +170,48 @@
 | 현황 | `handlers/preview.js`가 정규식으로 OG 태그 파싱. 작은따옴표 속성, 멀티라인 meta 태그 누락 가능 |
 | 방향 | `HTMLRewriter` API로 전환하여 구조적 파싱 |
 
+#### 29. [CRITICAL] Console 로그 제거
+
+| 항목 | 내용 |
+|------|------|
+| 현황 | 프로덕션 코드에 93개 console.log/warn/error 남아있음 |
+| 분포 | ChatRoom.js 48개, summary.js 8개 (AI 내부 노출), push.js 12개, 기타 25개 |
+| 위험 | 내부 처리 과정 노출, 성능 저하, 로그 스팸 |
+| 방향 | 중앙화된 로깅 유틸리티 생성 후 전부 교체. ChatRoom은 기존 `addErrorLog` 활용 |
+
+#### 30. [HIGH] 코드 중복 제거
+
+| 패턴 | 반복 | 위치 |
+|------|------|------|
+| Response forwarding | 15회 | `admin.js` - 이미 있는 `forwardResponse` 헬퍼 일관되게 사용 |
+| Ban 체크 로직 | 4회 | `ChatRoom.js` 292-309, 331, 535, 553 - `checkAndCleanBan(banMap, key, storageKey)` 추출 |
+| 서명 검증 | 2회 | `ChatRoom.js` handleMessage (712-735) vs handleEdit (892-909) - `verifySessionSignature()` 추출 |
+
+#### 31. [HIGH] 긴 함수 리팩토링
+
+| 함수 | 줄 수 | 파일 | 분해 방향 |
+|------|-------|------|----------|
+| `fetch()` | 200 | ChatRoom.js | route별 handler 메서드 추출 (handleDestroy, handleAdminRoute, handleSearch) |
+| `handleMessage()` | 197 | ChatRoom.js | validateMessageRequest, processMessageFiles, storeAndBroadcastMessage 분리 |
+| `handleJoin()` | 156 | ChatRoom.js | checkBanStatus, initializeSession, sendInitialData 분리 |
+| `cleanup()` | 135 | ChatRoom.js | cleanupBans, cleanupSessions, cleanupMessages, checkAnnouncementExpiry 분리 |
+| `handleAdminLogin()` | 132 | admin.js | rate limit, 인증, 로깅 로직 분리 |
+
+#### 32. [MEDIUM] 에러 처리 강화
+
+| 위치 | 문제 | 해결 |
+|------|------|------|
+| `push.js:239` | KV list 작업에 try/catch 없음 | 래핑 후 early return |
+| `admin.js:222-228` | D1 에러 무음 처리 (로그만 찍고 클라이언트에 미전파) | 에러 상태 반환 또는 응답에 포함 |
+
+#### 33. [MEDIUM] Magic Number 문서화
+
+| 상수 | 위치 | 현황 |
+|------|------|------|
+| `MESSAGE_COOLDOWN: 1000` | constants.js:5 | 주석 없음 - 왜 1초? |
+| `MAX_MESSAGE_LENGTH: 7500` | constants.js:10 | 주석 없음 - 왜 7500자? |
+| `/^[a-f0-9-]{32,36}$/` | worker.js:282 | File ID 검증 regex - 상수화 필요 |
+
 ---
 
 ### Group 3: 보안 강화
@@ -279,6 +321,11 @@
 
 ## 우선순위 요약
 
+### Critical (즉시)
+| # | 과제 |
+|---|------|
+| 29 | Console 로그 93개 제거 |
+
 ### High (다음 릴리스)
 | # | 과제 |
 |---|------|
@@ -287,6 +334,8 @@
 | 7 | ChatRoom 모듈 추가 분할 |
 | 11 | FCM 토큰 캐싱 |
 | 12 | 하드코딩 환경변수화 |
+| 30 | 코드 중복 제거 (15+4+2회) |
+| 31 | 긴 함수 리팩토링 (5개) |
 
 ### Medium (점진적)
 | # | 과제 |
@@ -296,6 +345,8 @@
 | 14 | CSRF 보호 강화 |
 | 17 | vitest coverage 임계치 |
 | 18 | D1 schema 정리 |
+| 32 | 에러 처리 강화 |
+| 33 | Magic Number 문서화 |
 
 ### Low (여유 시)
 | # | 과제 |
@@ -317,3 +368,4 @@
 | 2026-07-13 | Phase 1: #4(24)(25)(28) 93케이스 (총 252, 16파일) |
 | 2026-07-13 | Phase 2: #22(23)(27) 58케이스 (총 310, 19파일) |
 | 2026-07-13 | Phase 3: #3(21)(26) 22케이스 (총 332, 22파일). 테스트 완료 |
+| 2026-07-14 | 코드 품질 재분석: #29(console 93개), #30(중복), #31(긴 함수), #32(에러), #33(magic number) 추가 |
