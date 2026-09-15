@@ -79,6 +79,23 @@ describe('logger', () => {
             const db = { prepare: vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn(async () => { throw new Error('x'); }) })) })) };
             await expect(logAuditLog(db, 'A')).resolves.toBeUndefined();
         });
+
+        it('runs probabilistic cleanup with a numeric cutoff', async () => {
+            vi.spyOn(Math, 'random').mockReturnValue(0);
+            const { db, prepare, bind } = makeDb();
+            await logAuditLog(db, 'ACTION');
+            expect(prepare).toHaveBeenCalledTimes(2);
+            expect(prepare.mock.calls[1][0]).toContain('DELETE FROM audit_logs');
+            const cutoff = bind.mock.calls.at(-1)[0];
+            expect(typeof cutoff).toBe('number');
+        });
+
+        it('skips cleanup when random is high', async () => {
+            vi.spyOn(Math, 'random').mockReturnValue(1);
+            const { db, prepare } = makeDb();
+            await logAuditLog(db, 'ACTION');
+            expect(prepare).toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('logErrorLog', () => {
@@ -115,6 +132,16 @@ describe('logger', () => {
         it('swallows insert errors', async () => {
             const db = { prepare: vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn(async () => { throw new Error('x'); }) })) })) };
             await expect(logErrorLog(db, 'E', 'm')).resolves.toBeUndefined();
+        });
+
+        it('runs probabilistic cleanup with an ISO string cutoff', async () => {
+            vi.spyOn(Math, 'random').mockReturnValue(0);
+            const { db, prepare, bind } = makeDb();
+            await logErrorLog(db, 'Error', 'm');
+            expect(prepare).toHaveBeenCalledTimes(2);
+            expect(prepare.mock.calls[1][0]).toContain('DELETE FROM error_logs');
+            const cutoff = bind.mock.calls.at(-1)[0];
+            expect(cutoff).toMatch(/^\d{4}-\d{2}-\d{2}T/);
         });
     });
 });

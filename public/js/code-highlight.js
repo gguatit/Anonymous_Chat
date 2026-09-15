@@ -1,5 +1,4 @@
-// Code Highlight Module - Prism.js 기반 코드 구문 강조 및 자동 감지
-/* global hljs */
+// Code Highlight Module - Prism.js 기반 코드 구문 강조
 
 // Prism autoloader path (CDN global)
 if (typeof Prism !== 'undefined' && Prism.plugins && Prism.plugins.autoloader) {
@@ -133,21 +132,6 @@ export function renderCodeBlock(code, lang, sanitizeFn) {
         if (userSpecifiedLang && typeof Prism !== 'undefined' && resolvedLang) {
             try {
                 Prism.highlightElement(codeEl);
-            } catch (_e) { /* ignore */ }
-        } else if (typeof hljs !== 'undefined') {
-            try {
-                const result = hljs.highlightAuto(trimmedCode, resolvedLang ? [resolvedLang] : undefined);
-                codeEl.innerHTML = result.value;
-                if (result.language) {
-                    codeEl.className = `hljs language-${result.language}`;
-                    const headerLang = codeEl.closest('.code-block-wrapper')?.querySelector('.code-block-lang');
-                    if (!headerLang) {
-                        const header = codeEl.closest('.code-block-wrapper')?.querySelector('.code-block-header');
-                        if (header) header.insertAdjacentHTML('afterbegin', `<span class="code-block-lang">${sanitizeFn(result.language)}</span>`);
-                    } else if (!displayLang) {
-                        headerLang.textContent = result.language;
-                    }
-                }
             } catch (_e) { /* ignore */ }
         }
 

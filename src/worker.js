@@ -9,7 +9,7 @@ import * as admin from './handlers/admin.js';
 import { handleWebSocket, handleCheckBan } from './handlers/websocket.js';
 import { handleGetVapidKey, handlePushSubscribe, handlePushUnsubscribe } from './handlers/push.js';
 import { handleMetrics, handleHealth } from './handlers/health.js';
-import { handleTurnstileVerify } from './handlers/turnstile.js';
+import { handleTurnstileVerify, verifyTurnstileTicket } from './handlers/turnstile.js';
 import { handlePreview } from './handlers/preview.js';
 import { handleSummary } from './handlers/summary.js';
 
@@ -30,6 +30,9 @@ function checkRateLimit(ip, config, tag = '') {
 }
 
 const SAFE_HEADERS = ['content-type', 'content-length', 'user-agent', 'accept-language'];
+
+// Channel slugs outside the user namespace (admin/monitoring rooms) skip registry existence checks
+const ADMIN_CHANNEL_PREFIXES = ['admin'];
 
 const API_PREFIX = '/api/admin/';
 
@@ -67,6 +70,9 @@ const adminRoutes = [
 ];
 
 async function channelRequest(request, env, corsHeaders, endpoint, method, errorMsg) {
+    if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHANNELS, `channel${endpoint}`)) {
+        return jsonError('Rate limit exceeded', 429, request.headers.get('Origin'));
+    }
     try {
         const body = method === 'GET' ? undefined : await safeJson(request);
         const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
@@ -101,17 +107,28 @@ async function handleChannelList(request, env, corsHeaders) {
 
 const publicRoutes = [
     ['/api/announcements', 'GET', async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.ANNOUNCEMENTS, 'announcements')) {
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
+        }
         const resp = await forwardToDO(env, '/announcement-history');
         return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
     }],
     ['/api/emergency-announcement', 'GET', async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.ANNOUNCEMENTS, 'emergency-announcement')) {
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
+        }
         const resp = await forwardToDO(env, '/emergency-announcement');
         return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
     }],
     ['/api/channels/create', 'POST', handleChannelCreate],
     ['/api/channels/join', 'POST', handleChannelJoin],
     ['/api/channels/list', 'GET', handleChannelList],
-    ['/api/push/vapid-key', null, handleGetVapidKey],
+    ['/api/push/vapid-key', null, async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.VAPID, 'push:vapid')) {
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
+        }
+        return await handleGetVapidKey(req, env, cors);
+    }],
     ['/api/push/subscribe', 'POST', async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.PUSH, 'push:sub')) {
             return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
@@ -125,11 +142,19 @@ const publicRoutes = [
         return await handlePushUnsubscribe(req, env, cors);
     }],
     ['/api/search', null, async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.SEARCH, 'search')) {
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
+        }
         const searchPath = '/search' + new URL(req.url).search;
         const resp = await forwardToDO(env, searchPath);
         return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
     }],
-    ['/api/check-ban', null, handleCheckBan],
+    ['/api/check-ban', null, async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHECK_BAN, 'check-ban')) {
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
+        }
+        return await handleCheckBan(req, env, cors);
+    }],
     ['/api/turnstile/verify', 'POST', async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.TURNSTILE, 'turnstile')) {
             return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
@@ -161,6 +186,9 @@ const publicRoutes = [
         }
     }],
     ['/api/secret-read', 'GET', async (req, env, cors) => {
+        if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHECK_BAN, 'secret-read')) {
+            return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
+        }
         try {
             const did = env.DEAD_DROP_STORE.idFromName('singleton');
             const doStub = env.DEAD_DROP_STORE.get(did);
@@ -290,7 +318,8 @@ export default {
                     return jsonError('File service not configured', 503, origin);
                 }
                 try {
-                    const fileResp = await fetch(`https://file.kalpha.kr/api/files/${encodeURIComponent(fileId)}`, {
+                    const fileBase = env.FILE_UPLOAD_URL || 'https://file.kalpha.kr/api/files';
+                    const fileResp = await fetch(`${fileBase}/${encodeURIComponent(fileId)}`, {
                         method: 'GET',
                         headers: { 'Authorization': `Bearer ${apiKey}` }
                     });
@@ -438,6 +467,43 @@ export default {
 
             // WebSocket
             if (url.pathname === '/ws') {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.WS, 'ws')) {
+                    return jsonError('Rate limit exceeded', 429, origin);
+                }
+                // Turnstile gate: anonymous sessions must present a valid ticket issued by /api/turnstile/verify
+                const wsSessionId = url.searchParams.get('sessionId') || '';
+                const isObserverSession = wsSessionId.startsWith('admin_obs_');
+                if (!isObserverSession) {
+                    if (!env.TURNSTILE_SECRET_KEY) {
+                        // ponytail: unverifiable config (local dev without secret) — fail-open with a loud warning
+                        console.warn('Turnstile not configured; skipping WS ticket verification');
+                    } else {
+                        const ticketOk = await verifyTurnstileTicket(env, url.searchParams.get('ticket') || '', wsSessionId);
+                        if (!ticketOk) {
+                            return jsonError('Turnstile verification required', 403, origin);
+                        }
+                    }
+                }
+                // Never upgrade into a channel that is not in the registry (e.g. deleted by admin)
+                const channelSlug = url.searchParams.get('channel');
+                if (channelSlug && channelSlug !== '0' && !ADMIN_CHANNEL_PREFIXES.some((prefix) => channelSlug.startsWith(prefix))) {
+                    try {
+                        const registryId = env.CHANNEL_REGISTRY.idFromName('registry');
+                        const registry = env.CHANNEL_REGISTRY.get(registryId);
+                        const registryResp = await registry.fetch(new Request('https://dummy/get', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ slug: channelSlug })
+                        }));
+                        const registryData = await registryResp.json();
+                        if (!registryData.found) {
+                            return jsonError('Channel not found', 404, origin);
+                        }
+                    } catch (error) {
+                        // Fail-open: a registry outage must not block chat connectivity
+                        console.error('Channel registry check failed, continuing:', error);
+                    }
+                }
                 return await handleWebSocket(request, env, HMAC_SECRET);
             }
 

@@ -6,13 +6,125 @@ const OG_CACHE_TTL = 3600;
 const MAX_BODY_BYTES = 32768;
 const RATE_LIMIT_WINDOW = 12000;
 const RATE_LIMIT_MAX = 8;
+const RATE_LIMIT_MAX_ENTRIES = 5000;
+const MAX_REDIRECTS = 2;
 
 const rateLimitMap = new Map();
 
+const OG_FETCH_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (compatible; OGPreviewBot/1.0)',
+    'Accept': 'text/html,application/xhtml+xml',
+    'Accept-Language': 'ko-KR,ko;q=0.9'
+};
+
+export function _clearPreviewRateLimit() {
+    rateLimitMap.clear();
+}
+
+export function isPrivateHost(hostname) {
+    if (typeof hostname !== 'string' || !hostname) return true;
+
+    let host = hostname.toLowerCase();
+    if (host.startsWith('[') && host.endsWith(']')) {
+        host = host.slice(1, -1);
+    }
+
+    if (
+        host === 'localhost' ||
+        host === 'metadata.google.internal' ||
+        host.endsWith('.internal') ||
+        host.endsWith('.local')
+    ) {
+        return true;
+    }
+
+    const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (v4) {
+        const a = Number(v4[1]);
+        const b = Number(v4[2]);
+        const c = Number(v4[3]);
+        const d = Number(v4[4]);
+        if (a > 255 || b > 255 || c > 255 || d > 255) return true;
+        if (a === 127 || a === 10) return true;
+        if (a === 0 && b === 0 && c === 0 && d === 0) return true;
+        if (a === 172 && b >= 16 && b <= 31) return true;
+        if (a === 192 && b === 168) return true;
+        if (a === 169 && b === 254) return true;
+        if (a === 100 && b >= 64 && b <= 127) return true;
+        return false;
+    }
+
+    if (host.includes(':')) {
+        if (host === '::1' || host === '::') return true;
+        if (host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80')) return true;
+    }
+    return false;
+}
+
+function validateUrl(url) {
+    let parsed;
+    try {
+        parsed = new URL(url);
+    } catch (_e) {
+        return null;
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    if (isPrivateHost(parsed.hostname)) return null;
+    return parsed;
+}
+
+function nullPreview(corsHeaders) {
+    return new Response(JSON.stringify({ og: null }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+async function fetchHtml(targetUrl) {
+    let current = targetUrl;
+
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+        if (!validateUrl(current)) return null;
+
+        const response = await fetch(current, {
+            redirect: 'manual',
+            headers: OG_FETCH_HEADERS,
+            cf: {
+                cacheTtl: OG_CACHE_TTL,
+                cacheEverything: true
+            }
+        });
+
+        if (response.status < 300 || response.status >= 400) return response;
+
+        const location = response.headers.get('Location');
+        if (!location) return null;
+
+        try {
+            current = new URL(location, current).href;
+        } catch (_e) {
+            return null;
+        }
+    }
+
+    return null;
+}
+
 function getRateLimit(ip) {
     const now = Date.now();
+
+    if (rateLimitMap.size > 100) {
+        for (const [key, entry] of rateLimitMap) {
+            if (now - entry.windowStart > RATE_LIMIT_WINDOW) {
+                rateLimitMap.delete(key);
+            }
+        }
+    }
+
     const entry = rateLimitMap.get(ip);
     if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
+        if (!entry && rateLimitMap.size >= RATE_LIMIT_MAX_ENTRIES) {
+            return { allowed: false, remaining: 0 };
+        }
         rateLimitMap.set(ip, { windowStart: now, count: 1 });
         return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
     }
@@ -23,19 +135,37 @@ function getRateLimit(ip) {
     return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count };
 }
 
+function decodeEntities(value) {
+    return value
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+}
+
 function parseOG(html) {
     const og = { title: '', description: '', image: '', url: '', siteName: '' };
 
-    const ogRegex = /<meta\s[^>]*property="og:([^"]+)"[^>]*content="([^"]*)"[^>]*\/?>/gi;
-    let match;
-    while ((match = ogRegex.exec(html)) !== null) {
-        const key = match[1].toLowerCase();
-        const value = match[2].trim();
-        if (key === 'title') og.title = value;
-        else if (key === 'description') og.description = value;
-        else if (key === 'image') og.image = value;
-        else if (key === 'url') og.url = value;
-        else if (key === 'site_name') og.siteName = value;
+    const metaRegex = /<meta\s([^>]*)>/gi;
+    let metaMatch;
+    while ((metaMatch = metaRegex.exec(html)) !== null) {
+        const attrs = {};
+        const attrRegex = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+        let attrMatch;
+        while ((attrMatch = attrRegex.exec(metaMatch[1])) !== null) {
+            attrs[attrMatch[1].toLowerCase()] = attrMatch[2] !== undefined ? attrMatch[2] : attrMatch[3];
+        }
+
+        const key = (attrs.property || attrs.name || '').toLowerCase();
+        if (!key || attrs.content === undefined) continue;
+        const value = decodeEntities(attrs.content).trim();
+
+        if (key === 'og:title') og.title = value;
+        else if (key === 'og:description') og.description = value;
+        else if (key === 'og:image') og.image = value;
+        else if (key === 'og:url') og.url = value;
+        else if (key === 'og:site_name') og.siteName = value;
     }
 
     const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
@@ -74,51 +204,34 @@ export async function handlePreview(request, env, corsHeaders) {
         return jsonError('Missing url', 400, request.headers.get('Origin'));
     }
 
-    let parsed;
-    try {
-        parsed = new URL(targetUrl);
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-            throw new Error('Invalid protocol');
-        }
-    } catch (_e) {
+    if (!validateUrl(targetUrl)) {
         return jsonError('Invalid URL', 400, request.headers.get('Origin'));
     }
 
     try {
-        const fetchResponse = await fetch(targetUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; OGPreviewBot/1.0)',
-                'Accept': 'text/html,application/xhtml+xml',
-                'Accept-Language': 'ko-KR,ko;q=0.9'
-            },
-            cf: {
-                cacheTtl: OG_CACHE_TTL,
-                cacheEverything: true
-            }
-        });
+        const fetchResponse = await fetchHtml(targetUrl);
 
-        if (!fetchResponse.ok) {
-            return new Response(JSON.stringify({ og: null }), {
-                status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+        if (!fetchResponse || !fetchResponse.ok || !fetchResponse.body) {
+            return nullPreview(corsHeaders);
         }
 
         const contentType = fetchResponse.headers.get('content-type') || '';
         if (!contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
-            return new Response(JSON.stringify({ og: null }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return nullPreview(corsHeaders);
         }
 
         const reader = fetchResponse.body.getReader();
+        const decoder = new TextDecoder();
         let html = '';
         let total = 0;
 
         while (total < MAX_BODY_BYTES) {
             const { done, value } = await reader.read();
             if (done) break;
-            html += new TextDecoder().decode(value, { stream: true });
-            total += value.length;
+            const remaining = MAX_BODY_BYTES - total;
+            const chunk = value.length > remaining ? value.slice(0, remaining) : value;
+            html += decoder.decode(chunk, { stream: true });
+            total += chunk.length;
         }
         reader.cancel();
 
@@ -141,8 +254,6 @@ export async function handlePreview(request, env, corsHeaders) {
         });
     } catch (error) {
         console.error('OG preview error:', error);
-        return new Response(JSON.stringify({ og: null }), {
-            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return nullPreview(corsHeaders);
     }
 }

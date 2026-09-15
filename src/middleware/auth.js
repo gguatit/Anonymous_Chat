@@ -3,7 +3,10 @@ import { logSecurityEvent } from '../utils/logger.js';
 
 // Rate Limit 체크 (IP당 5회 실패 시 5분간 차단)
 export async function checkRateLimit(env, key) {
-    if (!env?.ADMIN_TOKENS) return false;
+    if (!env?.ADMIN_TOKENS) {
+        console.warn('[Auth] ADMIN_TOKENS binding missing — login rate limiting disabled (fail-open)');
+        return false;
+    }
     
     const data = await env.ADMIN_TOKENS.get(key);
     if (!data) return false;
@@ -15,6 +18,7 @@ export async function checkRateLimit(env, key) {
         const recentAttempts = attempts.filter(t => now - t < AUTH.RATE_LIMIT_EXPIRE);
         return recentAttempts.length >= AUTH.MAX_FAILED_ATTEMPTS;
     } catch (_e) { /* expected: corrupt KV data */
+        console.warn('[Auth] Corrupt rate limit KV entry — ignoring it (fail-open)');
         return false;
     }
 }

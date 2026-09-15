@@ -9,6 +9,12 @@ import { dispatchAdminRoute, handleCheckBan, handleBroadcastSummary, notifyAdmin
 import { validateMessage, sanitizeContentForAI, generateSessionId, generateSessionKey, extractErrorLocation, searchMessages, isLikelyCode } from './chat-room/messages.js';
 import { isEmergencyActive } from './chat-room/announcements.js';
 
+// Truncated session id for logs — full ids are public identifiers, keep them out of persisted logs
+function logId(sessionId) {
+    const s = String(sessionId || '');
+    return s.length > 8 ? `${s.slice(0, 8)}…` : s;
+}
+
 export class ChatRoom {
     constructor(state, env) {
         this.state = state;
@@ -817,7 +823,7 @@ export class ChatRoom {
                 type: 'error',
                 content: '메시지 무결성 검증 실패'
             });
-            console.warn('Invalid message signature from session:', sessionId);
+            console.warn('Invalid message signature from session:', logId(sessionId));
 
             return;
         }
@@ -832,7 +838,7 @@ export class ChatRoom {
                 type: 'error',
                 content: '세션 ID가 일치하지 않습니다.'
             });
-            console.warn('Session ID mismatch:', data.sessionId, '!=', sessionId);
+            console.warn('Session ID mismatch:', logId(data.sessionId), '!=', logId(sessionId));
             return;
         }
 
@@ -1000,7 +1006,7 @@ export class ChatRoom {
                 type: 'error',
                 content: '메시지 수정 요청 검증 실패'
             });
-            console.warn('Invalid edit signature from session:', sessionId);
+            console.warn('Invalid edit signature from session:', logId(sessionId));
             return;
         }
 
@@ -1029,7 +1035,7 @@ export class ChatRoom {
                 type: 'error',
                 content: '자신의 메시지만 수정할 수 있습니다.'
             });
-            console.warn('Unauthorized edit attempt:', sessionId, 'tried to edit message from', originalMessage.sessionId);
+            console.warn('Unauthorized edit attempt:', logId(sessionId), 'tried to edit message from', logId(originalMessage.sessionId));
             return;
         }
 
@@ -1111,7 +1117,7 @@ export class ChatRoom {
                 type: 'error',
                 content: '자신의 메시지만 삭제할 수 있습니다.'
             });
-            console.warn('Unauthorized delete attempt:', sessionId, 'tried to delete message from', messageToDelete.sessionId);
+            console.warn('Unauthorized delete attempt:', logId(sessionId), 'tried to delete message from', logId(messageToDelete.sessionId));
             return;
         }
 

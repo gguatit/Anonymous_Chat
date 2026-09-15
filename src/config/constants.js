@@ -14,6 +14,8 @@ export const SECURITY = {
     ALLOWED_ORIGINS: [
         'https://kalpha.mmv.kr'
     ],
+    // Client HMAC signatures older than this are rejected (replay protection)
+    SIGNATURE_MAX_SKEW_MS: 30 * 1000,
 };
 
 // Channel configuration
@@ -73,6 +75,11 @@ export const API_RATE_LIMIT = {
     UPLOAD: { windowMs: 60000, max: 10 },
     PUSH: { windowMs: 60000, max: 10 },
     CHECK_BAN: { windowMs: 10000, max: 10 },
+    CHANNELS: { windowMs: 60000, max: 30 },
+    SEARCH: { windowMs: 60000, max: 20 },
+    ANNOUNCEMENTS: { windowMs: 60000, max: 60 },
+    WS: { windowMs: 60000, max: 30 },
+    VAPID: { windowMs: 60000, max: 30 },
 };
 
 // Reaction constants

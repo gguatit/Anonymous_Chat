@@ -1,4 +1,65 @@
-import { safeJson } from '../utils/helpers.js';
+import { safeJson, arrayBufferToHex } from '../utils/helpers.js';
+import { constantTimeCompare } from '../utils/security.js';
+
+const TICKET_TTL_MS = 12 * 60 * 60 * 1000;
+const TICKET_FUTURE_SKEW_MS = 60 * 1000;
+
+async function hmacHex(secret, message) {
+    const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+    return arrayBufferToHex(signature);
+}
+
+async function issueTicket(secret, sessionId, ts) {
+    const signature = await hmacHex(secret, `turnstile:${sessionId}:${ts}`);
+    return `${ts}.${signature}`;
+}
+
+export async function verifyTurnstileTicket(env, ticket, sessionId) {
+    if (!ticket || typeof ticket !== 'string') {
+        console.warn('Turnstile ticket rejected: missing');
+        return false;
+    }
+    if (!env?.HMAC_SECRET) {
+        console.warn('Turnstile ticket rejected: config');
+        return false;
+    }
+
+    const parts = ticket.split('.');
+    if (parts.length !== 2 || !parts[0]) {
+        console.warn('Turnstile ticket rejected: malformed');
+        return false;
+    }
+
+    const ts = Number(parts[0]);
+    if (!Number.isFinite(ts)) {
+        console.warn('Turnstile ticket rejected: malformed');
+        return false;
+    }
+
+    const now = Date.now();
+    if (ts > now + TICKET_FUTURE_SKEW_MS) {
+        console.warn('Turnstile ticket rejected: future');
+        return false;
+    }
+    if (now - ts >= TICKET_TTL_MS) {
+        console.warn('Turnstile ticket rejected: expired');
+        return false;
+    }
+
+    const expected = await hmacHex(env.HMAC_SECRET, `turnstile:${sessionId}:${ts}`);
+    const valid = await constantTimeCompare(expected, parts[1]);
+    if (!valid) {
+        console.warn('Turnstile ticket rejected: mismatch');
+    }
+    return valid;
+}
 
 export async function handleTurnstileVerify(request, env, corsHeaders) {
     if (request.method !== 'POST') {
@@ -11,6 +72,7 @@ export async function handleTurnstileVerify(request, env, corsHeaders) {
     try {
         const body = await safeJson(request);
         const token = body.token;
+        const sessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
 
         if (!token || typeof token !== 'string') {
             return new Response(JSON.stringify({ success: false, error: 'Missing token' }), {
@@ -52,7 +114,11 @@ export async function handleTurnstileVerify(request, env, corsHeaders) {
         const result = await verifyResponse.json();
 
         if (result.success) {
-            return new Response(JSON.stringify({ success: true }), {
+            const payload = { success: true };
+            if (env.HMAC_SECRET) {
+                payload.ticket = await issueTicket(env.HMAC_SECRET, sessionId, Date.now());
+            }
+            return new Response(JSON.stringify(payload), {
                 status: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });

@@ -30,6 +30,10 @@ export class WebSocketManager {
     }
 
     async connect() {
+        if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
+            return;
+        }
+
         try {
             // Read ban tokens from localStorage
             const banToken = localStorage.getItem('kick_token');
@@ -56,6 +60,13 @@ export class WebSocketManager {
             }
             if (banToken) {
                 wsUrl += `&token=${encodeURIComponent(banToken)}`;
+            }
+
+            const turnstileTicket = sessionStorage.getItem('chatTurnstileTicket') || '';
+            wsUrl += `&ticket=${encodeURIComponent(turnstileTicket)}`;
+
+            if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
+                return;
             }
 
             this.ws = new WebSocket(wsUrl);
@@ -231,7 +242,8 @@ export class WebSocketManager {
     }
 
     checkConnection() {
-        if (!this.isConnected() && !this.isReconnecting) {
+        const isConnecting = this.ws && this.ws.readyState === WebSocket.CONNECTING;
+        if (!this.isConnected() && !this.isReconnecting && !isConnecting) {
             this.connect();
         } else if (this.isConnected()) {
             // If connected, send a ping to verify

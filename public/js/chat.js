@@ -82,7 +82,7 @@ class ChatClient {
         this.initializeCommandPopup();
         this.initializeAnnouncementIndicator();
         // WebSocket connection is started after Turnstile verification
-        this.turnstile = new TurnstileManager(config.turnstileSiteKey, () => this.onTurnstileVerified());
+        this.turnstile = new TurnstileManager(config.turnstileSiteKey, () => this.onTurnstileVerified(), this.sessionManager.getSessionId());
         this.turnstile.init();
     }
 

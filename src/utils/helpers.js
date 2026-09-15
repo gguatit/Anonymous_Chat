@@ -1,4 +1,5 @@
-import { UPLOAD } from '../config/constants.js';
+import { UPLOAD, SECURITY } from '../config/constants.js';
+import { constantTimeCompare } from './security.js';
 
 // HMAC signature generation for message integrity
 export async function generateMessageSignature(message, secret) {
@@ -22,10 +23,14 @@ export async function generateMessageSignature(message, secret) {
     return arrayBufferToHex(signature);
 }
 
-// Verify HMAC signature
-export async function verifyMessageSignature(message, signature, secret) {
+// Verify HMAC signature (constant-time) and reject stale replayed timestamps
+export async function verifyMessageSignature(message, signature, secret, maxSkewMs = SECURITY.SIGNATURE_MAX_SKEW_MS) {
+    const ts = Number(message.timestamp);
+    if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > maxSkewMs) {
+        return false;
+    }
     const expectedSignature = await generateMessageSignature(message, secret);
-    return signature === expectedSignature;
+    return await constantTimeCompare(signature, expectedSignature);
 }
 
 // Helper function to convert ArrayBuffer to hex string

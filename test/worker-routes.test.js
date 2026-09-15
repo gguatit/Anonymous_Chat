@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import worker from '../src/worker.js';
+import { API_RATE_LIMIT } from '../src/config/constants.js';
+import { createRateLimiter } from '../src/utils/rate-limiter.js';
 
 // Route table mirrors src/worker.js adminRoutes (30 entries)
 const adminRouteNames = [
@@ -41,12 +43,13 @@ function makeEnv(overrides = {}) {
     };
 }
 
-function makeRequest(path, method = 'GET') {
+function makeRequest(path, method = 'GET', headers = {}) {
     return new Request(`https://kalpha.mmv.kr${path}`, {
         method,
         headers: {
             'CF-Connecting-IP': '203.0.113.5',
             Origin: 'https://kalpha.mmv.kr',
+            ...headers,
         },
     });
 }
@@ -103,5 +106,135 @@ describe('worker router smoke (real worker.fetch)', () => {
             expect(res.status).not.toBe(401);
             expect(res.status).toBe(404);
         });
+    });
+});
+
+describe('public route rate limiting (M2)', () => {
+    it('/api/check-ban returns 429 after CHECK_BAN.max requests in a window', async () => {
+        const roomFetch = vi.fn(async () => new Response(JSON.stringify({ banned: false }), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        const env = makeEnv({
+            CHAT_ROOM: {
+                idFromName: vi.fn(() => 'room-id'),
+                get: vi.fn(() => ({ fetch: roomFetch })),
+            },
+        });
+        const ip = '198.51.100.9';
+        const statuses = [];
+        for (let i = 0; i <= API_RATE_LIMIT.CHECK_BAN.max; i++) {
+            const res = await worker.fetch(makeRequest('/api/check-ban', 'GET', { 'CF-Connecting-IP': ip }), env);
+            statuses.push(res.status);
+        }
+        expect(statuses.slice(0, API_RATE_LIMIT.CHECK_BAN.max).every((s) => s === 200)).toBe(true);
+        expect(statuses[API_RATE_LIMIT.CHECK_BAN.max]).toBe(429);
+        const limited = await worker.fetch(makeRequest('/api/check-ban', 'GET', { 'CF-Connecting-IP': ip }), env);
+        expect(await limited.json()).toEqual({ error: 'Rate limit exceeded' });
+    });
+});
+
+describe('/ws hardening (M2/M6a)', () => {
+    function wsRequest(query, headers = {}) {
+        return new Request(`https://kalpha.mmv.kr/ws?${query}`, {
+            headers: {
+                'Upgrade': 'websocket',
+                'CF-Connecting-IP': '203.0.113.7',
+                'Origin': 'https://kalpha.mmv.kr',
+                ...headers,
+            },
+        });
+    }
+
+    it('rejects a connection without ticket or Origin with 403', async () => {
+        const env = makeEnv();
+        const req = new Request('https://kalpha.mmv.kr/ws?sessionId=user_test', {
+            headers: {
+                'Upgrade': 'websocket',
+                'CF-Connecting-IP': '203.0.113.7',
+            },
+        });
+        const res = await worker.fetch(req, env);
+        expect(res.status).toBe(403);
+    });
+
+    it('returns 404 when the channel is missing from the registry', async () => {
+        const registryFetch = vi.fn(async () => new Response(JSON.stringify({ found: false }), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        const env = makeEnv({
+            CHANNEL_REGISTRY: {
+                idFromName: vi.fn(() => 'registry-id'),
+                get: vi.fn(() => ({ fetch: registryFetch })),
+            },
+        });
+        const res = await worker.fetch(wsRequest('sessionId=user_test&channel=missing'), env);
+        expect(res.status).toBe(404);
+        expect(registryFetch).toHaveBeenCalled();
+    });
+
+    it('skips the registry check for the main-room sentinel channel=0', async () => {
+        const registryFetch = vi.fn();
+        const roomFetch = vi.fn(async () => new Response(JSON.stringify({ banned: false }), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        const env = makeEnv({
+            CHANNEL_REGISTRY: {
+                idFromName: vi.fn(() => 'registry-id'),
+                get: vi.fn(() => ({ fetch: registryFetch })),
+            },
+            CHAT_ROOM: {
+                idFromName: vi.fn(() => 'room-id'),
+                get: vi.fn(() => ({ fetch: roomFetch })),
+            },
+        });
+        const res = await worker.fetch(wsRequest('sessionId=user_test&channel=0'), env);
+        expect(registryFetch).not.toHaveBeenCalled();
+        expect(res.status).not.toBe(404);
+    });
+
+    it('fails open when the registry check throws', async () => {
+        const registryFetch = vi.fn(async () => { throw new Error('registry down'); });
+        const roomFetch = vi.fn(async () => new Response(JSON.stringify({ banned: false }), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        const env = makeEnv({
+            CHANNEL_REGISTRY: {
+                idFromName: vi.fn(() => 'registry-id'),
+                get: vi.fn(() => ({ fetch: registryFetch })),
+            },
+            CHAT_ROOM: {
+                idFromName: vi.fn(() => 'room-id'),
+                get: vi.fn(() => ({ fetch: roomFetch })),
+            },
+        });
+        const res = await worker.fetch(wsRequest('sessionId=user_test&channel=missing'), env);
+        expect(res.status).not.toBe(404);
+        expect(roomFetch).toHaveBeenCalled();
+    });
+});
+
+describe('rate limiter pruning (M3)', () => {
+    it('sheds new keys when the tracked map is at capacity', () => {
+        const limiter = createRateLimiter(0);
+        const config = { windowMs: 60000, max: 5 };
+        for (let i = 0; i < 10000; i++) {
+            limiter.checkRateLimit(`ip-${i}`, config);
+        }
+        expect(limiter.checkRateLimit('fresh-ip', config)).toBe(false);
+        expect(limiter.checkRateLimit('ip-0', config)).toBe(true);
+        limiter.destroy();
+    });
+
+    it('prunes expired entries to admit a new key', () => {
+        vi.useFakeTimers();
+        const limiter = createRateLimiter(0);
+        const config = { windowMs: 1000, max: 5 };
+        for (let i = 0; i < 10000; i++) {
+            limiter.checkRateLimit(`ip-${i}`, config);
+        }
+        vi.setSystemTime(Date.now() + 5000);
+        expect(limiter.checkRateLimit('fresh-ip', config)).toBe(true);
+        limiter.destroy();
+        vi.useRealTimers();
     });
 });

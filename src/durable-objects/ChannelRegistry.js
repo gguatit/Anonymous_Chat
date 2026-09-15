@@ -52,6 +52,11 @@ export class ChannelRegistry {
         await this.initialize();
         const url = new URL(request.url);
 
+        // Read-only existence lookup for the worker's /ws guard; no internal token required
+        if (url.pathname === '/get' && request.method === 'POST') {
+            return this.handleGet(request);
+        }
+
         const internalToken = request.headers.get('X-Admin-Internal-Token');
         if (!internalToken || internalToken !== this.env.HMAC_SECRET) {
             return new Response('Forbidden', { status: 403 });
@@ -152,6 +157,14 @@ export class ChannelRegistry {
             if (existed) {
                 await this.persist();
             }
+            // Also tear down the channel's DO so history/bans don't linger after admin deletion
+            try {
+                const roomId = this.env.CHAT_ROOM.idFromName('channel:' + slug);
+                const room = this.env.CHAT_ROOM.get(roomId);
+                await room.fetch(new Request('https://dummy/destroy', {
+                    headers: { 'X-HMAC-Secret': this.env.HMAC_SECRET }
+                }));
+            } catch (_e) { /* DO destroy best-effort */ }
             return new Response(JSON.stringify({ success: true, existed }), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -309,6 +322,22 @@ export class ChannelRegistry {
         return new Response(JSON.stringify(list), {
             headers: { 'Content-Type': 'application/json' }
         });
+    }
+
+    async handleGet(request) {
+        try {
+            const data = await safeJson(request);
+            const slug = this.toSlug(data.slug || '');
+            const channel = slug ? this.channels.get(slug) : null;
+            return new Response(JSON.stringify(channel ? { found: true, channel } : { found: false }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('ChannelRegistry get error:', error);
+            return new Response(JSON.stringify({ found: false }), {
+                status: 500, headers: { 'Content-Type': 'application/json' }
+            });
+        }
     }
 
     async cleanup() {

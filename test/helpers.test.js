@@ -90,31 +90,38 @@ describe('generateMessageSignature and verifyMessageSignature', () => {
     });
 
     it('verifies a valid signature', async () => {
-        const msg = { content: 'hello', sessionId: 's1', timestamp: 1000 };
+        const msg = { content: 'hello', sessionId: 's1', timestamp: Date.now() };
         const sig = await generateMessageSignature(msg, 'secret');
         const valid = await verifyMessageSignature(msg, sig, 'secret');
         expect(valid).toBe(true);
     });
 
+    it('rejects a stale replayed signature', async () => {
+        const msg = { content: 'hello', sessionId: 's1', timestamp: Date.now() - 60 * 1000 };
+        const sig = await generateMessageSignature(msg, 'secret');
+        const valid = await verifyMessageSignature(msg, sig, 'secret');
+        expect(valid).toBe(false);
+    });
+
     it('rejects a signature with wrong secret', async () => {
-        const msg = { content: 'hello', sessionId: 's1', timestamp: 1000 };
+        const msg = { content: 'hello', sessionId: 's1', timestamp: Date.now() };
         const sig = await generateMessageSignature(msg, 'secret-a');
         const valid = await verifyMessageSignature(msg, sig, 'secret-b');
         expect(valid).toBe(false);
     });
 
     it('rejects a tampered message', async () => {
-        const msg = { content: 'hello', sessionId: 's1', timestamp: 1000 };
+        const msg = { content: 'hello', sessionId: 's1', timestamp: Date.now() };
         const sig = await generateMessageSignature(msg, 'secret');
-        const tampered = { content: 'hacked', sessionId: 's1', timestamp: 1000 };
+        const tampered = { content: 'hacked', sessionId: 's1', timestamp: Date.now() };
         const valid = await verifyMessageSignature(tampered, sig, 'secret');
         expect(valid).toBe(false);
     });
 
     it('rejects a signature with tampered content', async () => {
-        const msg1 = { content: 'msg1', sessionId: 's1', timestamp: 1000 };
+        const msg1 = { content: 'msg1', sessionId: 's1', timestamp: Date.now() };
         const sig = await generateMessageSignature(msg1, 'secret');
-        const msg2 = { content: 'msg2', sessionId: 's1', timestamp: 1000 };
+        const msg2 = { content: 'msg2', sessionId: 's1', timestamp: Date.now() };
         const valid = await verifyMessageSignature(msg2, sig, 'secret');
         expect(valid).toBe(false);
     });

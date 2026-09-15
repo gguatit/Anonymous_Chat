@@ -169,6 +169,34 @@ describe('ChannelRegistry', () => {
         });
     });
 
+    describe('get', () => {
+        it('returns found:true for an existing channel without internal token', async () => {
+            registry.channels.set('general', { name: 'general', createdBy: 'x', createdAt: 1000, lastActive: 2000 });
+
+            const req = new Request('https://dummy/get', {
+                method: 'POST',
+                body: JSON.stringify({ slug: 'general' }),
+                headers: jsonHeaders()
+            });
+            const res = await registry.fetch(req);
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.found).toBe(true);
+            expect(body.channel.name).toBe('general');
+        });
+
+        it('returns found:false for an unknown channel', async () => {
+            const req = new Request('https://dummy/get', {
+                method: 'POST',
+                body: JSON.stringify({ slug: 'ghost' }),
+                headers: jsonHeaders()
+            });
+            const res = await registry.fetch(req);
+            expect(res.status).toBe(200);
+            expect(await res.json()).toEqual({ found: false });
+        });
+    });
+
     describe('delete', () => {
         it('deletes an existing channel', async () => {
             registry.channels.set('test', { name: 'test', createdBy: 'x', createdAt: 1000, lastActive: 2000 });
@@ -181,6 +209,46 @@ describe('ChannelRegistry', () => {
             const res = await registry.fetch(req);
             expect(res.status).toBe(200);
             expect(registry.channels.has('test')).toBe(false);
+        });
+    });
+
+    describe('admin delete', () => {
+        it('destroys the channel DO along with the registry entry', async () => {
+            registry.channels.set('test', { name: 'test', createdBy: 'x', createdAt: 1000, lastActive: 2000 });
+            const roomFetch = vi.fn(async () => new Response(JSON.stringify({ success: true }), {
+                headers: { 'Content-Type': 'application/json' }
+            }));
+            env.CHAT_ROOM.get = vi.fn(() => ({ fetch: roomFetch }));
+
+            const req = new Request('https://dummy/admin/channel-delete', {
+                method: 'POST',
+                body: JSON.stringify({ slug: 'test' }),
+                headers: { ...authHeaders(), ...jsonHeaders() }
+            });
+            const res = await registry.fetch(req);
+            expect(res.status).toBe(200);
+            expect(env.CHAT_ROOM.idFromName).toHaveBeenCalledWith('channel:test');
+            expect(roomFetch).toHaveBeenCalledTimes(1);
+            const destroyReq = roomFetch.mock.calls[0][0];
+            expect(new URL(destroyReq.url).pathname).toBe('/destroy');
+            expect(destroyReq.headers.get('X-HMAC-Secret')).toBe('test-secret');
+            expect(registry.channels.has('test')).toBe(false);
+        });
+
+        it('still succeeds when the channel DO destroy fails', async () => {
+            registry.channels.set('test', { name: 'test', createdBy: 'x', createdAt: 1000, lastActive: 2000 });
+            env.CHAT_ROOM.get = vi.fn(() => ({
+                fetch: vi.fn(async () => { throw new Error('DO unavailable'); })
+            }));
+
+            const req = new Request('https://dummy/admin/channel-delete', {
+                method: 'POST',
+                body: JSON.stringify({ slug: 'test' }),
+                headers: { ...authHeaders(), ...jsonHeaders() }
+            });
+            const res = await registry.fetch(req);
+            expect(res.status).toBe(200);
+            expect((await res.json()).success).toBe(true);
         });
     });
 

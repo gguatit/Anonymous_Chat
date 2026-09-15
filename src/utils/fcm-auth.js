@@ -1,12 +1,26 @@
 // src/utils/fcm-auth.js
 // Utility to generate Google OAuth 2.0 JWT for FCM v1 API using Web Crypto API
 
+// ponytail: isolate-local cache; refresh 5min before expiry
+const tokenCache = new Map();
+const CACHE_REFRESH_MARGIN_MS = 5 * 60 * 1000;
+
+export function _clearFcmTokenCache() {
+    tokenCache.clear();
+}
+
 /**
  * Creates a JWT signed with the Service Account private key
  * @param {Object} serviceAccount - Parsed service account JSON
  * @returns {Promise<string>} Signed JWT
  */
 export async function getFCMAccessToken(serviceAccount) {
+    const cacheKey = serviceAccount.client_email;
+    const cached = tokenCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt - CACHE_REFRESH_MARGIN_MS) {
+        return cached.token;
+    }
+
     const header = {
         alg: 'RS256',
         typ: 'JWT'
@@ -44,12 +58,15 @@ export async function getFCMAccessToken(serviceAccount) {
     });
 
     if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[FCM Auth] Token exchange failed:', errorText);
+        console.error('[FCM Auth] Token exchange failed with status:', response.status);
         throw new Error(`Failed to get FCM access token: ${response.status}`);
     }
 
     const data = await response.json();
+    tokenCache.set(cacheKey, {
+        token: data.access_token,
+        expiresAt: Date.now() + (Number(data.expires_in) || 3600) * 1000
+    });
     return data.access_token;
 }
 

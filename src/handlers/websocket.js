@@ -73,7 +73,7 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
                 });
             }
         } catch (error) {
-            console.error('Error checking ban status:', error);
+            console.error('Ban check failed — allowing connection (fail-open):', error.message);
             // Continue with connection on error to avoid blocking legitimate users
         }
     }
@@ -125,7 +125,7 @@ export async function handleCheckBan(request, env, corsHeaders) {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     } catch (error) {
-        console.error('Error checking ban:', error);
+        console.warn('Check-ban failed — reporting banned:false (fail-open):', error.message);
         return new Response(JSON.stringify({ banned: false }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500

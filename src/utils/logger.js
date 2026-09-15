@@ -1,6 +1,7 @@
 import { logSecurityEvent as _logSecurityEvent } from './security-logger.js';
 
 const MAX_LOG_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const AUDIT_LOG_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 const CLEANUP_PROBABILITY = 0.1;
 
 export { _logSecurityEvent as logSecurityEvent };
@@ -42,6 +43,17 @@ export async function logAuditLog(db, action, details, metadata = {}) {
         ).bind(action, details || '', timestamp, JSON.stringify(metadata)).run();
     } catch (error) {
         console.error('[Logger] Failed to write audit log:', error);
+        return;
+    }
+
+    if (Math.random() < CLEANUP_PROBABILITY) {
+        try {
+            await db.prepare(
+                'DELETE FROM audit_logs WHERE timestamp < ?'
+            ).bind(Date.now() - AUDIT_LOG_MAX_AGE_MS).run();
+        } catch (error) {
+            console.error('[Logger] Failed to cleanup old audit logs:', error);
+        }
     }
 }
 
@@ -54,5 +66,17 @@ export async function logErrorLog(db, type, message, stackTrace, location, envir
         ).bind(type, message, stackTrace || '', location || '', JSON.stringify(environment || {}), context || '', timestamp).run();
     } catch (error) {
         console.error('[Logger] Failed to write error log:', error);
+        return;
+    }
+
+    if (Math.random() < CLEANUP_PROBABILITY) {
+        try {
+            // error_logs.timestamp is an ISO string — bind the same type or SQLite compares INTEGER < TEXT
+            await db.prepare(
+                'DELETE FROM error_logs WHERE timestamp < ?'
+            ).bind(new Date(Date.now() - MAX_LOG_AGE_MS).toISOString()).run();
+        } catch (error) {
+            console.error('[Logger] Failed to cleanup old error logs:', error);
+        }
     }
 }

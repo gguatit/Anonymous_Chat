@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { getFCMAccessToken } from '../src/utils/fcm-auth.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { getFCMAccessToken, _clearFcmTokenCache } from '../src/utils/fcm-auth.js';
 
 async function makeServiceAccount() {
     const { privateKey } = await crypto.subtle.generateKey(
@@ -20,6 +20,10 @@ async function makeServiceAccount() {
 }
 
 describe('fcm-auth getFCMAccessToken (real module)', () => {
+    beforeEach(() => {
+        _clearFcmTokenCache();
+    });
+
     afterEach(() => {
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
@@ -67,5 +71,43 @@ describe('fcm-auth getFCMAccessToken (real module)', () => {
         await expect(getFCMAccessToken(await makeServiceAccount())).rejects.toThrow(
             'Failed to get FCM access token: 401'
         );
+    });
+
+    it('caches the access token across calls', async () => {
+        const fetchMock = vi.fn(async () =>
+            new Response(JSON.stringify({ access_token: 'ya29.cached', expires_in: 3600 }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            })
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const sa = await makeServiceAccount();
+        expect(await getFCMAccessToken(sa)).toBe('ya29.cached');
+        expect(await getFCMAccessToken(sa)).toBe('ya29.cached');
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('refreshes a token that is inside the 5 minute refresh margin', async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce(
+                new Response(JSON.stringify({ access_token: 'ya29.short', expires_in: 60 }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                })
+            )
+            .mockResolvedValueOnce(
+                new Response(JSON.stringify({ access_token: 'ya29.fresh', expires_in: 3600 }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                })
+            );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const sa = await makeServiceAccount();
+        expect(await getFCMAccessToken(sa)).toBe('ya29.short');
+        expect(await getFCMAccessToken(sa)).toBe('ya29.fresh');
+        expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 });

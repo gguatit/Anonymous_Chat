@@ -270,8 +270,9 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
     try {
         const allKeys = await listAllKvKeys(env.PUSH_SUBSCRIPTIONS, 'sub:');
 
-        const pushPromises = [];
+        const pushTasks = [];
         const keysToDelete = [];
+        const PUSH_BATCH_SIZE = 20;
 
         for (const key of allKeys) {
             try {
@@ -310,8 +311,8 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
                     if (!fcmKeyExists) continue;
 
                     const fcmToken = subWrap.data;
-                    pushPromises.push(
-                        sendFcmNotification(fcmToken, payload, env)
+                    pushTasks.push(
+                        () => sendFcmNotification(fcmToken, payload, env)
                             .catch(async (err) => {
                                 if (err.message && (err.message.includes('UNREGISTERED') || err.message.includes('INVALID_ARGUMENT'))) {
                                     keysToDelete.push(key.name);
@@ -320,8 +321,8 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
                     );
                 } else if (subWrap.type === 'web' && vapidKeysExist) {
                     const subscription = subWrap.data;
-                    pushPromises.push(
-                        sendPushNotification(subscription, JSON.stringify(payload), vapidKeys)
+                    pushTasks.push(
+                        () => sendPushNotification(subscription, JSON.stringify(payload), vapidKeys)
                             .then(async (response) => {
                                 if (response.status === 404 || response.status === 410) {
                                     keysToDelete.push(key.name);
@@ -337,8 +338,9 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
             }
         }
 
-        if (pushPromises.length > 0) {
-            await Promise.allSettled(pushPromises);
+        // Capped concurrency: launch in batches so a large subscriber list cannot fan out unbounded
+        for (let i = 0; i < pushTasks.length; i += PUSH_BATCH_SIZE) {
+            await Promise.allSettled(pushTasks.slice(i, i + PUSH_BATCH_SIZE).map(task => task()));
         }
 
         if (keysToDelete.length > 0) {

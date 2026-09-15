@@ -1,9 +1,10 @@
 import { TURNSTILE_CLIENT } from '../../src/config/constants.js';
 
 export class TurnstileManager {
-    constructor(siteKey, onVerified) {
+    constructor(siteKey, onVerified, sessionId = '') {
         this.siteKey = siteKey;
         this.onVerified = onVerified;
+        this.sessionId = sessionId;
         this.verified = false;
         this.widgetId = null;
         this.STORAGE_KEY = 'turnstileVerified';
@@ -15,7 +16,7 @@ export class TurnstileManager {
         const verified = sessionStorage.getItem(this.STORAGE_KEY);
         const timestamp = sessionStorage.getItem(this.SESSION_TIMESTAMP_KEY);
 
-        if (verified === 'true' && timestamp) {
+        if (verified === 'true' && timestamp && sessionStorage.getItem('chatTurnstileTicket')) {
             const elapsed = Date.now() - parseInt(timestamp, 10);
             if (elapsed < this.MAX_SESSION_AGE) {
                 return true;
@@ -145,12 +146,15 @@ export class TurnstileManager {
             const response = await fetch('/api/turnstile/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token })
+                body: JSON.stringify({ token, sessionId: this.sessionId })
             });
 
             const result = await response.json();
 
             if (result.success) {
+                if (result.ticket) {
+                    sessionStorage.setItem('chatTurnstileTicket', result.ticket);
+                }
                 this.markVerified();
                 this.showSuccess();
             } else {

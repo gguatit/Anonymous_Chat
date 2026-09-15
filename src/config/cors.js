@@ -8,7 +8,7 @@ export function getCorsHeaders(origin) {
 
     return {
         'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, DELETE',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS, DELETE',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Credentials': 'true',
     };
