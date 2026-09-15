@@ -51,7 +51,9 @@ export const AUTH = {
     RATE_LIMIT_EXPIRE: 5 * 60 * 1000, // 5 minutes
     MAX_FAILED_ATTEMPTS: 5,
     KV_TTL_SECONDS: 10 * 60,
-    TOKEN_EXPIRY_MS: 2 * 60 * 60 * 1000, // 2 hours
+    TOKEN_EXPIRY_MS: 12 * 60 * 60 * 1000, // 12 hours
+    // Sliding session: refresh the KV TTL when less than this remains
+    TOKEN_REFRESH_THRESHOLD_MS: 60 * 60 * 1000, // 1 hour
 };
 
 // Session capability keys (proof of session ownership on rejoin)

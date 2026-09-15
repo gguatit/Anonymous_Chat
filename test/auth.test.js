@@ -97,6 +97,37 @@ describe('auth', () => {
             await revokeToken(env, token);
             expect(await verifyAdminToken(env, token)).toBe(false);
         });
+
+        it('refreshes the KV TTL when the token is close to expiring', async () => {
+            const env = { ADMIN_TOKENS: mockKv() };
+            const token = 'soon-expiring';
+            env.ADMIN_TOKENS._store.set(`token:${token}`, JSON.stringify({
+                iat: Date.now() - AUTH.TOKEN_EXPIRY_MS,
+                exp: Date.now() + 30 * 60 * 1000
+            }));
+            const putCallsBefore = env.ADMIN_TOKENS.put.mock.calls.length;
+
+            expect(await verifyAdminToken(env, token)).toBe(true);
+
+            const putCalls = env.ADMIN_TOKENS.put.mock.calls.slice(putCallsBefore);
+            expect(putCalls.length).toBe(1);
+            const stored = JSON.parse(env.ADMIN_TOKENS._store.get(`token:${token}`));
+            expect(stored.exp - stored.iat).toBe(AUTH.TOKEN_EXPIRY_MS);
+            expect(stored.exp).toBeGreaterThan(Date.now() + AUTH.TOKEN_REFRESH_THRESHOLD_MS);
+        });
+
+        it('does not refresh while the token still has plenty of time left', async () => {
+            const env = { ADMIN_TOKENS: mockKv() };
+            const token = 'fresh-token';
+            env.ADMIN_TOKENS._store.set(`token:${token}`, JSON.stringify({
+                iat: Date.now(),
+                exp: Date.now() + AUTH.TOKEN_EXPIRY_MS
+            }));
+            const putCallsBefore = env.ADMIN_TOKENS.put.mock.calls.length;
+
+            expect(await verifyAdminToken(env, token)).toBe(true);
+            expect(env.ADMIN_TOKENS.put.mock.calls.length).toBe(putCallsBefore);
+        });
     });
 
     describe('revokeToken', () => {

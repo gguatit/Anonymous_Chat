@@ -1,5 +1,6 @@
 const ApiClient = {
     _token: null,
+    onUnauthorized: null,
 
     setToken(token) {
         this._token = token;
@@ -41,6 +42,9 @@ const ApiClient = {
     // Parse JSON, but reject on HTTP errors so callers can show failures truthfully
     async _json(res, label) {
         if (!res.ok) {
+            if (res.status === 401 && typeof this.onUnauthorized === 'function') {
+                this.onUnauthorized();
+            }
             let detail = '';
             try {
                 const d = await res.json();

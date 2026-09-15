@@ -15,6 +15,12 @@ class AdminCore {
     constructor() {
         this.sessionToken = localStorage.getItem('admin_token');
         if (this.sessionToken) { ApiClient.setToken(this.sessionToken); }
+        // Expired/revoked tokens: drop them and return to the login screen instead of looping on 401s
+        ApiClient.onUnauthorized = () => {
+            if (!this.sessionToken) return;
+            this.setToken(null);
+            window.location.reload();
+        };
         this.autoRefreshInterval = null;
         this.pageModules = {};
         this.initPromise = null;

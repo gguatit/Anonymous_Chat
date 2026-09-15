@@ -98,6 +98,19 @@ export async function verifyAdminToken(env, token) {
             return false;
         }
 
+        // Sliding session: extend KV TTL when the token is close to expiring
+        if (exp - Date.now() < AUTH.TOKEN_REFRESH_THRESHOLD_MS) {
+            try {
+                const now = Date.now();
+                await env.ADMIN_TOKENS.put(`${TOKEN_PREFIX}${token}`, JSON.stringify({ iat: now, exp: now + AUTH.TOKEN_EXPIRY_MS }), {
+                    expirationTtl: AUTH.TOKEN_EXPIRY_MS / 1000
+                });
+            } catch (error) {
+                // Refresh is best-effort; the token is still valid for its remaining lifetime
+                console.error('[Auth] Failed to refresh admin token TTL:', error);
+            }
+        }
+
         return true;
     } catch (_e) {
         await logSecurityEvent(env, 'TOKEN_INVALID', {

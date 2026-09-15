@@ -60,4 +60,30 @@ describe('ApiClient', () => {
             ApiClient.setToken(null);
         }
     });
+
+    it('invokes onUnauthorized on a 401 response and still throws', async () => {
+        const onUnauthorized = vi.fn();
+        ApiClient.onUnauthorized = onUnauthorized;
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({}, 401)));
+        try {
+            await expect(ApiClient.post('/api/admin/metrics', {})).rejects.toThrow(
+                'POST /api/admin/metrics failed: 401'
+            );
+            expect(onUnauthorized).toHaveBeenCalledTimes(1);
+        } finally {
+            ApiClient.onUnauthorized = null;
+        }
+    });
+
+    it('does not invoke onUnauthorized on non-401 failures', async () => {
+        const onUnauthorized = vi.fn();
+        ApiClient.onUnauthorized = onUnauthorized;
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ error: 'boom' }, 500)));
+        try {
+            await expect(ApiClient.post('/api/admin/action', {})).rejects.toThrow();
+            expect(onUnauthorized).not.toHaveBeenCalled();
+        } finally {
+            ApiClient.onUnauthorized = null;
+        }
+    });
 });
