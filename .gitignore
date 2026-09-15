@@ -9,12 +9,6 @@ dist/
 .cache/
 .output/
 
-# Generated client assets (run `npm run css && npm run bundle` to rebuild)
-public/css/tailwind.min.css
-public/js/*.bundle.js
-public/js/*.bundle.js.map
-public/js/chunks/
-
 # Environment files
 .env
 .env.*
