@@ -34,8 +34,21 @@ const ApiClient = {
     },
 
     async getRaw(url) {
-        const res = await this.request(url);
+        const res = await this.request(url, { method: 'GET' });
         return res;
+    },
+
+    // Parse JSON, but reject on HTTP errors so callers can show failures truthfully
+    async _json(res, label) {
+        if (!res.ok) {
+            let detail = '';
+            try {
+                const d = await res.json();
+                detail = d?.error || d?.message || '';
+            } catch { /* no body */ }
+            throw new Error(`${label} failed: ${res.status}${detail ? ' - ' + detail : ''}`);
+        }
+        return res.json().catch(() => null);
     },
 
     async post(url, body) {
@@ -44,7 +57,7 @@ const ApiClient = {
             headers: { 'Content-Type': 'application/json' },
             body: body ? JSON.stringify(body) : undefined
         });
-        return res.json().catch(() => null);
+        return this._json(res, `POST ${url}`);
     },
 
     async postRaw(url, body) {
@@ -62,7 +75,7 @@ const ApiClient = {
             headers: { 'Content-Type': 'application/json' },
             body: body ? JSON.stringify(body) : undefined
         });
-        return res.json().catch(() => null);
+        return this._json(res, `PUT ${url}`);
     },
 
     async del(url, body) {
@@ -71,7 +84,7 @@ const ApiClient = {
             headers: { 'Content-Type': 'application/json' },
             body: body ? JSON.stringify(body) : undefined
         });
-        return res.json().catch(() => null);
+        return this._json(res, `DELETE ${url}`);
     }
 };
 
