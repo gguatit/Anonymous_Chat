@@ -129,7 +129,7 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 | 방향 | 개수 | 타입 |
 |---|---|---|
 | Inbound | 7 | `ping`, `join`, `message`, `edit`, `delete`, `reaction`, `typing` |
-| Outbound | 17 | `pong`, `banned`, `history`, `announcement`, `system`, `error`, `message`, `message_edited`, `message_deleted`, `message_reaction`, `typing`, `user_count`, `emergency_cleared`, `summary`, `kicked` |
+| Outbound | 16 | `handshake`, `pong`, `banned`, `history`, `announcement`, `system`, `error`, `message`, `message_edited`, `message_deleted`, `message_reaction`, `typing`, `user_count`, `emergency_cleared`, `summary`, `kicked` |
 
 ---
 
@@ -413,7 +413,7 @@ flowchart LR
 | 메시지 히스토리 로딩 | 50개, 500ms → **20ms** (25배, DocumentFragment) |
 | 이벤트 리스너 | 메시지당 5-6개 → 컨테이너 5개 (위임) |
 | Tailwind | 300KB CDN → **45KB** 빌드 |
-| 번들 | 19개 모듈 → **2개** (chat, admin) |
+| 번들 | 19개 모듈 → **10개** (chat, admin-core, admin-main, 관리자 페이지 6, security-center) |
 | WS Reconnect | 지수 백오프, 최대 10회/30s |
 | AI Timeout | 8초 + 15초 레이트리밋 |
 | OG Cache | 1시간 Edge + 50개 클라이언트 메모리 |

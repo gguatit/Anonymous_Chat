@@ -31,7 +31,7 @@ Anonymous Chat의 개발 환경 설정 및 워크플로우입니다.
 | 테스트 | Vitest |
 | 린트 | ESLint (flat config) |
 | 포맷터 | Prettier |
-| 코드 통계 | 서버 33파일/6,305줄, 클라이언트 35+파일/8,685줄, 테스트 112케이스 (10파일) |
+| 코드 통계 | 테스트 475케이스 (34파일), 서버 DO 3종 + Worker 라우터 |
 
 ---
 
@@ -104,20 +104,16 @@ cp .dev.vars.example .dev.vars
 - `public/css/prism-tomorrow.css` — Prism One Dark
 - `public/css/tailwind.min.css` — 빌드된 Tailwind
 
-### 3.3 테스트 (10 파일, 112 cases)
-- `test/client-utils.test.js` — 14 cases (escapeHtml, isValidUrl, sanitizeUrl, formatFileSize)
-- `test/constants.test.js` — 10 cases (RATE_LIMIT, AI_SUMMARY, ...)
-- `test/helpers.test.js` — 12 cases (sanitizeInput, arrayBufferToHex, isValidFileUrl)
-- `test/rate-limiter.test.js` — 9 cases
-- `test/security.test.js` — 12 cases (constantTimeCompare, isAllowedOrigin)
-- `test/security-classifier.test.js` — 9 cases (XSS/SQL/PathTraverse)
-- `test/security-logger.test.js` — 8 cases (D1 INSERT, dedup, cleanup)
-- `test/security-routes.test.js` — 23 cases (Security 핸들러 7종 + Middleware 3종 + Input Validator 7종)
-- `test/risk-scorer.test.js` — 8 cases (시간 가중치, 카테고리 보너스)
-- `test/admin-handlers.test.js` — 7 cases (handleAdminLogout 인증/토큰)
+### 3.3 테스트 (34 파일, 475 cases)
+정확한 파일/케이스 수는 `npm test` 실행 결과를 기준으로 한다. 주요 영역:
+- `test/worker-routes.test.js` — Worker 라우터 스모크 (인증·레이트리밋·CSP)
+- `test/chat-room*.test.js` — ChatRoom DO (초기화·세션 키·메시지 캡·서명·관리자 라우트)
+- `test/security-*.test.js`, `test/risk-scorer.test.js` — 보안 이벤트 분류/스코어/로깅
+- `test/preview.test.js`, `test/summary.test.js`, `test/turnstile.test.js` — 핸들러 단위 테스트
+- `test/client-utils.test.js`, `test/client-modules.test.js` — 클라이언트 유틸
 
 ### 3.4 기타
-- `migrations/` — D1 스키마 (3개: admin_logs, log_tables, security_events)
+- `migrations/` — D1 스키마 (004까지: admin_activity_logs, audit_logs, error_logs, security_events, drop_admin_logs)
 - `docs/` — 상세 문서
 - `wrangler.toml` — Cloudflare 설정
 - `package.json` — npm 의존성 + 스크립트
@@ -130,21 +126,20 @@ cp .dev.vars.example .dev.vars
 
 ### 4.1 개발
 ```bash
-npm run dev            # wrangler dev (로컬 Workers)
-npm run dev:open       # 브라우저 자동 열기
+npm run dev            # 빌드 후 wrangler dev (localhost:8788, ENVIRONMENT=development)
 ```
 
 ### 4.2 빌드
 ```bash
-npm run build          # 클라이언트 번들 (esbuild)
-npm run build:watch    # 워치 모드
+npm run css            # Tailwind CSS 빌드
+npm run bundle         # esbuild 번들 (10종)
+npm run build          # css + bundle + lint
 ```
 
 ### 4.3 테스트
 ```bash
 npm test               # vitest run
 npm run test:watch     # 워치 모드
-npm run test:coverage  # 커버리지 리포트
 ```
 
 ### 4.4 린트/포맷

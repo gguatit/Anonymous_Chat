@@ -9,6 +9,7 @@
 - [개요](#개요)
 - [범례](#범례)
 - [릴리스](#릴리스)
+  - [2026-09-15](#2026-09-15)
   - [2026-06-22](#2026-06-22)
   - [2026-06-16](#2026-06-16)
   - [2026-06-15](#2026-06-15)
@@ -36,8 +37,8 @@
 | 항목 | 값 |
 |---|---|
 | 시작일 | 2025-12-19 |
-| 최근 업데이트 | 2026-06-22 |
-| 릴리스 수 | 18 |
+| 최근 업데이트 | 2026-09-15 |
+| 릴리스 수 | 19 |
 | 카테고리 | 신규 기능 / 개선 / 버그 수정 / 보안 / 인프라 / 문서 / 아키텍처 / 디자인 / 코드 품질 |
 
 ---
@@ -59,6 +60,48 @@
 ---
 
 ## 릴리스
+
+### 2026-09-15
+
+심층 보안 분석(`docs/ANALYSIS.md`) 기반 전면 하드닝. 분석 보고서의 CRITICAL 3건·HIGH 10건·MEDIUM/LOW 다수를 3단계로 수정했습니다.
+
+#### 보안
+
+- **옵저버 무인증 접속 차단**: `admin_obs_` 접두사 세션은 관리자 토큰 검증(`verifyAdminToken`)을 통과해야만 WebSocket 연결이 허용됩니다(실패 시 401, DO 미호출). 누구나 `?sessionId=admin_obs_x`로 실시간 메시지/세션/공지 이벤트를 수신하던 백도어를 제거했습니다. 커밋 `c4d3ff4`.
+- **세션 하이재킹 차단 (capability key)**: sessionId는 공개값이므로 최초 join 시 32바이트 랜덤 capability key를 발급하고, 이후 재접속은 키 검증(불일치 시 close 4401)을 요구합니다. 키는 조인마다 회전하며, 히스토리/검색 응답에서 sessionId를 제거하고 HMAC 파생 `authorId`(16자)로 대체했습니다. 커밋 `c4d3ff4`.
+- **저장형 XSS 체인 차단**: `escapeHtml`이 따옴표를 이스케이프하지 않아 속성 컨텍스트에서 XSS가 성립하던 문제를 수정하고, `security-center.js`/`page-users.js`의 raw innerHTML 삽입을 제거했습니다. 인라인 핸들러/스크립트를 외부 모듈로 이동(theme-init/chat-page/announcements-page)하고 CSP에서 `unsafe-inline`/`unsafe-eval`을 삭제했습니다. 커밋 `11aabe2`.
+- **어드민 토큰 재설계**: base64 페이로드에 ADMIN_PASSWORD가 임베드되던 토큰을 32바이트 랜덤 opaque 토큰 + KV 세션(2시간 TTL)으로 교체했습니다. 로그아웃은 KV에서 즉시 삭제(revoke)하며 상수시간 비교를 사용합니다. 커밋 `1e2306a`.
+- **콜드 DO 초기화 보장**: `/admin/*`·`/check-ban`이 초기화 전에 실행되어 빈 상태를 반환하던 문제를 `ensureInitialized()`(프로미스 공유)로 수정했습니다. 초기화 실패 시 503 fail-closed.
+- **IP 차단 라우트 신설**: 보안센터 '위험 IP 차단'이 존재하지 않는 `/ban-ip`를 호출해 무동작이던 문제를 수정했습니다. HMAC 내부 라우트(`/admin/ban-ip`, duration 기본 24시간·최대 7일)로 실제 `bannedIPs`에 기록됩니다.
+- **Origin 검증 강화**: prefix 매치(`startsWith`)와 localhost 상시 허용을 제거했습니다. `new URL(origin).origin` 정확 매치 + Origin 헤더 필수(fail-closed), localhost는 `ENVIRONMENT=development`에서만 허용합니다.
+- **푸시 구독 소유권 검증**: 클라이언트가 임의 sessionId로 구독을 등록/삭제할 수 있던 문제를 capability key 검증(DO `/admin/verify-session`)으로 수정했습니다. KV 키는 `sub:<sha256(sessionId)>`로 저장합니다.
+- **본문 크기 실측 캡**: `safeJson`이 Content-Length 헤더만 신뢰하던 것을 스트림 바이트 카운팅으로 교체했고, `/api/secret-store`·`/api/logs/error`·업로드 프록시에 413을 적용했습니다. 업로드는 클라이언트 헤더 전달 대신 allowlist(content-type/content-length/authorization)로 제한합니다.
+- **메시지 서명 신선도 + 상수시간 비교**: 서명에 ±30초 신선도 검증(`SIGNATURE_MAX_SKEW_MS`)을 추가해 재생 공격을 차단하고, `constantTimeCompare`를 적용했습니다. DeadDrop 미스 로그에서 전체 시크릿 ID 나열을 제거했습니다.
+- **preview SSRF 차단**: private/loopback/link-local/메타데이터 호스트 거부, `redirect: 'manual'` 최대 2홉 재검증, 초과분 slice 디코드, IP 레이트맵 프루닝·하드캡을 적용했습니다.
+- **Turnstile 서버 강제**: `/api/turnstile/verify`가 세션 바인딩 HMAC 티켓(12시간)을 발급하고 `/ws`가 티켓을 검증합니다. 시크릿 미설정 개발 환경에서는 경고와 함께 스킵(fail-open)합니다.
+- **레이트리밋 확충**: announcements/emergency/channels/search/check-ban/secret-read/vapid-key/`/ws`에 Worker 레이트리밋을 추가하고, 레이트리미터에 stale 프루닝·맵 캡(10000)을 적용했습니다.
+- **채널 수명주기**: `/ws?channel=`이 레지스트리 존재 여부를 확인(미존재 시 404)하고, 관리자 채널 삭제 시 채널 DO `/destroy`를 호출해 유령 채널(히스토리/밴 잔존)을 제거합니다.
+- **요약 프롬프트 하드닝**: 메시지를 `<<<MESSAGES ... MESSAGES>>>`로 감싸 데이터 취급을 지시하고, 시도별 8초 타임아웃(초과 시 504)을 적용했으며 AI 응답 로그에서 내용을 제거했습니다.
+
+#### 개선
+
+- **FCM OAuth 토큰 캐시**: 만료 5분 전 재발급하는 모듈 캐시로 수신자마다 Google 토큰을 새로 받던 비용을 제거하고, 푸시 발송을 20개 배치로 제한했습니다.
+- **D1 로그 보존**: `audit_logs` 90일·`error_logs` 30일 확률적 정리를 추가했습니다(테이블 타입별 숫자/ISO cutoff).
+- **WebSocket 클라이언트**: CONNECTING 상태에서 중복 소켓이 생기던 경쟁 조건을 가드했습니다.
+- **로그 위생**: 밴 체크 fail-open 시 명시적 경고, 로그인 KV 손상 경고, sessionId 로그 축약(8자), FCM 오류 상태코드만 기록.
+
+#### 인프라
+
+- **CI 추가**: GitHub Actions(`.github/workflows/ci.yml`)에서 npm ci → 테스트 → lint → `wrangler deploy --dry-run`을 실행합니다.
+- **배포 단일화**: 실제 배포는 Worker(`wrangler deploy`)임을 문서/스크립트에 통일하고, 기동 불가였던 `functions/` Pages 브리지를 삭제했습니다. `FILE_API_KEY`를 `.dev.vars.example`/DEPLOYMENT에 문서화했습니다.
+- **빌드 산출물 git 제외**: 번들/chunks/소스맵/tailwind.min.css를 추적에서 제외하고 `.gitignore`에 추가했습니다. `bun.lock` 삭제(npm 단일화), `.fva/` ignore.
+- **마이그레이션/설정**: `004_drop_admin_logs.sql`(orphan 테이블 제거), `compatibility_date` → 2026-08-01.
+- **죽은 코드 제거**: 레거시 관리자 모듈 9종·prism-bundle 등 11개 파일, highlight.js 이중 스택(Prism 단일화).
+
+#### 테스트
+
+- 무테스트 경로 보강: preview 39건, turnstile 8건, summary 7건, fcm-auth/web-push 실모듈, worker 라우터 스모크(401/404/429), logger 정리, 메시지 바이트 캡, 세션 키, ban-ip, push 소유권, body cap.
+- 총 **475건 / 34개 파일** 전부 통과(커밋 `1e2306a`, `4484d5f` 포함).
 
 ### 2026-06-22
 

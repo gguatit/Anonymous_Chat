@@ -160,7 +160,7 @@ wrangler d1 migrations apply anonymous-chat-db
 │   ├── js/                       # 클라이언트 모듈
 │   │   ├── chat.js               # 메인 (1147줄)
 │   │   ├── ui.js + ui-*.js       # UI 매니저 + 5 mixin
-│   │   ├── admin.js + admin-*.js # 관리자 + 8 helper
+│   │   ├── admin-core.js + admin-ui.js + pages/ # 관리자 (해시 라우터 + 페이지 모듈)
 │   │   ├── api-client.js         # fetch wrapper
 │   │   ├── websocket.js          # WS 매니저 (재연결, heartbeat, ephemeral 서명)
 │   │   ├── signature.js          # Web Crypto HMAC-SHA256 서명
@@ -175,7 +175,7 @@ wrangler d1 migrations apply anonymous-chat-db
 │   │   ├── dead-drop.js          # 비밀 메시지
 │   │   ├── sakura.js             # 벚꽃 파티클
 │   │   ├── evernight.js          # GIF 파티클
-│   │   ├── code-highlight.js     # Prism + highlight.js
+│   │   ├── code-highlight.js     # Prism 코드 하이라이팅
 │   │   └── utils.js              # 공통 유틸
 │   └── css/                      # 테마 + 애니메이션
 │

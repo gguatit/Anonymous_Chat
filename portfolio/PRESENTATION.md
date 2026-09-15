@@ -68,7 +68,7 @@
 | **푸시** | Web Push (VAPID) + FCM v1 | 표준 Web Push + Android 호환 |
 | **빌드** | esbuild | 10개 엔트리 코드 스플리팅, 1초 이내 빌드 |
 | **프론트** | 바닐라 JS + CSS Custom Properties | 프레임워크 의존성 최소화, 학습 곡선 ↓ |
-| **테스트** | Vitest | 112개 케이스, 19.4초 |
+| **테스트** | Vitest | 475개 케이스, 34개 파일 |
 | **린팅** | ESLint + Prettier | 코드 스타일 통일 |
 
 ### 선택의 트레이드오프
@@ -344,8 +344,8 @@ self.addEventListener('push', e => {
   - 총 라인 수: ~15,000줄
 
 🧪 테스트
-  - Vitest 112 cases (10개 파일)
-  - 19.4초 만에 전체 통과
+  - Vitest 475 cases (34개 파일)
+  - 전체 스위트 20초 이내 통과
   - 커버리지 모듈: rate-limiter, helpers, security, classifier, risk-scorer, security-logger, security routes
 
 🛡️ 보안 통제
@@ -660,7 +660,7 @@ Cloudflare D1은:
 ```
 프로젝트명: Anonymous Chat
 스택: Cloudflare Workers + DO + D1 + KV + Workers AI
-규모: 서버 33파일, 클라이언트 50+ 모듈, 테스트 112건 통과
+규모: 서버 33파일, 클라이언트 50+ 모듈, 테스트 475건 통과
 핵심 설계:
   1. Ephemeral Token (HMAC 서명, 32-byte secret)
   2. Triple-ban (IP + Session + Token)
