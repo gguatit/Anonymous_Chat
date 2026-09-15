@@ -1,11 +1,12 @@
-import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH } from '../config/constants.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH, SESSION_KEYS } from '../config/constants.js';
 import { logAuditLog, logErrorLog, logSecurityEvent } from '../utils/logger.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
 import { verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl, generateMessageSignature } from '../utils/helpers.js';
 import { validateClientMessage, validateSessionId } from '../utils/validate.js';
+import { constantTimeCompare } from '../utils/security.js';
 
 import { dispatchAdminRoute, handleCheckBan, handleBroadcastSummary, notifyAdmin } from './chat-room/admin.js';
-import { validateMessage, sanitizeContentForAI, generateSessionId, extractErrorLocation, searchMessages, isLikelyCode } from './chat-room/messages.js';
+import { validateMessage, sanitizeContentForAI, generateSessionId, generateSessionKey, extractErrorLocation, searchMessages, isLikelyCode } from './chat-room/messages.js';
 import { isEmergencyActive } from './chat-room/announcements.js';
 
 export class ChatRoom {
@@ -14,6 +15,7 @@ export class ChatRoom {
         this.env = env;
         this.sessions = new Map();
         this.sessionSecrets = new Map();
+        this.sessionKeys = new Map();
         this.ipConnections = new Map();
         this.userMetadata = new Map();
         this.typingUsers = new Set();
@@ -74,7 +76,7 @@ export class ChatRoom {
             }
         }
 
-        const bannedData = await this.state.storage.get(['bannedIPs', 'bannedSessions', 'bannedTokens']);
+        const bannedData = await this.state.storage.get(['bannedIPs', 'bannedSessions', 'bannedTokens', 'sessionKeys']);
         if (bannedData && bannedData.bannedIPs) {
             this.bannedIPs = new Map(bannedData.bannedIPs);
         }
@@ -83,6 +85,9 @@ export class ChatRoom {
         }
         if (bannedData && bannedData.bannedTokens) {
             this.bannedTokens = new Map(bannedData.bannedTokens);
+        }
+        if (bannedData && bannedData.sessionKeys) {
+            this.sessionKeys = new Map(bannedData.sessionKeys);
         }
 
         const announcementData = await this.state.storage.get(['currentAnnouncement', 'announcementHistory']);
@@ -517,6 +522,11 @@ export class ChatRoom {
             websocket.close(1008, 'Invalid session');
             return;
         }
+        if (sessionId.startsWith('admin')) {
+            websocket.send(JSON.stringify({ type: 'error', content: 'Invalid session id' }));
+            websocket.close(1008, 'Invalid session id');
+            return;
+        }
 
         const sessionBanInfo = this.bannedSessions.get(sessionId);
         if (sessionBanInfo) {
@@ -553,6 +563,27 @@ export class ChatRoom {
                 await this.state.storage.put('bannedIPs', Array.from(this.bannedIPs.entries()));
             }
         }
+
+        const storedKey = this.sessionKeys.get(sessionId);
+        const providedKey = typeof data.key === 'string' ? data.key : null;
+        const keyValid = !storedKey || (!!providedKey && await constantTimeCompare(providedKey, storedKey.key));
+        if (!keyValid) {
+            websocket.send(JSON.stringify({ type: 'error', content: '세션 인증에 실패했습니다. 새 세션으로 다시 시작합니다.' }));
+            websocket.close(4401, 'Invalid session key');
+            return;
+        }
+
+        const sessionKey = generateSessionKey();
+        this.sessionKeys.set(sessionId, { key: sessionKey, lastSeen: Date.now() });
+        await this.state.storage.put('sessionKeys', Array.from(this.sessionKeys.entries()));
+
+        if (!this.sessionSecrets.has(sessionId)) {
+            const bytes = new Uint8Array(32);
+            crypto.getRandomValues(bytes);
+            const sessionSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            this.sessionSecrets.set(sessionId, sessionSecret);
+        }
+        const authorId = await this._computeAuthorId(sessionId);
 
         const now = Date.now();
         const existingMetadata = this.userMetadata.get(sessionId);
@@ -643,18 +674,28 @@ export class ChatRoom {
             }
         }
 
-        if (!this.sessionSecrets.has(sessionId)) {
-            const bytes = new Uint8Array(32);
-            crypto.getRandomValues(bytes);
-            const sessionSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-            this.sessionSecrets.set(sessionId, sessionSecret);
-        }
-        this.sendToSession(sessionId, {
+        websocket.send(JSON.stringify({
             type: 'handshake',
-            secret: this.sessionSecrets.get(sessionId)
-        });
+            secret: this.sessionSecrets.get(sessionId),
+            key: sessionKey,
+            authorId
+        }));
 
+        metadata.authorId = authorId;
         setSession(sessionId, metadata);
+    }
+
+    async _computeAuthorId(sessionId) {
+        const enc = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+            'raw',
+            enc.encode(this.env.HMAC_SECRET || ''),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+        const sig = await crypto.subtle.sign('HMAC', key, enc.encode('author:' + sessionId));
+        return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
     }
 
     async handleMessage(data, sessionId, metadata, HMAC_SECRET) {
@@ -782,6 +823,7 @@ export class ChatRoom {
             messageId,
             content: sanitizeInput(data.content),
             sessionId,
+            authorId: metadata.authorId || null,
             nickname: sanitizeInput(data.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH),
             timestamp: Date.now(),
             editedAt: null,
@@ -798,7 +840,10 @@ export class ChatRoom {
             if (data.replyTo.isSecret) {
                 message.replyTo.isSecret = true;
                 message.replyTo.secretId = data.replyTo.secretId;
-                message.replyTo.targetSessionId = data.replyTo.targetSessionId;
+                const targetMessage = data.replyTo.messageId
+                    ? this.messages.find(m => m.messageId === data.replyTo.messageId)
+                    : null;
+                message.replyTo.targetSessionId = targetMessage?.sessionId || data.replyTo.targetSessionId || null;
             }
         }
 
@@ -1240,6 +1285,9 @@ export class ChatRoom {
     _serializeHistoryMessages(messages, clientSessionId) {
         return messages.map(msg => {
             const clone = { ...msg };
+            if (clone.authorId && !String(clone.sessionId || '').startsWith('admin_')) {
+                delete clone.sessionId;
+            }
             if (clone.reactionSessions) {
                 clone.reacted = {};
                 for (const [emoji, sessions] of Object.entries(clone.reactionSessions)) {
@@ -1324,6 +1372,25 @@ export class ChatRoom {
             this.emptySince = Date.now();
         }
 
+        let sessionKeysChanged = false;
+        for (const [sessionId, entry] of this.sessionKeys) {
+            if (this.sessions.has(sessionId)) continue;
+            if (now - entry.lastSeen > SESSION_KEYS.KEY_TTL_MS) {
+                this.sessionKeys.delete(sessionId);
+                sessionKeysChanged = true;
+            }
+        }
+        if (this.sessionKeys.size > SESSION_KEYS.MAX_KEYS) {
+            const sorted = Array.from(this.sessionKeys.entries()).sort((a, b) => a[1].lastSeen - b[1].lastSeen);
+            for (const [sessionId] of sorted.slice(0, this.sessionKeys.size - SESSION_KEYS.MAX_KEYS)) {
+                this.sessionKeys.delete(sessionId);
+                sessionKeysChanged = true;
+            }
+        }
+        if (sessionKeysChanged) {
+            await this.state.storage.put('sessionKeys', Array.from(this.sessionKeys.entries()));
+        }
+
         const twelveHoursAgo = now - MESSAGE_RETENTION_MS;
         const initialLength = this.messages.length;
         this.messages = this.messages.filter(msg => msg.timestamp > twelveHoursAgo);
@@ -1401,6 +1468,7 @@ export class ChatRoom {
         }
 
         this.sessions.clear();
+        this.sessionKeys.clear();
         this.ipConnections.clear();
         this.userMetadata.clear();
         this.typingUsers.clear();

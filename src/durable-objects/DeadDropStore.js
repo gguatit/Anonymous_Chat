@@ -117,7 +117,8 @@ export class DeadDropStore {
 
         const entry = this.secrets[id];
         if (!entry) {
-            console.error(`DeadDropStore: id '${id}' not found. Stored ids:`, Object.keys(this.secrets));
+            // ponytail: ID 자체가 열람 자격증명 — ID/목록을 로그에 남기지 않는다
+            console.error('DeadDropStore: secret not found or already read');
             return new Response(JSON.stringify({ error: '메시지를 찾을 수 없거나 이미 읽혔습니다.' }), {
                 status: 404,
                 headers: { 'Content-Type': 'application/json' }

@@ -32,6 +32,12 @@ export function generateSessionId() {
     return `user_${randomPart1.substring(0, 16)}${randomPart2}`;
 }
 
+export function generateSessionKey() {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function sanitizeContentForAI(content) {
     if (!content || !content.trim()) return null;
     const trimmed = content.trim();
@@ -199,7 +205,7 @@ export function searchMessages(messages, query, limit) {
             messageId: msg.messageId,
             content: msg.content || '',
             nickname: msg.nickname || 'Anonymous',
-            sessionId: msg.sessionId,
+            authorId: msg.authorId || null,
             timestamp: msg.timestamp,
             hasFile: !!(msg.file),
             fileName: msg.file?.filename || null,

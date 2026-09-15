@@ -51,6 +51,12 @@ export const AUTH = {
     TOKEN_EXPIRY_MS: 2 * 60 * 60 * 1000, // 2 hours
 };
 
+// Session capability keys (proof of session ownership on rejoin)
+export const SESSION_KEYS = {
+    KEY_TTL_MS: 30 * 60 * 1000, // 30 minutes of inactivity
+    MAX_KEYS: 500,
+};
+
 // Push notification constants
 export const PUSH_SUBSCRIPTION_TTL = 30 * 24 * 60 * 60; // 30 days
 export const PUSH_CONFIG = {

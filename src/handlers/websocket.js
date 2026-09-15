@@ -1,5 +1,6 @@
 import { ROOM_NAME, SECURITY, CHANNEL_PREFIX, MAX_SESSION_ID_LENGTH } from '../config/constants.js';
 import { isAllowedOrigin } from '../utils/security.js';
+import { verifyAdminToken } from '../middleware/auth.js';
 
 export async function handleWebSocket(request, env, HMAC_SECRET) {
     // Check for WebSocket upgrade
@@ -28,6 +29,18 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
 
     if (sessionId && (sessionId.length > MAX_SESSION_ID_LENGTH || !/^[a-zA-Z0-9_-]+$/.test(sessionId))) {
         return new Response('Invalid sessionId', { status: 400 });
+    }
+
+    // Observer sessions (admin dashboard) must prove admin identity before reaching the DO
+    if (sessionId && sessionId.startsWith('admin_obs_')) {
+        const observerToken = url.searchParams.get('token');
+        const isValidObserver = observerToken
+            ? await verifyAdminToken(observerToken, HMAC_SECRET, env)
+            : false;
+        if (!isValidObserver) {
+            console.warn('Blocked unauthenticated observer session');
+            return new Response('Unauthorized observer', { status: 401 });
+        }
     }
 
     // Check ban status BEFORE allowing WebSocket connection
