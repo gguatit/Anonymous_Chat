@@ -1,7 +1,8 @@
 export function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = String(text || '');
-    return div.innerHTML;
+    // textContent→innerHTML escapes & < > only; quotes must also be escaped for attribute contexts
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 export function isValidUrl(url) {

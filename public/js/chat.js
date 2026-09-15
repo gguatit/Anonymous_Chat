@@ -63,7 +63,8 @@ class ChatClient {
                 onMessage: (data) => this.handleMessage(data),
                 onConnectionChange: (status, attempt, max) => this.handleConnectionChange(status, attempt, max),
                 onError: (message) => this.ui.displayError(message)
-            }
+            },
+            this.sessionManager
         );
         this.wsManager.channelId = this.currentChannel;
 
@@ -302,7 +303,7 @@ class ChatClient {
         switch (data.type) {
             case 'history':
                 if (data.messages && data.messages.length > 0) {
-                    this.ui.displayBatchMessages(data.messages, this.sessionManager.getSessionId());
+                    this.ui.displayBatchMessages(data.messages, this.sessionManager.getSessionId(), this.wsManager.authorId);
                     this.ui.scrollToBottom();
                     if (this.ogPreview) {
                         this.ogPreview.enrichMessage(this.ui.messagesContainer);
@@ -312,8 +313,9 @@ class ChatClient {
             case 'message':
                 this.ui.displayMessage(
                     data,
-                    data.sessionId === this.sessionManager.getSessionId(),
-                    this.sessionManager.getSessionId()
+                    data.authorId ? data.authorId === this.wsManager.authorId : data.sessionId === this.sessionManager.getSessionId(),
+                    this.sessionManager.getSessionId(),
+                    this.wsManager.authorId
                 );
                 if (this.ogPreview) {
                     const lastMsg = this.ui.messagesContainer.querySelector('[data-message]:last-child');
@@ -401,6 +403,7 @@ class ChatClient {
                         // 세션 밴: 세션 ID를 유지하여 재접속 시 같은 (밴된) ID로 거부되도록 함
                     } else {
                         localStorage.removeItem('chatSessionId');
+                        localStorage.removeItem('chatSessionKey');
                     }
 
                     if (this.wsManager) {
@@ -432,6 +435,7 @@ class ChatClient {
                 this.ui.setInputEnabled(false);
 
                 localStorage.removeItem('chatSessionId');
+                localStorage.removeItem('chatSessionKey');
 
                 if (this.wsManager) {
                     this.wsManager.disconnect();
@@ -927,11 +931,10 @@ class ChatClient {
 
             // 에러 메시지 표시
             contentDiv.classList.remove('hidden');
-            contentDiv.innerHTML = `
-                <div class="text-red-400 text-sm">
-                    ❌ ${error.message}
-                </div>
-            `;
+            const errDiv = document.createElement('div');
+            errDiv.className = 'text-red-400 text-sm';
+            errDiv.textContent = `❌ ${error.message}`;
+            contentDiv.replaceChildren(errDiv);
         }
     }
 

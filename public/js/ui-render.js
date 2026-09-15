@@ -77,16 +77,16 @@ export const rendering = {
         }, 2000);
     },
 
-    displayMessage(data, isOwnMessage, sessionId) {
+    displayMessage(data, isOwnMessage, sessionId, authorId) {
         if (data.messageId && this.messagesContainer.querySelector(`[data-message-id="${data.messageId}"]`)) {
             return;
         }
 
-        const messageDiv = this._renderSingleMessage(data, sessionId);
+        const messageDiv = this._renderSingleMessage(data, sessionId, authorId);
         this.messagesContainer.appendChild(messageDiv);
     },
 
-    displayBatchMessages(messages, sessionId) {
+    displayBatchMessages(messages, sessionId, authorId) {
         if (!messages || messages.length === 0) return;
 
         const fragment = document.createDocumentFragment();
@@ -96,7 +96,7 @@ export const rendering = {
                 continue;
             }
 
-            const messageDiv = this._renderSingleMessage(data, sessionId);
+            const messageDiv = this._renderSingleMessage(data, sessionId, authorId);
             fragment.appendChild(messageDiv);
         }
 
@@ -112,7 +112,7 @@ export const rendering = {
         }
     },
 
-    _renderSingleMessage(data, sessionId) {
+    _renderSingleMessage(data, sessionId, authorId) {
         if (data.type === 'summary') {
             const MODE_STYLES = {
                 default: { bg: 'bg-indigo-900/40', border: 'border-indigo-700/50', title: 'text-indigo-300', label: 'AI \uB300\uD654 \uC694\uC57D' },
@@ -140,19 +140,20 @@ export const rendering = {
             return wrapper;
         }
 
-        const isOwnMessage = data.sessionId === sessionId;
+        const isOwnMessage = data.authorId ? data.authorId === authorId : data.sessionId === sessionId;
         const isAdmin = !!(data.sessionId && String(data.sessionId).startsWith('admin_'));
 
         const TIME_GAP = UI.MESSAGE_GROUP_TIME_MS;
+        const senderKey = data.authorId || data.sessionId;
         const sameAsPrev = this._lastSender !== null
-            && this._lastSender === data.sessionId
+            && this._lastSender === senderKey
             && this._lastTime !== null
             && (data.timestamp - this._lastTime < TIME_GAP);
         const isGrouped = sameAsPrev && !isAdmin;
         if (isGrouped && this._lastMessageEl) {
             this._lastMessageEl.classList.add('msg-bubble-grouped');
         }
-        this._lastSender = data.sessionId;
+        this._lastSender = senderKey;
         this._lastTime = data.timestamp;
 
         const timestamp = new Date(data.timestamp).toLocaleTimeString('ko-KR', {
@@ -219,7 +220,12 @@ export const rendering = {
         const wrapper = document.createElement('div');
         wrapper.setAttribute('data-message', 'true');
         wrapper.setAttribute('data-message-id', data.messageId);
-        wrapper.setAttribute('data-session-id', data.sessionId);
+        if (data.sessionId) {
+            wrapper.setAttribute('data-session-id', data.sessionId);
+        }
+        if (data.authorId) {
+            wrapper.setAttribute('data-author-id', data.authorId);
+        }
         wrapper.setAttribute('data-timestamp', data.timestamp);
         wrapper.setAttribute('data-can-edit', canEdit ? 'true' : 'false');
         if (data.replyTo?.messageId) {
@@ -241,7 +247,7 @@ export const rendering = {
             wrapper.classList.add(isOwnMessage ? 'items-end' : 'items-start');
             if (isOwnMessage) wrapper.style.marginLeft = 'auto';
             const nameLabel = document.createElement('div');
-            const senderColor = isOwnMessage ? null : this._getSenderHue(data.sessionId);
+            const senderColor = isOwnMessage ? null : this._getSenderHue(senderKey);
             nameLabel.className = 'msg-sender-label px-1';
             if (senderColor) {
                 wrapper.style.setProperty('--sender-hue', senderColor.hue);
@@ -269,7 +275,7 @@ export const rendering = {
         } else if (isOwnMessage) {
             bubble.className = 'message-enter-own msg-bubble msg-bubble-own';
         } else {
-            const senderColor = this._getSenderHue(data.sessionId);
+            const senderColor = this._getSenderHue(senderKey);
             bubble.className = 'message-enter-other msg-bubble msg-bubble-other';
             bubble.style.setProperty('--sender-hue', senderColor.hue);
         }

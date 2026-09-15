@@ -170,7 +170,7 @@ class AdminCore {
         if (this.observerWs && this.observerWs.readyState === WebSocket.OPEN) return;
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
         const obsId = 'admin_obs_' + (this.sessionToken || '').substring(0, 16);
-        const wsUrl = `${protocol}//${location.host}/ws?sessionId=${encodeURIComponent(obsId)}`;
+        const wsUrl = `${protocol}//${location.host}/ws?sessionId=${encodeURIComponent(obsId)}&token=${encodeURIComponent(this.sessionToken || '')}`;
 
         const ws = new WebSocket(wsUrl);
         this.observerWs = ws;

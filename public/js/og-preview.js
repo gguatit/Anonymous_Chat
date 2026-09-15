@@ -63,10 +63,10 @@ export class OGPreviewManager {
         const siteName = og.siteName ? this._esc(og.siteName) : this._esc(new URL(url).hostname);
 
         return `
-            <div class="og-card mt-2 rounded-lg border border-gray-600/50 overflow-hidden bg-gray-800/60 hover:bg-gray-700/60 transition-colors cursor-pointer" onclick="window.open('${this._esc(url)}', '_blank', 'noopener')">
+            <div class="og-card mt-2 rounded-lg border border-gray-600/50 overflow-hidden bg-gray-800/60 hover:bg-gray-700/60 transition-colors cursor-pointer">
                 ${image ? `
                 <div class="og-image w-full h-40 bg-gray-700 overflow-hidden flex items-center justify-center">
-                    <img src="${this._esc(image)}" alt="" class="w-full h-full object-cover" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'text-gray-500 text-xs\\'>이미지를 불러올 수 없습니다</div>'">
+                    <img src="${this._esc(image)}" alt="" class="w-full h-full object-cover" loading="lazy">
                 </div>` : ''}
                 <div class="p-3">
                     <p class="text-sm font-semibold text-gray-100 leading-snug" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${title}</p>
@@ -75,6 +75,26 @@ export class OGPreviewManager {
                 </div>
             </div>
         `;
+    }
+
+    // CSP: inline handlers are not allowed — bind card behaviors after insertion.
+    _bindCard(placeholder, url) {
+        const card = placeholder.querySelector('.og-card');
+        if (!card) return;
+        card.addEventListener('click', () => {
+            window.open(url, '_blank', 'noopener');
+        });
+        const img = card.querySelector('img');
+        if (img) {
+            img.addEventListener('error', () => {
+                const wrap = img.parentElement;
+                if (!wrap) return;
+                const msg = document.createElement('div');
+                msg.className = 'text-gray-500 text-xs';
+                msg.textContent = '이미지를 불러올 수 없습니다';
+                wrap.replaceChildren(msg);
+            });
+        }
     }
 
     _ogId(url) {
@@ -119,6 +139,7 @@ export class OGPreviewManager {
         this.getPreview(url).then(og => {
             if (og) {
                 placeholder.innerHTML = this.renderCard(og, url);
+                this._bindCard(placeholder, url);
             } else {
                 placeholder.remove();
             }

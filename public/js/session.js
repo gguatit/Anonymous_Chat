@@ -30,6 +30,26 @@ export class SessionManager {
         return this.sessionId;
     }
 
+    getCapabilityKey() {
+        return localStorage.getItem('chatSessionKey');
+    }
+
+    setCapabilityKey(key) {
+        if (key) {
+            localStorage.setItem('chatSessionKey', key);
+        } else {
+            localStorage.removeItem('chatSessionKey');
+        }
+    }
+
+    // 세션 열쇠를 폐기하고 새 익명 신원을 발급한다 (열쇠 분실/불일치 시 1회 재시도용)
+    resetSession() {
+        this.setCapabilityKey(null);
+        this.sessionId = this.generateSessionId();
+        localStorage.setItem('chatSessionId', this.sessionId);
+        return this.sessionId;
+    }
+
     getOrCreateNickname() {
         let nickname = localStorage.getItem('chatNickname');
         if (!nickname) {

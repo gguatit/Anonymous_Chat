@@ -1,5 +1,6 @@
 import ApiClient from '../api-client.js';
 import * as ui from '../admin-ui.js';
+import { escapeHtml } from '../utils.js';
 
 let _kickTargetSessionId = null;
 
@@ -47,7 +48,7 @@ export async function init(core) {
             const m = data?.metadata || {};
             const env = m?.environment || {};
             const msgCount = data?.messageCount ?? 0;
-            content.innerHTML = `<div class="space-y-3"><div class="flex justify-between"><span class="text-gray-400">Session ID:</span><span class="font-mono text-sm">${sid.substring(0, 30)}...</span></div><div class="flex justify-between"><span class="text-gray-400">IP:</span><span>${m.ip || env.ip || '-'}</span></div><div class="flex justify-between"><span class="text-gray-400">Country:</span><span>${env.country || '-'}</span></div><div class="flex justify-between"><span class="text-gray-400">User Agent:</span><span class="text-xs">${(env.userAgent || '-').substring(0, 80)}</span></div><div class="flex justify-between"><span class="text-gray-400">Nickname:</span><span>${m.nickname || '-'}</span></div><div class="flex justify-between"><span class="text-gray-400">Messages:</span><span>${msgCount}</span></div></div>`;
+            content.innerHTML = `<div class="space-y-3"><div class="flex justify-between"><span class="text-gray-400">Session ID:</span><span class="font-mono text-sm">${escapeHtml(String(sid).substring(0, 30))}...</span></div><div class="flex justify-between"><span class="text-gray-400">IP:</span><span>${escapeHtml(m.ip || env.ip || '-')}</span></div><div class="flex justify-between"><span class="text-gray-400">Country:</span><span>${escapeHtml(env.country || '-')}</span></div><div class="flex justify-between"><span class="text-gray-400">User Agent:</span><span class="text-xs">${escapeHtml((env.userAgent || '-').substring(0, 80))}</span></div><div class="flex justify-between"><span class="text-gray-400">Nickname:</span><span>${escapeHtml(m.nickname || '-')}</span></div><div class="flex justify-between"><span class="text-gray-400">Messages:</span><span>${Number(msgCount) || 0}</span></div></div>`;
             modal.classList.add('open');
         } catch { core.showNotification('사용자 정보 로드 실패', 'error'); }
     };

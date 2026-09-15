@@ -1,4 +1,5 @@
 import ApiClient from './api-client.js';
+import { escapeHtml } from './utils.js';
 
 const securityState = {
     events: [],
@@ -39,24 +40,24 @@ function renderEvents() {
         return;
     }
     tbody.innerHTML = securityState.events.map(e => `
-        <tr class="event-row" data-id="${e.id}">
-            <td>${e.id}</td>
-            <td><span class="badge-cat">${categoryLabel(e.category)}</span></td>
-            <td><span class="${severityClass(e.severity)}">${e.severity}</span></td>
-            <td class="mono">${e.ip || '-'}</td>
-            <td class="mono truncate">${e.path || '-'}</td>
-            <td>${(e.details || '').substring(0, 80)}</td>
-            <td class="mono">${formatTimestamp(e.timestamp)}</td>
+        <tr class="event-row" data-id="${escapeHtml(e.id)}">
+            <td>${escapeHtml(e.id)}</td>
+            <td><span class="badge-cat">${escapeHtml(categoryLabel(e.category))}</span></td>
+            <td><span class="${escapeHtml(severityClass(e.severity))}">${escapeHtml(e.severity)}</span></td>
+            <td class="mono">${escapeHtml(e.ip || '-')}</td>
+            <td class="mono truncate">${escapeHtml(e.path || '-')}</td>
+            <td>${escapeHtml((e.details || '').substring(0, 80))}</td>
+            <td class="mono">${escapeHtml(formatTimestamp(e.timestamp))}</td>
         </tr>
-        <tr id="detail-${e.id}" class="event-detail hidden">
+        <tr id="detail-${escapeHtml(e.id)}" class="event-detail hidden">
             <td colspan="7">
                 <div class="detail-grid">
-                    <div><strong>Event Type:</strong> ${e.event_type}</div>
-                    <div><strong>Method:</strong> ${e.method || '-'}</div>
-                    <div><strong>User Agent:</strong> ${(e.user_agent || '').substring(0, 100)}</div>
-                    <div><strong>Country:</strong> ${e.country || '-'}</div>
-                    <div><strong>Session:</strong> ${e.session_id || '-'}</div>
-                    <div><strong>Score:</strong> ${e.severity_score || 0}</div>
+                    <div><strong>Event Type:</strong> ${escapeHtml(e.event_type)}</div>
+                    <div><strong>Method:</strong> ${escapeHtml(e.method || '-')}</div>
+                    <div><strong>User Agent:</strong> ${escapeHtml((e.user_agent || '').substring(0, 100))}</div>
+                    <div><strong>Country:</strong> ${escapeHtml(e.country || '-')}</div>
+                    <div><strong>Session:</strong> ${escapeHtml(e.session_id || '-')}</div>
+                    <div><strong>Score:</strong> ${Number(e.severity_score) || 0}</div>
                 </div>
             </td>
         </tr>
@@ -108,10 +109,10 @@ function renderRiskIPs() {
     }
     tbody.innerHTML = securityState.riskIPs.map(ip => `
         <tr>
-            <td class="mono">${ip.ip}</td>
-            <td>${Math.round(ip.score)}</td>
-            <td>${ip.eventCount}</td>
-            <td><button class="btn-sm btn-red" data-block-ip="${ip.ip}">차단</button></td>
+            <td class="mono">${escapeHtml(ip.ip)}</td>
+            <td>${Number(ip.score) || 0}</td>
+            <td>${Number(ip.eventCount) || 0}</td>
+            <td><button class="btn-sm btn-red" data-block-ip="${escapeHtml(ip.ip)}">차단</button></td>
         </tr>
     `).join('');
 }

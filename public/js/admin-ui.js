@@ -78,9 +78,12 @@ export function renderErrorLogs(logs) {
             <td class="px-2 py-2 md:px-4 md:py-3 whitespace-nowrap text-xs text-gray-400">${d.toLocaleDateString()}<br>${d.toLocaleTimeString()}</td>
             <td class="px-2 py-2 md:px-4 md:py-3 whitespace-nowrap"><span class="px-2 py-1 rounded text-[10px] font-bold ${badge}">${h(l.type)}</span></td>
             <td class="px-2 py-2 md:px-4 md:py-3 text-xs" style="max-width:0"><div class="font-mono text-red-400 truncate w-full" title="${h(l.message)}">${h(l.message)}</div><div class="text-gray-500 text-[10px] mt-1">${h(l.location)}</div></td>
-            <td class="px-2 py-2 md:px-4 md:py-3 text-right"><button class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300" onclick="this.nextElementSibling.classList.toggle('hidden')">자세히</button><div class="hidden text-left text-[11px] text-gray-400 mt-1 font-mono whitespace-pre-wrap">${h(l.stackTrace || 'N/A')}</div></td>
+            <td class="px-2 py-2 md:px-4 md:py-3 text-right"><button class="log-detail-toggle px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300">자세히</button><div class="hidden text-left text-[11px] text-gray-400 mt-1 font-mono whitespace-pre-wrap">${h(l.stackTrace || 'N/A')}</div></td>
         </tr>`;
     }).join('');
+    container.querySelectorAll('.log-detail-toggle').forEach(b => {
+        b.addEventListener('click', () => b.nextElementSibling?.classList.toggle('hidden'));
+    });
 }
 
 export function renderAdminLoginLogs(logs) {

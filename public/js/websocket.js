@@ -5,10 +5,13 @@ const SIGNED_MESSAGE_TYPES = new Set(['message', 'edit']);
 
 // WebSocket connection manager
 export class WebSocketManager {
-    constructor(sessionId, messageHandler) {
+    constructor(sessionId, messageHandler, sessionManager = null) {
         this.ws = null;
         this.sessionId = sessionId;
         this.messageHandler = messageHandler;
+        this.sessionManager = sessionManager;
+        this.authorId = null;
+        this._capabilityRetried = false;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = WS_RECONNECT.MAX_ATTEMPTS;
         this.baseReconnectDelay = WS_RECONNECT.BASE_DELAY_MS;
@@ -74,12 +77,14 @@ export class WebSocketManager {
         // Connection succeeded - clear any stale ban tokens
         this.clearKickToken();
 
-        // Send join message with reconnection flag
+        // Send join message with reconnection flag and capability key
+        const capabilityKey = localStorage.getItem('chatSessionKey');
         this.send({
             type: 'join',
             sessionId: this.sessionId,
             timestamp: Date.now(),
-            isReconnect: this.hasConnectedBefore
+            isReconnect: this.hasConnectedBefore,
+            key: capabilityKey || undefined
         });
 
         // Mark as connected
@@ -107,9 +112,16 @@ export class WebSocketManager {
                 return;
             }
 
-            // Store ephemeral session secret for message signing
+            // Store ephemeral session secret + capability key for message signing
             if (data.type === 'handshake' && data.secret) {
                 this.sessionSecret = data.secret;
+                if (data.key) {
+                    localStorage.setItem('chatSessionKey', data.key);
+                    this._capabilityRetried = false;
+                }
+                if (data.authorId) {
+                    this.authorId = data.authorId;
+                }
                 return;
             }
 
@@ -130,10 +142,27 @@ export class WebSocketManager {
 
         this.messageHandler.onConnectionChange('disconnected');
 
+        // 4401 = capability key mismatch/expired: discard old identity, retry once with a fresh session
+        if (event.code === 4401 && !this._capabilityRetried) {
+            this._capabilityRetried = true;
+            this.sessionSecret = null;
+            this.authorId = null;
+            if (this.sessionManager) {
+                this.sessionId = this.sessionManager.resetSession();
+            } else {
+                localStorage.removeItem('chatSessionKey');
+            }
+            this.manualClose = false;
+            this.isReconnecting = true;
+            this.scheduleReconnect();
+            return;
+        }
+
         // Don't reconnect if:
         // - manually closed (disconnect() called)
         // - code 1008 = admin kick (Policy Violation)
-        const isAdminKick = event.code === 1008;
+        // - 4401 already retried once (avoid auth loop)
+        const isAdminKick = event.code === 1008 || event.code === 4401;
         if (!this.manualClose && !isAdminKick) {
             this.isReconnecting = true;
             this.scheduleReconnect();
@@ -282,6 +311,7 @@ export class WebSocketManager {
         this.manualClose = true;
         this.stopHeartbeat();
         this.sessionSecret = null;
+        this.authorId = null;
         if (this.ws) {
             this.ws.close();
         }
