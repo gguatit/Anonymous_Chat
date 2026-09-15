@@ -10,6 +10,7 @@ export async function refresh(core) {
         const data = await ApiClient.get('/api/admin/banned-ips');
         ui.renderBannedIPs(data);
         ui.renderBannedSessions(data?.sessions || []);
+        ui.renderBannedTokens(data?.tokens || []);
     } catch (_e) { /* ignore */ }
     core.updateLastUpdated();
 }

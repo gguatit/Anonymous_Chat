@@ -29,7 +29,8 @@ export async function init(core) {
     });
     document.getElementById('confirm-kick-btn')?.addEventListener('click', async () => {
         if (!_kickTargetSessionId) return;
-        const duration = parseInt(document.querySelector('input[name="kick-duration"]:checked')?.value || '0');
+            const customMinutes = parseInt(document.getElementById('kick-custom-minutes')?.value || '0', 10);
+            const duration = customMinutes > 0 ? customMinutes * 60 : parseInt(document.querySelector('input[name="kick-duration"]:checked')?.value || '0');
         try {
             await ApiClient.post('/api/admin/kick-user', { sessionId: _kickTargetSessionId, banDuration: duration });
             core.showNotification(duration === 0 ? '퇴장 처리됨' : `${Math.round(duration / 60)}분 차단됨`, 'success');

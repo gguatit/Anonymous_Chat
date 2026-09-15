@@ -215,6 +215,13 @@ export async function init(core) {
     document.getElementById('security-refresh-btn')?.addEventListener('click', () => refresh(core));
     document.getElementById('security-export-btn')?.addEventListener('click', exportCSV);
     document.getElementById('security-clear-btn')?.addEventListener('click', clearOldEvents);
+    document.getElementById('security-block-ip-btn')?.addEventListener('click', () => {
+        const el = document.getElementById('security-block-ip');
+        const ip = el?.value?.trim();
+        if (!ip) return;
+        blockIP(ip);
+        if (el) el.value = '';
+    });
 
     const categoryFilter = document.getElementById('security-category-filter');
     const severityFilter = document.getElementById('security-severity-filter');

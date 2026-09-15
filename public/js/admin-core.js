@@ -164,6 +164,7 @@ class AdminCore {
     }
 
     handleLogout() {
+        ApiClient.post('/api/admin/logout').catch(() => {});
         this.setToken(null);
         this.stopAutoRefresh();
         this.disconnectObserver();
@@ -242,11 +243,11 @@ class AdminCore {
         if (this._helpersSetup) return;
         this._helpersSetup = true;
         window._adminUnbanIP = async (target) => {
-            const { sessionId, ip } = target || {};
-            if (!sessionId && !ip) return;
+            const { sessionId, ip, token } = target || {};
+            if (!sessionId && !ip && !token) return;
             if (!confirm('차단을 해제하시겠습니까?')) return;
             try {
-                await ApiClient.post('/api/admin/unban-ip', { sessionId, ip });
+                await ApiClient.post('/api/admin/unban-ip', { sessionId, ip, token });
                 this.showNotification('차단 해제 완료', 'success');
                 const mod = this.pageModules[this.currentPage];
                 if (mod?.refresh) mod.refresh(this);

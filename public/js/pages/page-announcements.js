@@ -20,6 +20,21 @@ export async function init(core) {
             core.showNotification('공지 삭제 실패', 'error');
         }
     };
+    window._editAnnouncement = async (timestamp, content) => {
+        if (!Number.isFinite(timestamp)) return;
+        const next = prompt('공지사항 내용 수정', content || '');
+        if (next === null) return;
+        const trimmed = next.trim();
+        if (!trimmed) return;
+        try {
+            await ApiClient.put('/api/admin/announce', { timestamp, content: trimmed });
+            core.showNotification('공지사항 수정 완료', 'success');
+            await refresh(core);
+        } catch (error) {
+            console.error('Failed to edit announcement:', error);
+            core.showNotification('공지 수정 실패', 'error');
+        }
+    };
     document.getElementById('announce-preview-btn')?.addEventListener('click', () => {
         const content = document.getElementById('admin-announce-input')?.value || '';
         const p = document.getElementById('announce-preview'), pc = document.getElementById('announce-preview-content');

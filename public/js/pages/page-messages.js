@@ -5,13 +5,45 @@ export async function init(core) {
     const input = document.getElementById('admin-message-input');
     const sendBtn = document.getElementById('admin-send-btn');
     const deleteAllBtn = document.getElementById('delete-all-messages-btn');
+    const fileInput = document.getElementById('admin-message-file');
+
+    window._adminEditMessage = async (messageId, content) => {
+        if (!messageId) return;
+        const next = prompt('메시지 수정', content || '');
+        if (next === null) return;
+        const newContent = next.trim();
+        if (!newContent) return;
+        try {
+            await ApiClient.post('/api/admin/edit-message', { messageId, newContent });
+            core.showNotification('메시지 수정 완료', 'success');
+            await refresh(core);
+        } catch (error) {
+            console.error('Failed to edit message:', error);
+            core.showNotification('메시지 수정 실패', 'error');
+        }
+    };
 
     sendBtn?.addEventListener('click', async () => {
         const content = input?.value?.trim();
-        if (!content) return;
+        const file = fileInput?.files?.[0];
+        if (!content && !file) return;
         try {
-            await ApiClient.post('/api/admin/broadcast', { type: 'broadcast', content, isAdmin: true, timestamp: Date.now() });
-            input.value = '';
+            let filePayload = null;
+            if (file) {
+                const form = new FormData();
+                form.append('file', file);
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${ApiClient.getToken() || ''}` },
+                    body: form
+                });
+                if (!res.ok) throw new Error('upload failed');
+                const data = await res.json();
+                filePayload = { url: data.full_url, filename: data.filename, filesize: data.filesize, filetype: data.filetype };
+            }
+            await ApiClient.post('/api/admin/broadcast', { content, file: filePayload || undefined });
+            if (input) input.value = '';
+            if (fileInput) fileInput.value = '';
             await refresh(core);
             core.showNotification('메시지 전송 완료', 'success');
         } catch { core.showNotification('전송 실패', 'error'); }

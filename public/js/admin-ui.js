@@ -170,6 +170,30 @@ export function renderBannedSessions(sessions) {
     });
 }
 
+export function renderBannedTokens(tokens) {
+    const list = Array.isArray(tokens) ? tokens : [];
+    const tbody = document.getElementById('banned-tokens-body');
+    if (!tbody) return;
+    if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:1rem;text-align:center;color:#9ca3af">차단된 토큰이 없습니다.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.map(t => {
+        const remaining = t.remainingSeconds > 0 ? dur(t.remainingSeconds * 1000) : '-';
+        const label = (t.token || '').substring(0, 20) + '...';
+        return `<tr>
+            <td class="mono text-xs" title="${h(t.token || '')}">${h(label)}</td>
+            <td class="text-sm">${h(t.ip || '-')}</td>
+            <td class="text-sm">${remaining}</td>
+            <td class="text-sm hidden md:table-cell">${h(t.reason || '-')}</td>
+            <td class="text-center"><button class="btn-sm btn-red" data-unban-token="${h(t.token || '')}">해제</button></td>
+        </tr>`;
+    }).join('');
+    tbody.querySelectorAll('[data-unban-token]').forEach(b => {
+        b.addEventListener('click', () => window._adminUnbanIP?.({ token: b.dataset.unbanToken }));
+    });
+}
+
 export function renderActiveSessions(sessions) {
     const container = document.getElementById('active-sessions');
     if (!container) return;
@@ -223,7 +247,10 @@ export function renderRecentMessages(messages) {
         const isAdmin = msg.sessionId && String(msg.sessionId).startsWith('admin_');
         const adminBadge = isAdmin ? '<span class="text-xs font-semibold text-yellow-300 bg-yellow-900/20 px-2 py-0.5 rounded">관리자</span>' : '';
         return `<div class="p-3 ${isAdmin ? 'bg-yellow-900/5 border border-yellow-800' : 'bg-gray-700'} rounded-lg msg-row relative" data-msg-id="${h(msg.messageId)}">
-            <button class="absolute right-2 opacity-0 msg-delete-btn transition-opacity bg-red-600 hover:bg-red-500 text-white rounded p-1 leading-none" data-delete-msg="${h(msg.messageId)}" title="메시지 삭제">
+<button class="absolute right-10 opacity-0 msg-edit-btn transition-opacity bg-blue-600 hover:bg-blue-500 text-white rounded p-1 leading-none" data-edit-msg="${h(msg.messageId)}" title="메시지 수정">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"/></svg>
+            </button>
+                        <button class="absolute right-2 opacity-0 msg-delete-btn transition-opacity bg-red-600 hover:bg-red-500 text-white rounded p-1 leading-none" data-delete-msg="${h(msg.messageId)}" title="메시지 삭제">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
             </button>
             <div class="flex items-start justify-between mb-1">
@@ -236,7 +263,15 @@ export function renderRecentMessages(messages) {
         </div>`;
     }).join('');
 
-    container.querySelectorAll('[data-delete-msg]').forEach(b => {
+container.querySelectorAll('[data-edit-msg]').forEach(b => {
+        b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const row = b.closest('[data-msg-id]');
+            const contentEl = row ? row.querySelector('p') : null;
+            if (window._adminEditMessage) window._adminEditMessage(b.dataset.editMsg, contentEl ? contentEl.textContent : '');
+        });
+    });
+        container.querySelectorAll('[data-delete-msg]').forEach(b => {
         b.addEventListener('click', (e) => {
             e.stopPropagation();
             const msgId = b.dataset.deleteMsg;
@@ -257,13 +292,19 @@ export function renderAnnouncements(announcements) {
         const ts = new Date(a.timestamp).toLocaleString('ko-KR');
         const emergency = a.isEmergency ? '<span class="text-xs bg-red-600 text-white font-bold border border-red-500 px-1.5 py-0.5 rounded ml-1 animate-pulse">긴급</span>' : '';
         const content = h(a.content).replace(/\n/g, '<br>').replace(/(https?:\/\/[^\s<>"']+)/g, '<a href="$1" target="_blank" rel="noopener" class="text-blue-400 hover:text-blue-300 underline break-all">$1</a>');
+        const editBtn = `<button class="edit-announce-btn text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shrink-0" data-timestamp="${a.timestamp}" data-content="${h(a.content)}">수정</button>`;
         const delBtn = `<button class="delete-announce-btn text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded shrink-0" data-timestamp="${a.timestamp}">삭제</button>`;
         return a.isEmergency
-            ? `<div class="bg-red-900/30 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-red-500"><div class="flex-1"><div class="text-xs text-red-300 font-semibold mb-1">${ts}${emergency}</div><div class="text-sm text-red-100">${content}</div></div>${delBtn}</div>`
-            : `<div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4"><div class="flex-1"><div class="text-xs text-gray-400 mb-1">${ts}</div><div class="text-sm text-gray-200">${content}</div></div>${delBtn}</div>`;
+            ? `<div class="bg-red-900/30 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-red-500"><div class="flex-1"><div class="text-xs text-red-300 font-semibold mb-1">${ts}${emergency}</div><div class="text-sm text-red-100">${content}</div></div><div class="flex flex-col gap-1">${editBtn}${delBtn}</div></div>`
+            : `<div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4"><div class="flex-1"><div class="text-xs text-gray-400 mb-1">${ts}</div><div class="text-sm text-gray-200">${content}</div></div><div class="flex flex-col gap-1">${editBtn}${delBtn}</div></div>`;
     }).join('');
 
-    container.querySelectorAll('.delete-announce-btn').forEach(b => {
+container.querySelectorAll('.edit-announce-btn').forEach(b => {
+        b.addEventListener('click', () => {
+            if (window._editAnnouncement) window._editAnnouncement(Number(b.dataset.timestamp), b.dataset.content || '');
+        });
+    });
+        container.querySelectorAll('.delete-announce-btn').forEach(b => {
         b.addEventListener('click', () => window._deleteAnnouncement && window._deleteAnnouncement(Number(b.dataset.timestamp)));
     });
 }
@@ -281,8 +322,8 @@ export function renderChannels(channels) {
             <td class="px-2 py-2 md:px-4 md:py-3 font-medium text-emerald-300">${h(ch.name)}</td>
             <td class="px-2 py-2 md:px-4 md:py-3 text-xs text-gray-400">${h(ch.createdBy || '-')}</td>
             <td class="px-2 py-2 md:px-4 md:py-3 text-xs text-gray-400">${date}</td>
-            <td class="px-2 py-2 md:px-4 md:py-3 text-sm">${ch.connections ?? '-'}</td>
-            <td class="px-2 py-2 md:px-4 md:py-3 text-sm">${ch.messageCount ?? '-'}</td>
+            <td class="px-2 py-2 md:px-4 md:py-3 text-sm">${ch.activeConnections ?? ch.connections ?? '-'}</td>
+            <td class="px-2 py-2 md:px-4 md:py-3 text-sm">${ch.totalMessages ?? ch.messageCount ?? '-'}</td>
             <td class="px-2 py-2 md:px-4 md:py-3 text-right whitespace-nowrap" style="vertical-align:middle">
                 <button class="view-channel-btn text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded mr-1" data-slug="${h(ch.slug)}" data-name="${h(ch.name)}">상세</button>
                 <button class="delete-channel-btn text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded" data-slug="${h(ch.slug)}" data-name="${h(ch.name)}">삭제</button>
@@ -308,9 +349,9 @@ export function renderChannelDetail(channel) {
         <div class="grid grid-cols-2 gap-3 text-sm">
             <div><span class="text-gray-400">슬러그:</span> <span class="font-mono">${h(channel.slug)}</span></div>
             <div><span class="text-gray-400">생성자:</span> ${h(channel.createdBy || '-')}</div>
-            <div><span class="text-gray-400">생성일:</span> ${new Date(channel.createdAt).toLocaleString('ko-KR')}</div>
-            <div><span class="text-gray-400">접속자:</span> ${channel.connections ?? '-'}</div>
-            <div><span class="text-gray-400">메시지:</span> ${channel.messageCount ?? '-'}</div>
+            <div><span class="text-gray-400">생성일:</span> ${channel.createdAt ? new Date(channel.createdAt).toLocaleString('ko-KR') : '-'}</div>
+            <div><span class="text-gray-400">접속자:</span> ${channel.activeConnections ?? channel.connections ?? '-'}</div>
+            <div><span class="text-gray-400">메시지:</span> ${channel.totalMessages ?? channel.messageCount ?? '-'}</div>
             <div><span class="text-gray-400">상태:</span> ${channel.status || 'active'}</div>
         </div>
     `;
