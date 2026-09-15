@@ -28,15 +28,16 @@ export async function constantTimeCompare(a, b) {
 }
 
 // Check if origin is allowed
-export function isAllowedOrigin(origin) {
+export function isAllowedOrigin(origin, env) {
     try {
         const url = new URL(origin);
-        // In development, allow localhost
-        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+        // Localhost is only trusted in explicit development environments
+        if (env?.ENVIRONMENT === 'development' &&
+            (url.hostname === 'localhost' || url.hostname === '127.0.0.1')) {
             return true;
         }
-        // In production, check against allowed origins
-        return SECURITY.ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed));
+        // Exact origin match (no prefix/substring matching)
+        return SECURITY.ALLOWED_ORIGINS.includes(url.origin);
     } catch (_e) { /* expected: invalid origin URL */
         return false;
     }

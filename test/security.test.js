@@ -39,28 +39,29 @@ describe('constantTimeCompare', () => {
 });
 
 describe('isAllowedOrigin', () => {
-    it('should allow localhost', () => {
-        expect(isAllowedOrigin('http://localhost:8788')).toBe(true);
-        expect(isAllowedOrigin('https://localhost:8788')).toBe(true);
+    const dev = { ENVIRONMENT: 'development' };
+    const prod = { ENVIRONMENT: 'production' };
+
+    it('allows localhost only in development', () => {
+        expect(isAllowedOrigin('http://localhost:8788', dev)).toBe(true);
+        expect(isAllowedOrigin('http://127.0.0.1:8788', dev)).toBe(true);
+        expect(isAllowedOrigin('http://localhost:8788', prod)).toBe(false);
+        expect(isAllowedOrigin('http://127.0.0.1:8788', prod)).toBe(false);
     });
 
-    it('should allow 127.0.0.1', () => {
-        expect(isAllowedOrigin('http://127.0.0.1:8788')).toBe(true);
+    it('allows the configured production origin exactly', () => {
+        expect(isAllowedOrigin('https://kalpha.mmv.kr', prod)).toBe(true);
     });
 
-    it('should reject external unapproved origins', () => {
-        expect(isAllowedOrigin('https://evil.com')).toBe(false);
+    it('rejects origin prefix and userinfo tricks', () => {
+        expect(isAllowedOrigin('https://kalpha.mmv.kr.evil.com', prod)).toBe(false);
+        expect(isAllowedOrigin('https://kalpha.mmv.kr@evil.com', prod)).toBe(false);
+        expect(isAllowedOrigin('https://evil.com', prod)).toBe(false);
     });
 
-    it('should reject invalid origin URLs', () => {
-        expect(isAllowedOrigin('not-a-url')).toBe(false);
-        expect(isAllowedOrigin('')).toBe(false);
-        expect(isAllowedOrigin(null)).toBe(false);
-    });
-
-    it('should match allowed origins prefix', () => {
-        // Verify the function structure - it checks SECURITY.ALLOWED_ORIGINS
-        // In test, none of our test URLs will be in the configured list except localhost
-        expect(typeof isAllowedOrigin('https://localhost:0')).toBe('boolean');
+    it('rejects invalid origin URLs', () => {
+        expect(isAllowedOrigin('not-a-url', prod)).toBe(false);
+        expect(isAllowedOrigin('', prod)).toBe(false);
+        expect(isAllowedOrigin(null, prod)).toBe(false);
     });
 });

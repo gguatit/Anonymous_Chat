@@ -40,92 +40,64 @@ export async function incrementRateLimit(env, key) {
     }
 }
 
-// Revoke token with matching TTL to token expiration
+// Revoke token (logout): delete its server-side state
 export async function revokeToken(env, token) {
-    if (!env?.ADMIN_TOKENS) return;
-    await env.ADMIN_TOKENS.put(`revoked:${token}`, 'true', {
-        expirationTtl: AUTH.TOKEN_EXPIRY_MS / 1000
-    });
+    if (!env?.ADMIN_TOKENS || !token) return;
+    await env.ADMIN_TOKENS.delete(`${TOKEN_PREFIX}${token}`);
 }
 
-// Generate admin token
-export async function generateAdminToken(password, secret) {
-    const data = `${password}:${Date.now()}`;
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secret);
-    const messageData = encoder.encode(data);
-    
-    const key = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-    );
-    
-    const signature = await crypto.subtle.sign('HMAC', key, messageData);
-    const base64Sig = btoa(String.fromCharCode(...new Uint8Array(signature)));
-    
-    return `${btoa(data)}.${base64Sig}`;
+const TOKEN_PREFIX = 'token:';
+
+function generateRandomTokenValue() {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    let binary = '';
+    for (const b of bytes) binary += String.fromCharCode(b);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-// Verify admin token
-export async function verifyAdminToken(token, secret, env) {
+// Generate an opaque admin token; only its hash-free random value is kept server-side in KV
+export async function generateAdminToken(env) {
+    const token = generateRandomTokenValue();
+    if (env?.ADMIN_TOKENS) {
+        const now = Date.now();
+        await env.ADMIN_TOKENS.put(`${TOKEN_PREFIX}${token}`, JSON.stringify({ iat: now, exp: now + AUTH.TOKEN_EXPIRY_MS }), {
+            expirationTtl: AUTH.TOKEN_EXPIRY_MS / 1000
+        });
+    }
+    return token;
+}
+
+// Verify opaque admin token against KV state (no credentials in payload, no local signature check)
+export async function verifyAdminToken(env, token) {
+    if (!token || typeof token !== 'string' || !env?.ADMIN_TOKENS) {
+        await logSecurityEvent(env, 'TOKEN_INVALID', {
+            details: 'Token verification unavailable or malformed',
+        });
+        return false;
+    }
+
     try {
-        if (env?.ADMIN_TOKENS) {
-            const isRevoked = await env.ADMIN_TOKENS.get(`revoked:${token}`);
-            if (isRevoked) {
-                await logSecurityEvent(env, 'TOKEN_INVALID', {
-                    details: 'Token has been revoked',
-                });
-                return false;
-            }
-        }
-
-        const [dataPart, sigPart] = token.split('.');
-        if (!dataPart || !sigPart) {
+        const data = await env.ADMIN_TOKENS.get(`${TOKEN_PREFIX}${token}`);
+        if (!data) {
             await logSecurityEvent(env, 'TOKEN_INVALID', {
-                details: 'Malformed token (missing data or signature part)',
+                details: 'Token not found, revoked or expired',
             });
             return false;
         }
 
-        const data = atob(dataPart);
-        const parts = data.split(':');
-        const timestamp = parts[parts.length - 1];
-
-        if (Date.now() - parseInt(timestamp) > AUTH.TOKEN_EXPIRY_MS) {
+        const { exp } = JSON.parse(data);
+        if (!exp || Date.now() > exp) {
             await logSecurityEvent(env, 'TOKEN_EXPIRED', {
-                details: `Token expired (issued at ${timestamp})`,
+                details: 'Token expired',
             });
             return false;
         }
 
-        const encoder = new TextEncoder();
-        const keyData = encoder.encode(secret);
-        const messageData = encoder.encode(data);
-
-        const key = await crypto.subtle.importKey(
-            'raw',
-            keyData,
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['sign']
-        );
-
-        const signature = await crypto.subtle.sign('HMAC', key, messageData);
-        const expectedSig = btoa(String.fromCharCode(...new Uint8Array(signature)));
-
-        const isValid = sigPart === expectedSig;
-        if (!isValid) {
-            await logSecurityEvent(env, 'TOKEN_INVALID', {
-                details: 'HMAC signature mismatch',
-            });
-        }
-        return isValid;
+        return true;
     } catch (_e) {
         await logSecurityEvent(env, 'TOKEN_INVALID', {
-            details: `Token parsing error: ${_e.message}`,
+            details: 'Token verification error',
         });
         return false;
     }

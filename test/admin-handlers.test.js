@@ -7,6 +7,7 @@ function mockKv() {
     return {
         get: vi.fn(async (key) => store.get(key) ?? null),
         put: vi.fn(async (key, value) => { store.set(key, value); }),
+        delete: vi.fn(async (key) => { store.delete(key); }),
         _store: store,
     };
 }
@@ -82,7 +83,7 @@ describe('handleAdminLogout', () => {
     });
 
     it('returns 200 and revokes token for a valid token', async () => {
-        const validToken = await generateAdminToken('testpassword', env.HMAC_SECRET);
+        const validToken = await generateAdminToken(env);
         const req = new Request('https://example.com/api/admin/logout', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${validToken}` }
@@ -91,18 +92,18 @@ describe('handleAdminLogout', () => {
         expect(res.status).toBe(200);
         const body = await res.json();
         expect(body.success).toBe(true);
-        const revoked = await env.ADMIN_TOKENS.get(`revoked:${validToken}`);
-        expect(revoked).toBe('true');
+        const stored = await env.ADMIN_TOKENS.get(`token:${validToken}`);
+        expect(stored).toBe(null);
     });
 
-    it('returns 200 even when ADMIN_TOKENS is missing', async () => {
-        const validToken = await generateAdminToken('testpassword', env.HMAC_SECRET);
+    it('returns 401 when ADMIN_TOKENS is missing (fail-closed)', async () => {
+        const validToken = await generateAdminToken(env);
         delete env.ADMIN_TOKENS;
         const req = new Request('https://example.com/api/admin/logout', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${validToken}` }
         });
         const res = await handleAdminLogout(req, env, cors());
-        expect(res.status).toBe(200);
+        expect(res.status).toBe(401);
     });
 });

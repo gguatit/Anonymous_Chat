@@ -1,7 +1,7 @@
 import { metrics, API_RATE_LIMIT, AI_SUMMARY, UPLOAD } from './config/constants.js';
 import { getCorsHeaders, handleCorsPreflightResponse } from './config/cors.js';
 import { forwardToDO } from './utils/do.js';
-import { safeJson } from './utils/helpers.js';
+import { safeJson, readBodyCapped, isBodyTooLargeError } from './utils/helpers.js';
 import { createRateLimiter } from './utils/rate-limiter.js';
 import { jsonError, textError } from './utils/errors.js';
 
@@ -144,7 +144,7 @@ const publicRoutes = [
         try {
             const did = env.DEAD_DROP_STORE.idFromName('singleton');
             const doStub = env.DEAD_DROP_STORE.get(did);
-            const body = await req.text();
+            const body = await readBodyCapped(req, UPLOAD.MAX_BODY_BYTES);
             const resp = await doStub.fetch(new Request('https://dummy/store', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -153,6 +153,9 @@ const publicRoutes = [
             const data = await resp.text();
             return new Response(data, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
         } catch (_error) {
+            if (isBodyTooLargeError(_error)) {
+                return jsonError('Request too large', 413, req.headers.get('Origin'));
+            }
             console.error('Secret store error:', _error);
             return jsonError('Secret store failed', 500, req.headers.get('Origin'));
         }
@@ -248,7 +251,7 @@ export default {
             const HMAC_SECRET = env.HMAC_SECRET;
             const url = new URL(request.url);
 
-            if (url.protocol === 'http:' && !url.hostname.includes('localhost')) {
+            if (url.protocol === 'http:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
                 return Response.redirect(`https://${url.hostname}${url.pathname}${url.search}`, 301);
             }
 
@@ -319,6 +322,7 @@ export default {
                     if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.UPLOAD, 'upload')) {
                         return jsonError('Rate limit exceeded', 429, origin);
                 }
+                let tooLarge = false;
                 try {
                     const contentLength = parseInt(request.headers.get('content-length') || '0');
                     if (contentLength > UPLOAD.MAX_BYTES) {
@@ -326,13 +330,39 @@ export default {
                     }
                     const uploadUrl = env.FILE_UPLOAD_URL || 'https://file.kalpha.kr/api/files';
                     const apiKey = env.FILE_API_KEY;
-                    const fetchHeaders = new Headers(request.headers);
+                    // Forward only expected headers to the file service (never the client's full header set)
+                    const fetchHeaders = new Headers();
+                    const contentType = request.headers.get('content-type');
+                    if (contentType) {
+                        fetchHeaders.set('Content-Type', contentType);
+                    }
+                    if (contentLength > 0) {
+                        fetchHeaders.set('Content-Length', String(contentLength));
+                    }
                     if (apiKey) {
                         fetchHeaders.set('Authorization', `Bearer ${apiKey}`);
                     }
+
+                    // Enforce the real byte cap while streaming (Content-Length alone can be absent or spoofed)
+                    let counted = 0;
+                    const { readable, writable } = new TransformStream({
+                        transform(chunk, controller) {
+                            counted += chunk.byteLength;
+                            if (counted > UPLOAD.MAX_BYTES) {
+                                tooLarge = true;
+                                controller.error(new Error('File too large'));
+                                return;
+                            }
+                            controller.enqueue(chunk);
+                        }
+                    });
+                    if (request.body) {
+                        request.body.pipeTo(writable).catch(() => { /* surfaced via upstream fetch failure */ });
+                    }
+
                     const upstreamResponse = await fetch(uploadUrl, {
                         method: 'POST',
-                        body: request.body,
+                        body: request.body ? readable : undefined,
                         headers: fetchHeaders
                     });
                     if (!upstreamResponse.ok) {
@@ -358,6 +388,9 @@ export default {
                         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                     });
                 } catch (_error) {
+                    if (tooLarge) {
+                        return jsonError('File too large (max 100MB)', 413, origin);
+                    }
                     console.error('File upload proxy error:', _error);
                     return jsonError('Upload proxy failed', 502, origin);
                 }
@@ -368,7 +401,15 @@ export default {
                 if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.CHECK_BAN, 'errorlog')) {
                     return jsonError('Rate limit exceeded', 429, origin);
                 }
-                const body = await request.text();
+                let body;
+                try {
+                    body = await readBodyCapped(request, UPLOAD.MAX_BODY_BYTES);
+                } catch (error) {
+                    if (isBodyTooLargeError(error)) {
+                        return jsonError('Request too large', 413, origin);
+                    }
+                    throw error;
+                }
                 const filteredHeaders = {};
                 for (const h of SAFE_HEADERS) {
                     const val = request.headers.get(h);

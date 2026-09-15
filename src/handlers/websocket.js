@@ -1,4 +1,4 @@
-import { ROOM_NAME, SECURITY, CHANNEL_PREFIX, MAX_SESSION_ID_LENGTH } from '../config/constants.js';
+import { ROOM_NAME, CHANNEL_PREFIX, MAX_SESSION_ID_LENGTH } from '../config/constants.js';
 import { isAllowedOrigin } from '../utils/security.js';
 import { verifyAdminToken } from '../middleware/auth.js';
 
@@ -9,9 +9,9 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
         return new Response('Expected Upgrade: websocket', { status: 426 });
     }
 
-    // Verify Origin header to prevent CSRF attacks
+    // Origin is required (fail-closed) to prevent cross-site WebSocket hijacking
     const origin = request.headers.get('Origin');
-    if (origin && SECURITY.ALLOWED_ORIGINS && !isAllowedOrigin(origin)) {
+    if (!origin || !isAllowedOrigin(origin, env)) {
         console.warn('Blocked WebSocket from unauthorized origin:', origin);
         return new Response('Unauthorized Origin', { status: 403 });
     }
@@ -35,7 +35,7 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
     if (sessionId && sessionId.startsWith('admin_obs_')) {
         const observerToken = url.searchParams.get('token');
         const isValidObserver = observerToken
-            ? await verifyAdminToken(observerToken, HMAC_SECRET, env)
+            ? await verifyAdminToken(env, observerToken)
             : false;
         if (!isValidObserver) {
             console.warn('Blocked unauthenticated observer session');

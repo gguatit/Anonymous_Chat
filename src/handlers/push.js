@@ -3,8 +3,30 @@ import { PUSH_SUBSCRIPTION_TTL, PUSH_CONFIG } from '../config/constants.js';
 import { sendPushNotification } from '../utils/web-push.js';
 import { getFCMAccessToken } from '../utils/fcm-auth.js';
 import { safeJson } from '../utils/helpers.js';
+import { forwardToDO } from '../utils/do.js';
 
 import { jsonError } from '../utils/errors.js';
+
+async function hashSessionId(sessionId) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sessionId));
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifySessionOwnership(env, sessionId, key) {
+    if (!key || typeof key !== 'string') {
+        return false;
+    }
+    try {
+        const resp = await forwardToDO(env, '/admin/verify-session', {
+            method: 'POST',
+            json: { sessionId, key }
+        });
+        return resp.ok;
+    } catch (error) {
+        console.error('Push session verification error:', error);
+        return false;
+    }
+}
 
 /**
  * GET /api/push/vapid-key — Return VAPID public key
@@ -51,7 +73,7 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
                 if (!rawData) continue;
                 const parsed = parseSubscriptionData(rawData);
                 if (parsed && parsed.type === 'web' && parsed.data?.endpoint === subscription.endpoint) {
-                    const dataToSave = { type: 'web', data: subscription };
+                    const dataToSave = { type: 'web', data: subscription, sessionId: parsed.sessionId };
                     await env.PUSH_SUBSCRIPTIONS.put(key.name, JSON.stringify(dataToSave), { expirationTtl: PUSH_SUBSCRIPTION_TTL });
                     return new Response(JSON.stringify({ success: true }), {
                         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -68,20 +90,25 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
             return jsonError('Missing subscription or sessionId', 400, request.headers.get('Origin'));
         }
 
+        if (!await verifySessionOwnership(env, sessionId, body.key)) {
+            return jsonError('Session verification failed', 401, request.headers.get('Origin'));
+        }
+
         // Validate subscription format based on type (Web Push vs FCM)
         if (!isFcmToken && (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth)) {
             return jsonError('Invalid subscription format', 400, request.headers.get('Origin'));
         }
 
-        // Store in KV: key = sessionId, value = subscription wrap
+        // Store in KV under a hashed session key; the raw sessionId lives in the value for delivery matching
         const dataToSave = {
             type: isFcmToken ? 'fcm' : 'web',
-            data: subscription
+            data: subscription,
+            sessionId
         };
 
         if (env.PUSH_SUBSCRIPTIONS) {
             await env.PUSH_SUBSCRIPTIONS.put(
-                `sub:${sessionId}`,
+                `sub:${await hashSessionId(sessionId)}`,
                 JSON.stringify(dataToSave),
                 { expirationTtl: PUSH_SUBSCRIPTION_TTL } // 30 days TTL
             );
@@ -108,8 +135,12 @@ export async function handlePushUnsubscribe(request, env, corsHeaders) {
             return jsonError('Missing sessionId', 400, request.headers.get('Origin'));
         }
 
+        if (!await verifySessionOwnership(env, sessionId, body.key)) {
+            return jsonError('Session verification failed', 401, request.headers.get('Origin'));
+        }
+
         if (env.PUSH_SUBSCRIPTIONS) {
-            await env.PUSH_SUBSCRIPTIONS.delete(`sub:${sessionId}`);
+            await env.PUSH_SUBSCRIPTIONS.delete(`sub:${await hashSessionId(sessionId)}`);
         }
 
         return new Response(JSON.stringify({ success: true }), {
@@ -243,12 +274,6 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
         const keysToDelete = [];
 
         for (const key of allKeys) {
-            const sessionId = key.name.replace('sub:', '');
-
-            if (onlineSessionIds.has(sessionId)) {
-                continue;
-            }
-
             try {
                 const subRawData = await env.PUSH_SUBSCRIPTIONS.get(key.name);
                 if (!subRawData) {
@@ -258,8 +283,15 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
 
                 const subWrap = parseSubscriptionData(subRawData);
                 if (!subWrap) {
-                    console.warn(`[Push] Unparseable subscription for ${sessionId}, removing`);
+                    console.warn(`[Push] Unparseable subscription for ${key.name}, removing`);
                     keysToDelete.push(key.name);
+                    continue;
+                }
+
+                // New entries carry the raw sessionId in the value; legacy entries used it as the key
+                const sessionId = subWrap.sessionId || key.name.replace('sub:', '');
+
+                if (onlineSessionIds.has(sessionId)) {
                     continue;
                 }
 
@@ -301,7 +333,7 @@ export async function sendPushToOfflineUsers(env, onlineSessionIds, messageData)
                     );
                 }
             } catch (e) {
-                console.error(`[Push] Error processing ${sessionId}:`, e.message);
+                console.error(`[Push] Error processing ${key.name}:`, e.message);
             }
         }
 

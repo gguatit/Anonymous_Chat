@@ -82,6 +82,7 @@ export class PushNotificationManager {
                     body: JSON.stringify({
                         subscription: fcmToken,
                         sessionId,
+                        key: localStorage.getItem('chatSessionKey') || undefined,
                         isFcmToken: true
                     })
                 });
@@ -134,6 +135,7 @@ export class PushNotificationManager {
                 body: JSON.stringify({
                     subscription: subscription.toJSON(),
                     sessionId,
+                    key: localStorage.getItem('chatSessionKey') || undefined,
                     isFcmToken: false
                 })
             });
@@ -169,7 +171,10 @@ export class PushNotificationManager {
             await fetch('/api/push/unsubscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId })
+                body: JSON.stringify({
+                    sessionId,
+                    key: localStorage.getItem('chatSessionKey') || undefined
+                })
             });
 
             this.isSubscribed = false;

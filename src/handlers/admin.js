@@ -1,9 +1,8 @@
 import { sleep, constantTimeCompare } from '../utils/security.js';
 import { logAdminActivity, logSecurityEvent } from '../utils/logger.js';
-import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken } from '../middleware/auth.js';
+import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken, revokeToken } from '../middleware/auth.js';
 import { forwardToDO, forwardToChannelDO } from '../utils/do.js';
 import { safeJson } from '../utils/helpers.js';
-import { AUTH } from '../config/constants.js';
 import { jsonError, emptyResponse } from '../utils/errors.js';
 
 async function requireAdminAuth(request, env) {
@@ -22,7 +21,7 @@ async function requireAdminAuth(request, env) {
         return null;
     }
     const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(token, env.HMAC_SECRET, env);
+    const isValid = await verifyAdminToken(env, token);
     if (!isValid) {
         await logSecurityEvent(env, 'ADMIN_FORBIDDEN', {
             ip: request.headers.get('CF-Connecting-IP') || 'unknown',
@@ -125,7 +124,7 @@ export async function handleAdminLogin(request, env, corsHeaders) {
                 await env.ADMIN_TOKENS.delete(rateLimitKey);
             }
 
-            const token = await generateAdminToken(id + ':' + password, env.HMAC_SECRET);
+            const token = await generateAdminToken(env);
 
             await logAdminActivity(env, {
                 type: 'login_success',
@@ -240,9 +239,7 @@ export const handleAdminLogout = withAuth(async (request, env, corsHeaders) => {
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
 
     if (env?.ADMIN_TOKENS) {
-        await env.ADMIN_TOKENS.put(`revoked:${token}`, 'true', {
-            expirationTtl: AUTH.TOKEN_EXPIRY_MS / 1000
-        });
+        await revokeToken(env, token);
     }
 
     await logAdminActivity(env, {

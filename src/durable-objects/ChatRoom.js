@@ -1,4 +1,4 @@
-import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH, SESSION_KEYS } from '../config/constants.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MESSAGES_MAX_BYTES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH, SESSION_KEYS } from '../config/constants.js';
 import { logAuditLog, logErrorLog, logSecurityEvent } from '../utils/logger.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
 import { verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl, generateMessageSignature } from '../utils/helpers.js';
@@ -63,6 +63,42 @@ export class ChatRoom {
         });
     }
 
+    // Keep the persisted 'messages' value within the KV-backed DO per-value limit (128 KiB)
+    _pruneMessagesToByteCap() {
+        if (this.messages.length === 0) return;
+        const encoder = new TextEncoder();
+        const sizeOf = (arr) => encoder.encode(JSON.stringify(arr)).length;
+        if (sizeOf(this.messages) <= MESSAGES_MAX_BYTES) return;
+
+        let lo = 0;
+        let hi = this.messages.length - 1;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (sizeOf(this.messages.slice(mid)) <= MESSAGES_MAX_BYTES) {
+                hi = mid;
+            } else {
+                lo = mid + 1;
+            }
+        }
+        this.messages = this.messages.slice(lo);
+    }
+
+    async _persistMessages() {
+        this._pruneMessagesToByteCap();
+        await this.state.storage.put('messages', this.messages);
+    }
+
+    async ensureInitialized() {
+        if (this.initialized) return;
+        if (!this._initPromise) {
+            this._initPromise = this.initializeMessages().catch((err) => {
+                this._initPromise = null;
+                throw err;
+            });
+        }
+        await this._initPromise;
+    }
+
     async initializeMessages() {
         if (this.initialized) return;
 
@@ -72,7 +108,7 @@ export class ChatRoom {
             this.messages = stored.filter(msg => msg.timestamp > twelveHoursAgo);
 
             if (this.messages.length !== stored.length) {
-                await this.state.storage.put('messages', this.messages);
+                await this._persistMessages();
             }
         }
 
@@ -181,6 +217,17 @@ export class ChatRoom {
             }
             await this.deleteChannel();
             return new Response(JSON.stringify({ success: true }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // All routes below read in-memory state (messages/bans/announcements): fail closed on a cold DO if loading fails
+        try {
+            await this.ensureInitialized();
+        } catch (err) {
+            console.error('ChatRoom: initialization failed', err);
+            return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
+                status: 503,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
@@ -887,9 +934,13 @@ export class ChatRoom {
             this.messages = this.messages.slice(-MAX_STORED_MESSAGES);
         }
 
-        await this.state.storage.put('messages', this.messages);
-
         this.broadcast(message);
+
+        try {
+            await this._persistMessages();
+        } catch (err) {
+            console.error('ChatRoom: failed to persist messages', err);
+        }
 
         notifyAdmin(this, 'message_created', {
             messageId: message.messageId,
@@ -1017,7 +1068,7 @@ export class ChatRoom {
 
         this.messages[messageIndex] = editedMessage;
 
-        await this.state.storage.put('messages', this.messages);
+        await this._persistMessages();
 
         this.broadcast({
             type: 'message_edited',
@@ -1075,7 +1126,7 @@ export class ChatRoom {
 
         this.messages.splice(messageIndex, 1);
 
-        await this.state.storage.put('messages', this.messages);
+        await this._persistMessages();
 
         this.broadcast({
             type: 'message_deleted',
@@ -1135,7 +1186,7 @@ export class ChatRoom {
         }
 
         message.signature = await generateMessageSignature(message, HMAC_SECRET);
-        await this.state.storage.put('messages', this.messages);
+        await this._persistMessages();
 
         const count = message.reactions[data.emoji] || 0;
         const reactedSessions = message.reactionSessions[data.emoji] || [];
@@ -1435,7 +1486,7 @@ export class ChatRoom {
         }
 
         if (this.messages.length !== initialLength) {
-            await this.state.storage.put('messages', this.messages);
+            await this._persistMessages();
         }
 
         if (this.emptySince !== null && this.channelSlug !== '0') {

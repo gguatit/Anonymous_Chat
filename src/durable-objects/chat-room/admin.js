@@ -1,5 +1,6 @@
-import { ADMIN, metrics, MAX_STORED_MESSAGES, FORCE_DELETE_DELAY_MS, MESSAGE_PREVIEW_COUNT } from '../../config/constants.js';
+import { ADMIN, metrics, MAX_STORED_MESSAGES, FORCE_DELETE_DELAY_MS, MESSAGE_PREVIEW_COUNT, BAN_DURATIONS } from '../../config/constants.js';
 import { sanitizeInput, safeJson, generateMessageSignature } from '../../utils/helpers.js';
+import { constantTimeCompare } from '../../utils/security.js';
 import { isEmergencyActive } from './announcements.js';
 import { isLikelyCode } from './messages.js';
 
@@ -104,6 +105,14 @@ export async function dispatchAdminRoute(chatRoom, url, request, HMAC_SECRET) {
 
     if (url.pathname === '/admin/unban-ip' && request.method === 'POST') {
         return await handleAdminUnbanIP(chatRoom, request);
+    }
+
+    if (url.pathname === '/admin/ban-ip' && request.method === 'POST') {
+        return await handleAdminBanIP(chatRoom, request);
+    }
+
+    if (url.pathname === '/admin/verify-session' && request.method === 'POST') {
+        return await handleAdminVerifySession(chatRoom, request);
     }
 
     if (url.pathname === '/admin/user-details') {
@@ -867,6 +876,76 @@ export async function handleAdminBannedIPs(chatRoom) {
     return new Response(JSON.stringify({ ips, sessions, tokens }), {
         headers: { 'Content-Type': 'application/json' }
     });
+}
+
+export async function handleAdminVerifySession(chatRoom, request) {
+    try {
+        const data = await safeJson(request);
+        const { sessionId, key } = data;
+
+        if (!sessionId || typeof sessionId !== 'string' || !key || typeof key !== 'string') {
+            return new Response(JSON.stringify({ valid: false }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const stored = chatRoom.sessionKeys?.get(sessionId);
+        const valid = !!stored && await constantTimeCompare(key, stored.key);
+
+        return new Response(JSON.stringify({ valid }), {
+            status: valid ? 200 : 401,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('verify-session error:', error);
+        return new Response(JSON.stringify({ valid: false }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+export async function handleAdminBanIP(chatRoom, request) {
+    try {
+        const data = await safeJson(request);
+        const ip = data.ip;
+
+        if (!ip || typeof ip !== 'string') {
+            return new Response(JSON.stringify({ error: 'IP address is required' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const requested = parseInt(data.duration, 10);
+        const duration = isNaN(requested) || requested <= 0
+            ? 86400
+            : Math.min(requested, BAN_DURATIONS.MAX_IP_BAN_SECONDS);
+        const now = Date.now();
+        const bannedUntil = now + duration * 1000;
+
+        chatRoom.bannedIPs.set(ip, {
+            bannedUntil,
+            bannedAt: now,
+            reason: sanitizeInput(data.reason || 'Blocked by admin')
+        });
+        await chatRoom.state.storage.put('bannedIPs', Array.from(chatRoom.bannedIPs.entries()));
+
+        await chatRoom.addAuditLog('BAN_IP', `Banned IP: ${ip} for ${duration}s`);
+
+        notifyAdmin(chatRoom, 'ip_banned', { ip, duration });
+
+        return new Response(JSON.stringify({ success: true, ip, bannedUntil, duration }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('ban-ip error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to ban IP' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }
 
 export async function handleAdminUnbanIP(chatRoom, request) {

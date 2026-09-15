@@ -1,94 +1,106 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { sendPushNotification } from '../src/utils/web-push.js';
 
-function base64urlEncode(bytes) {
+function base64url(bytes) {
     let str = '';
-    for (const b of bytes) {
-        str += String.fromCharCode(b);
-    }
+    for (const b of bytes) str += String.fromCharCode(b);
     return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function base64urlDecode(str) {
-    str = str.replace(/-/g, '+').replace(/_/g, '/');
-    while (str.length % 4) str += '=';
-    const binary = atob(str);
-    return Uint8Array.from(binary, c => c.charCodeAt(0));
+async function makeSubscription() {
+    const keyPair = await crypto.subtle.generateKey(
+        { name: 'ECDH', namedCurve: 'P-256' },
+        true,
+        ['deriveBits']
+    );
+    const publicKey = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
+    const auth = crypto.getRandomValues(new Uint8Array(16));
+    return {
+        endpoint: 'https://push.example.com/send/abc123',
+        keys: { p256dh: base64url(publicKey), auth: base64url(auth) }
+    };
 }
 
-function concatArrays(...arrays) {
-    const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
-    const result = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const arr of arrays) {
-        result.set(arr, offset);
-        offset += arr.length;
-    }
-    return result;
+async function makeVapidKeys() {
+    const keyPair = await crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['sign']
+    );
+    const raw = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
+    const jwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+    return {
+        publicKey: base64url(raw),
+        privateKey: jwk.d,
+        subject: 'mailto:test@example.com'
+    };
 }
 
-describe('web-push utilities', () => {
-
-    describe('base64urlEncode', () => {
-        it('encodes bytes to base64url without padding', () => {
-            const data = new TextEncoder().encode('Hello');
-            const encoded = base64urlEncode(data);
-            expect(encoded).toBe('SGVsbG8');
-            expect(encoded).not.toContain('=');
-            expect(encoded).not.toContain('+');
-            expect(encoded).not.toContain('/');
-        });
-
-        it('round-trips through decode', () => {
-            const data = new Uint8Array([0x00, 0xFF, 0xAB, 0xCD, 0x12]);
-            const encoded = base64urlEncode(data);
-            const decoded = base64urlDecode(encoded);
-            expect(decoded).toEqual(data);
-        });
-
-        it('handles empty input', () => {
-            const encoded = base64urlEncode(new Uint8Array(0));
-            expect(encoded).toBe('');
-        });
+describe('web-push sendPushNotification (real module)', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
     });
 
-    describe('base64urlDecode', () => {
-        it('decodes base64url back to bytes', () => {
-            const decoded = base64urlDecode('SGVsbG8');
-            const str = new TextDecoder().decode(decoded);
-            expect(str).toBe('Hello');
-        });
+    it('encrypts the payload (RFC 8291) and sends VAPID auth (RFC 8292)', async () => {
+        const fetchMock = vi.fn(async () => new Response('', { status: 201 }));
+        vi.stubGlobal('fetch', fetchMock);
 
-        it('handles padding mismatch', () => {
-            const data = new TextEncoder().encode('short');
-            const encoded = base64urlEncode(data);
-            const decoded = base64urlDecode(encoded);
-            expect(new TextDecoder().decode(decoded)).toBe('short');
-        });
+        const subscription = await makeSubscription();
+        const vapidKeys = await makeVapidKeys();
+        const payload = JSON.stringify({ title: 'hello', body: 'secret-body' });
+
+        const response = await sendPushNotification(subscription, payload, vapidKeys);
+        expect(response.status).toBe(201);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        const [endpoint, init] = fetchMock.mock.calls[0];
+        expect(endpoint).toBe(subscription.endpoint);
+        expect(init.method).toBe('POST');
+        expect(init.headers['Content-Encoding']).toBe('aes128gcm');
+        expect(init.headers['TTL']).toBe('86400');
+        expect(init.headers['Authorization']).toMatch(/^vapid t=[\w-]+\.[\w-]+\.[\w-]+, k=[\w-]+$/);
     });
 
-    describe('concatArrays', () => {
-        it('concatenates multiple Uint8Arrays', () => {
-            const a = new Uint8Array([1, 2, 3]);
-            const b = new Uint8Array([4, 5]);
-            const c = new Uint8Array([6, 7, 8, 9]);
-            const result = concatArrays(a, b, c);
-            expect(result).toEqual(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9]));
-        });
+    it('builds a valid aes128gcm body that does not leak plaintext', async () => {
+        const fetchMock = vi.fn(async () => new Response('', { status: 201 }));
+        vi.stubGlobal('fetch', fetchMock);
 
-        it('handles single array', () => {
-            const a = new Uint8Array([1, 2, 3]);
-            expect(concatArrays(a)).toEqual(a);
-        });
+        const subscription = await makeSubscription();
+        const vapidKeys = await makeVapidKeys();
+        const payload = JSON.stringify({ title: 'hello', body: 'secret-body' });
 
-        it('handles empty arrays', () => {
-            expect(concatArrays(new Uint8Array(0), new Uint8Array(0))).toEqual(new Uint8Array(0));
-        });
+        await sendPushNotification(subscription, payload, vapidKeys);
+        const body = new Uint8Array(fetchMock.mock.calls[0][1].body);
+
+        // header: salt(16) + rs(4) + idlen(1) + keyid(65) = 86 bytes minimum
+        expect(body.length).toBeGreaterThan(86);
+        expect(body[20]).toBe(65);
+        // key id must be a valid uncompressed P-256 point
+        expect(body[21]).toBe(0x04);
+        // record size field must match rs >= ciphertext length
+        const recordSize = (body[16] << 24) | (body[17] << 16) | (body[18] << 8) | body[19];
+        expect(recordSize).toBeGreaterThan(0);
+        expect(recordSize).toBeLessThanOrEqual(body.length - 86);
+
+        const text = new TextDecoder('utf-8', { fatal: false }).decode(body);
+        expect(text).not.toContain('secret-body');
+        expect(text).not.toContain('"title"');
     });
 
-    describe('web-push crypto constants', () => {
-        it('generates 16-byte salt', () => {
-            const salt = crypto.getRandomValues(new Uint8Array(16));
-            expect(salt).toHaveLength(16);
-        });
+    it('VAPID JWT carries the correct audience and subject', async () => {
+        const fetchMock = vi.fn(async () => new Response('', { status: 201 }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const subscription = await makeSubscription();
+        const vapidKeys = await makeVapidKeys();
+        await sendPushNotification(subscription, '{}', vapidKeys);
+
+        const auth = fetchMock.mock.calls[0][1].headers['Authorization'];
+        const jwt = auth.slice('vapid t='.length).split(',')[0];
+        const claims = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
+        expect(claims.aud).toBe('https://push.example.com');
+        expect(claims.sub).toBe('mailto:test@example.com');
+        expect(claims.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
     });
 });

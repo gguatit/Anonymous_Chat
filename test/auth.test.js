@@ -3,6 +3,7 @@ import {
     generateAdminToken, verifyAdminToken, revokeToken,
     checkRateLimit, incrementRateLimit
 } from '../src/middleware/auth.js';
+import { AUTH } from '../src/config/constants.js';
 
 function mockKv(store = new Map()) {
     return {
@@ -24,85 +25,77 @@ function mockKv(store = new Map()) {
 }
 
 describe('auth', () => {
-    const SECRET = 'test-hmac-secret-32bytes-long!!';
-    const PASSWORD = 'admin-password-123';
-
     describe('generateAdminToken', () => {
-        it('generates a token with data and signature parts', async () => {
-            const token = await generateAdminToken(PASSWORD, SECRET);
-            const parts = token.split('.');
-            expect(parts).toHaveLength(2);
-
-            const data = atob(parts[0]);
-            expect(data).toContain(PASSWORD);
-            expect(data).toContain(':');
+        it('generates an opaque base64url token with no password material', async () => {
+            const kv = mockKv();
+            const token = await generateAdminToken({ ADMIN_TOKENS: kv });
+            expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+            expect(token.split('.')).toHaveLength(1);
         });
 
-        it('generates different tokens for different timestamps', async () => {
-            const token1 = await generateAdminToken(PASSWORD, SECRET);
-            await new Promise(r => setTimeout(r, 5));
-            const token2 = await generateAdminToken(PASSWORD, SECRET);
-            expect(token1).not.toBe(token2);
+        it('stores iat/exp state in KV with the token TTL', async () => {
+            const kv = mockKv();
+            const before = Date.now();
+            const token = await generateAdminToken({ ADMIN_TOKENS: kv });
+            const stored = JSON.parse(kv._store.get(`token:${token}`));
+            expect(stored.iat).toBeGreaterThanOrEqual(before);
+            expect(stored.exp - stored.iat).toBe(AUTH.TOKEN_EXPIRY_MS);
         });
 
-        it('generates different tokens for different passwords', async () => {
-            const t1 = await generateAdminToken('pass1', SECRET);
-            const t2 = await generateAdminToken('pass2', SECRET);
+        it('generates unique tokens', async () => {
+            const env = { ADMIN_TOKENS: mockKv() };
+            const t1 = await generateAdminToken(env);
+            const t2 = await generateAdminToken(env);
             expect(t1).not.toBe(t2);
+        });
+
+        it('still returns a token without ADMIN_TOKENS binding', async () => {
+            const token = await generateAdminToken({});
+            expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
         });
     });
 
     describe('verifyAdminToken', () => {
         it('verifies a valid token', async () => {
-            const token = await generateAdminToken(PASSWORD, SECRET);
-            const result = await verifyAdminToken(token, SECRET, {});
-            expect(result).toBe(true);
+            const env = { ADMIN_TOKENS: mockKv() };
+            const token = await generateAdminToken(env);
+            expect(await verifyAdminToken(env, token)).toBe(true);
         });
 
-        it('rejects a token with wrong secret', async () => {
-            const token = await generateAdminToken(PASSWORD, SECRET);
-            const result = await verifyAdminToken(token, 'wrong-secret', {});
-            expect(result).toBe(false);
+        it('rejects an unknown token', async () => {
+            const env = { ADMIN_TOKENS: mockKv() };
+            expect(await verifyAdminToken(env, 'A'.repeat(43))).toBe(false);
         });
 
-        it('rejects a malformed token', async () => {
-            const result = await verifyAdminToken('not-a-valid-token', SECRET, {});
-            expect(result).toBe(false);
+        it('rejects malformed tokens', async () => {
+            const env = { ADMIN_TOKENS: mockKv() };
+            expect(await verifyAdminToken(env, '')).toBe(false);
+            expect(await verifyAdminToken(env, null)).toBe(false);
+            expect(await verifyAdminToken(env, 12345)).toBe(false);
+            expect(await verifyAdminToken(env, 'not-a-valid-token')).toBe(false);
         });
 
-        it('rejects a token with tampered data', async () => {
-            const token = await generateAdminToken(PASSWORD, SECRET);
-            const [dataPart, sigPart] = token.split('.');
-            const tampered = btoa('hacker:password:' + Date.now());
-            const faked = `${tampered}.${sigPart}`;
-            const result = await verifyAdminToken(faked, SECRET, {});
-            expect(result).toBe(false);
-        });
-
-        it('rejects a token with tampered signature', async () => {
-            const token = await generateAdminToken(PASSWORD, SECRET);
-            const [dataPart] = token.split('.');
-            const faked = `${dataPart}.ZmFrZVNpZ25hdHVyZQ==`;
-            const result = await verifyAdminToken(faked, SECRET, {});
-            expect(result).toBe(false);
-        });
-
-        it('rejects a revoked token', async () => {
-            const token = await generateAdminToken(PASSWORD, SECRET);
-            const kv = new Map();
-            kv.set(`revoked:${token}`, 'true');
-            const env = { ADMIN_TOKENS: mockKv(kv) };
-            const result = await verifyAdminToken(token, SECRET, env);
-            expect(result).toBe(false);
+        it('fails closed without ADMIN_TOKENS binding', async () => {
+            expect(await verifyAdminToken({}, 'some-token')).toBe(false);
         });
 
         it('rejects an expired token', async () => {
-            const fakeOldToken = (() => {
-                const oldData = `${PASSWORD}:${Date.now() - 3 * 60 * 60 * 1000}`;
-                return `${btoa(oldData)}.old-signature`;
-            })();
-            const result = await verifyAdminToken(fakeOldToken, SECRET, {});
-            expect(result).toBe(false);
+            const kv = mockKv();
+            kv._store.set('token:expired-token', JSON.stringify({ iat: 1, exp: Date.now() - 1000 }));
+            expect(await verifyAdminToken({ ADMIN_TOKENS: kv }, 'expired-token')).toBe(false);
+        });
+
+        it('rejects corrupt KV state', async () => {
+            const kv = mockKv();
+            kv._store.set('token:weird', 'not-json');
+            expect(await verifyAdminToken({ ADMIN_TOKENS: kv }, 'weird')).toBe(false);
+        });
+
+        it('rejects a revoked token', async () => {
+            const env = { ADMIN_TOKENS: mockKv() };
+            const token = await generateAdminToken(env);
+            await revokeToken(env, token);
+            expect(await verifyAdminToken(env, token)).toBe(false);
         });
     });
 
@@ -111,11 +104,11 @@ describe('auth', () => {
             await revokeToken({}, 'some-token');
         });
 
-        it('stores revoked token in KV with TTL', async () => {
-            const kv = new Map();
-            const env = { ADMIN_TOKENS: mockKv(kv) };
-            await revokeToken(env, 'test-token');
-            expect(kv.has('revoked:test-token')).toBe(true);
+        it('deletes token state from KV', async () => {
+            const env = { ADMIN_TOKENS: mockKv() };
+            const token = await generateAdminToken(env);
+            await revokeToken(env, token);
+            expect(env.ADMIN_TOKENS._store.has(`token:${token}`)).toBe(false);
         });
     });
 

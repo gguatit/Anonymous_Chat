@@ -10,10 +10,9 @@ export const RATE_LIMIT = {
 export const SECURITY = {
     // 7500 chars: generous for pasted code/logs while capping storage/broadcast payload size.
     MAX_MESSAGE_LENGTH: 7500,
+    // Exact-match allowlist; localhost is accepted via isAllowedOrigin only when ENVIRONMENT=development
     ALLOWED_ORIGINS: [
-        'https://kalpha.mmv.kr',
-        'http://localhost:8787',
-        'http://127.0.0.1:8787'
+        'https://kalpha.mmv.kr'
     ],
 };
 
@@ -26,6 +25,8 @@ export const CHANNEL = {
 // Message lifecycle constants
 export const MESSAGE_RETENTION_MS = 12 * 60 * 60 * 1000; // 12 hours
 export const MAX_STORED_MESSAGES = 2000;
+// KV-backed DOs reject values over 128 KiB; keep headroom for the stored 'messages' value
+export const MESSAGES_MAX_BYTES = 96 * 1024;
 export const MAX_AUDIT_LOGS = 500;
 export const MESSAGE_EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 export const RECENT_MESSAGES_BATCH = 100;
@@ -204,6 +205,7 @@ export const BAN_DURATIONS = {
     THIRTY_SECONDS: 30,
     FIVE_MINUTES: 300,
     TEN_MINUTES: 600,
+    MAX_IP_BAN_SECONDS: 7 * 24 * 60 * 60,
 };
 
 // Admin client configuration

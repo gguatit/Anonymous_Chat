@@ -43,12 +43,50 @@ export function sanitizeInput(input) {
         .replace(/\r\n?/g, '\n');
 }
 
-export async function safeJson(request) {
-    const contentLength = parseInt(request.headers.get('content-length') || '0');
-    if (contentLength > UPLOAD.MAX_BODY_BYTES) {
-        throw new Error('Request body too large');
+const BODY_TOO_LARGE = 'Request body too large';
+
+export function isBodyTooLargeError(error) {
+    return error instanceof Error && error.message === BODY_TOO_LARGE;
+}
+
+// Reads the request body while enforcing a real byte cap (Content-Length alone is spoofable/optional)
+export async function readBodyCapped(request, maxBytes = UPLOAD.MAX_BODY_BYTES) {
+    const declared = parseInt(request.headers.get('content-length') || '0', 10);
+    if (Number.isFinite(declared) && declared > maxBytes) {
+        throw new Error(BODY_TOO_LARGE);
     }
-    return request.json();
+    if (!request.body) {
+        return '';
+    }
+
+    const reader = request.body.getReader();
+    const chunks = [];
+    let total = 0;
+    try {
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            total += value.byteLength;
+            if (total > maxBytes) {
+                throw new Error(BODY_TOO_LARGE);
+            }
+            chunks.push(value);
+        }
+    } finally {
+        try { await reader.cancel(); } catch (_e) { /* stream already closed */ }
+    }
+
+    const merged = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+        merged.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(merged);
+}
+
+export async function safeJson(request, maxBytes = UPLOAD.MAX_BODY_BYTES) {
+    return JSON.parse(await readBodyCapped(request, maxBytes));
 }
 
 export function isValidFileUrl(url, allowedOrigins = []) {

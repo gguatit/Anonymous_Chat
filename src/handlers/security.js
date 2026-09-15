@@ -1,4 +1,5 @@
 import { jsonError } from '../utils/errors.js';
+import { forwardToDO } from '../utils/do.js';
 import { calculateRiskScore, getRecommendedBlockThreshold, getCriticalThreshold } from '../utils/risk-scorer.js';
 import { withAuth } from './admin.js';
 
@@ -292,18 +293,21 @@ export async function blockRecommendedIP(request, env, corsHeaders) {
             return jsonError('IP address is required', 400, request.headers.get('Origin'));
         }
 
-        const resp = await env.CHAT_ROOM.get(
-            env.CHAT_ROOM.idFromName('main-room')
-        ).fetch(new Request('https://dummy/ban-ip', {
+        const resp = await forwardToDO(env, '/admin/ban-ip', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Admin-Internal-Token': env.HMAC_SECRET,
-            },
-            body: JSON.stringify({ ip, duration: 86400 }),
-        }));
+            json: { ip, duration: 86400 },
+        });
 
-        const result = await resp.json();
+        if (!resp.ok) {
+            return jsonError('Failed to block IP', 502, request.headers.get('Origin'));
+        }
+
+        let result = null;
+        try {
+            result = await resp.json();
+        } catch {
+            result = null;
+        }
 
         return new Response(JSON.stringify({
             success: true,
