@@ -1,6 +1,6 @@
 # 배포 가이드
 
-Anonymous Chat을 Cloudflare Pages + Workers에 배포하는 절차입니다.
+Anonymous Chat을 Cloudflare Workers(정적 자산 포함)에 배포하는 절차입니다.
 
 ---
 
@@ -31,7 +31,7 @@ Anonymous Chat을 Cloudflare Pages + Workers에 배포하는 절차입니다.
 | 단계 | 작업 | 소요 시간 |
 |---|---|---|
 | 1 | 사전 준비 (계정, 도구) | 5분 |
-| 2 | 시크릿 설정 (7종) | 10분 |
+| 2 | 시크릿 설정 (8종) | 10분 |
 | 3 | D1 데이터베이스 생성 + 마이그레이션 | 5분 |
 | 4 | KV 네임스페이스 (선택) | 2분 |
 | 5-6 | DO/AI 바인딩 (자동) | 0분 |
@@ -83,6 +83,9 @@ wrangler secret put TURNSTILE_SECRET_KEY
 wrangler secret put FCM_SERVICE_ACCOUNT
 # Firebase Console → Project Settings → Service Accounts → Generate Key
 # JSON 내용을 한 줄로 입력
+
+# 외부 파일 서비스 (필수 — 없으면 업로드/다운로드 503)
+wrangler secret put FILE_API_KEY
 ```
 
 ### 2.2 환경변수 (vars)
@@ -103,9 +106,10 @@ wrangler d1 create anonymous-chat-db
 ```
 
 ### 3.2 `wrangler.toml` 업데이트
+`wrangler.toml`에 이미 정의되어 있음 (수정 불필요):
 ```toml
 [[d1_databases]]
-binding = "DB"
+binding = "DB_ADMIN"
 database_name = "anonymous-chat-db"
 database_id = "여기에-위에서-받은-ID"
 migrations_dir = "migrations"
@@ -120,10 +124,12 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 wrangler d1 migrations apply anonymous-chat-db --local
 ```
 
-생성되는 테이블:
-- `admin_activity_logs` — 관리자 로그인/로그아웃/활동
-- `audit_logs` — 관리자 액션 (kick, edit, delete 등)
-- `error_logs` — 클라이언트/서버 오류
+생성되는 테이블 (migrations/ 적용 순서대로):
+- `admin_logs` (001) — 레거시, 실제로는 미사용 (002의 `admin_activity_logs`로 대체)
+- `admin_activity_logs` (002) — 관리자 로그인/로그아웃/활동
+- `audit_logs` (002) — 관리자 액션 (kick, edit, delete 등)
+- `error_logs` (002) — 클라이언트/서버 오류
+- `security_events` (003) — 보안 이벤트 (90일 보존)
 
 ## 4. KV 네임스페이스 (선택)
 
@@ -157,9 +163,17 @@ class_name = "ChannelRegistry"
 name = "DEAD_DROP_STORE"
 class_name = "DeadDropStore"
 
-[[durable_objects.migrations]]
+[[migrations]]
 tag = "v1"
-new_classes = ["ChatRoom", "ChannelRegistry", "DeadDropStore"]
+new_classes = ["ChatRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["ChannelRegistry"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["DeadDropStore"]
 ```
 
 **중요**: DO 클래스 이름 변경 시 마이그레이션으로 새 클래스 추가 후 옛 클래스 제거 (Workers는 rename을 지원하지 않음).
@@ -182,17 +196,17 @@ binding = "AI"
 ```bash
 npm install
 npm run build
-# 출력: public/js/chat.bundle.js, public/js/admin.bundle.js, public/css/tailwind.min.css
+# 출력: public/js/*.bundle.js (10종), public/css/tailwind.min.css
 ```
 
 ### 7.2 빌드 스크립트 (`package.json`)
 ```json
 {
   "scripts": {
-    "build": "node build.js",
-    "dev": "wrangler dev",
-    "deploy": "npm run build && wrangler pages deploy public",
-    "lint": "eslint src/ public/js/ test/",
+    "dev": "npm run css && npm run bundle && wrangler dev --var ENVIRONMENT:development --port 8788",
+    "build": "npm run css && npm run bundle && npm run lint",
+    "deploy": "npm run css && npm run bundle && wrangler deploy",
+    "lint": "eslint src/ public/js/",
     "test": "vitest run"
   }
 }
@@ -227,22 +241,22 @@ npm run dev
 ## 9. 프로덕션 배포
 
 ### 9.1 Git 연동 (권장)
-Cloudflare Dashboard → Pages → 프로젝트 생성 → Git 저장소 연결.
+Cloudflare Dashboard → Workers & Pages → 기존 Worker(`anonymous-chat`) → Settings → Builds → Git 저장소 연결 (Workers Builds).
 
 **빌드 설정**:
 - Build command: `npm run build`
-- Build output: `public`
+- Deploy command: `npx wrangler deploy`
 - Root directory: `/`
 
 **환경변수**:
-- Dashboard → Settings → Environment variables
+- Dashboard → Settings → Variables and Secrets
 - Production / Preview 각각 설정 가능
 
 ### 9.2 CLI 배포
 ```bash
 npm run deploy
 # 또는
-wrangler pages deploy public
+wrangler deploy
 ```
 
 ### 9.3 배포 후 확인
@@ -254,8 +268,8 @@ wrangler pages deploy public
 
 ## 10. 도메인 설정
 
-### 10.1 Cloudflare Pages 도메인
-- Pages Dashboard → Custom domains
+### 10.1 Workers 커스텀 도메인
+- Dashboard → Workers & Pages → `anonymous-chat` → Settings → Domains & Routes
 - `chat.example.com` 추가 (CNAME)
 
 ### 10.2 DNS
@@ -268,7 +282,7 @@ Cloudflare가 자동 관리 (CNAME flat).
 ## 11. 모니터링
 
 ### 11.1 Cloudflare 내장
-- Pages → Analytics (트래픽, 에러율)
+- Workers → Metrics (트래픽, 에러율)
 - Workers → Logs (실시간 로그, `wrangler tail`)
 - D1 → Metrics (쿼리 수, 지연)
 
@@ -279,13 +293,13 @@ Cloudflare가 자동 관리 (CNAME flat).
 
 ## 12. 롤백
 
-### 12.1 Pages 즉시 롤백
-- Dashboard → Pages → Deployments → 이전 배포 → "Rollback to this deployment"
+### 12.1 Dashboard 롤백
+- Dashboard → Workers & Pages → `anonymous-chat` → Deployments → 이전 버전 → "Rollback"
 
 ### 12.2 CLI
 ```bash
-wrangler pages deployments list
-wrangler pages deployments rollback <deployment-id>
+wrangler deployments list
+wrangler rollback [deployment-id]
 ```
 
 ### 12.3 D1 마이그레이션 롤백
@@ -320,7 +334,7 @@ wrangler pages deployments rollback <deployment-id>
 ## 14. 트러블슈팅
 
 ### 14.1 WebSocket 연결 실패
-- Origin 헤더 확인 → `SECURITY.ALLOWED_ORIGINS` 추가
+- Origin 헤더 확인 → `SECURITY.ALLOWED_ORIGINS` 추가 (개발은 `ENVIRONMENT=development` + `http://localhost:8788`만 허용)
 - `/api/check-ban` 200 확인
 - `HMAC_SECRET` 일치 확인
 
@@ -342,7 +356,7 @@ wrangler pages deployments rollback <deployment-id>
 
 ## 15. 배포 후 체크리스트
 
-- [ ] 시크릿 7종 모두 설정
+- [ ] 시크릿 8종 모두 설정
 - [ ] D1 마이그레이션 적용
 - [ ] DO 마이그레이션 적용
 - [ ] KV 네임스페이스 생성 (선택)
@@ -364,4 +378,4 @@ wrangler pages deployments rollback <deployment-id>
 - [docs/DEVELOPMENT.md](./DEVELOPMENT.md) — 개발 가이드
 - [docs/SECURITY.md](./SECURITY.md) — 보안 체크리스트
 - [wrangler.toml](../wrangler.toml) — Cloudflare 설정
-- [Cloudflare Pages 문서](https://developers.cloudflare.com/pages)
+- [Cloudflare Workers 문서](https://developers.cloudflare.com/workers)

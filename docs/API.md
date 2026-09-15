@@ -1,15 +1,15 @@
 # API 명세
 
-51개 HTTP 엔드포인트의 명세입니다. 모든 응답은 CORS 헤더를 포함합니다 (`src/config/cors.js`).
+52개 HTTP 엔드포인트의 명세입니다. 모든 응답은 CORS 헤더를 포함합니다 (`src/config/cors.js`).
 
-**기본 URL**: `https://api.kalpha.kr` (프로덕션) | `http://localhost:8788` (개발)
+**기본 URL**: `https://kalpha.mmv.kr` (프로덕션) | `http://localhost:8788` (개발)
 
 ---
 
 ## 목차
 
 - [개요](#개요)
-- [1. 공개 엔드포인트](#1-공개-엔드포인트-20개)
+- [1. 공개 엔드포인트](#1-공개-엔드포인트-22개)
   - [1.1 WebSocket](#11-websocket)
   - [1.2 채팅 데이터](#12-채팅-데이터)
   - [1.3 링크/파일](#13-링크파일)
@@ -18,7 +18,7 @@
   - [1.6 푸시 알림](#16-푸시-알림)
   - [1.7 보안](#17-보안)
   - [1.8 시스템](#18-시스템)
-- [2. 관리자 엔드포인트](#2-관리자-엔드포인트-31개-bearer-인증)
+- [2. 관리자 엔드포인트](#2-관리자-엔드포인트-30개-bearer-인증)
   - [2.1 인증](#21-인증)
   - [2.2 메트릭/세션/메시지](#22-메트릭세션메시지)
   - [2.3 메시지 관리](#23-메시지-관리)
@@ -37,7 +37,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 총 엔드포인트 | 43개 (공개 20 + 관리자 23) |
+| 총 엔드포인트 | 52개 (공개 22 + 관리자 30) |
 | 인증 방식 | 공개: 없음 / 관리자: Bearer 토큰 |
 | 데이터 형식 | JSON (multipart는 `/api/upload`만) |
 | CORS | 모든 응답 포함 (`src/config/cors.js`) |
@@ -56,16 +56,17 @@
 | 보안 | 2 | Turnstile 검증, 차단 확인 |
 | 시스템 | 4 | metrics, health, error log, config |
 | 관리자 인증 | 3 | login, verify, logout |
-| 관리자 데이터 | 3 | metrics, sessions, messages |
+| 관리자 데이터 | 4 | metrics, sessions, messages, user-details |
 | 관리자 메시지 | 4 | broadcast, edit, delete, delete-all |
 | 관리자 차단 | 3 | kick-user, unban-ip, banned-ips |
 | 관리자 공지 | 1 | announce (POST/PUT/DELETE) |
 | 관리자 채널 | 3 | channels, details, delete |
-| 관리자 로그 | 5 | logs, delete-logs, audit-logs, delete-audit-logs, error-logs |
+| 관리자 로그 | 5 | logs, delete-logs, audit-logs, delete-audit-logs, delete-error-logs |
+| 관리자 보안 | 7 | security/events, stats, risk-ips, events/export, events/clear, badge, block-ip |
 
 ---
 
-## 1. 공개 엔드포인트 (20개)
+## 1. 공개 엔드포인트 (22개)
 
 ### 1.1 WebSocket
 
@@ -150,19 +151,14 @@ Workers AI로 최근 50개 메시지 요약.
 
 **Body**:
 ```json
-{ "mode": "summary" | "topic" | "mood" | "conflict" }
+{ "mode": "default" | "topic" | "mood" | "conflict" }
 ```
 
-**Response 200**:
-```json
-{ "success": true, "messageId": "msg_..." }
-```
+**Response 204**: 본문 없음 — 결과는 WebSocket `type:'summary'` 메시지로 모든 세션에 broadcast됨.
 
 **Errors**:
 - `429`: 레이트 리밋 (15초 1회)
 - `503`: AI 모델 일시 장애 (fallback 시도 후 실패)
-
-**Response는 `type:'summary'` WebSocket 메시지로 모든 세션에 broadcast됨.**
 
 ---
 
@@ -202,10 +198,10 @@ URL OG 태그 프리뷰 생성.
 **Response 200**:
 ```json
 {
-  "url": "https://file.kalpha.kr/files/abc123.png",
+  "full_url": "https://file.kalpha.kr/files/abc123.png",
   "filename": "image.png",
-  "filetype": "image/png",
-  "size": 102400
+  "filesize": 102400,
+  "filetype": "image/png"
 }
 ```
 
@@ -285,12 +281,12 @@ Kalpha 파일 다운로드 프록시.
 
 **Response 200**:
 ```json
-{ "message": "...", "storedAt": 1717890123 }
+{ "message": "..." }
 ```
 
 **Errors**:
-- `404`: 존재하지 않거나 만료
-- `410`: 이미 읽음 (1회용)
+- `410`: 만료됨 (TTL 경과)
+- `404`: 존재하지 않음 또는 이미 읽음 (1회용)
 
 ---
 
@@ -314,14 +310,19 @@ VAPID 공개키 (Web Push 구독용).
     "endpoint": "https://fcm.googleapis.com/...",
     "keys": { "p256dh": "...", "auth": "..." }
   },
-  "sessionId": "user_..."
+  "sessionId": "user_...",
+  "isFcmToken": false,
+  "key": "<capability key (WS handshake에서 발급)>"
 }
 ```
 
 **Body (FCM)**:
 ```json
-{ "token": "fcm_token", "type": "fcm", "sessionId": "user_..." }
+{ "subscription": "fcm_token_string", "isFcmToken": true, "sessionId": "user_...", "key": "<capability key>" }
 ```
+
+**Errors**:
+- `401`: 세션 검증 실패 (`key` 누락/불일치)
 
 **Response 200**:
 ```json
@@ -333,8 +334,11 @@ VAPID 공개키 (Web Push 구독용).
 
 **Body**:
 ```json
-{ "endpoint": "..." }
+{ "sessionId": "user_...", "key": "<capability key>" }
 ```
+
+**Errors**:
+- `401`: 세션 검증 실패
 
 **Response 200**:
 ```json
@@ -435,9 +439,9 @@ Liveness probe.
 
 ---
 
-## 2. 관리자 엔드포인트 (23개, Bearer 인증)
+## 2. 관리자 엔드포인트 (30개, Bearer 인증)
 
-모든 `/api/admin/*` 엔드포인트는 `Authorization: Bearer <token>` 헤더 필요 (단, `login`/`logout` 제외).
+모든 `/api/admin/*` 엔드포인트는 `Authorization: Bearer <token>` 헤더 필요 (단, `login` 제외).
 
 **인증 흐름**:
 1. `POST /api/admin/login` → 토큰 발급
@@ -472,7 +476,7 @@ Liveness probe.
 ```
 
 #### `POST /api/admin/logout`
-**인증 불필요** (토큰 폐기)
+**인증 필요** (해당 토큰 폐기 = KV에서 삭제)
 
 **Headers**:
 - `Authorization: Bearer <token>` (폐기 대상)
@@ -786,19 +790,15 @@ Liveness probe.
 { "success": true, "deletedCount": 50 }
 ```
 
-#### `GET /api/admin/delete-error-logs`
-**인증 필요** — 오류 로그 조회
+#### `POST /api/admin/delete-error-logs`
+**인증 필요** — 오류 로그 전체 삭제 (D1 `error_logs` + DO 메모리)
+
+**참고**: `POST` 전용. 다른 메서드는 `405` 반환.
 
 **Response 200**:
 ```json
-{
-  "logs": [
-    { "id": 1, "type": "TypeError", "message": "...", "stack": "...", "location": "chat.js:123", "timestamp": 1717890123 }
-  ]
-}
+{ "success": true }
 ```
-
-**참고**: 명세상 `GET`만 지원 (응답 본문). 삭제도 동일 엔드포인트 사용 시 `POST` (별도 확인 필요).
 
 ---
 
@@ -1024,7 +1024,8 @@ type ServerMessage =
 | `/api/turnstile/verify` | 60s | 10 |
 | `/api/upload` | 60s | 20 |
 | `/api/push/*` | 60s | 10 |
-| `/api/check-ban` | 60s | 30 |
+| `/api/check-ban` | 10s | 10 |
+| `/api/secret-store` | 10s | 10 |
 | `/api/logs/error` | 60s | 30 |
 | `/api/preview` | 10s (IP) | 5 |
 | `/api/summary` | 15s | 1 |

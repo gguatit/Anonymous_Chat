@@ -18,5 +18,8 @@ VAPID_PRIVATE_KEY=your-vapid-private-key
 # Firebase Cloud Messaging (for push notifications)
 FCM_SERVICE_ACCOUNT={"type":"service_account","project_id":"..."}
 
+# External file service (required for upload/download; returns 503 if missing)
+FILE_API_KEY=your-file-service-api-key
+
 # External service URLs (optional, defaults are used if not set)
 # FILE_UPLOAD_URL=https://file.xeon.kr/upload

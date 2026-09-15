@@ -201,7 +201,7 @@ chore: 의존성 업데이트
 | `security-logger.test.js` | 8 | D1 INSERT, dedup, cleanup |
 | `security-routes.test.js` | 23 | Security API 8종 + Middleware + Input Validator |
 | `admin-handlers.test.js` | 7 | handleAdminLogout 인증/토큰 |
-| **합계** | **112** | -- |
+| **합계** | **363** | -- |
 
 ---
 
@@ -211,7 +211,7 @@ chore: 의존성 업데이트
 |---|---|---|
 | 1 | `main` 브랜치에 PR 머지 | GitHub |
 | 2 | [CHANGELOG.md](./CHANGELOG.md) 자동 반영 | PR 본문의 `## 변경 요약` |
-| 3 | 프로덕션 배포 | `wrangler pages deploy public` |
+| 3 | 프로덕션 배포 | `npm run deploy` (= `wrangler deploy`) |
 | 4 | D1 마이그레이션 (해당 시) | `wrangler d1 migrations apply` |
 
 ---

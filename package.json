@@ -5,7 +5,7 @@
   "description": "Anonymous real-time chat application using Cloudflare Workers and Pages",
   "main": "src/worker.js",
   "scripts": {
-    "dev": "npm run css && npm run bundle && wrangler pages dev public",
+    "dev": "npm run css && npm run bundle && wrangler dev --var ENVIRONMENT:development --port 8788",
     "build": "npm run css && npm run bundle && npm run lint",
     "deploy": "npm run css && npm run bundle && wrangler deploy",
     "css": "npx tailwindcss -i src/tailwind-input.css -o public/css/tailwind.min.css --minify",

@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/License-Commercial-blue.svg)](./COMMERCIAL_LICENSE.md)
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](./SECURITY.md)
-[![Tests](https://img.shields.io/badge/Tests-112%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/Tests-363%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
 
 Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 채팅 서비스입니다.
 회원가입 없이 닉네임만으로 즉시 참여하며, **12시간 후 모든 메시지는 자동 소멸**합니다.
@@ -62,7 +62,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | 기능 | 설명 |
 |---|---|
 | HMAC 메시지 서명 | 클라이언트 → 서버 메시지 변조 방지 |
-| HMAC 인증 토큰 | HMAC-signed base64 (JWT 아님) |
+| HMAC 인증 토큰 | opaque 랜덤 토큰 + KV 세션 (JWT 아님) |
 | Rate Limiting | 전역 + 엔드포인트별 + 사용자별 다층 |
 | Cloudflare Turnstile | 봇 방지 |
 | 보안 헤더 | CSP · HSTS · COOP · COEP |
@@ -75,13 +75,13 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 
 | 영역 | 기술 |
 |---|---|
-| **런타임** | Cloudflare Workers + Pages Functions |
+| **런타임** | Cloudflare Workers (Static Assets) |
 | **상태** | Durable Objects (3개: `ChatRoom`, `ChannelRegistry`, `DeadDropStore`) |
 | **DB** | Cloudflare D1 (로그) · KV (푸시 구독, 임시 상태) |
 | **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
 | **푸시** | Web Push (VAPID) + FCM v1 |
-| **빌드** | esbuild (`chat.bundle.js`, `admin.bundle.js`) |
-| **테스트** | Vitest (112 cases) |
+| **빌드** | esbuild (chat · admin · 보안센터 · 관리자 페이지 번들 10종) |
+| **테스트** | Vitest (363 cases) |
 | **린팅** | ESLint + Prettier |
 | **프론트** | 바닐라 JS (모듈식) · CSS Custom Properties 테마 · Tailwind(빌드) |
 
@@ -115,7 +115,7 @@ npm run dev
 
 ```bash
 npm run build      # 클라이언트 번들 (esbuild)
-npm test           # 57개 유닛 테스트
+npm test           # 363개 유닛 테스트
 npm run lint       # ESLint
 ```
 
@@ -124,7 +124,7 @@ npm run lint       # ESLint
 자세한 내용: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
 ```bash
-wrangler pages deploy public
+npm run deploy
 wrangler d1 create anonymous-chat-db
 wrangler d1 migrations apply anonymous-chat-db
 ```
@@ -179,9 +179,8 @@ wrangler d1 migrations apply anonymous-chat-db
 │   │   └── utils.js              # 공통 유틸
 │   └── css/                      # 테마 + 애니메이션
 │
-├── test/                         # Vitest 112 cases (10 파일)
+├── test/                         # Vitest 363 cases (29 파일)
 ├── migrations/                   # D1 스키마
-├── functions/                    # Pages Functions 브리지
 ├── docs/                         # 상세 문서
 └── wrangler.toml                 # Cloudflare 설정
 ```
@@ -227,7 +226,7 @@ flowchart LR
 |---|---|
 | **WebSocket은 DO에서 직접 처리** | Sticky session 보장 |
 | **HMAC-SHA256 메시지 서명** | 클라이언트 → DO 메시지 변조 방지 |
-| **Ephemeral Token 모델** | 세션별 32바이트 secret, 핸드셰이크 1회 전달, close 시 폐기 |
+| **Ephemeral Token 모델** | 세션별 32바이트 secret + capability key(재접속 검증, 조인마다 회전) |
 | **`X-Admin-Internal-Token`** | Worker ↔ DO 내부 통신 (SSRF 방지) |
 | **채널 = 별도 DO 인스턴스** | 메타데이터는 `ChannelRegistry`에 |
 
@@ -253,11 +252,11 @@ flowchart LR
 ## 개발 명령어
 
 ```bash
-npm run dev      # wrangler dev (로컬 Workers)
+npm run dev      # wrangler dev :8788 (로컬 Workers + 정적 자산)
 npm test         # vitest run
 npm run lint     # eslint
 npm run build    # esbuild 클라이언트 번들
-npm run deploy   # 빌드 + wrangler pages deploy
+npm run deploy   # 빌드 + wrangler deploy (Worker)
 ```
 
 자세한 내용: [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md)

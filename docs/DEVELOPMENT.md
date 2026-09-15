@@ -118,7 +118,6 @@ cp .dev.vars.example .dev.vars
 
 ### 3.4 기타
 - `migrations/` — D1 스키마 (3개: admin_logs, log_tables, security_events)
-- `functions/_middleware.js` — Pages Functions 브리지
 - `docs/` — 상세 문서
 - `wrangler.toml` — Cloudflare 설정
 - `package.json` — npm 의존성 + 스크립트
@@ -157,7 +156,7 @@ npm run format         # Prettier
 
 ### 4.5 배포
 ```bash
-npm run deploy         # 빌드 + wrangler pages deploy
+npm run deploy         # 빌드 + wrangler deploy
 ```
 
 ## 5. 코딩 컨벤션

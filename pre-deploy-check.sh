@@ -1,56 +1,39 @@
 #!/bin/bash
 
-# Pre-deploy validation for Anonymous Chat (Cloudflare Workers + Pages).
-# This script does NOT deploy anything. It only validates wrangler auth and
-# worker syntax (via `wrangler deploy --dry-run`), then prints deployment
-# instructions. Actual deployment happens via Cloudflare Pages Git integration.
+# Pre-deploy validation for Anonymous Chat (Cloudflare Workers).
+# Runs the local gate (tests, lint, build) plus a Wrangler dry-run.
+# This script does NOT deploy anything. Deploy with: npm run deploy
 
 set -e
 
-echo "🔍 Anonymous Chat Pre-Deploy Check"
-echo "===================================="
+echo "Anonymous Chat Pre-Deploy Check"
+echo "================================"
 
-# Check if wrangler is installed
 if ! command -v wrangler &> /dev/null; then
-    echo "❌ Wrangler CLI not found. Installing..."
+    echo "Wrangler CLI not found. Installing..."
     npm install -g wrangler
 fi
 
-# Login check
-echo "🔐 Checking Wrangler authentication..."
-if ! wrangler whoami &> /dev/null; then
-    echo "Please login to Cloudflare:"
-    wrangler login
-fi
-
-# Deploy Workers
 echo ""
-echo "📦 Deploying to Cloudflare Pages..."
-echo "Note: For Cloudflare Pages, deployment is handled by the Pages dashboard."
-echo "This script will prepare and test the worker code."
-echo ""
+echo "1/3 Tests..."
+npm test
 
-# Test the worker syntax
-echo "🔍 Testing worker syntax..."
+echo ""
+echo "2/3 Build + lint..."
+npm run build
+
+echo ""
+echo "3/3 Wrangler dry-run..."
 npx wrangler deploy --dry-run
 
 echo ""
-echo "✅ Worker syntax validated successfully!"
+echo "All checks passed."
 echo ""
-echo "📊 Deployment Instructions:"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "For Cloudflare Pages deployment:"
-echo "1. Push your code to GitHub"
-echo "2. Cloudflare Pages will automatically build and deploy"
-echo "3. Build command: npm install"
-echo "4. Build output directory: public"
-echo "5. Environment variables are configured in Pages dashboard"
+echo "Deploy:"
+echo "  npm run deploy                                            # build + wrangler deploy"
+echo "  wrangler d1 migrations apply anonymous-chat-db --remote  # if schema changed"
 echo ""
-echo "For direct Worker deployment (alternative):"
-echo "  wrangler deploy --env=\"\""
-echo ""
-echo "📈 Monitoring:"
-echo "  • Logs: wrangler tail"
-echo "  • Metrics: https://kalpha.mmv.kr/metrics"
-echo "  • Health: https://kalpha.mmv.kr/health"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Monitoring:"
+echo "  wrangler tail"
+echo "  https://kalpha.mmv.kr/health"
+echo "  https://kalpha.mmv.kr/metrics"

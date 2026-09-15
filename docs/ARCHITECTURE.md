@@ -78,14 +78,14 @@ flowchart TB
 
 ### 1. Worker (`src/worker.js`, 424줄)
 
-Cloudflare Pages Functions 진입점. HTTP 라우팅, WebSocket 업그레이드, 정적 자산 폴백 처리.
+Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙). HTTP 라우팅, WebSocket 업그레이드, 정적 자산 폴백 처리.
 
 **라우트 테이블**
 
 | 분류 | 개수 | 경로 |
 |---|---|---|
-| 공개 엔드포인트 | 20 | `/api/*`, `/ws`, `/metrics`, `/health` |
-| 관리자 엔드포인트 | 23 | `/api/admin/*` |
+| 공개 엔드포인트 | 22 | `/api/*`, `/ws`, `/metrics`, `/health` |
+| 관리자 엔드포인트 | 31 | `/api/admin/*` |
 | SPA fallback | – | 미매칭 → `/index.html` |
 
 **주요 헬퍼**
@@ -389,9 +389,7 @@ sequenceDiagram
 flowchart LR
     subgraph Server["서버"]
         Worker1[src/worker.js<br/>ESM]
-        Middleware[functions/_middleware.js<br/>re-export]
-        Worker1 --> Middleware
-        Middleware --> Runtime[Cloudflare Pages<br/>Functions]
+        Worker1 --> Runtime[Cloudflare Workers<br/>+ Static Assets (public/)]
     end
 
     subgraph Client["클라이언트"]
