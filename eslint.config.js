@@ -42,6 +42,8 @@ export default [
             'dist/**',
             '.opencode/**',
             'public/js/*.bundle.js',
+            'public/js/chunks/**',
+            '**/*.map',
         ],
     },
 ];
