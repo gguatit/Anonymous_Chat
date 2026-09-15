@@ -20,12 +20,11 @@
 
 ```mermaid
 flowchart TB
-    Client[브라우저 클라이언트<br/>chat.js / admin.js]
+    Client[브라우저 클라이언트<br/>chat.js / admin-core/admin-ui/admin-main<br/>pages/page-*.js]
 
     subgraph Edge["Cloudflare Edge"]
         DNS[DNS]
-        Pages[Pages CDN<br/>정적 자산]
-        Worker[Worker<br/>worker.js 라우터]
+        Worker["Worker<br/>worker.js 라우터 + [assets] 정적 자산"]
     end
 
     subgraph DO["Durable Objects"]
@@ -51,8 +50,7 @@ flowchart TB
     end
 
     Client -->|HTTPS/WS| DNS
-    DNS --> Pages
-    Pages --> Worker
+    DNS --> Worker
 
     Worker -->|forwardToDO| ChatRoom
     Worker -->|forwardToDO| ChannelReg
@@ -76,7 +74,7 @@ flowchart TB
 
 ## 컴포넌트
 
-### 1. Worker (`src/worker.js`, 424줄)
+### 1. Worker (`src/worker.js`, 531줄)
 
 Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙). HTTP 라우팅, WebSocket 업그레이드, 정적 자산 폴백 처리.
 
@@ -93,13 +91,13 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 | 함수 | 책임 |
 |---|---|
 | `matchRoute()` | 선언적 라우트 매칭 |
-| `channelRequest()` | 3개 채널 핸들러 통합 (DRY) |
+| `handleChannelCreate` / `handleChannelJoin` / `handleChannelList` | 채널 생성/참가/목록 핸들러 |
 | `serveStaticAssets()` | ASSETS 바인딩 + SPA fallback |
 | `checkRateLimit()` | Lazy-init rate-limiter (Workers 호환) |
 
 ---
 
-### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1435줄)
+### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1588줄)
 
 핵심 WebSocket 핸들러. 채널당 1개 인스턴스 (메인룸 1 + 채널 N).
 
@@ -114,14 +112,14 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 | 반응 | 이모지 토글 |
 | 푸시 | 오프라인 사용자 |
 | AI 요약 | Workers AI 호출 |
-| 자동 정리 | 5분 주기 |
+| 자동 정리 | DO alarm 기반 빈 채널 삭제 (10분 TTL, activeConnections 0일 때만) |
 
 **보조 모듈**
 
 | 파일 | 줄 | 책임 |
 |---|---|---|
-| `chat-room/admin.js` | 1075 | 18개 `/admin/*` 라우트 |
-| `chat-room/messages.js` | 212 | 검증, 검색, AI sanitization |
+| `chat-room/admin.js` | 1154 | 19개 `/admin/*` 라우트 (ban-ip, verify-session 포함) |
+| `chat-room/messages.js` | 218 | 검증, 검색, AI sanitization |
 | `chat-room/announcements.js` | 5 | `isEmergencyActive` 헬퍼 |
 
 **WebSocket 메시지 타입**
@@ -129,23 +127,23 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 | 방향 | 개수 | 타입 |
 |---|---|---|
 | Inbound | 7 | `ping`, `join`, `message`, `edit`, `delete`, `reaction`, `typing` |
-| Outbound | 16 | `handshake`, `pong`, `banned`, `history`, `announcement`, `system`, `error`, `message`, `message_edited`, `message_deleted`, `message_reaction`, `typing`, `user_count`, `emergency_cleared`, `summary`, `kicked` |
+| Outbound | 19 | `handshake`, `pong`, `banned`, `history`, `announcement`, `system`, `error`, `message`, `message_edited`, `message_deleted`, `message_reaction`, `typing`, `user_count`, `emergency_cleared`, `summary`, `kicked`, `all_messages_deleted`, `admin_event`, `channel_deleted` |
 
 ---
 
-### 3. ChannelRegistry Durable Object (`src/durable-objects/ChannelRegistry.js`, 337줄)
+### 3. ChannelRegistry Durable Object (`src/durable-objects/ChannelRegistry.js`, 406줄)
 
 채널 메타데이터 싱글톤. slug → 채널 정보 매핑.
 
 **책임**
 - 채널 생성/조회/삭제
 - `lastActive` 갱신
-- 빈 채널 자동 정리 (10분 TTL)
+- 빈 채널 자동 정리 (DO alarm, 10분 TTL, activeConnections 0일 때만, 기회적 스윕)
 - 관리자 채널 목록/강제 삭제
 
 ---
 
-### 4. DeadDropStore Durable Object (`src/durable-objects/DeadDropStore.js`, 144줄)
+### 4. DeadDropStore Durable Object (`src/durable-objects/DeadDropStore.js`, 145줄)
 
 1회성 비밀 메시지 싱글톤.
 
@@ -161,12 +159,12 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 
 | 파일 | 줄 | 책임 |
 |---|---|---|
-| `admin.js` | 608 | 23개 `/api/admin/*` 핸들러 (withAuth 미들웨어) |
-| `websocket.js` | 121 | WebSocket 업그레이드 + 차단 사전 확인 |
-| `push.js` | 319 | VAPID/FCM 구독 관리 + 발송 |
-| `summary.js` | 189 | Workers AI 요약 (4 모드, 15초 레이트리밋) |
-| `preview.js` | 148 | OG 태그 스크래퍼 (Edge cache 1시간) |
-| `turnstile.js` | 77 | Cloudflare Turnstile 검증 |
+| `admin.js` | 609 | 30개 `/api/admin/*` 핸들러 (withAuth 미들웨어) |
+| `websocket.js` | 134 | WebSocket 업그레이드 + 차단 사전 확인 |
+| `push.js` | 353 | VAPID/FCM 구독 관리 + 발송 |
+| `summary.js` | 216 | Workers AI 요약 (4 모드, 15초 레이트리밋) |
+| `preview.js` | 259 | OG 태그 스크래퍼 (Edge cache 1시간) |
+| `turnstile.js` | 143 | Cloudflare Turnstile 검증 |
 | `health.js` | 17 | `/health`, `/metrics` |
 
 ---
@@ -175,7 +173,7 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 
 | 파일 | 책임 |
 |---|---|
-| `middleware/auth.js` | HMAC 토큰 발급/검증, Rate limit |
+| `middleware/auth.js` | opaque KV 토큰 발급/검증 (12시간 슬라이딩), Rate limit |
 | `utils/do.js` | DO 라우팅 (`getChatRoom`, `getChannelRoom`, `forwardToDO`) |
 | `utils/validate.js` | 메시지/채널/닉네임/세션/Dead Drop 검증 |
 | `utils/errors.js` | `jsonError`, `jsonSuccess`, `textError`, `emptyResponse` |
@@ -229,10 +227,10 @@ sequenceDiagram
     participant W as Worker
     participant DO as ChatRoom DO
 
-    C->>W: GET /ws?sessionId=&channel=
+    C->>W: GET /ws?sessionId=&channel= (Turnstile ticket 포함)
 
-    Note over W: 1. Origin 검증<br/>2. sessionId 검증 (정규식)
-    W->>W: 3. /api/check-ban (preflight)
+    Note over W: 1. Origin 검증 (누락 시 fail-closed)<br/>2. sessionId 검증 (정규식)<br/>3. Turnstile ticket 검증<br/>4. 옵저버(admin_obs_*)는 관리자 토큰 필요<br/>5. ChannelRegistry 채널 조회 (없으면 404)
+    W->>W: 6. /api/check-ban (preflight)
     W->>DO: checkBan
     DO-->>W: {banned: false}
     W-->>C: 101 Switching Protocols
@@ -241,17 +239,18 @@ sequenceDiagram
 
     Note over DO: handleJoin
     DO->>DO: storage에서 세션 복원
-    DO->>DO: 50개 히스토리 배치 전송
+    DO->>DO: 100개 히스토리 배치 전송 (RECENT_MESSAGES_BATCH)
     DO->>DO: broadcast user_count
-    DO->>DO: 32바이트 랜덤 secret 생성<br/>Map<sessionId, secret> 저장
-    DO-->>C: WS: {type:'handshake', secret:'<64hex>'}
-    DO-->>C: WS: {type:'history', messages:[...50개]}
+    DO->>DO: 32바이트 랜덤 secret + capability key 생성<br/>세션 Map 저장
+    DO-->>C: WS: {type:'handshake', secret:'<64hex>', key, authorId}
+    Note over C,DO: 재접속 시 유효한 key 없으면 close 4401
+    DO-->>C: WS: {type:'history', messages:[...100개]}
     DO-->>C: WS: {type:'user_count', count: 12}
 
     Note over C: secret 메모리 보관
     C->>DO: WS: {type:'message', content, signature<br/>=HMAC(secret, {content,sessionId,timestamp})}
 
-    Note over DO: handleMessage<br/>1. sessionSecret 조회<br/>2. 서명 재계산 후 비교<br/>3. 불일치 시 거부
+    Note over DO: handleMessage<br/>1. sessionSecret 조회<br/>2. 서명 재계산 후 비교 (±30초 freshness)<br/>3. 불일치 시 거부
     DO-->>C: WS: {type:'message', message, signature}
 
     Note over DO: close 시 Map에서 secret 폐기
@@ -291,7 +290,7 @@ sequenceDiagram
     participant DO as ChatRoom DO
     participant AI as Workers AI
 
-    C->>W: POST /api/summary {mode:'summary'}
+    C->>W: POST /api/summary {mode:'default'|'topic'|'mood'|'conflict', channel?}
 
     Note over W: 1. Rate limit (15s)
     W->>DO: fetch /messages/recent (HMAC)
@@ -344,16 +343,16 @@ sequenceDiagram
 
 | 종류 | 형식 | 위치 | 특징 |
 |---|---|---|---|
-| **관리자 토큰** | `HMAC(secret, base64(id:ts))` | `auth.js` | 2시간 만료, KV revocation |
+| **관리자 토큰** | opaque 32바이트 랜덤 값 (KV `token:<t>`) | `auth.js` | 12시간 슬라이딩 TTL, 로그아웃 시 KV 폐기, 401 자동 로그아웃 |
 | **내부 토큰** | `X-Admin-Internal-Token` | `worker.js` ↔ DO | SSRF 방지 |
-| **메시지 서명 (Ephemeral Token)** | `HMAC(sessionSecret, JSON.stringify({content, sessionId, timestamp}))` | `ChatRoom.js` + `signature.js` | 32바이트 세션별 secret, 핸드셰이크 1회 전달, close 시 폐기 |
+| **메시지 서명 (Ephemeral Token)** | `HMAC(sessionSecret, JSON.stringify({content, sessionId, timestamp}))` | `ChatRoom.js` + `signature.js` | 32바이트 세션별 secret + capability key(재입장 회전), authorId(16hex)로 sessionId 대체, ±30초 freshness, close/4401 시 폐기 |
 
 ### Rate Limiting
 
 | 계층 | 위치 | 규칙 |
 |---|---|---|
 | **전역** | `src/utils/rate-limiter.js` | per-worker 인메모리, 5분 cleanup |
-| **엔드포인트별** | `API_RATE_LIMIT` 상수 | config, push, turnstile, upload, health, check-ban |
+| **엔드포인트별** | `API_RATE_LIMIT` 상수 | metrics, health, config, turnstile, upload, push, check-ban, logs/error, preview, summary, secret-store/read, announcements/emergency, channels, search, vapid, ws |
 | **사용자별** | ChatRoom | 1초 쿨다운, 분당 30개 슬라이딩 윈도우 |
 | **관리자 로그인** | `checkRateLimit`/`incrementRateLimit` | 5회/5분 차단 |
 
@@ -374,12 +373,15 @@ sequenceDiagram
 | 데이터 | 보존 | 자동 삭제 |
 |---|---|---|
 | 메시지 | 12시간 (메모리 + DO Storage) | ✅ (5분 cleanup) |
-| 공지 | 영구 (메모리 + DO Storage) | 수동 |
+| 공지 | 영구, 히스토리 최대 100개 (메모리 + DO Storage) | 수동 |
 | Dead Drop | 30분 TTL, 1회 읽기 후 삭제 | ✅ TTL |
-| 감사/관리자/오류 로그 | D1 (영구, 30일 자동 정리) | ✅ 10% 확률 정리 |
-| 보안 이벤트 | D1 (security_events, 90일 보존) | ✅ 10% 확률 정리 |
+| 감사 로그 | D1 (audit_logs, 90일) | ✅ 확률적 정리 |
+| 관리자 로그 | D1 (admin_activity_logs, 30일) | ✅ 확률적 정리 |
+| 오류 로그 | D1 (error_logs, 30일) | ✅ 확률적 정리 |
+| 보안 이벤트 | D1 (security_events, 90일 보존) | ✅ 확률적 정리 |
 | 푸시 구독 | 30일 TTL (KV) | ✅ TTL |
 | 차단 | 시간 설정에 따라 만료 (영구 옵션) | ✅ 만료 시 |
+| 세션 capability 키 | KV (30분 TTL, 최대 500개) | ✅ TTL |
 
 ---
 
@@ -393,8 +395,8 @@ flowchart LR
     end
 
     subgraph Client["클라이언트"]
-        Chat[public/js/chat.js<br/>+ 19 modules]
-        Admin[public/js/admin-core.js<br/>+ 10 modules]
+        Chat[public/js/chat.js<br/>+ 30 source modules + 6 page wrappers]
+        Admin[public/js/admin-core.js / admin-ui.js / admin-main.js<br/>+ security-center.js + 6 pages]
         TailwindB[tailwind 빌드<br/>45KB]
 
         Chat -->|esbuild| ChatBundle[chat.bundle.js]
@@ -410,7 +412,7 @@ flowchart LR
 
 | 지표 | 결과 |
 |---|---|
-| 메시지 히스토리 로딩 | 50개, 500ms → **20ms** (25배, DocumentFragment) |
+| 메시지 히스토리 로딩 | 100개, 500ms → **20ms** (25배, DocumentFragment) |
 | 이벤트 리스너 | 메시지당 5-6개 → 컨테이너 5개 (위임) |
 | Tailwind | 300KB CDN → **45KB** 빌드 |
 | 번들 | 19개 모듈 → **10개** (chat, admin-core, admin-main, 관리자 페이지 6, security-center) |

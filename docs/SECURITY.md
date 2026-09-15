@@ -31,7 +31,7 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 
 | 영역 | 항목 수 | 핵심 통제 |
 |---|---|---|
-| 인증/권한 | 4 | HMAC 토큰, 상수시간 비교, 내부 API 토큰, 메시지 서명 |
+| 인증/권한 | 4 | opaque KV 토큰, 상수시간 비교, 내부 API 토큰, 메시지 서명 |
 | 입력 검증 | 6 | 메시지/채널/닉네임/SessionID/Dead Drop/파일 |
 | XSS/CSRF | 3 | escapeHtml, strict CSP, Bearer 토큰 |
 | Rate Limiting | 2 | 다층 구조, IP 차단 |
@@ -39,7 +39,7 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 | 보안 헤더 | 2 | `_headers` 정의, CORS 화이트리스트 |
 | 봇 방지 | 1 | Cloudflare Turnstile |
 | 푸시 알림 | 3 | VAPID, FCM, Service Worker |
-| 데이터 보존 | 1 | 9개 데이터 클래스 |
+| 데이터 보존 | 1 | 10개 데이터 클래스 |
 | 시크릿 관리 | 2 | 환경변수, 처리 정책 |
 | 정기 점검 | 4 | 주간/월간/분기/연간 |
 | 사고 대응 | 3 | 신고, 분류, 롤백 |
@@ -51,17 +51,18 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 ## 1. 인증/권한
 
 ### 1.1 관리자 인증
-- ✅ **HMAC-signed base64 토큰** (`src/middleware/auth.js:42-78`)
-  - 형식: `base64(id:ts).base64(HMAC(secret, id:ts))`
-  - 만료: 2시간 (`AUTH.TOKEN_EXPIRY_MS`)
-  - KV 기반 즉시 폐기 (`revokeToken`)
+- ✅ **opaque KV 토큰** (`src/middleware/auth.js`)
+  - 형식: 32바이트 랜덤 값, KV 키 `token:<t>`로 저장
+  - 만료: 12시간 슬라이딩 TTL (잔여 1시간 미만 시 자동 갱신)
+  - 로그아웃 시 서버 측 즉시 폐기 (`revokeToken`)
+  - 관리자 UI는 401 응답 시 자동 로그아웃
   - ❌ JWT는 사용하지 않음 (서명 알고리즘 혼동 위험 회피)
 - ✅ **상수 시간 비교** (`src/utils/security.js:constantTimeCompare`)
   - 타이밍 공격 방지
   - 패스워드 비교, 메시지 서명 검증에 사용
 - ✅ **Rate Limiting** (`src/middleware/auth.js:checkRateLimit`)
   - 5분 내 5회 실패 시 차단
-  - KV 키: `admin:auth:{ip}`
+  - KV 키: `ratelimit:<ip>`
   - TTL 5분 (`AUTH.RATE_LIMIT_EXPIRE`)
 
 ### 1.2 WebSocket 인증
@@ -72,6 +73,12 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
   - WebSocket 핸드셰이크 전에 차단 상태 확인
 - ✅ **Origin 검증** (`src/handlers/websocket.js`)
   - `src/utils/security.js:isAllowedOrigin` 통과 필요
+  - Origin 누락 시 fail-closed (연결 거부)
+- ✅ **Turnstile ticket 검증** (`/ws`)
+  - `POST /api/turnstile/verify`(sessionId 연계)가 발급한 HMAC ticket 필요 (12시간 TTL)
+  - `TURNSTILE_SECRET_KEY` 미설정 시에만 생략
+- ✅ **옵저버 토큰** (`admin_obs_*` 세션)
+  - 옵저버 연결은 관리자 토큰 필요
 
 ### 1.3 내부 API (Worker ↔ DO)
 - ✅ **`X-Admin-Internal-Token` 헤더** (모든 DO 호출)
@@ -81,22 +88,25 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 
 ### 1.4 메시지 서명 (Ephemeral Token)
 - ✅ **HMAC-SHA256** (`src/utils/helpers.js:generateMessageSignature`, `public/js/signature.js:generateClientSignature`)
-  - 서명 대상: `{content, sessionId, timestamp}` (수정 시 `{newContent, messageId, sessionId, timestamp}`)
+  - 서명 대상: `{content, sessionId, timestamp}` (message/edit 공통)
   - 클라이언트 → 서버 메시지 변조 방지
   - DO가 `handleMessage`/`handleEdit`에서 검증
-- ✅ **Ephemeral Token 모델** (2026-06-22 강화)
-  - 서버는 `join` 시 세션별 32바이트 랜덤 `sessionSecret` 생성 → `Map<sessionId, secret>`에 저장
-  - 핸드셰이크 메시지로 클라이언트에 1회 전달: `{type:'handshake', secret:'<64hex>'}`
+- ✅ **Ephemeral Token + capability key 모델** (2026-06-22 강화)
+  - 서버는 `join` 시 세션별 32바이트 랜덤 `sessionSecret`과 capability `key` 생성 → 세션 Map에 저장
+  - 재입장마다 `key` 회전, 유효한 `key` 없는 재접속은 close 4401
+  - 핸드셰이크 메시지로 클라이언트에 1회 전달: `{type:'handshake', secret:'<64hex>', key, authorId}`
+  - `authorId`(HMAC 파생 16hex)는 히스토리/검색에서 sessionId 대체
   - 클라이언트는 이후 `message`/`edit` 송신 시 `sessionSecret`으로 HMAC 자동 서명
   - WebSocket `close` 시 서버는 즉시 `Map`에서 secret 폐기
-- ✅ **서명 누락 시 거부** (생략 불가)
-  - 클라이언트가 `signature` 미포함 시 서버가 `sessionSecret`으로 자동 생성 후 비교
+- ✅ **서명 누락/불일치 시 거부** (생략 불가)
+  - `signature` 없는 `message`/`edit`는 서버가 거부
+  - timestamp가 ±30초(`SIGNATURE_MAX_SKEW_MS`)를 벗어나면 거부
   - 불일치 시 메시지 거부 + `INVALID_SIGNATURE` 보안 이벤트 기록
 - ✅ **서명 우회 불가능**
   - 세션ID만으로는 위조 불가 (별도 secret 필요)
   - 다른 세션의 secret 사용 불가 (세션별 격리)
   - 세션 종료 후 재사용 불가 (close 시 폐기)
-- ✅ **검증 위치**: `src/durable-objects/ChatRoom.js:handleMessage:698-734`, `handleEdit:883-907`
+- ✅ **검증 위치**: `src/durable-objects/ChatRoom.js:handleMessage:755-959`, `handleEdit:961-1140`
 - ✅ **클라이언트 서명 모듈**: `public/js/signature.js` (Web Crypto API, async HMAC)
 
 ## 2. 입력 검증
@@ -137,9 +147,9 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 ## 3. XSS / CSRF
 
 ### 3.1 클라이언트 출력 인코딩
-- ✅ **`escapeHtml()`** (`public/js/utils.js`)
+- ✅ **`escapeHtml()`** (`public/js/utils.js`, `"`/`'` 포함 이스케이프)
   - `file-upload.js` 파일명
-  - `admin-render.js` 에러 로그, 세션, 메시지
+  - `security-center.js` / `page-users.js` / `admin-ui.js` 관리자 렌더링
   - `chat.js` 메시지 컨텐츠
 - ✅ **마크다운 렌더링 시 화이트리스트**
   - URL: `https?://`, `www.`, bare-domain
@@ -148,10 +158,12 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 
 ### 3.2 CSP (Content Security Policy)
 - ✅ **strict CSP** (`public/_headers`)
-  - `script-src`: cdnjs, cloudflareinsights, challenges.cloudflare.com
+  - `script-src`: 'self', cdnjs, static.cloudflareinsights, challenges.cloudflare (`unsafe-inline`/`unsafe-eval` 미사용)
+  - `style-src`: `'unsafe-inline'` 허용
   - `connect-src`: file.kalpha.kr, api.kalpha.kr, wss:, ws:
   - `img-src`: file.kalpha.kr, https:, data:
-  - `frame-src`: kalpha.kr
+  - `frame-src`: https://challenges.cloudflare.com
+  - `frame-ancestors`: kalpha.kr (CSP로 제어)
   - `object-src`: 'none'
   - `base-uri`: 'self'
 
@@ -170,6 +182,7 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
     느슨해질 수 있음. 전역 강제가 필요하면 Durable Object 기반으로 전환 검토 (FEATURE_IDEAS.md #8)
 - ✅ **엔드포인트별** (`API_RATE_LIMIT` 상수)
   - config, push, turnstile, upload, health, check-ban, logs/error
+  - announcements, emergency, channels, search, vapid, secret-read, ws
 - ✅ **사용자별 (메시지)** (ChatRoom DO)
   - 1초 쿨다운, 분당 30개 슬라이딩 윈도우
   - `joinTime` 기반 → 슬라이딩 윈도우로 교체 (2026-05-18)
@@ -180,7 +193,9 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 - ✅ **연결 수 제한** 25개/IP (`RATE_LIMIT.MAX_CONNECTIONS_PER_IP`)
 - ✅ **IP + SessionID 이중 차단** (`bannedIPs` + `bannedSessions` Map)
   - 재접속 시 sessionId 자동 삭제 (`kicked` 메시지 + 클라이언트 처리)
-  - 영구 차단 옵션 (`banDuration: 0`)
+  - 차단 기간 지정 가능 (`banDuration`, 0 = 영구)
+- ✅ **토큰 기반 차단** 및 관리자 API (`/api/admin/ban-ip`)
+  - IP/토큰 차단 + 사용자 지정 기간
 
 ## 5. SQL Injection
 
@@ -196,7 +211,6 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 
 ### 6.1 `public/_headers`
 - ✅ **X-Content-Type-Options: nosniff**
-- ✅ **X-Frame-Options: ALLOW-FROM https://kalpha.kr**
 - ✅ **X-XSS-Protection: 1; mode=block**
 - ✅ **Referrer-Policy: strict-origin-when-cross-origin**
 - ✅ **Permissions-Policy: camera=(), microphone=(), geolocation=()**
@@ -216,6 +230,8 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 - ✅ **Site Key** 환경변수 (`wrangler.toml` vars)
 - ✅ **Secret Key** 시크릿 (`wrangler secret put TURNSTILE_SECRET_KEY`)
 - ✅ **세션 만료 4시간** (`TURNSTILE_CLIENT.SESSION_AGE_MS`)
+- ✅ **ticket 발급** (`POST /api/turnstile/verify`, sessionId 연계, HMAC, 12시간 TTL)
+- ✅ **`/ws` ticket 검증** (`TURNSTILE_SECRET_KEY` 미설정 시에만 생략)
 - ✅ **위젯 자동 폴링** (최대 50회 × 100ms)
 - ✅ **에러/만료 콜백 처리** (`public/js/turnstile.js`)
 
@@ -240,14 +256,15 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 | 데이터 | 위치 | 보존 기간 | 자동 삭제 |
 |---|---|---|---|
 | 채팅 메시지 | DO Storage | 12시간 | ✅ (5분 cleanup) |
-| 공지 | DO Storage | 영구 | 수동 |
+| 공지 | DO Storage | 영구 (히스토리 최대 100개) | 수동 |
 | Dead Drop | DO Storage | 30분 | ✅ TTL |
-| 관리자 로그 | D1 `admin_activity_logs` | 30일 | ✅ (10% 확률 정리) |
-| 감사 로그 | D1 `audit_logs` | 영구 | 수동 |
-| 오류 로그 | D1 `error_logs` | 영구 | 수동 |
+| 관리자 로그 | D1 `admin_activity_logs` | 30일 | ✅ (확률적 정리) |
+| 감사 로그 | D1 `audit_logs` | 90일 | ✅ (확률적 정리) |
+| 오류 로그 | D1 `error_logs` | 30일 | ✅ (확률적 정리) |
+| 보안 이벤트 | D1 `security_events` | 90일 | ✅ (확률적 정리) |
 | 푸시 구독 | KV | 30일 | ✅ TTL |
 | 차단 | DO 인메모리 | 시간 설정에 따라 | ✅ 만료 시 |
-| 세션 | DO 인메모리 | 30분 비활성 | ✅ |
+| 세션 | DO 인메모리 + KV | 30분 비활성 (capability 키 30분 TTL, 최대 500개) | ✅ TTL |
 
 ## 10. 시크릿 관리
 
@@ -256,8 +273,9 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` — Web Push
 - `TURNSTILE_SECRET_KEY` — Turnstile 서버 검증
 - `FCM_SERVICE_ACCOUNT` — FCM v1 인증
-- `HMAC_SECRET` — 내부 토큰 (Worker↔DO, 관리자 인증 토큰). 메시지 서명은 2026-06-22부터 Ephemeral Token(`sessionSecret`)으로 분리됨.
+- `HMAC_SECRET` — 내부 Worker↔DO 인증, Turnstile ticket, authorId 파생. 관리자 인증은 opaque KV 토큰으로 분리됨.
 - `FILE_UPLOAD_URL` — Kalpha 파일 API
+- `FILE_API_KEY` — 파일 업로드/다운로드 API 키 (미설정 시 503)
 - `KALPHA_API_URL` — Kalpha 보안 헤더 API
 
 ### 10.2 시크릿 처리
@@ -295,8 +313,8 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 
 ### 12.1 신고 접수
 - **공개 이슈 금지** — git history에 노출
-- **dev@kalpha.kr** (PGP 키: SECURITY.md 참고)
-- 24시간 내 1차 응답, 7일 내 패치 목표
+- **dev@kalpha.kr** (PGP 키 없음)
+- 48시간 내 1차 응답, 7일 내 패치 목표
 
 ### 12.2 심각도 분류
 - **Critical**: 인증 우회, RCE, 데이터 유출 → 즉시 패치
@@ -305,7 +323,7 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 - **Low**: 베스트 프랙티스 위반 → 다음 릴리스
 
 ### 12.3 롤백 절차
-1. `wrangler rollback` (Cloudflare Pages)
+1. `wrangler rollback` (Cloudflare Workers)
 2. D1 마이그레이션은 forward-only — 호환성 보장 필요
 3. DO는 자동 마이그레이션 없음 — 코드 변경 필요
 
@@ -320,8 +338,8 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 
 ## 14. 알려진 제약
 
-- **참고: 익명성의 한계** — IP는 Cloudflare가 보유 (로깅 안 함)
-- **참고: 관리자 비밀번호 평문 비교** — 향후 Argon2 도입 검토
+- **참고: 익명성의 한계** — IP는 security_events, 관리자 활동 메타데이터, DO 차단/세션 Map에 저장됨
+- **참고: 관리자 비밀번호 비교** — 상수시간 비교(`constantTimeCompare`) 사용, Argon2는 미도입
 - **참고: 메시지 영구 저장 없음** — 사고 시 증거 부족 가능
 - **참고: D1 무료 한도** — 일 10만 write, 트래픽 급증 시 제한
 

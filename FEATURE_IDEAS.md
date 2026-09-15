@@ -36,7 +36,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 대상 | ChatRoom (1435줄), ChannelRegistry (337줄), DeadDropStore (144줄) |
+| 대상 | ChatRoom (1588줄), ChannelRegistry (406줄), DeadDropStore (145줄) |
 | 현황 | 47개 테스트 케이스 추가 (chat-room 20, channel-registry 15, dead-drop-store 12). 총 159 tests, 0 failures |
 | 접근 | Vitest + DO 모킹 (storage, WebSocket, D1, KV) |
 | 우선 | ChatRoom.handleMessage, handleEdit, handleReaction, cleanup, handleJoin |
@@ -45,7 +45,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 대상 | `worker.js` route 테이블 (admin 30종, public 19종) + handler 4종 |
+| 대상 | `worker.js` route 테이블 (admin 31종, public 22종) + handler 4종 |
 | 현황 | 21케이스: admin route 무결성 3, public route 검증 3, admin login/verify 5, checkBan 2, turnstile 3, vapidKey 2, dispatchAdminRoute 7 |
 | 완료 | `test/worker-routes.test.js`, `test/handlers.test.js`, `test/chat-room-admin.test.js` |
 
@@ -53,7 +53,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 대상 | `middleware/auth.js` (132줄) - HMAC 토큰 생성/검증/폐기 |
+| 대상 | `middleware/auth.js` (121줄) - HMAC 토큰 생성/검증/폐기 |
 | 현황 | 20케이스: generateAdminToken 3, verifyAdminToken 7, revokeToken 2, checkRateLimit 4, incrementRateLimit 4 |
 | 완료 | `test/auth.test.js` |
 
@@ -61,7 +61,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 대상 | `chat-room/admin.js` (1075줄, 18개 route) |
+| 대상 | `chat-room/admin.js` (1154줄, 19개 route) |
 | 현황 | 7케이스: notifyAdmin, dispatchAdminRoute(metrics/info/sessions/messages/limit/unknown) |
 | 완료 | `test/chat-room-admin.test.js` |
 
@@ -69,7 +69,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 대상 | `chat-room/messages.js` (212줄) - searchMessages, validateMessage, sanitizeContentForAI, isLikelyCode |
+| 대상 | `chat-room/messages.js` (218줄) - searchMessages, validateMessage, sanitizeContentForAI, isLikelyCode |
 | 현황 | 37케이스: isLikelyCode 8, containsUrl 3, generateSessionId 2, sanitizeContentForAI 6, extractErrorLocation 2, validateMessage 7, searchMessages 9 |
 | 완료 | `test/chat-room-messages.test.js` |
 
@@ -104,7 +104,7 @@
 
 | 파일 | 줄 | 대상 | 완료 |
 |------|-----|------|------|
-| `public/js/session.js` | 64 | sessionId 생성/복원, 닉네임 관리, 공지 동의 | v |
+| `public/js/session.js` | 84 | sessionId 생성/복원, 닉네임 관리, 공지 동의, capability key | v |
 | 완료 | `test/client-modules.test.js` |
 
 #### 28. [DONE] 서버 소형 유틸 테스트 (4개) (2026-07-13)
@@ -130,20 +130,21 @@
 | `test/security-routes.test.js` | 위 두 모듈 대상 테스트 블록 | 제거 (Security Routes 핸들러 테스트 23건 유지) |
 | `public/css/themes.css` | `ocean`, `forest` 테마 CSS 정의되어 있으나 `theme.js`에 등록 안 됨 (UI에서 선택 불가) | `theme.js` THEMES/META_COLORS 및 `index.html` 버튼 추가로 활성화 |
 
-#### 6. [HIGH] 관리자 대시보드 단일화
+#### 6. [DONE] 관리자 대시보드 단일화 (2026-09-15)
 
 | 항목 | 내용 |
 |------|------|
 | 현황 | `admin.js` (레거시, 495줄) + `admin-core.js` (신규 SPA, 361줄) 이중화 |
 | 중복 | `showNotification`, `updateLastUpdated` 등 유틸리티 함수 중복 |
 | 방향 | `admin-core.js` SPA 기반으로 통합, `admin.js` 제거 |
+| 완료 | 레거시 `admin*.js` 삭제, `admin-core.js`/`admin-ui.js`/`admin-main.js` + `pages/page-*.js`로 단일화 (4484d5f, 2c0a16e) |
 
 #### 7. [HIGH] ChatRoom 모듈 추가 분할
 
 | 항목 | 내용 |
 |------|------|
-| 현황 | `ChatRoom.js` 1435줄 (handleJoin/handleMessage/handleEdit/handleDelete/handleReaction이 단일 파일) |
-| | `chat-room/admin.js` 1075줄 (18개 admin route handler) |
+| 현황 | `ChatRoom.js` 1588줄 (handleJoin/handleMessage/handleEdit/handleDelete/handleReaction이 단일 파일) |
+| | `chat-room/admin.js` 1154줄 (19개 admin route handler) |
 | 방향 | join/message/reaction/edit/delete 각각 `chat-room/` 서브디렉토리로 분리 |
 | | admin 도 kick/announcement/message-management로 추가 분할 |
 | 참고 | 2026-06-09에 `ChatRoom.js` 2446줄에서 1024줄로 1차 분할 완료. 추가 분할 필요 |
@@ -176,7 +177,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 현황 | 프로덕션 코드에 93개 console.log/warn/error 남아있음 |
+| 현황 | 프로덕션 코드에 98개 console.log/warn/error 남아있음 |
 | 분포 | ChatRoom.js 48개, summary.js 8개 (AI 내부 노출), push.js 12개, 기타 25개 |
 | 위험 | 내부 처리 과정 노출, 성능 저하, 로그 스팸 |
 | 방향 | 중앙화된 로깅 유틸리티 생성 후 전부 교체. ChatRoom은 기존 `addErrorLog` 활용 |
@@ -218,13 +219,14 @@
 
 ### Group 3: 보안 강화
 
-#### 11. [HIGH] FCM OAuth 토큰 캐싱
+#### 11. [DONE] FCM OAuth 토큰 캐싱 (2026-09-15)
 
 | 항목 | 내용 |
 |------|------|
 | 현황 | `utils/fcm-auth.js`가 매 푸시 알림마다 새 JWT 생성 + Google OAuth 토큰 교환 |
 | 영향 | 푸시 지연, 불필요한 API 호출, Google rate limit 위험 |
 | 방향 | DO 메모리 또는 KV에 50분 TTL로 액세스 토큰 캐싱 |
+| 완료 | `handlers/push.js` 모듈 레벨 토큰 캐시 (50분 TTL) 적용 |
 
 #### 12. [HIGH] 하드코딩된 값 환경변수화
 
@@ -236,12 +238,13 @@
 | `mailto:admin@kalpha.kr` | `push.js` | VAPID subject 이메일 하드코딩 |
 | Risk score threshold 150/300 | `risk-scorer.js` | 임계값 튜닝 불가 |
 
-#### 13. [MEDIUM] 관리자 토큰에서 비밀번호 평문 제거
+#### 13. [DONE] 관리자 토큰에서 비밀번호 평문 제거 (2026-09-15)
 
 | 항목 | 내용 |
 |------|------|
 | 현황 | `middleware/auth.js`의 `generateAdminToken`이 `id:password:timestamp`를 base64 인코딩. HMAC 시크릿 유출 시 모든 과거 비밀번호 노출 |
 | 방향 | 비밀번호 해시를 페이로드로 사용하거나, password 대신 sessionID 기반 토큰으로 전환 |
+| 완료 | `auth.js` 불투명 KV 토큰 (랜덤 32B, 12h 슬라이딩 TTL, 로그아웃 시 폐기, 401 자동 로그아웃) |
 
 #### 14. [MEDIUM] CSRF 보호 강화
 
@@ -275,13 +278,14 @@
 | 현황 | `vitest.config.js`에 coverage 설정 없음. `DEVELOPMENT.md`에는 `npm run test:coverage` 명령어만 존재 |
 | 방향 | `vitest.config.js`에 Istanbul coverage thresholds 추가 (utils 80%, handlers 70%) |
 
-#### 18. [MEDIUM] D1 schema 정리
+#### 18. [DONE] D1 schema 정리 (2026-09-15)
 
 | 항목 | 내용 |
 |------|------|
 | 대상 | `migrations/001_create_admin_logs.sql`의 `admin_logs` 테이블 |
 | 현황 | 002 마이그레이션에서 `admin_activity_logs`로 대체됨. `admin_logs`는 orphaned |
 | 방향 | 004 마이그레이션으로 `admin_logs` DROP 또는 migration 정리 문서화 |
+| 완료 | `migrations/004_drop_admin_logs.sql`로 DROP 적용 |
 
 #### 19. [DONE] deploy.sh 개선 (2026-07-14)
 
@@ -326,14 +330,12 @@
 ### Critical (즉시)
 | # | 과제 |
 |---|------|
-| 29 | Console 로그 93개 제거 |
+| 29 | Console 로그 98개 제거 |
 
 ### High (다음 릴리스)
 | # | 과제 |
 |---|------|
-| 6 | 관리자 대시보드 단일화 |
 | 7 | ChatRoom 모듈 추가 분할 |
-| 11 | FCM 토큰 캐싱 |
 | 12 | 하드코딩 환경변수화 |
 | 30 | 코드 중복 제거 (15+4+2회) |
 | 31 | 긴 함수 리팩토링 (5개) |
@@ -341,10 +343,8 @@
 ### Medium (점진적)
 | # | 과제 |
 |---|------|
-| 13 | 관리자 토큰 비밀번호 분리 |
 | 14 | CSRF 보호 강화 |
 | 17 | vitest coverage 임계치 |
-| 18 | D1 schema 정리 |
 | 32 | 에러 처리 강화 |
 
 ### Low (여유 시)
@@ -362,6 +362,14 @@
 | 19 | deploy.sh 개선 (pre-deploy-check.sh로 이름/설명 정정) |
 | 33 | Magic Number 문서화 (MESSAGE_COOLDOWN, MAX_MESSAGE_LENGTH 주석, FILE_ID_PATTERN 상수화) |
 
+### 완료 (2026-09-15)
+| # | 과제 |
+|---|------|
+| 6 | 관리자 대시보드 단일화 (레거시 `admin*.js` 삭제, `admin-core.js`/`admin-ui.js`/`admin-main.js` + `pages/page-*.js`) |
+| 11 | FCM 토큰 캐싱 (`handlers/push.js` 모듈 레벨 캐시) |
+| 13 | 관리자 토큰 비밀번호 분리 (불투명 KV 토큰, 12h 슬라이딩 TTL) |
+| 18 | D1 schema 정리 (`migrations/004_drop_admin_logs.sql`) |
+
 ---
 
 ## 변경 이력
@@ -376,3 +384,4 @@
 | 2026-07-13 | Phase 3: #3(21)(26) 22케이스 (총 332, 22파일). 테스트 완료 |
 | 2026-07-14 | 코드 품질 재분석: #29(console 93개), #30(중복), #31(긴 함수), #32(에러), #33(magic number) 추가 |
 | 2026-07-14 | Phase 0 완료: #5(데드 코드 2파일 삭제+ocean/forest 테마 활성화), #8(rate limiter 문서화), #19(deploy.sh→pre-deploy-check.sh), #33(magic number 주석+상수화). 테스트 320개 통과 |
+| 2026-09-15 | 보안 하드닝 Stage 1~3 (ANALYSIS.md CRITICAL/HIGH/MEDIUM 다수 수정). strftime 인덱스 버그 수정(005), alarm 기반 채널 정리, 관리자 UI 백엔드 연결. 테스트 496개(35파일) 통과 |

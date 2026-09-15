@@ -140,9 +140,9 @@ chore: 의존성 업데이트
 
 | 규칙 | 설명 |
 |---|---|
-| 테마 | 7개 모두 지원 (CSS Custom Properties) |
+| 테마 | 9개 모두 지원 (CSS Custom Properties) |
 | 스타일링 | Tailwind 클래스 사용 + `themes.css` 오버라이드 |
-| 테스트 | 다크/라이트/미드나잇/애미시스트/선셋/사쿠라/이브닝나이트 모두 확인 |
+| 테스트 | 다크/라이트/미드나잇/애미시스트/선셋/사쿠라/이브닝나이트/오션/포레스트 모두 확인 |
 
 ### 파일 구조
 
@@ -189,19 +189,14 @@ chore: 의존성 업데이트
 
 ### 테스트 디렉토리 현황
 
-| 파일 | 케이스 수 | 대상 |
-|---|---|---|
-| `client-utils.test.js` | 14 | escapeHtml, isValidUrl, sanitizeUrl, formatFileSize |
-| `constants.test.js` | 10 | 모든 공유 상수 |
-| `helpers.test.js` | 12 | sanitizeInput, arrayBufferToHex, isValidFileUrl |
-| `rate-limiter.test.js` | 9 | rate-limiter 전 기능 |
-| `security.test.js` | 12 | constantTimeCompare, isAllowedOrigin |
-| `security-classifier.test.js` | 9 | XSS/SQL/경로 탐색 패턴 매칭 |
-| `risk-scorer.test.js` | 8 | 시간 가중치 + 카테고리 다양성 위험 점수 |
-| `security-logger.test.js` | 8 | D1 INSERT, dedup, cleanup |
-| `security-routes.test.js` | 23 | Security API 8종 + Middleware + Input Validator |
-| `admin-handlers.test.js` | 7 | handleAdminLogout 인증/토큰 |
-| **합계** | **363** | -- |
+| 영역 | 파일 (`test/*.test.js`) |
+|---|---|
+| 클라이언트/공유 유틸 | `client-utils`, `client-modules`, `api-client`, `constants`, `helpers`, `server-utils`, `validate-extra`, `logger`, `rate-limiter` |
+| 보안 | `security`, `security-classifier`, `risk-scorer`, `security-logger`, `security-routes`, `ban-ip`, `push-ownership`, `body-cap`, `turnstile` |
+| 인증/관리자 | `auth`, `admin-handlers` |
+| 채팅/DO/세션 | `chat-room`, `chat-room-init`, `chat-room-messages`, `chat-room-message-cap`, `chat-room-session-key`, `chat-room-admin`, `channel-registry`, `dead-drop-store`, `websocket-observer` |
+| 메시징/Worker | `web-push`, `fcm-auth`, `preview`, `summary`, `worker-routes`, `handlers` |
+| **합계** | **496 cases / 35 파일** |
 
 ---
 
@@ -212,7 +207,9 @@ chore: 의존성 업데이트
 | 1 | `main` 브랜치에 PR 머지 | GitHub |
 | 2 | [CHANGELOG.md](./CHANGELOG.md) 자동 반영 | PR 본문의 `## 변경 요약` |
 | 3 | 프로덕션 배포 | `npm run deploy` (= `wrangler deploy`) |
-| 4 | D1 마이그레이션 (해당 시) | `wrangler d1 migrations apply` |
+| 4 | D1 마이그레이션 (해당 시) | `wrangler d1 migrations apply <DB명> --remote` |
+
+> PR/push 시 CI(`.github/workflows/ci.yml`)가 `npm ci` → 테스트 → lint → `wrangler deploy --dry-run`을 실행합니다.
 
 ---
 
@@ -221,5 +218,5 @@ chore: 의존성 업데이트
 | 종류 | 채널 |
 |---|---|
 | 일반 | GitHub Issues |
-| 보안 | dev@kalpha.kr (PGP 키는 SECURITY.md 참고) |
+| 보안 | dev@kalpha.kr |
 | 라이선스 | dev@kalpha.kr |

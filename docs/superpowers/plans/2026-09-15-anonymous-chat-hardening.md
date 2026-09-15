@@ -2,6 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **✅ 완료 상태 (2026-09-15)**: 기준선 HEAD `9c0b12c` / 320 테스트 / lint 실패 / build 실패 → 현재 HEAD `a3a6b43` / 496 테스트(35파일) / lint 0 errors (97 warnings) / build green. Stage 0–3 실행 완료 (커밋 `c4d3ff4`…`a3a6b43`).
+>
+> **잔여(보류)**: H3 샤딩, H4 제외(사용자 결정), M8 WS Hibernation + DeadDrop GC, M3 DO 기반 Rate Limiter, 채널 킥 라우팅.
+
 **Goal:** `docs/ANALYSIS.md`에서 도출한 CRITICAL 3건 → HIGH 11건 → MEDIUM 18건 → LOW 15건을 4단계로 수정하고, 각 수정마다 회귀 테스트를 남긴다.
 
 **Architecture:** 서버(Worker + Durable Objects)와 클라이언트(public/js)를 같은 배포에 동기화해 수정한다. 신뢰 경계(옵저버 인증, 세션 capability, 어드민 토큰)를 문자열 관례에서 암호학적 증명으로 교체하고, 출력 이스케이프/CSP를 닫고, 운영 파이프라인(lint/CI/문서)을 실제 코드와 일치시킨다.
@@ -20,7 +24,7 @@
 
 ## 현재 상태 (기준선)
 
-- HEAD `9c0b12c`, 테스트 320/320 (22파일, ~10초), `npm run lint` 실패(chunks 294 errors), `npm run build` 실패.
+- 기준선(당시): HEAD `9c0b12c`, 테스트 320/320 (22파일, ~10초), `npm run lint` 실패(chunks 294 errors), `npm run build` 실패. → 현재: HEAD `a3a6b43`, 테스트 496/496 (35파일), lint 0 errors, build green.
 - 참고 문서: `docs/ANALYSIS.md` (발견 목록, file:line 근거 전부).
 
 ---
@@ -177,10 +181,10 @@ authorId = HMAC(서버비밀, sessionId).slice(0,16) — 직렬화/검색 응답
 - M7 D1 보존정책(audit/error)
 - M8 `alarm()` 전환(채팅 cleanup+DeadDrop GC, Hibernation 보류)
 - M9 요약 채널 스코프+타임아웃
-- M10 서명 확장(전 필드+±60s+constant-time, v1/v2 과도기)
+- M10 서명 확장(전 필드+±30s(`SIGNATURE_MAX_SKEW_MS`)+constant-time, v1/v2 과도기)
 - M12 검증 일원화, L계열(각 항목), L12 orphan 테이블 DROP 마이그레이션, 문서 수치 일괄 정정(M18)
 
-**실행 시 정책 질문:** M5 Turnstile 강제, M11 fail-closed 범위, M16 락파일 단일화, M17 산출물 git 제외.
+**정책 결정 결과:** M5 Turnstile 강제, M11은 주요 경로 fail-closed, M16 `bun.lock` 제거, M17 산출물 **re-tracked** (gitignore 아님 — Workers Builds `buildCommand`가 비어 있어 커밋 유지).
 
 ---
 
@@ -190,7 +194,7 @@ authorId = HMAC(서버비밀, sessionId).slice(0,16) — 직렬화/검색 응답
 |---|---|
 | 단위/회귀 | `npx vitest run` — 수정마다 실패 재현 테스트 |
 | 정적 | `npm run lint` + (최종) `npm run build` |
-| 통합 | `wrangler pages dev`(8788) + Node 내장 WebSocket 스크립트(Origin 포함) — 핸드셰이크/옵저버/재접속/4401 |
+| 통합 | `wrangler dev`(8788) + Node 내장 WebSocket 스크립트(Origin 포함) — 핸드셰이크/옵저버/재접속/4401 (`functions/` 삭제됨) |
 | 수동 | 브라우저 CSP 위반 0, XSS 무해, 어드민 전 기능, 테마/하이라이트 |
 | 불가 | 실기기 푸시, 실제 배포 → 배포 체크리스트 |
 

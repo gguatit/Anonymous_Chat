@@ -1,6 +1,6 @@
 # API 명세
 
-52개 HTTP 엔드포인트의 명세입니다. 모든 응답은 CORS 헤더를 포함합니다 (`src/config/cors.js`).
+53개 HTTP 엔드포인트의 명세입니다. 모든 응답은 CORS 헤더를 포함합니다 (`src/config/cors.js`).
 
 **기본 URL**: `https://kalpha.mmv.kr` (프로덕션) | `http://localhost:8788` (개발)
 
@@ -18,7 +18,7 @@
   - [1.6 푸시 알림](#16-푸시-알림)
   - [1.7 보안](#17-보안)
   - [1.8 시스템](#18-시스템)
-- [2. 관리자 엔드포인트](#2-관리자-엔드포인트-30개-bearer-인증)
+- [2. 관리자 엔드포인트](#2-관리자-엔드포인트-31개-bearer-인증)
   - [2.1 인증](#21-인증)
   - [2.2 메트릭/세션/메시지](#22-메트릭세션메시지)
   - [2.3 메시지 관리](#23-메시지-관리)
@@ -37,11 +37,11 @@
 
 | 항목 | 값 |
 |---|---|
-| 총 엔드포인트 | 52개 (공개 22 + 관리자 30) |
+| 총 엔드포인트 | 53개 (공개 22 + 관리자 31) |
 | 인증 방식 | 공개: 없음 / 관리자: Bearer 토큰 |
 | 데이터 형식 | JSON (multipart는 `/api/upload`만) |
 | CORS | 모든 응답 포함 (`src/config/cors.js`) |
-| 인증 토큰 TTL | 2시간 (KV revocation 지원) |
+| 인증 토큰 TTL | 12시간 슬라이딩 (잔여 1시간 미만 시 자동 연장, KV revocation 지원) |
 
 ### 엔드포인트 카테고리
 
@@ -62,7 +62,7 @@
 | 관리자 공지 | 1 | announce (POST/PUT/DELETE) |
 | 관리자 채널 | 3 | channels, details, delete |
 | 관리자 로그 | 5 | logs, delete-logs, audit-logs, delete-audit-logs, delete-error-logs |
-| 관리자 보안 | 7 | security/events, stats, risk-ips, events/export, events/clear, badge, block-ip |
+| 관리자 보안 | 8 | security/events, stats, risk-ips, events/export, events/clear, badge, block-ip, events/:id (동적) |
 
 ---
 
@@ -76,16 +76,19 @@ WebSocket 업그레이드 엔드포인트.
 **Query**:
 - `sessionId` (required) — `user_<uuid>_<ts>` 형식
 - `channel` (optional) — 채널 slug (생략 시 메인룸)
+- `ticket` (required) — `POST /api/turnstile/verify`가 발급한 HMAC 티켓 (12시간 유효)
+- `token` — `admin_obs_*` 관리자 옵저버 세션 전용 관리자 토큰 (일반 세션은 불필요)
 
 **Headers**:
-- `Origin` — CORS 검증
+- `Origin` — 필수. 누락/비허용 Origin이면 `403` (fail-closed)
 - `Upgrade`, `Connection` — WebSocket 표준
 
 **참고**:
 - 사전 차단 확인을 위해 `/api/check-ban`을 먼저 호출합니다
 - 내부적으로 `X-Admin-Internal-Token` (HMAC_SECRET) 헤더를 DO에 전달
+- `admin_obs_*` 세션은 `token` 검증 실패 시 `401`로 거부됩니다
 
-**메시지 프로토콜**: [ARCHITECTURE.md §WebSocket 메시지 타입](./ARCHITECTURE.md#2-chatroom-durable-object-srcdurable-objectschatroomjs-1080줄)
+**메시지 프로토콜**: [ARCHITECTURE.md §ChatRoom Durable Object](./ARCHITECTURE.md#2-chatroom-durable-object-srcdurable-objectschatroomjs-1435줄)
 
 ---
 
@@ -94,15 +97,15 @@ WebSocket 업그레이드 엔드포인트.
 #### `GET /api/announcements`
 공지 히스토리 조회 (비인증).
 
-**Response 200**:
+**Response 200** (bare array):
 ```json
 [
   {
-    "id": "ann_1717890123_abc",
     "content": "서버 점검 안내",
+    "timestamp": 1717890123000,
     "isEmergency": false,
-    "createdAt": 1717890123000,
-    "createdBy": "admin"
+    "emergencyUntil": null,
+    "expiresAt": 1717893723000
   }
 ]
 ```
@@ -110,17 +113,20 @@ WebSocket 업그레이드 엔드포인트.
 #### `GET /api/emergency-announcement`
 현재 활성 긴급공지 1개.
 
-**Response 200**:
+**Response 200** (활성):
 ```json
 {
-  "id": "ann_...",
-  "content": "긴급 점검 중",
   "isEmergency": true,
+  "content": "긴급 점검 중",
+  "timestamp": 1717890123000,
   "emergencyUntil": 1717893723000
 }
 ```
 
-**Response 204**: 활성 긴급공지 없음
+**Response 200** (긴급공지 없음):
+```json
+{ "isEmergency": false }
+```
 
 #### `GET /api/search`
 12시간 이내 메시지 검색.
@@ -151,13 +157,20 @@ Workers AI로 최근 50개 메시지 요약.
 
 **Body**:
 ```json
-{ "mode": "default" | "topic" | "mood" | "conflict" }
+{
+  "mode": "default" | "topic" | "mood" | "conflict",
+  "channel": "kalpha"
+}
 ```
+- `mode` (optional, default `default`)
+- `channel` (optional) — 채널 slug (생략 시 메인룸, 형식 검증됨)
 
-**Response 204**: 본문 없음 — 결과는 WebSocket `type:'summary'` 메시지로 모든 세션에 broadcast됨.
+**Response 204**: 본문 없음 — 결과는 WebSocket `type:'summary'` 메시지로 해당 세션에 broadcast됨.
 
 **Errors**:
 - `429`: 레이트 리밋 (15초 1회)
+- `502`: DO에서 메시지 조회/파싱 실패
+- `504`: AI 응답 8초 타임아웃
 - `503`: AI 모델 일시 장애 (fallback 시도 후 실패)
 
 ---
@@ -254,7 +267,7 @@ Kalpha 파일 다운로드 프록시.
 ```json
 {
   "channels": [
-    { "slug": "kalpha", "name": "kalpha", "createdAt": 1717890123, "lastActive": 1717893723 }
+    { "slug": "kalpha", "name": "kalpha", "createdAt": 1717890123, "lastActive": 1717893723, "activeConnections": 5, "totalMessages": 234 }
   ]
 }
 ```
@@ -350,22 +363,28 @@ VAPID 공개키 (Web Push 구독용).
 ### 1.7 보안
 
 #### `POST /api/turnstile/verify`
-Cloudflare Turnstile 토큰 검증.
+Cloudflare Turnstile 토큰 검증 후 WebSocket용 티켓 발급.
 
 **Body**:
 ```json
-{ "token": "..." }
+{ "token": "...", "sessionId": "user_..." }
+```
+- `sessionId` — 티켓을 묶을 세션 ID (문자열, 없으면 빈 값으로 서명됨)
+
+**Response 200** (성공):
+```json
+{ "success": true, "ticket": "<HMAC 티켓, 12시간 유효>" }
+```
+> `HMAC_SECRET` 미설정 시 `ticket`은 생략됩니다.
+
+**Response 200** (검증 실패):
+```json
+{ "success": false, "error": "Verification failed", "errorCodes": ["invalid-input-response"] }
 ```
 
-**Response 200**:
-```json
-{ "success": true }
-```
+**Response 400**: `token` 누락 또는 2048자 초과
 
-**Response 400**:
-```json
-{ "success": false, "error": "..." }
-```
+**Response 500**: `TURNSTILE_SECRET_KEY` 미설정 또는 내부 오류
 
 #### `GET /api/check-ban?sessionId=...&ip=...`
 차단 상태 사전 확인.
@@ -392,9 +411,7 @@ Cloudflare Turnstile 토큰 검증.
 {
   "timestamp": 1717890123,
   "activeConnections": 12,
-  "totalMessages": 12345,
-  "totalConnections": 67890,
-  "errors": 3
+  "totalMessages": 12345
 }
 ```
 
@@ -439,14 +456,15 @@ Liveness probe.
 
 ---
 
-## 2. 관리자 엔드포인트 (30개, Bearer 인증)
+## 2. 관리자 엔드포인트 (31개, Bearer 인증)
 
 모든 `/api/admin/*` 엔드포인트는 `Authorization: Bearer <token>` 헤더 필요 (단, `login` 제외).
 
 **인증 흐름**:
-1. `POST /api/admin/login` → 토큰 발급
+1. `POST /api/admin/login` → 토큰 발급 (KV `token:<t>`에 12시간 슬라이딩 TTL로 저장)
 2. `Authorization: Bearer <token>` 헤더로 후속 요청
-3. 토큰 2시간 만료, `revokeToken()`으로 무효화 가능
+3. 요청 시 잔여 TTL이 1시간 미만이면 자동 연장되며, `logout`은 토큰을 KV에서 즉시 삭제(revoke)
+4. 만료/무효 토큰은 `401`을 반환 → 클라이언트는 자동 로그아웃 처리
 
 ### 2.1 인증
 
@@ -460,12 +478,13 @@ Liveness probe.
 
 **Response 200**:
 ```json
-{ "token": "...", "expiresAt": 1717897323000 }
+{ "success": true, "token": "..." }
 ```
 
 **Errors**:
 - `401`: 자격 증명 오류
 - `429`: 5분 내 5회 실패 시 차단
+- `503`: `ADMIN_ID`/`ADMIN_PASSWORD` 미설정
 
 #### `GET /api/admin/verify`
 **인증 필요**
@@ -628,34 +647,45 @@ Liveness probe.
 ```json
 {
   "sessionId": "user_...",
-  "banDuration": 0,
+  "banDuration": 300,
   "reason": "스팸"
 }
 ```
 
 **`banDuration` 값**:
-- `0` — 영구
-- `30` — 30초
-- `300` — 5분
-- `600` — 10분
+- `0` — 밴 없이 즉시 퇴장 (kick)
+- 양수 N — N초 동안 밴 (세션 + ban 토큰, 공유 IP가 아니면 IP까지)
 
 **Response 200**:
 ```json
-{ "success": true, "permanent": false }
+{
+  "success": true,
+  "banned": true,
+  "banDuration": 300,
+  "ip": "1.2.3.4",
+  "sharedIP": false,
+  "banType": "ip_and_session",
+  "token": "<ban token>"
+}
 ```
+- `sharedIP: true`면 `banType: "session_only"` (같은 IP의 다른 사용자 보호)
 
 #### `POST /api/admin/unban-ip`
 **인증 필요**
 
-**Body**:
+**Body** (하나 이상 필수):
 ```json
 { "ip": "1.2.3.4" }
+{ "sessionId": "user_..." }
+{ "token": "<ban token>" }
 ```
 
 **Response 200**:
 ```json
-{ "success": true }
+{ "success": true, "unbanIp": true, "unbanSession": false, "unbanToken": false }
 ```
+
+**Response 400**: `ip`/`sessionId`/`token` 모두 누락
 
 #### `GET /api/admin/banned-ips`
 **인증 필요**
@@ -663,8 +693,14 @@ Liveness probe.
 **Response 200**:
 ```json
 {
-  "bannedIPs": [
-    { "ip": "1.2.3.4", "bannedAt": 1717890123, "expiresAt": 1717893723, "reason": "..." }
+  "ips": [
+    { "ip": "1.2.3.4", "bannedUntil": 1717893723000, "remainingSeconds": 300, "reason": "...", "bannedAt": 1717890123000 }
+  ],
+  "sessions": [
+    { "sessionId": "user_...", "ip": "1.2.3.4", "bannedUntil": 1717893723000, "remainingSeconds": 300, "reason": "...", "bannedAt": 1717890123000 }
+  ],
+  "tokens": [
+    { "token": "<ban token>", "ip": "1.2.3.4", "bannedUntil": 1717893723000, "remainingSeconds": 300, "reason": "..." }
   ]
 }
 ```
@@ -681,29 +717,40 @@ Liveness probe.
 {
   "content": "공지 내용",
   "isEmergency": false,
-  "scheduleAt": 1717890123,
-  "expiresAt": 1717893723
+  "emergencyUntil": 1717893723000,
+  "scheduleAt": 1717890123000,
+  "expiresAt": 1717893723000
 }
 ```
 
-**PUT Body** (수정):
+**PUT Body** (수정, `timestamp` 키로 공지 지정):
 ```json
 {
-  "id": "ann_...",
+  "timestamp": 1717890123000,
   "content": "수정된 공지",
-  "isEmergency": false
+  "isEmergency": false,
+  "emergencyUntil": null
 }
 ```
 
-**DELETE Body** (삭제):
+**DELETE Body** (삭제, `timestamp` 키로 공지 지정):
 ```json
-{ "id": "ann_..." }
+{ "timestamp": 1717890123000 }
 ```
 
-**Response 200**:
+**Response 200** (POST):
 ```json
-{ "success": true, "id": "ann_..." }
+{ "success": true, "sessionsNotified": 12 }
 ```
+
+**Response 200** (PUT/DELETE):
+```json
+{ "success": true }
+```
+
+**Errors**:
+- `400`: `content` 누락(POST) / `timestamp` 누락(PUT·DELETE)
+- `404`: 해당 `timestamp`의 공지 없음(PUT·DELETE)
 
 ---
 
@@ -771,15 +818,13 @@ Liveness probe.
 **인증 필요**
 
 **Query**:
-- `action` (optional) — `kick_user`, `edit_message`, `delete_message`, `send_announcement`, `unban_ip`, `admin_delete_all_messages`, `edit_announcement`, `delete_announcement`, `channel_delete`
+- `filter` (optional, default `all`) — `kick_user`, `edit_message`, `delete_message`, `admin_delete_message`, `send_announcement`, `unban_ip`, `BAN_IP`, `UNBAN_IP`, `admin_delete_all_messages`, `edit_announcement`, `delete_announcement`, `channel_delete`
 
-**Response 200**:
+**Response 200** (bare array):
 ```json
-{
-  "logs": [
-    { "id": 1, "action": "kick_user", "details": "...", "metadata": {...}, "timestamp": 1717890123 }
-  ]
-}
+[
+  { "type": "kick_user", "action": "kick_user", "description": "...", "details": "...", "ip": "1.2.3.4", "admin_ip": "1.2.3.4", "timestamp": 1717890123 }
+]
 ```
 
 #### `POST /api/admin/delete-audit-logs`
@@ -882,6 +927,8 @@ Liveness probe.
 
 `GET /api/admin/security/events/:id`
 
+> 라우트는 존재하지만 관리자 UI에서는 사용하지 않습니다.
+
 **Response 200**: 단일 이벤트 + 동일 IP의 최근 이벤트 5개
 
 ```json
@@ -928,8 +975,10 @@ Liveness probe.
 
 **Response 200**:
 ```json
-{ "success": true, "ip": "203.0.113.42", "banned": true }
+{ "success": true, "ip": "203.0.113.42", "bannedUntil": 1717976523000, "duration": 86400 }
 ```
+
+**참고**: 메인룸 DO의 밴 목록에 24시간(86400초) 기본으로 등록됩니다(`duration` 지정 시 최대 7일).
 
 ---
 
@@ -937,10 +986,10 @@ Liveness probe.
 
 ### 3.0 핸드셰이크 (Ephemeral Token)
 
-`join` 수신 후 서버는 세션별 32바이트 ephemeral secret을 발급하여 클라이언트에 1회 전달합니다. 클라이언트는 이 secret을 메모리에 보관하고 이후 `message`/`edit` 송신 시 HMAC-SHA256 서명에 사용합니다. WebSocket `close` 시 즉시 폐기됩니다.
+`join` 수신 후 서버는 세션별 32바이트 ephemeral secret과 재연결용 capability key를 발급하여 클라이언트에 1회 전달합니다. 클라이언트는 이 secret을 메모리에 보관하고 이후 `message`/`edit` 송신 시 HMAC-SHA256 서명에 사용합니다. WebSocket `close` 시 secret은 즉시 폐기됩니다.
 
 ```json
-{ "type": "handshake", "secret": "<64 hex chars>" }
+{ "type": "handshake", "secret": "<64 hex chars>", "key": "<session capability key>", "authorId": "<작성자 식별자>" }
 ```
 
 ### 3.1 클라이언트 → 서버 (inbound)
@@ -948,28 +997,29 @@ Liveness probe.
 ```typescript
 type ClientMessage =
   | { type: 'ping' }
-  | { type: 'join'; sessionId: string; isReconnect?: boolean; nickname?: string }
+  | { type: 'join'; sessionId: string; key?: string; isReconnect?: boolean; nickname?: string }
   | { type: 'message'; content: string; sessionId: string; timestamp: number; signature: string }
-  | { type: 'edit'; messageId: string; content: string; sessionId: string; timestamp: number; signature: string }
+  | { type: 'edit'; messageId: string; newContent: string; sessionId: string; timestamp: number; signature: string }
   | { type: 'delete'; messageId: string }
   | { type: 'reaction'; messageId: string; emoji: string }
   | { type: 'typing'; isTyping: boolean };
 ```
 
+- `join`의 `key`는 재연결 시 필수입니다. handshake에서 받은 `key`와 불일치하면 `close 4401 (Invalid session key)`로 연결이 끊깁니다.
 - `message`/`edit`의 `signature`는 **필수**입니다 (2026-06-22 강화).
   - 클라이언트(`public/js/signature.js`)가 `handshake.secret`으로 자동 생성
-  - 미포함 시 서버가 `sessionSecret`으로 자동 생성 후 비교
-  - 불일치 시 거부 + `INVALID_SIGNATURE` 보안 이벤트 기록
+  - 미포함 또는 불일치 시 거부 + `WS_INVALID_MSG` 보안 이벤트 기록
+  - `timestamp`는 현재 시각 기준 ±30초 이내여야 합니다
 - 서명 페이로드:
   - `message`: `HMAC-SHA256(sessionSecret, JSON.stringify({content, sessionId, timestamp}))`
-  - `edit`: `HMAC-SHA256(sessionSecret, JSON.stringify({newContent, messageId, sessionId, timestamp}))`
+  - `edit`: `HMAC-SHA256(sessionSecret, JSON.stringify({content: newContent, sessionId, timestamp}))`
 
 ### 3.2 서버 → 클라이언트 (outbound)
 
 ```typescript
 type ServerMessage =
   | { type: 'pong' }
-  | { type: 'handshake'; secret: string }   // join 직후 1회
+  | { type: 'handshake'; secret: string; key: string; authorId: string }   // join 직후 1회
   | { type: 'banned'; permanent: boolean; message?: string }
   | { type: 'history'; messages: StoredMessage[] }
   | { type: 'announcement'; announcement: Announcement }
@@ -1018,17 +1068,23 @@ type ServerMessage =
 
 | 엔드포인트 | 윈도우 | 최대 |
 |---|---|---|
-| `/metrics` | 60s | 60 |
-| `/health` | 60s | 120 |
-| `/api/config` | 60s | 30 |
-| `/api/turnstile/verify` | 60s | 10 |
-| `/api/upload` | 60s | 20 |
-| `/api/push/*` | 60s | 10 |
+| `/metrics` | 60s | 30 |
+| `/health` | 60s | 30 |
+| `/api/config` | 60s | 10 |
+| `/api/turnstile/verify` | 10s | 5 |
+| `/api/upload` | 60s | 10 |
+| `/api/push/subscribe`, `/api/push/unsubscribe` | 60s | 10 |
+| `/api/push/vapid-key` | 60s | 30 |
 | `/api/check-ban` | 10s | 10 |
 | `/api/secret-store` | 10s | 10 |
-| `/api/logs/error` | 60s | 30 |
-| `/api/preview` | 10s (IP) | 5 |
+| `/api/secret-read` | 10s | 10 |
+| `/api/logs/error` | 10s | 10 |
+| `/api/preview` | 10s | 5 |
 | `/api/summary` | 15s | 1 |
+| `/api/announcements`, `/api/emergency-announcement` | 60s | 60 |
+| `/api/channels/*` | 60s | 30 |
+| `/api/search` | 60s | 20 |
+| `/ws` (연결) | 60s | 30 |
 | 메시지 (WS) | 1s 쿨다운 | 분당 30개 슬라이딩 |
 | 관리자 로그인 | 5min | 5회 실패 시 차단 |
 

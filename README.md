@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/License-Commercial-blue.svg)](./COMMERCIAL_LICENSE.md)
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](./SECURITY.md)
-[![Tests](https://img.shields.io/badge/Tests-363%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/Tests-496%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
 
 Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 채팅 서비스입니다.
 회원가입 없이 닉네임만으로 즉시 참여하며, **12시간 후 모든 메시지는 자동 소멸**합니다.
@@ -32,14 +32,14 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 |---|---|
 | 즉시 입장 | 회원가입 없이 닉네임만으로 시작 |
 | 실시간 메시징 | WebSocket 기반 즉시 전송 |
-| 7가지 테마 | dark · light · midnight · amethyst · sunset · sakura · evernight |
+| 9가지 테마 | dark · light · midnight · amethyst · sunset · sakura · evernight · ocean · forest |
 | 메시지 반응 | 6종 이모지 (더블클릭 자동 좋아요) |
 | 메시지 답장 | 원본 미리보기 + 비밀 메시지(Dead Drop) 옵션 |
 | 파일 공유 | 이미지/비디오/오디오/문서, 최대 **100MB** |
 | AI 요약 | `/summary` · `/topic` · `/mood` · `/conflict` 4가지 모드 |
 | 메시지 검색 | 키워드 + 태그(`#images` · `#files` · `#code` · `#url`) |
 | 링크 프리뷰 | OG 태그 자동 파싱 + 보안 헤더 분석 |
-| 코드 하이라이팅 | Prism.js + highlight.js 자동 감지 |
+| 코드 하이라이팅 | Prism.js 단일 스택 |
 | 다중 채널 | 주제별 독립 채팅방 |
 | 공지사항 | 일반/긴급 공지 + 스케줄링 |
 | 푸시 알림 | VAPID Web Push + FCM |
@@ -53,7 +53,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | 사용자 차단 | IP + SessionID 이중 (시간/영구) |
 | 공지사항 관리 | 발송 · 수정 · 삭제 · 긴급 · 만료 |
 | 채널 관리 | 목록 · 상세 · 강제 삭제 |
-| 감사 로그 | D1 영구 저장 · 필터링 · CSV 내보내기 |
+| 감사 로그 | D1 저장 · 필터링 · CSV 내보내기 · `audit_logs` 90일 / `admin_activity_logs`·`error_logs` 30일 확률적 정리 |
 | 오류 추적 | 자동 수집 · 다운로드 · 초기화 |
 | 로그인 기록 | 성공/실패/차단/로그아웃 |
 
@@ -64,8 +64,9 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | HMAC 메시지 서명 | 클라이언트 → 서버 메시지 변조 방지 |
 | HMAC 인증 토큰 | opaque 랜덤 토큰 + KV 세션 (JWT 아님) |
 | Rate Limiting | 전역 + 엔드포인트별 + 사용자별 다층 |
-| Cloudflare Turnstile | 봇 방지 |
-| 보안 헤더 | CSP · HSTS · COOP · COEP |
+| Cloudflare Turnstile | 봇 방지 · `/ws` 연결 시 서버 발급 HMAC 티켓(12시간) 필수 |
+| WS Origin 검증 | Origin 헤더 필수 (fail-closed) |
+| 보안 헤더 | CSP · HSTS · COOP · COEP · `unsafe-inline`/`unsafe-eval` 제거 |
 | Dead Drop | 30분 TTL · 1회 읽기 후 영구 삭제 |
 | 자동 소멸 | 메시지 12시간 · 차단 자동 만료 |
 
@@ -81,7 +82,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
 | **푸시** | Web Push (VAPID) + FCM v1 |
 | **빌드** | esbuild (chat · admin · 보안센터 · 관리자 페이지 번들 10종) |
-| **테스트** | Vitest (363 cases) |
+| **테스트** | Vitest (496 cases · 35 파일) |
 | **린팅** | ESLint + Prettier |
 | **프론트** | 바닐라 JS (모듈식) · CSS Custom Properties 테마 · Tailwind(빌드) |
 
@@ -115,7 +116,7 @@ npm run dev
 
 ```bash
 npm run build      # 클라이언트 번들 (esbuild)
-npm test           # 363개 유닛 테스트
+npm test           # 496개 유닛 테스트 (35 파일)
 npm run lint       # ESLint
 ```
 
@@ -125,8 +126,8 @@ npm run lint       # ESLint
 
 ```bash
 npm run deploy
-wrangler d1 create anonymous-chat-db
-wrangler d1 migrations apply anonymous-chat-db
+wrangler d1 create anonymous-chat-db            # 최초 1회 (항상 원격 계정에 생성됨)
+wrangler d1 migrations apply anonymous-chat-db --remote
 ```
 
 ---
@@ -136,12 +137,12 @@ wrangler d1 migrations apply anonymous-chat-db
 ```
 .
 ├── src/                          # Worker (서버)
-│   ├── worker.js                 # 메인 라우터 (424줄)
+│   ├── worker.js                 # 메인 라우터 (531줄)
 │   ├── schema.js                 # JSDoc 타입 정의
 │   ├── config/                   # 상수/설정
 │   ├── handlers/                 # HTTP 핸들러
 │   ├── durable-objects/          # 3개 DO 클래스
-│   │   ├── ChatRoom.js           # WebSocket 채팅 (1435줄)
+│   │   ├── ChatRoom.js           # WebSocket 채팅 (1588줄)
 │   │   ├── ChannelRegistry.js    # 채널 메타데이터
 │   │   ├── DeadDropStore.js      # 비밀 메시지
 │   │   └── chat-room/            # ChatRoom 보조
@@ -159,13 +160,16 @@ wrangler d1 migrations apply anonymous-chat-db
 │   ├── _headers                  # 보안 헤더
 │   ├── js/                       # 클라이언트 모듈
 │   │   ├── chat.js               # 메인 (1147줄)
+│   │   ├── chat-page.js          # 채팅 페이지 부트스트랩 (사이드바/닉네임 배치)
+│   │   ├── announcements-page.js # 공지 페이지 부트스트랩 (긴급공지 폴링/리다이렉트)
 │   │   ├── ui.js + ui-*.js       # UI 매니저 + 5 mixin
-│   │   ├── admin-core.js + admin-ui.js + pages/ # 관리자 (해시 라우터 + 페이지 모듈)
+│   │   ├── admin-core.js + admin-ui.js + admin-main.js + security-center.js # 관리자 (해시 라우터)
+│   │   ├── pages/page-*.js       # 관리자 페이지 모듈 6종
 │   │   ├── api-client.js         # fetch wrapper
 │   │   ├── websocket.js          # WS 매니저 (재연결, heartbeat, ephemeral 서명)
 │   │   ├── signature.js          # Web Crypto HMAC-SHA256 서명
 │   │   ├── session.js            # 세션/닉네임
-│   │   ├── theme.js              # 7 테마
+│   │   ├── theme.js + theme-init.js # 9 테마 · FOUC 방지 조기 적용
 │   │   ├── file-upload.js        # 업로드 (100MB)
 │   │   ├── search.js             # 검색
 │   │   ├── push-manager.js       # VAPID/FCM
@@ -179,7 +183,7 @@ wrangler d1 migrations apply anonymous-chat-db
 │   │   └── utils.js              # 공통 유틸
 │   └── css/                      # 테마 + 애니메이션
 │
-├── test/                         # Vitest 363 cases (29 파일)
+├── test/                         # Vitest 496 cases (35 파일)
 ├── migrations/                   # D1 스키마
 ├── docs/                         # 상세 문서
 └── wrangler.toml                 # Cloudflare 설정
@@ -241,10 +245,11 @@ flowchart LR
 | D1 파라미터 바인딩 | SQL Injection 방지 |
 | 상수 시간 비교 | 타이밍 공격 방지 |
 | 입력 sanitization | `sanitizeInput`, `escapeHtml` |
-| 메시지 서명 검증 | HMAC-SHA256 + Ephemeral Token (세션별 secret 폐기) |
+| 메시지 서명 검증 | HMAC-SHA256 + Ephemeral Token (세션별 secret 폐기) · ±30초 신선도 · 재접속 capability key (close 4401) |
 | Rate Limiting | 다층 적용 |
-| 보안 헤더 | CSP · HSTS · COOP · COEP |
-| Cloudflare Turnstile | 봇 방지 |
+| 보안 헤더 | CSP · HSTS · COOP · COEP · `unsafe-inline`/`unsafe-eval` 제거 |
+| Cloudflare Turnstile | `/ws` 연결 시 서버 발급 HMAC 티켓(12시간) 필수 |
+| WS Origin 검증 | Origin 헤더 필수 (fail-closed) |
 | SSRF 방지 | 내부 토큰 |
 
 ---
@@ -258,6 +263,8 @@ npm run lint     # eslint
 npm run build    # esbuild 클라이언트 번들
 npm run deploy   # 빌드 + wrangler deploy (Worker)
 ```
+
+CI(`.github/workflows/ci.yml`): push/PR 시 `npm ci` → 테스트 → lint → `wrangler deploy --dry-run`
 
 자세한 내용: [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md)
 

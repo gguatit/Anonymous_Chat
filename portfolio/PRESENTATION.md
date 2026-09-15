@@ -68,7 +68,7 @@
 | **푸시** | Web Push (VAPID) + FCM v1 | 표준 Web Push + Android 호환 |
 | **빌드** | esbuild | 10개 엔트리 코드 스플리팅, 1초 이내 빌드 |
 | **프론트** | 바닐라 JS + CSS Custom Properties | 프레임워크 의존성 최소화, 학습 곡선 ↓ |
-| **테스트** | Vitest | 475개 케이스, 34개 파일 |
+| **테스트** | Vitest | 496개 케이스, 35개 파일 |
 | **린팅** | ESLint + Prettier | 코드 스타일 통일 |
 
 ### 선택의 트레이드오프
@@ -84,7 +84,7 @@
 ┌─────────────────────────────────────────────────────┐
 │ Browser (chat.js)                                   │
 │ - Web Crypto HMAC 서명                              │
-│ - 7개 테마 CSS 변수                                  │
+│ - 9개 테마 CSS 변수                                  │
 │ - Service Worker (PWA, 푸시 수신)                     │
 └──────────────────┬──────────────────────────────────┘
                    │ HTTPS / WSS
@@ -131,16 +131,16 @@
 |------|------|---------------|
 | 즉시 입장 | 닉네임만 입력, 회원가입 없음 | localStorage + crypto.randomUUID() |
 | 실시간 채팅 | WebSocket 메시지 즉시 전송 | 1초 쿨다운, 30msg/분 rate limit |
-| 7가지 테마 | dark/light/midnight/amethyst/sunset/sakura/evernight | CSS Custom Properties (60+ 변수) |
+| 9가지 테마 | dark/light/midnight/amethyst/sunset/sakura/evernight/ocean/forest | CSS Custom Properties (60+ 변수) |
 | 메시지 반응 | 6종 이모지, 더블클릭 자동 좋아요 | 반응 카운트 Map |
 | 답장 + 비밀 메시지 | 원본 미리보기, **Dead Drop** (30분 TTL, 1회 읽기) | 별도 DO 인스턴스 |
 | 파일 공유 | 이미지/비디오/오디오/PDF, 100MB | 외부 file.kalpha.kr 프록시 |
 | AI 요약 | `/summary` `/topic` `/mood` `/conflict` | Workers AI Qwen 3 30B → 1.5 7B fallback |
 | 메시지 검색 | 키워드 + 태그(`#images` `#code` `#url`) | FTS-like substring 매칭 |
 | 링크 프리뷰 | OG 태그 자동 파싱 + 보안 헤더 분석 | /api/preview SSRF 방어 |
-| 코드 하이라이팅 | Prism.js + highlight.js 자동 감지 | 라인 수 / 알파 비율 heuristic |
+| 코드 하이라이팅 | Prism.js 자동 감지 | 라인 수 / 알파 비율 heuristic |
 | 다중 채널 | 주제별 독립 채팅방 | DO 인스턴스 분리 |
-| 공지사항 | 일반/긴급 + 스케줄링 | D1 영구 저장, CSV 내보내기 |
+| 공지사항 | 일반/긴급 + 스케줄링 | DO storage 저장 (히스토리 100개 cap), CSV 내보내기 |
 | 푸시 알림 | VAPID Web Push + FCM v1 | 30일 TTL, 오프라인 유저용 |
 | PWA | 홈 화면 추가, 오프라인 셸, 공유 대상 | manifest.json, sw.js |
 
@@ -149,7 +149,7 @@
 | 기능 | 설명 |
 |------|------|
 | 메시지 관리 | 수정 / 삭제 / 전체 삭제 (확인 모달) |
-| 사용자 차단 | IP + SessionID 이중 (30초/5분/10분/영구) |
+| 사용자 차단 | IP + SessionID 이중 (프리셋 + 직접 입력 분) |
 | 공지사항 | 발송/수정/삭제/긴급/만료 |
 | 채널 관리 | 목록/상세/강제 삭제 |
 | 감사 로그 | D1 영구 저장, 필터링, CSV 내보내기 |
@@ -169,7 +169,13 @@
   │ ◀────── WS Upgrade ──────────────────────▶│
   │                                          │
   │ ◀─── {type: "handshake",                 │
-  │        secret: 32바이트 random} ───────────│
+  │        secret: 32바이트 random,           │
+  │        key: capability key,               │
+  │        authorId: HMAC(sessionId)} ─────────│
+  │                                          │
+  │  재연결: {type: "join",                   │
+  │    sessionId, key} → key 회전,            │
+  │    불일치/누락 시 close 4401              │
   │                                          │
   │  이후 모든 message/edit/delete에:          │
   │    HMAC-SHA256(                          │
@@ -186,6 +192,7 @@
   - **세션마다 32바이트 secret** 발급
   - 핸드셰이크 1회만 전달 → **유출 윈도우 최소화**
   - WS close 시 **즉시 폐기** → 재연결해도 이전 메시지 위조 불가
+  - 재연결은 capability key로만 허용 → key 불일치/누락 시 **close 4401**, key는 매 접속 회전
 
 ### 6.2 Triple-ban 시스템
 
@@ -207,7 +214,7 @@ banReason = {
 ```http
 Content-Security-Policy: default-src 'self'; ...; upgrade-insecure-requests;
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-X-Frame-Options: ALLOW-FROM https://kalpha.kr
+X-Frame-Options: (제거 — CSP frame-ancestors로 대체)
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: credentialless
 X-Content-Type-Options: nosniff
@@ -218,10 +225,12 @@ Referrer-Policy: strict-origin-when-cross-origin
 
 | 레이어 | 대상 | 한도 |
 |--------|------|------|
-| L1 Worker 메모리 | IP + 엔드포인트 | 10/분 |
+| L1 Worker 메모리 | IP + 엔드포인트 | 엔드포인트별 상이 |
 | L2 Worker KV | IP (로그인 등) | 5/5분 |
 | L3 DO 메모리 | IP당 WebSocket 연결 | 25개 |
 | L4 DO 메시지 쿨다운 | 세션당 | 1초 / 30msg/분 |
+
+추가로 `/ws` 등 주요 진입점은 Cloudflare Turnstile 티켓 검증을 통과해야 합니다 (HMAC 서명된 티켓, sessionId 바인딩).
 
 ### 6.5 Risk Scoring (자동 차단 추천)
 
@@ -253,7 +262,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 | 시간 | 시연 내용 | 보여줄 것 |
 |------|-----------|-----------|
 | 0:00 | 메인 페이지 진입 | "회원가입 없이 닉네임만" 강조 |
-| 0:30 | 메시지 전송 (테마 변경) | 7개 테마, WebSocket 즉시 반영 |
+| 0:30 | 메시지 전송 (테마 변경) | 9개 테마, WebSocket 즉시 반영 |
 | 1:30 | 리액션 + 답장 | 이모지 6종, Dead Drop 옵션 |
 | 2:30 | 파일 업로드 | 100MB 업로드 → OG 미리보기 |
 | 3:30 | AI 요약 명령 | `/summary` → 한글로 요약 표시 |
@@ -303,11 +312,11 @@ broadcast(message) {
 - 메시지 전송 시 **in-memory로만** 사용 (localStorage 안 씀)
 - WS close 시 secret 폐기
 
-### 🔥 도전 4: 7개 테마 + Tailwind
+### 🔥 도전 4: 9개 테마 + Tailwind
 
 **문제**: Tailwind의 `dark:` 변형자는 2개 테마만 지원
 
-**해결**: **CSS Custom Properties + `[data-theme="xxx"]` 선택자**로 7개 테마 구현
+**해결**: **CSS Custom Properties + `[data-theme="xxx"]` 선택자**로 9개 테마 구현
 ```css
 [data-theme="dark"]  { --c-bg-900: #111827; --c-tx-100: #F3F4F6; ... }
 [data-theme="light"] { --c-bg-900: #F9FAFB; --c-tx-100: #111827; ... }
@@ -337,14 +346,14 @@ self.addEventListener('push', e => {
 
 ```
 📦 코드베이스
-  - 서버: 33개 JS 파일 (Worker + 3개 DO + 핸들러 + 유틸 + 미들웨어)
-  - 클라이언트: 50+ JS 모듈 (chat.js 47KB, admin.js 20KB, ui mixin 5개)
-  - 마이그레이션: 3개 SQL (admin_logs, log_tables, security_events)
+  - 서버: 32개 JS 파일 (Worker + 3개 DO + 핸들러 + 유틸 + 미들웨어)
+  - 클라이언트: 30개 소스 모듈 + 6개 페이지 래퍼 (chat.js 47KB, ui mixin 5개)
+  - 마이그레이션: 5개 SQL (001~005, admin_logs DROP·security_events 인덱스 수정 포함)
   - 문서: 11개 (README, 5개 docs/, 디자인 스펙, CHANGELOG 등)
   - 총 라인 수: ~15,000줄
 
 🧪 테스트
-  - Vitest 475 cases (34개 파일)
+  - Vitest 496 cases (35개 파일)
   - 전체 스위트 20초 이내 통과
   - 커버리지 모듈: rate-limiter, helpers, security, classifier, risk-scorer, security-logger, security routes
 
@@ -352,7 +361,7 @@ self.addEventListener('push', e => {
   - 보안 이벤트 22가지 (4 카테고리, 4 severity)
   - 다층 rate limit (4중)
   - Triple-ban (IP + Session + Token)
-  - 7가지 보안 헤더
+  - 11가지 보안 헤더
   - HMAC + Ephemeral Token
 
 ⚡ 성능
@@ -367,10 +376,10 @@ self.addEventListener('push', e => {
 ## 10. 발전 가능성 & 로드맵
 
 ### 단기 (1-2개월)
-- [ ] CI/CD 파이프라인 (GitHub Actions)
-- [ ] 핵심 DO (`ChatRoom.js`) 테스트 커버리지 0% → 60%
-- [ ] 클라이언트 XSS 핫픽스 (markdown link sanitization)
-- [ ] CSP nonce 도입 (인라인 핸들러 제거)
+- [x] CI/CD 파이프라인 (GitHub Actions, `.github/workflows/ci.yml`)
+- [x] 핵심 DO (`ChatRoom.js`) 테스트 보강 (chat-room*.test.js, 총 496건)
+- [x] 클라이언트 XSS 핫픽스 (escapeHtml 따옴표 + stored XSS 체인 수정)
+- [x] CSP 강화 (인라인 핸들러 0건, 스크립트 외부화 — script-src에 unsafe-inline/eval 없음)
 
 ### 중기 (3-6개월)
 - [ ] 종단간 암호화 (E2EE) — 비밀 메시지 확장
@@ -469,10 +478,10 @@ JWT를 안 쓴 이유:
 
 **A**: 솔직히 말씀드리면 이건 **프로덕션 환경에서 보완이 필요한 부분**입니다. 학교 프로젝트 수준에서는 단일 비밀번호로 충분하지만, 프로덕션이라면:
 
-1. **2FA (TOTP)** 추가 — `auth.js`의 `generateAdminToken` 다음 단계로
-2. **세션 무효화 UI** — 현재 로그인된 모든 관리자 세션 보기 + 강제 로그아웃
+1. **2FA (TOTP)** 추가 — `auth.js`의 `verifyAdminToken` 다음 단계로
+2. **세션 무효화 UI** — 현재 로그인된 모든 관리자 세션 보기 + 강제 로그아웃 (12h 슬라이딩 TTL, 로그아웃 시 서버측 폐기, 401 자동 로그아웃은 적용)
 3. **IP allowlist** — 특정 IP에서만 관리자 페이지 접근 허용
-4. **HMAC_SECRET 분리** — 지금은 메시지 서명·admin token·internal DO 통신이 같은 시크릿. 분리하면 1개 유출 시 피해 범위 ↓
+4. **HMAC_SECRET 역할 축소** — 어드민 토큰은 이미 불투명 KV 랜덤 토큰으로 분리됨. 현재 HMAC_SECRET은 internal DO 토큰, Turnstile 티켓, authorId 파생에만 사용
 
 이슈 트래커에 `feat: 2fa-admin` 항목으로 등록되어 있습니다.
 
@@ -501,7 +510,7 @@ GDPR 측면에서 "right to be forgotten" 요청이 오면 → D1 + DO Storage +
 - sessionId, IP, 닉네임은 **명시적으로 제외**
 - 시스템 프롬프트에 "PII(이름·전화·이메일) 출력 금지" 지시
 
-요약 결과는 60초 캐시 → 같은 사용자가 같은 시간대에 재요청 시 재생성 안 함.
+요약 결과 캐시는 두지 않았습니다. 대신 같은 사용자의 반복 요청은 15초 레이트리밋으로 제한합니다.
 
 ---
 
@@ -522,7 +531,7 @@ E2EE를 안 한 이유:
 
 **A**: **포트폴리오 차별화**가 가장 큰 이유입니다.
 
-채팅, 검색, 라이트박스, 모달, 컨텍스트 메뉴 등 50+ 모듈을 바닐라 JS로 구현하면:
+채팅, 검색, 라이트박스, 모달, 컨텍스트 메뉴 등 30개 소스 모듈(+6개 페이지 래퍼)을 바닐라 JS로 구현하면:
 - DOM API, 이벤트 버블링, 비동기 처리, 메모리 관리에 대한 **깊은 이해** 증명
 - 면접관이 "React 없이 어떻게 하셨어요?"라고 물으면 **이야기할 거리**가 생김
 - 번들 크기 ↓ (React + ReactDOM이 ~140KB인데 우리는 0KB)
@@ -539,19 +548,13 @@ E2EE를 안 한 이유:
 
 ### Q11. CSP에서 `'unsafe-inline'`과 `'unsafe-eval'`을 왜 허용하나요?
 
-**A**: 솔직히 이건 **개선이 필요한 부분**입니다. 허용한 이유:
+**A**: 지금은 `script-src`에 **허용하지 않습니다**. 초기 버전에서는 인라인 핸들러(`onclick="..."`) 100+개 때문에 허용했지만, 전부 `addEventListener` + `data-*`로 리팩터링하고 인라인 스크립트도 외부 파일(`theme-init.js`, `announcements-page.js`)로 분리해 제거했습니다.
 
-- **esbuild가 일부 inline script를 생성**할 수 있음
-- **초기 개발 단계에서 빠른 반복**을 위해 인라인 핸들러(`onclick="..."`)를 사용 — 약 100+개
-
-공격자가 이걸 악용하면:
-- Stored XSS (마크다운 링크) 가능 — 발견되어 수정 예정
-- Inline event handler injection — 데이터 검증으로 방어 중
-
-**로드맵**:
-1. 모든 `onclick="..."`을 `addEventListener` + `data-*` 속성으로 리팩토링
-2. Tailwind 빌드 시 인라인 스타일 제거
-3. CSP nonce 도입
+현재 상태:
+- `script-src`에 `'unsafe-inline'`/`'unsafe-eval'` **없음** (strict CSP)
+- 인라인 핸들러 **0건** (`onclick=`/`onerror=` grep 결과 0)
+- Stored XSS 체인 (`escapeHtml` 따옴표 미처리 + raw `innerHTML`) **수정 완료**
+- 남은 항목: `style-src`의 `'unsafe-inline'` (동적 스타일) — nonce/hash 전환 검토 중
 
 ---
 
@@ -631,14 +634,14 @@ Cloudflare D1은:
 ### 1:30 - 2:30 아키텍처 & 핵심 기능
 
 > "아키텍처는 4계층입니다 — 브라우저 → Worker → Durable Objects → Storage.  
-> 핵심 기능은 익명 입장, 7개 테마, WebSocket 실시간 채팅, 파일 100MB 업로드, AI 요약, 푸시 알림, PWA, 관리자 대시보드, 그리고 **데드드롭**이라고 불리는 비밀 메시지 기능까지 — 총 14가지입니다."
+> 핵심 기능은 익명 입장, 9개 테마, WebSocket 실시간 채팅, 파일 100MB 업로드, AI 요약, 푸시 알림, PWA, 관리자 대시보드, 그리고 **데드드롭**이라고 불리는 비밀 메시지 기능까지 — 총 14가지입니다."
 
 ### 2:30 - 3:30 보안 (가장 강조)
 
 > "제가 **자랑하고 싶은 부분**은 보안 설계입니다.  
 > 첫 번째, **Ephemeral Token 모델** — 세션마다 32바이트 secret을 발급해서 매 메시지를 HMAC-SHA256으로 서명합니다. secret은 WS close 시 즉시 폐기돼요.  
 > 두 번째, **Triple-ban 시스템** — IP, 세션, 토큰 3가지로 다층 차단합니다.  
-> 세 번째, **CSP, HSTS, COOP/COEP** 등 7가지 보안 헤더를 적용했고요.  
+> 세 번째, **CSP, HSTS, COOP/COEP** 등 11가지 보안 헤더를 적용했고요.  
 > 마지막으로, **Risk Scoring** — 22가지 보안 이벤트를 점수화해서 누적 점수가 임계치 넘으면 자동 차단을 추천합니다."
 
 ### 3:30 - 4:30 시연
@@ -660,17 +663,17 @@ Cloudflare D1은:
 ```
 프로젝트명: Anonymous Chat
 스택: Cloudflare Workers + DO + D1 + KV + Workers AI
-규모: 서버 33파일, 클라이언트 50+ 모듈, 테스트 475건 통과
+규모: 서버 32파일, 클라이언트 30개 소스 모듈 + 6개 페이지 래퍼, 테스트 496건 통과
 핵심 설계:
   1. Ephemeral Token (HMAC 서명, 32-byte secret)
   2. Triple-ban (IP + Session + Token)
   3. 4중 Rate Limit
-  4. 7-Theme CSS Custom Properties
+  4. 9-Theme CSS Custom Properties
   5. 3개 Durable Object (ChatRoom/ChannelRegistry/DeadDropStore)
   6. Risk Scoring (22 events, auto-block recommendation)
 가장 어려웠던 점: WebSocket fan-out in DO (해결: Map<sid, ws>)
 가장 자랑스러운 점: 보안 헤더 + HMAC + Rate Limit 풀스택 적용
-다음 단계: E2EE, CI/CD, 테스트 커버리지 확대
+다음 단계: E2EE, 테스트 커버리지 임계치, 모바일 앱
 라이선스: AGPL-3.0 + 상업용 별도
 ```
 

@@ -63,14 +63,14 @@
 
 ### 2026-09-15
 
-심층 보안 분석(`docs/ANALYSIS.md`) 기반 전면 하드닝. 분석 보고서의 CRITICAL 3건·HIGH 10건·MEDIUM/LOW 다수를 3단계로 수정했습니다.
+심층 보안 분석(`docs/ANALYSIS.md`) 기반 전면 하드닝. 분석 보고서의 CRITICAL 3건·HIGH 11건·MEDIUM/LOW 다수를 3단계로 수정했습니다.
 
 #### 보안
 
 - **옵저버 무인증 접속 차단**: `admin_obs_` 접두사 세션은 관리자 토큰 검증(`verifyAdminToken`)을 통과해야만 WebSocket 연결이 허용됩니다(실패 시 401, DO 미호출). 누구나 `?sessionId=admin_obs_x`로 실시간 메시지/세션/공지 이벤트를 수신하던 백도어를 제거했습니다. 커밋 `c4d3ff4`.
 - **세션 하이재킹 차단 (capability key)**: sessionId는 공개값이므로 최초 join 시 32바이트 랜덤 capability key를 발급하고, 이후 재접속은 키 검증(불일치 시 close 4401)을 요구합니다. 키는 조인마다 회전하며, 히스토리/검색 응답에서 sessionId를 제거하고 HMAC 파생 `authorId`(16자)로 대체했습니다. 커밋 `c4d3ff4`.
 - **저장형 XSS 체인 차단**: `escapeHtml`이 따옴표를 이스케이프하지 않아 속성 컨텍스트에서 XSS가 성립하던 문제를 수정하고, `security-center.js`/`page-users.js`의 raw innerHTML 삽입을 제거했습니다. 인라인 핸들러/스크립트를 외부 모듈로 이동(theme-init/chat-page/announcements-page)하고 CSP에서 `unsafe-inline`/`unsafe-eval`을 삭제했습니다. 커밋 `11aabe2`.
-- **어드민 토큰 재설계**: base64 페이로드에 ADMIN_PASSWORD가 임베드되던 토큰을 32바이트 랜덤 opaque 토큰 + KV 세션(2시간 TTL)으로 교체했습니다. 로그아웃은 KV에서 즉시 삭제(revoke)하며 상수시간 비교를 사용합니다. 커밋 `1e2306a`.
+- **어드민 토큰 재설계**: base64 페이로드에 ADMIN_PASSWORD가 임베드되던 토큰을 32바이트 랜덤 opaque 토큰 + KV 세션(`token:<t>`, 12시간 TTL, 만료 1시간 미만 시 슬라이딩 갱신)으로 교체했습니다. 로그아웃은 KV 항목을 즉시 삭제(revoke)하고, 클라이언트는 401 응답 시 자동 로그아웃합니다. 상수시간 비교를 사용합니다. 커밋 `1e2306a`, `91a5245`.
 - **콜드 DO 초기화 보장**: `/admin/*`·`/check-ban`이 초기화 전에 실행되어 빈 상태를 반환하던 문제를 `ensureInitialized()`(프로미스 공유)로 수정했습니다. 초기화 실패 시 503 fail-closed.
 - **IP 차단 라우트 신설**: 보안센터 '위험 IP 차단'이 존재하지 않는 `/ban-ip`를 호출해 무동작이던 문제를 수정했습니다. HMAC 내부 라우트(`/admin/ban-ip`, duration 기본 24시간·최대 7일)로 실제 `bannedIPs`에 기록됩니다.
 - **Origin 검증 강화**: prefix 매치(`startsWith`)와 localhost 상시 허용을 제거했습니다. `new URL(origin).origin` 정확 매치 + Origin 헤더 필수(fail-closed), localhost는 `ENVIRONMENT=development`에서만 허용합니다.
@@ -94,14 +94,29 @@
 
 - **CI 추가**: GitHub Actions(`.github/workflows/ci.yml`)에서 npm ci → 테스트 → lint → `wrangler deploy --dry-run`을 실행합니다.
 - **배포 단일화**: 실제 배포는 Worker(`wrangler deploy`)임을 문서/스크립트에 통일하고, 기동 불가였던 `functions/` Pages 브리지를 삭제했습니다. `FILE_API_KEY`를 `.dev.vars.example`/DEPLOYMENT에 문서화했습니다.
-- **빌드 산출물 git 제외**: 번들/chunks/소스맵/tailwind.min.css를 추적에서 제외하고 `.gitignore`에 추가했습니다. `bun.lock` 삭제(npm 단일화), `.fva/` ignore.
-- **마이그레이션/설정**: `004_drop_admin_logs.sql`(orphan 테이블 제거), `compatibility_date` → 2026-08-01.
-- **죽은 코드 제거**: 레거시 관리자 모듈 9종·prism-bundle 등 11개 파일, highlight.js 이중 스택(Prism 단일화).
+- **빌드 산출물 재추적**: Workers Builds에 빌드 단계(buildCommand)가 없어 배포 시 CSS/JS가 누락되므로, 번들/chunks/소스맵/tailwind.min.css를 git에 재추적했습니다(커밋 `1974038`). `bun.lock` 삭제(npm 단일화), `.fva/` ignore.
+- **마이그레이션/설정**: `004_drop_admin_logs.sql`(orphan 테이블 제거), `005_fix_security_events_index.sql`(비결정 strftime 인덱스 교체 — `security_events` 쓰기를 조용히 차단하던 문제 해결), `compatibility_date` → 2026-07-15.
+- **죽은 코드 제거**: 레거시 관리자 모듈 9종·prism-bundle 등 11개 파일, highlight.js 이중 스택 제거(Prism 단일화, hljs 잔여 코드는 `2c0a16e`에서 완료).
 
 #### 테스트
 
 - 무테스트 경로 보강: preview 39건, turnstile 8건, summary 7건, fcm-auth/web-push 실모듈, worker 라우터 스모크(401/404/429), logger 정리, 메시지 바이트 캡, 세션 키, ban-ip, push 소유권, body cap.
-- 총 **475건 / 34개 파일** 전부 통과(커밋 `1e2306a`, `4484d5f` 포함).
+- 총 **496건 / 35개 파일** 전부 통과(커밋 `1e2306a`, `4484d5f` 포함).
+
+#### 추가 개선
+
+2026-09-15 릴리스 이후 후속 커밋:
+
+| 커밋 | 내용 |
+|---|---|
+| `5832e64` | 004 마이그레이션·`compatibility_date` 2026-07-15 반영 및 잔여 정리 |
+| `2c0a16e` | devDep 취약점 0건(`npm audit fix`) + highlight.js 잔여 코드 제거 완료 |
+| `1974038` | 빌드 산출물 재추적 — Workers Builds에 빌드 단계가 없어 배포에서 CSS/JS 누락 |
+| `5c70e98` | 관리자 긴급공지 플래그 매핑(`emergency`→`isEmergency`) + 공지 삭제 UI 추가 |
+| `bafdec1` | `ApiClient`의 post/put/del이 HTTP 에러를 삼키던 문제 수정 |
+| `91a5245` | 비결정 strftime 인덱스 교체 + 관리자 세션 슬라이딩 TTL/401 자동 로그아웃 |
+| `0028a05` | 관리자 UI 연결 — 토큰 밴·자유 IP 차단·커스텀 킥(분)·공지 파일 첨부·로그아웃 서버 폐기·채널 표시/감사 필터 수정 |
+| `a3a6b43` | 빈 채널 자동 삭제를 alarm 기반으로 전환 (DO 유휴 시 setInterval 미실행 문제 해결) |
 
 ### 2026-06-22
 

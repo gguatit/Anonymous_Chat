@@ -22,7 +22,8 @@
    │                                       │                              │    ipConnections++
    │                                       │                              │    this.sessions.set(sid, ws)
    │                                       │                              │
-   │ 4. {type:"handshake", secret:...}      │                              │
+   │ 4. {type:"handshake", secret, key,     │                              │
+   │     authorId:...}                      │                              │
    │◀──────────────────────────────────────┤◀─────────────────────────────┤
    │                                       │                              │
    │ 5. crypto.subtle.importKey(secret)    │                              │
@@ -87,24 +88,20 @@ await this.state.storage.put("messages", newList); // 명시적 스냅샷
 
 ### Q: WebSocket 재연결 시 메시지 손실은 어떻게 처리하나요?
 
-**A**: **최신 메시지 동기화** 방식으로 처리합니다.
+**A**: **capability key 검증 + 최근 메시지 배치** 방식으로 처리합니다.
 
-1. 클라이언트 재연결 시 `lastMessageId` 전송
-2. 서버(`ChatRoom`)가 `messages` 배열에서 그 ID 이후 메시지만 찾아서 전송
-3. 만약 서버가 재시작됐으면 (DO evicted) → Storage에서 메시지 복원 후 동일 처리
+1. 클라이언트 재연결 시 `join {sessionId, key}` 전송 (최초 접속은 `sessionId`만)
+2. 서버(`ChatRoom`)가 저장된 key와 constant-time 비교 → 일치하면 새 `secret` + 회전된 `key` + `authorId`를 `handshake`로 발급
+3. key 누락/불일치(기존 세션) → **close 4401** → 클라이언트는 새 sessionId 생성 후 1회 재접속
+4. 접속 직후 **최근 100개 메시지 배치**를 전송 (별도 `sync` 메시지 타입은 없음)
+5. DO가 evicted 됐으면 Storage에서 key·메시지 복원 후 동일 처리
 
-`chat.js`의 `wsManager.reconnect()`:
 ```javascript
-this.ws.onopen = () => {
-  this.send({ type: 'sync', lastMessageId: this.lastSeenId });
-};
-```
+// handshake (서버 → 클라이언트)
+{ type: 'handshake', secret, key, authorId }
 
-서버의 sync 핸들러:
-```javascript
-const idx = this.messages.findIndex(m => m.id === lastMessageId);
-const missed = this.messages.slice(idx + 1);
-missed.forEach(m => ws.send(m));
+// 재접속 (클라이언트 → 서버)
+{ type: 'join', sessionId, key }
 ```
 
 **한계**: 12시간이 지난 메시지는 사라졌으므로 복구 불가. 그래서 클라이언트 UI에 "이전 메시지는 표시할 수 없습니다" 토스트.
@@ -116,7 +113,7 @@ missed.forEach(m => ws.send(m));
 **A**: **Cloudflare Workers AI + KV + Web Push** 조합:
 
 1. 사용자가 `chat.js`에서 푸시 구독 → `serviceWorker.pushManager.subscribe()`
-2. 구독 정보를 `KV.PUSH_SUBSCRIPTIONS`에 저장: `user_abc → { endpoint, keys: {p256dh, auth} }`
+2. 구독 정보를 KV에 저장: `sub:<sha256(sessionId)> → { endpoint, keys: {p256dh, auth} }` (subscribe/unsubscribe는 capability `key` 필수, 누락 시 401)
 3. 새 메시지 도착 → ChatRoom DO가 `this.broadcast()` 실행
 4. 각 WS가 응답했는지 확인 → 응답 안 한 (오프라인) 유저의 구독을 KV에서 조회
 5. **VAPID + RFC 8291 암호화**로 푸시 페이로드 전송
@@ -139,7 +136,7 @@ async function broadcastPush(env, message) {
 }
 ```
 
-**Rate limit**: 한 메시지당 100명까지만 (KV.list 1,000개 제한 + 비용).
+**전송 한도**: KV_LIST_LIMIT 1,000건까지 조회, 실제 전달은 PUSH_BATCH_SIZE 20건씩 배치.
 
 ---
 
@@ -152,16 +149,14 @@ async function broadcastPush(env, message) {
 | 유출 경로 | 영향 | 대응 |
 |-----------|------|------|
 | 클라이언트 브라우저 메모리 | 해당 세션의 위조 메시지 가능. 세션 종료 시 자동 폐기 | WS close 시 메모리에서 삭제 |
-| `wrangler secret` | **모든 메시지 위조 가능** + admin token 위조 + internal DO 위조 | 즉시 `wrangler secret put`으로 회전. 사용자 전체에게 "재연결" 알림 |
+| `wrangler secret` | `HMAC_SECRET` 유출 시 internal DO 토큰·Turnstile 티켓·authorId 위조 가능 (admin token은 랜덤 KV 값이라 무관, 메시지 서명은 세션별 secret 사용) | 즉시 `wrangler secret put`으로 회전. 사용자 전체에게 "재연결" 알림 |
 | Storage DB | 영향 없음 (DB에는 시크릿 미저장) | - |
 | GitHub 공개 | **즉시 회전 필수** | 절대 커밋 금지 (`.gitignore`에 `.dev.vars`) |
 
-**운영 권장**: HMAC secret을 **용도별로 분리** (현재 1개 → 3개):
-- `MESSAGE_SIGNING_KEY` (클라↔DO 메시지)
-- `INTERNAL_DO_TOKEN` (Worker↔DO RPC)
-- `ADMIN_TOKEN_SECRET` (admin 인증)
-
-개선 과제로 등록되어 있습니다.
+**현재 상태**: 분리는 완료됐습니다.
+- admin token — 불투명 랜덤 KV 값 (`token:<id>` → 만료 정보). 별도 `ADMIN_TOKEN_SECRET` 불필요
+- 메시지 서명 — `HMAC_SECRET`과 무관한 세션별 ephemeral secret + capability key
+- internal DO 토큰(`X-Admin-Internal-Token`)만 `HMAC_SECRET`을 계속 공유 (Worker↔DO 경계 내부 전용)
 
 ---
 
@@ -184,7 +179,7 @@ async function broadcastPush(env, message) {
 
 3. **SameSite 쿠키 미사용** — `localStorage`의 Bearer token이라 쿠키 자동 전송 안 됨 → CSRF 기본 방어
 
-4. **POST 엔드포인트는 `safeJson`으로 body size + JSON 검증**
+4. **POST 엔드포인트는 스트림 바이트 카운팅으로 body 상한 검증** (초과 시 413)
 
 다만 **`/api/upload` 같은 공개 엔드포인트**는 CSRF 토큰이 없습니다. 다만 이건 부작용 없는 GET/POST 업로드라 큰 문제 없음.
 
@@ -257,7 +252,7 @@ async function broadcastPush(env, message) {
 
 ## 개발 경험 심화
 
-### Q: 1,500줄짜리 ChatRoom.js를 어떻게 리팩토링할 건가요?
+### Q: 1,588줄짜리 ChatRoom.js를 어떻게 리팩토링할 건가요?
 
 **A**: **책임별 분리** 전략:
 
@@ -281,15 +276,16 @@ src/durable-objects/ChatRoom/
 
 ### Q: 테스트 커버리지를 어떻게 늘릴 건가요?
 
-**A**: 우선순위순:
+**A**: 우선순위로 꼽았던 영역은 대부분 테스트가 붙었습니다 (총 496건 / 35파일):
 
-1. **`utils/validate.js` (입력 검증)** — 가장 가치 높음. 모든 WS 메시지가 거치는 관문
-2. **`utils/helpers.js` HMAC 함수** — 보안 핵심
-3. **`worker.js` 라우터** — 모든 요청의 진입점
-4. **`ChatRoom DO`** — Mock DO 런타임 (`@cloudflare/workers-test` 또는 직접 mock)
-5. **`handlers/push.js`, `summary.js`, `preview.js`** — API 핸들러
+1. **`utils/validate.js` (입력 검증)** — 완료 (validate-extra 포함)
+2. **`utils/helpers.js` HMAC 함수** — 완료
+3. **`worker.js` 라우터** — 완료 (worker-routes 스모크)
+4. **`ChatRoom DO`** — 완료 (chat-room*.test.js: init/cap/session-key/admin 등)
+5. **`handlers/push.js`, `summary.js`, `preview.js`, `turnstile.js`** — 완료
+6. **보안 경로** — 완료 (observer, body-cap, ban-ip, push-ownership 등)
 
-목표: **30% → 70%** (6개월)
+남은 과제는 **커버리지 임계치**입니다. `vitest.config.js`에 coverage provider/threshold가 아직 없어, 다음 단계는 목표(utils 80% / handlers 70%)를 CI 게이트로 고정하는 것.
 
 ---
 
@@ -345,7 +341,7 @@ disconnect() {
 }
 ```
 
-이후 모든 테스트 통과.
+현재는 구조적으로 재발이 어렵습니다. 재접속은 `join {sessionId, key}`로만 허용되고, 서버가 저장된 capability key와 비교해 불일치하면 **close 4401**로 끊습니다. `secret`과 `key`는 매 join마다 회전 발급됩니다.
 
 ---
 
@@ -362,7 +358,7 @@ wrangler tail --format=pretty --status=error
 - 인덱스 누락 확인 → `idx_audit_timestamp` 추가
 - `await db.prepare(...).all()` 결과를 캐싱 (KV에 1분 TTL)
 
-D1은 **읽기 1000행/쿼리** 제한이 있어서 1,000+ 감사 로그가 누적되면 느려짐. 그래서 **30일 retention** + cleanup job 운영.
+D1은 **읽기 1000행/쿼리** 제한이 있어서 1,000+ 감사 로그가 누적되면 느려짐. 그래서 retention을 분리 운영합니다 — `audit_logs` 90일 / `admin_activity_logs`·`error_logs` 30일 / `security_events` 90일(확률적 정리). 추가로 005 마이그레이션에서 `security_events`의 비결정적 strftime 부분 인덱스를 교체했습니다. 이 인덱스는 SQLite에서 비결정 함수를 금지해 **모든 쓰기를 차단**하던 버그였습니다.
 
 ---
 

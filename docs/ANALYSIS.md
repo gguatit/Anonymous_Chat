@@ -5,6 +5,68 @@
 > 범위: 서버(Worker + Durable Objects + 핸들러), 클라이언트(public/js + HTML + PWA), 테스트, 문서, 배포/운영
 > 성격: 읽기 전용 분석. 본 보고서 작성 시점에 코드는 수정되지 않았습니다.
 
+> **⚠️ 이 보고서는 HEAD `9c0b12c` 기준이며, 이후 커밋(c4d3ff4…a3a6b43, 20건)으로 대부분의 발견이 수정되었습니다 — 아래 '수정 완료 현황' 참조.**
+
+---
+
+## 수정 완료 현황 (2026-09-15 기준)
+
+> 현재 HEAD `a3a6b43`, 테스트 496건/35파일, lint 0 errors, build green.
+
+| 발견 | 상태 | 비고 |
+|---|---|---|
+| C1 | FIXED | 옵저버 토큰 인증 (무인증 접두사 신뢰 제거) |
+| C2 | FIXED | capability key + 재접속 검증, 불일치 시 close 4401 |
+| C3 | FIXED | escapeHtml 따옴표 처리 + strict CSP + 인라인 스크립트 외부화 |
+| H1 | FIXED | 콜드 DO 초기화 보장 (실패 시 503 fail-closed) |
+| H2 | FIXED | 불투명 KV 토큰 (비밀번호 페이로드 제거) |
+| H3 | PARTIAL | 96KiB 바이트 캡만 적용 (샤딩/SQLite 이전은 미적용) |
+| H4 | EXCLUDED | 사용자 결정 (밴 정책 현행 유지) |
+| H5 | FIXED | `/ban-ip` 라우트 추가 + `resp.ok` 검사 |
+| H6 | FIXED | Origin 정확 매치 + `/ws` Origin 필수 |
+| H7 | FIXED | 푸시 구독 capability 검증, `sub:<sha256(sessionId)>` |
+| H8 | FIXED | 스트림 바이트 카운팅 + 413 캡 |
+| H9 | FIXED | DeadDrop 로그에서 ID 목록 제거 |
+| H10 | FIXED | Worker 단일 배포 기준으로 문서/스크립트 정합화 |
+| H11 | FIXED | worker/DO/handlers 테스트 대폭 보강 (496건) |
+| M1 | FIXED | preview SSRF 차단 (redirect manual + denylist) |
+| M2 | FIXED | 누락 라우트 레이트리밋 확충 |
+| M3 | PARTIAL | 프루닝+맵 상한 적용, 여전히 per-isolate |
+| M5 | FIXED | Turnstile 티켓 강제 (`/ws`) |
+| M6 | FIXED | 채널 상한/삭제 시 destroy + alarm 기반 정리 |
+| M7 | FIXED | D1 retention (audit 90d / admin_activity·error 30d / security 90d) |
+| M8 | PARTIAL | alarm 도입, WS Hibernation + DeadDrop GC는 미적용 |
+| M9 | FIXED | 요약 채널 스코프 + 타임아웃 |
+| M10 | PARTIAL | ±30s 신선도 + constant-time, 서명 대상 필드 범위는 그대로 |
+| M11 | PARTIAL | 주요 경로 fail-closed 전환, 범위 일부 잔존 |
+| M12 | PARTIAL | 검증 일부 일원화, 3중 중복 잔존 |
+| M13 | FIXED | lint 0 errors, build green |
+| M14 | MOSTLY FIXED | API 문서 다수 정정, 일부 드리프트 잔존 |
+| M16 | FIXED | `bun.lock` 제거 |
+| M17 | REVERSED | Workers Builds buildCommand가 비어 있어 빌드 산출물 재추적 (의도) |
+| L1 | FIXED | CORS Allow-Methods 보정 |
+| L2 | REMAINS | 라우트 메서드 무구분 |
+| L3 | FIXED | 다운로드 프록시 env 사용 |
+| L4 | FIXED | dev origin 8788 반영 |
+| L5 | FIXED | localhost 정확 비교 |
+| L6 | PARTIAL | 일부 로그 노출 잔존 |
+| L7 | FIXED | 죽은 코드 제거 |
+| L8 | PARTIAL | 클라이언트 중복 일부 잔존 |
+| L9 | REMAINS | sw.js 푸시 전용, manifest share_target |
+| L10 | PARTIAL | Prism 단일화, 소스맵은 여전히 공개 |
+| L11 | FIXED | WS 클라이언트 연결 가드 |
+| L12 | FIXED | orphan 테이블 DROP (migrations/004) |
+| L13 | PARTIAL | `.fva/` gitignore 완료, 신고 경로 문서 일부 잔존 |
+| L14 | FIXED | compatibility_date 갱신 |
+| L15 | FIXED | ARCHITECTURE 카운트 정정 |
+
+### 이후 발견·수정 (신규)
+
+- **security_events 쓰기 전면 차단 버그**: 비결정적 `strftime` 부분 인덱스가 SQLite 제약에 걸려 모든 INSERT가 실패 → migration 005로 교체, 프로덕션 D1 적용.
+- **관리자 UI 백엔드 미연결**: 백엔드에 있으나 UI가 없던 기능 연결 — 공지 수정, 메시지 수정, 토큰 밴, 자유 IP 차단, 사용자 지정 킥 시간, 브로드캐스트 파일 첨부, 서버측 로그아웃, 채널 필드 표시, 감사 로그 필터 값.
+- **관리자 401 체인**: 12h 슬라이딩 TTL + 401 응답 시 자동 로그아웃.
+- **채널 정리**: `setInterval` 의존 → DO alarm 기반으로 전환 (유휴 시 미실행 문제 해결).
+
 ---
 
 ## 1. 요약
@@ -15,7 +77,7 @@
 - **가장 위험한 축 2가지**
   1. **인증/권한 경계 붕괴** — 익명 사용자가 `sessionId` 문자열 조작만으로 관리자 옵저버가 되고(CRITICAL), 공개된 `sessionId`로 타인 세션을 탈취할 수 있습니다(CRITICAL).
   2. **저장형 XSS → 관리자 토큰 탈취** — 따옴표를 이스케이프하지 않는 `escapeHtml`과 `unsafe-inline` CSP가 결합해, 공개 엔드포인트(`/api/logs/error`)를 통해 관리자 화면에서 스크립트가 실행됩니다(CRITICAL).
-- **긍정 요소**: 계층적 메시지 검증, 세션별 임시 시크릿 기반 HMAC, DO 관리자 표면의 HMAC 게이트, DeadDrop의 레이스 프리 읽기, 의존성 없는 Web Push/FCM 구현, 빠른 테스트 스위트(320건/~10초) 등 설계 수준의 보안 장치는 다수 존재합니다.
+- **긍정 요소**: 계층적 메시지 검증, 세션별 임시 시크릿 기반 HMAC, DO 관리자 표면의 HMAC 게이트, DeadDrop의 레이스 프리 읽기, 의존성 없는 Web Push/FCM 구현, 빠른 테스트 스위트(현재 496건/35파일, 분석 당시 320건/~10초) 등 설계 수준의 보안 장치는 다수 존재합니다.
 - **운영 리스크**: `npm run lint`가 생성물 파일 때문에 실패해 `npm run build` 자체가 깨져 있고, CI가 없으며, 배포 문서가 Pages와 Worker를 혼용하고 있어 문서대로 배포하면 바인딩/마이그레이션이 누락됩니다.
 
 ### 아키텍처 한눈에 보기
@@ -254,7 +316,7 @@ const isObserver = (wsUrl.searchParams.get('sessionId') || '').startsWith('admin
 3. **DO 관리자 표면의 HMAC 게이트**: `/admin/*`, `/destroy`, `/messages/recent`, `/broadcast-summary`가 내부 토큰을 요구(`ChatRoom.js:165-170`), 레지스트리도 내부 토큰 검증.
 4. **DeadDrop의 delete-before-response**: 레이스 프리 1회 읽기 + UUID 자격증명 + TTL.
 5. **의존성 없는 Web Push 구현**: RFC 8291/8292 암호화 정확, FCM v1 + RS256 JWT도 정확. (단, 토큰 캐시 부재는 M4)
-6. **테스트 스위트**: 320건/~10초, 보안 유틸(classifier/risk-scorer/logger/validate 81건) 커버리지 양호, DO 스토리지 목킹으로 핸드셰이크/밴 흐름 검증.
+6. **테스트 스위트**: 현재 496건/35파일 (분석 당시 320건/~10초), 보안 유틸(classifier/risk-scorer/logger/validate) 커버리지 양호, DO 스토리지 목킹으로 핸드셰이크/밴 흐름 검증.
 7. **설정 구조**: `wrangler.toml`의 버전드 DO 마이그레이션, KV/D1/AI 바인딩, 시크릿은 `wrangler secret put`으로만 안내, `.dev.vars` gitignore 처리.
 8. **CORS/자격증명 위생**: HTTP CORS 정확 매치, 자격증명 constant-time 비교 후 토큰 발급, 로그인 KV 스로틀(지수 sleep).
 9. **데이터 위생**: 12시간 보존을 로드 시점+cleanup에서 이중 적용, 인메모리 바운드(메시지 2000/공지 100/로그 500), SQL 바인드 파라미터, CSV 이스케이프, 다운로드 프록시가 API 키를 서버측에서 주입(키가 브라우저에 노출되지 않음).
@@ -264,7 +326,7 @@ const isObserver = (wsUrl.searchParams.get('sessionId') || '').startsWith('admin
 
 ## 9. 테스트·문서·운영 현황
 
-### 9.1 테스트 (22파일 / 320건)
+### 9.1 테스트 (분석 당시 22파일 / 320건 → 현재 35파일 / 496건)
 
 - **잘 커버된 영역**: `middleware/auth`, `rate-limiter`, `validate`, `utils/security`, `security-classifier`/`risk-scorer`/`logger`, DO 3종(목킹), `chat-room/messages`.
 - **사각지대**: `src/worker.js`(라우터), `handlers/preview.js`, `handlers/summary.js`, `utils/web-push.js`, `utils/fcm-auth.js`, `utils/logger.js` — import 자체가 없음. `handleWebSocket` 미테스트.
@@ -333,7 +395,7 @@ const isObserver = (wsUrl.searchParams.get('sessionId') || '').startsWith('admin
 
 ## 11. 결론
 
-Anonymous_Chat은 개인 프로젝트 수준을 넘어서는 설계 밀도(HMAC 서명, ephemeral secret, DO 경계, DeadDrop, RFC 준수 Web Push, 320 테스트)를 갖추고 있습니다. 그러나 **신뢰 경계가 문자열 관례(`admin_obs_` 접두사, 공개 `sessionId`)에 의존하는 지점**과 **출력 이스케이프의 단일 결함(`escapeHtml`)이 CSP 약화와 결합하는 지점**이 각각 CRITICAL 체인을 형성합니다. 이 두 축은 소수의 파일 수정으로 닫을 수 있으면서 프로젝트 성숙도를 크게 끌어올리는 고효율 개선 대상입니다.
+Anonymous_Chat은 개인 프로젝트 수준을 넘어서는 설계 밀도(HMAC 서명, ephemeral secret, DO 경계, DeadDrop, RFC 준수 Web Push, 496 테스트)를 갖추고 있습니다. 그러나 **신뢰 경계가 문자열 관례(`admin_obs_` 접두사, 공개 `sessionId`)에 의존하는 지점**과 **출력 이스케이프의 단일 결함(`escapeHtml`)이 CSP 약화와 결합하는 지점**이 각각 CRITICAL 체인을 형성합니다. 이 두 축은 소수의 파일 수정으로 닫을 수 있으면서 프로젝트 성숙도를 크게 끌어올리는 고효율 개선 대상입니다.
 
 동시에 lint 실패·CI 부재·배포 문서 모순은 "코드는 좋은데 파이프라인이 코드를 신뢰하지 않는" 상태를 보여줍니다. P0(보안 3건) → `lint` 복구 → CI 도입의 순서로 진행하면, 이후 모든 변경(본 보고서의 수정 포함)이 자동 검증 위에서 이루어질 수 있습니다.
 

@@ -31,7 +31,7 @@ Anonymous Chat의 개발 환경 설정 및 워크플로우입니다.
 | 테스트 | Vitest |
 | 린트 | ESLint (flat config) |
 | 포맷터 | Prettier |
-| 코드 통계 | 테스트 475케이스 (34파일), 서버 DO 3종 + Worker 라우터 |
+| 코드 통계 | 테스트 496케이스 (35파일), 서버 DO 3종 + Worker 라우터 |
 
 ---
 
@@ -39,7 +39,7 @@ Anonymous Chat의 개발 환경 설정 및 워크플로우입니다.
 
 - **Node.js** 18+
 - **npm** 9+
-- **Wrangler** 3+ (`npm install -g wrangler`)
+- **Wrangler** 4.x (`^4.110.0`, `npm install -g wrangler`)
 - **Git** 2.30+
 
 ## 2. 설치
@@ -56,7 +56,7 @@ cp .dev.vars.example .dev.vars
 
 ### 3.1 서버 (Worker)
 - `src/worker.js` — 메인 라우터, HTTP/WS 라우팅
-- `src/handlers/` — 7개 HTTP 핸들러 모듈
+- `src/handlers/` — 8개 HTTP 핸들러 모듈 (security.js 포함)
 - `src/middleware/auth.js` — 관리자 인증
 - `src/durable-objects/ChatRoom.js` — WebSocket 핵심
 - `src/durable-objects/ChannelRegistry.js` — 채널 메타데이터
@@ -78,14 +78,19 @@ cp .dev.vars.example .dev.vars
 - `public/_headers` — 보안 헤더 정의
 - `public/_redirects` — 리다이렉트 (현재 미사용, Worker가 처리)
 - `public/.well-known/security.txt` — RFC 9116
-- `public/js/chat.js` — 메인 클라이언트 (1023줄)
+- `public/js/chat.js` — 메인 클라이언트 (1147줄)
+- `public/js/chat-page.js` — 채팅 페이지 진입점
+- `public/js/announcements-page.js` — 공지 히스토리 페이지 진입점
 - `public/js/ui.js` — UI 매니저 + 5 mixin (render, menu, modal, edit, lightbox)
-- `public/js/admin.js` — 관리자 + 8 helper (csv, messages, users, channels, logs, announcements, render, utils)
+- `public/js/admin-core.js` / `admin-ui.js` / `admin-main.js` — 관리자 SPA (코어/UI/진입점)
+- `public/js/security-center.js` — 보안 센터
+- `public/js/pages/page-*.js` — 관리자 페이지 6종 (announcements, bans, channels, logs, messages, users)
 - `public/js/api-client.js` — fetch wrapper
 - `public/js/websocket.js` — WebSocket 매니저 (재연결, heartbeat, ephemeral 서명)
 - `public/js/signature.js` — Web Crypto API 기반 HMAC-SHA256 클라이언트 서명 헬퍼
 - `public/js/session.js` — 세션 ID, 닉네임
-- `public/js/theme.js` — 7 테마
+- `public/js/theme.js` — 9 테마
+- `public/js/theme-init.js` — 초기 테마 적용 (FOUC 방지)
 - `public/js/file-upload.js` — 파일 업로드 (100MB, 클립보드, 드래그앤드롭)
 - `public/js/search.js` — 메시지 검색 (키워드, 태그)
 - `public/js/push-manager.js` — VAPID + FCM
@@ -95,16 +100,16 @@ cp .dev.vars.example .dev.vars
 - `public/js/dead-drop.js` — 비밀 메시지
 - `public/js/sakura.js` — 벚꽃 파티클
 - `public/js/evernight.js` — GIF 파티클
-- `public/js/code-highlight.js` — Prism + highlight.js
+- `public/js/code-highlight.js` — Prism
 - `public/js/utils.js` — escapeHtml, isValidUrl, sendErrorReport
-- `public/css/themes.css` — 7 테마 정의 (816줄)
+- `public/css/themes.css` — 9 테마 정의 (869줄)
 - `public/css/base.css` — 기본 스타일
 - `public/css/animations.css` — 애니메이션
 - `public/css/code-highlight.css` — 코드 하이라이팅
 - `public/css/prism-tomorrow.css` — Prism One Dark
 - `public/css/tailwind.min.css` — 빌드된 Tailwind
 
-### 3.3 테스트 (34 파일, 475 cases)
+### 3.3 테스트 (35 파일, 496 cases)
 정확한 파일/케이스 수는 `npm test` 실행 결과를 기준으로 한다. 주요 영역:
 - `test/worker-routes.test.js` — Worker 라우터 스모크 (인증·레이트리밋·CSP)
 - `test/chat-room*.test.js` — ChatRoom DO (초기화·세션 키·메시지 캡·서명·관리자 라우트)
@@ -113,7 +118,7 @@ cp .dev.vars.example .dev.vars
 - `test/client-utils.test.js`, `test/client-modules.test.js` — 클라이언트 유틸
 
 ### 3.4 기타
-- `migrations/` — D1 스키마 (004까지: admin_activity_logs, audit_logs, error_logs, security_events, drop_admin_logs)
+- `migrations/` — D1 스키마 (005까지: 001 admin_logs, 002 log_tables, 003 security_events, 004 admin_logs DROP, 005 security_events strftime 인덱스 수정)
 - `docs/` — 상세 문서
 - `wrangler.toml` — Cloudflare 설정
 - `package.json` — npm 의존성 + 스크립트
@@ -126,7 +131,7 @@ cp .dev.vars.example .dev.vars
 
 ### 4.1 개발
 ```bash
-npm run dev            # 빌드 후 wrangler dev (localhost:8788, ENVIRONMENT=development)
+npm run dev            # 빌드 후 wrangler dev --var ENVIRONMENT:development --port 8788
 ```
 
 ### 4.2 빌드
@@ -152,6 +157,15 @@ npm run format         # Prettier
 ### 4.5 배포
 ```bash
 npm run deploy         # 빌드 + wrangler deploy
+```
+
+### 4.6 CI (GitHub Actions)
+`.github/workflows/ci.yml` — push/PR 시 Node 22에서 실행:
+```bash
+npm ci                 # 의존성 설치
+npm test               # 496 케이스
+npm run lint           # 0 errors
+npx wrangler deploy --dry-run
 ```
 
 ## 5. 코딩 컨벤션
@@ -221,7 +235,7 @@ if (!result.valid) return jsonError(result.error, 400, origin);
 ### 6.2 새 Durable Object
 1. `src/durable-objects/YourDO.js` 생성
 2. `wrangler.toml` `[[durable_objects.bindings]]` 추가
-3. `wrangler.toml` `[[durable_objects.migrations]]`에 클래스 추가
+3. `wrangler.toml` `[[migrations]]`에 클래스 추가
 4. `src/worker.js` `export { YourDO }` 추가
 5. `src/utils/do.js`에 `getYourDO()`, `forwardToYourDO()` 추가
 6. `docs/ARCHITECTURE.md` 업데이트
@@ -244,7 +258,7 @@ if (!result.valid) return jsonError(result.error, 400, origin);
 
 ### 7.1 Worker 로그
 ```bash
-wrangler dev              # 콘솔에 console.log 출력
+wrangler dev --var ENVIRONMENT:development --port 8788   # 콘솔에 console.log 출력
 wrangler tail             # 프로덕션 로그
 wrangler tail --format=json
 ```

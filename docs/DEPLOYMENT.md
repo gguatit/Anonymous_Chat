@@ -10,7 +10,7 @@ Anonymous Chat을 Cloudflare Workers(정적 자산 포함)에 배포하는 절�
 - [1. 사전 준비](#1-사전-준비)
 - [2. 시크릿 설정](#2-시크릿-설정)
 - [3. D1 데이터베이스 설정](#3-d1-데이터베이스-설정)
-- [4. KV 네임스페이스](#4-kv-네임스페이스-선택)
+- [4. KV 네임스페이스](#4-kv-네임스페이스-필수)
 - [5. Durable Objects 바인딩](#5-durable-objects-바인딩)
 - [6. AI 바인딩](#6-ai-바인딩)
 - [7. 빌드](#7-빌드)
@@ -33,7 +33,7 @@ Anonymous Chat을 Cloudflare Workers(정적 자산 포함)에 배포하는 절�
 | 1 | 사전 준비 (계정, 도구) | 5분 |
 | 2 | 시크릿 설정 (8종) | 10분 |
 | 3 | D1 데이터베이스 생성 + 마이그레이션 | 5분 |
-| 4 | KV 네임스페이스 (선택) | 2분 |
+| 4 | KV 네임스페이스 (ADMIN_TOKENS 필수 + PUSH_SUBSCRIPTIONS) | 2분 |
 | 5-6 | DO/AI 바인딩 (자동) | 0분 |
 | 7 | 빌드 | 1분 |
 | 8 | 로컬 테스트 | 10분 |
@@ -112,8 +112,8 @@ wrangler d1 create anonymous-chat-db
 binding = "DB_ADMIN"
 database_name = "anonymous-chat-db"
 database_id = "여기에-위에서-받은-ID"
-migrations_dir = "migrations"
 ```
+> `migrations_dir`는 설정하지 않습니다 (기본값 `migrations/` 사용).
 
 ### 3.3 마이그레이션 실행
 ```bash
@@ -125,17 +125,22 @@ wrangler d1 migrations apply anonymous-chat-db --local
 ```
 
 생성되는 테이블 (migrations/ 적용 순서대로):
-- `admin_logs` (001) — 레거시, 실제로는 미사용 (002의 `admin_activity_logs`로 대체)
 - `admin_activity_logs` (002) — 관리자 로그인/로그아웃/활동
 - `audit_logs` (002) — 관리자 액션 (kick, edit, delete 등)
 - `error_logs` (002) — 클라이언트/서버 오류
 - `security_events` (003) — 보안 이벤트 (90일 보존)
 
-## 4. KV 네임스페이스 (선택)
+그 외 마이그레이션:
+- `001_create_admin_logs.sql` — 레거시 `admin_logs` (004에서 삭제됨)
+- `004_drop_admin_logs.sql` — 레거시 `admin_logs` 테이블 DROP
+- `005_fix_security_events_index.sql` — `security_events`의 비결정적 `strftime` 부분 인덱스 재생성
+
+## 4. KV 네임스페이스 (필수)
 
 ### 4.1 생성
-푸시 알림 구독 저장용 (선택적, Workers 기본 동작은 메모리/DO Storage).
+`ADMIN_TOKENS`(관리자 토큰 발급/검증/폐기, 필수)와 `PUSH_SUBSCRIPTIONS`(푸시 구독 저장, 푸시 사용 시 필수) 두 개가 필요합니다.
 ```bash
+wrangler kv:namespace create ADMIN_TOKENS
 wrangler kv:namespace create PUSH_SUBSCRIPTIONS
 # 출력: id = "yyyy"
 ```
@@ -143,13 +148,17 @@ wrangler kv:namespace create PUSH_SUBSCRIPTIONS
 ### 4.2 `wrangler.toml` 업데이트
 ```toml
 [[kv_namespaces]]
+binding = "ADMIN_TOKENS"
+id = "여기에-ID"
+
+[[kv_namespaces]]
 binding = "PUSH_SUBSCRIPTIONS"
 id = "여기에-ID"
 ```
 
 ## 5. Durable Objects 바인딩
 
-`wrangler.toml`에 이미 정의됨 (수정 불필요):
+`wrangler.toml`에 이미 정의됨 (수정 불필요, `compatibility_date = "2026-07-15"` 기준):
 ```toml
 [[durable_objects.bindings]]
 name = "CHAT_ROOM"
@@ -212,6 +221,9 @@ npm run build
 }
 ```
 
+### 7.3 Workers Builds (Git 연동 시)
+Workers Builds의 Build command가 **비어 있으면** 저장소에 커밋된 `public/js/*.bundle.js`, `public/js/chunks/*`, `public/css/tailwind.min.css`가 그대로 배포됩니다. 따라서 **푸시 전에 로컬에서 `npm run build`를 실행해 산출물을 커밋**해야 합니다. 빌드를 CI에서 자동화하려면 Dashboard의 Build command를 `npm run build`로 설정하세요.
+
 ## 8. 로컬 개발
 
 ### 8.1 `.dev.vars` 파일
@@ -244,7 +256,7 @@ npm run dev
 Cloudflare Dashboard → Workers & Pages → 기존 Worker(`anonymous-chat`) → Settings → Builds → Git 저장소 연결 (Workers Builds).
 
 **빌드 설정**:
-- Build command: `npm run build`
+- Build command: (기본값 비어 있음 — 커밋된 산출물을 그대로 배포. Dashboard에서 `npm run build`로 설정 가능)
 - Deploy command: `npx wrangler deploy`
 - Root directory: `/`
 
@@ -328,15 +340,18 @@ wrangler rollback [deployment-id]
 
 ### 13.4 Cache 전략
 - OG Preview: 1시간 (Edge + Client LRU 50)
-- 정적 자산: Cloudflare 자동 (1년 immutable)
+- 정적 자산: `/js/*`, `/css/*`는 `public/_headers`로 `max-age=3600, must-revalidate` (그 외 Cloudflare 자동)
 - API 응답: 대부분 캐시하지 않음 (실시간성 우선)
 
 ## 14. 트러블슈팅
 
 ### 14.1 WebSocket 연결 실패
-- Origin 헤더 확인 → `SECURITY.ALLOWED_ORIGINS` 추가 (개발은 `ENVIRONMENT=development` + `http://localhost:8788`만 허용)
+- `Origin` 필수(fail-closed): 누락 또는 허용 목록 외면 `403` → `SECURITY.ALLOWED_ORIGINS` 확인 (개발은 `ENVIRONMENT=development` + `http://localhost:8788`만 허용)
+- `ticket` 쿼리 필수: `POST /api/turnstile/verify`(body에 `sessionId`)로 발급받은 HMAC 티켓(12시간). 누락/불일치 시 연결 거부
+- `admin_obs_*` 옵저버 세션은 `token` 쿼리(관리자 토큰) 필요, 실패 시 `401`
 - `/api/check-ban` 200 확인
 - `HMAC_SECRET` 일치 확인
+- 로컬 개발 포트는 `8788` (`wrangler dev --var ENVIRONMENT:development --port 8788`)
 
 ### 14.2 푸시 알림 미수신
 - VAPID 키 일치 확인
@@ -359,7 +374,7 @@ wrangler rollback [deployment-id]
 - [ ] 시크릿 8종 모두 설정
 - [ ] D1 마이그레이션 적용
 - [ ] DO 마이그레이션 적용
-- [ ] KV 네임스페이스 생성 (선택)
+- [ ] KV 네임스페이스 생성 (`ADMIN_TOKENS` 필수, `PUSH_SUBSCRIPTIONS`는 푸시 사용 시)
 - [ ] 도메인 연결
 - [ ] SSL/TLS Full (Strict)
 - [ ] CSP 위반 없음 (Cloudflare Analytics)
