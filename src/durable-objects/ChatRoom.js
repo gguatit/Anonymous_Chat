@@ -565,6 +565,7 @@ export class ChatRoom {
 
         if (this.emptySince !== null && this.channelSlug !== '0') {
             this.emptySince = null;
+            await this.scheduleEmptyAlarm();
             await this.touchRegistry();
         }
 
@@ -1427,6 +1428,7 @@ export class ChatRoom {
         }
         if (sessionsRemoved && this.channelSlug !== '0' && this.sessions.size === 0 && this.emptySince === null) {
             this.emptySince = Date.now();
+            await this.scheduleEmptyAlarm();
         }
 
         let sessionKeysChanged = false;
@@ -1497,8 +1499,30 @@ export class ChatRoom {
 
         if (this.emptySince !== null && this.channelSlug !== '0') {
             if (now - this.emptySince > CHANNEL.EMPTY_TTL) {
-                this.deleteChannel();
+                await this.deleteChannel();
+            } else {
+                await this.scheduleEmptyAlarm();
             }
+        }
+    }
+
+    // Fires even when the DO is evicted, unlike setInterval-based cleanup
+    async alarm() {
+        await this.ensureInitialized();
+        await this.cleanup();
+        await this.scheduleEmptyAlarm();
+    }
+
+    async scheduleEmptyAlarm() {
+        if (this.channelSlug === '0') return;
+        try {
+            if (this.emptySince === null) {
+                await this.state.storage.deleteAlarm();
+            } else {
+                await this.state.storage.setAlarm(this.emptySince + CHANNEL.EMPTY_TTL + 1000);
+            }
+        } catch (error) {
+            console.error('Failed to schedule channel empty alarm:', error);
         }
     }
 
@@ -1541,6 +1565,10 @@ export class ChatRoom {
         } catch (error) {
             console.error('Failed to delete channel storage:', error);
         }
+
+        try {
+            await this.state.storage.deleteAlarm();
+        } catch (_e) { /* no alarm set */ }
 
         try {
             const registryId = this.env.CHANNEL_REGISTRY.idFromName('registry');

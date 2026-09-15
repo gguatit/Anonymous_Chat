@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChannelRegistry } from '../src/durable-objects/ChannelRegistry.js';
+import { CHANNEL } from '../src/config/constants.js';
 
 function mockState() {
     const storage = new Map();
@@ -214,7 +215,7 @@ describe('ChannelRegistry', () => {
 
     describe('admin delete', () => {
         it('destroys the channel DO along with the registry entry', async () => {
-            registry.channels.set('test', { name: 'test', createdBy: 'x', createdAt: 1000, lastActive: 2000 });
+            registry.channels.set('test', { name: 'test', createdBy: 'x', createdAt: 1000, lastActive: Date.now() });
             const roomFetch = vi.fn(async () => new Response(JSON.stringify({ success: true }), {
                 headers: { 'Content-Type': 'application/json' }
             }));
@@ -249,6 +250,68 @@ describe('ChannelRegistry', () => {
             const res = await registry.fetch(req);
             expect(res.status).toBe(200);
             expect((await res.json()).success).toBe(true);
+        });
+    });
+
+    describe('cleanup and alarms', () => {
+        it('removes stale empty channels and destroys their DOs', async () => {
+            registry.channels.set('stale', { name: 'stale', createdBy: 'x', createdAt: 1, lastActive: Date.now() - CHANNEL.EMPTY_TTL - 60000 });
+            const roomFetch = vi.fn(async () => new Response(JSON.stringify({ activeConnections: 0 }), {
+                headers: { 'Content-Type': 'application/json' }
+            }));
+            env.CHAT_ROOM.get = vi.fn(() => ({ fetch: roomFetch }));
+
+            await registry.alarm();
+
+            expect(registry.channels.has('stale')).toBe(false);
+            const destroyReq = roomFetch.mock.calls
+                .map(c => c[0])
+                .find(r => new URL(r.url).pathname === '/destroy');
+            expect(destroyReq).toBeTruthy();
+            expect(destroyReq.headers.get('X-HMAC-Secret')).toBe('test-secret');
+        });
+
+        it('keeps rooms with active connections and refreshes lastActive', async () => {
+            const old = Date.now() - CHANNEL.EMPTY_TTL - 60000;
+            registry.channels.set('busy', { name: 'busy', createdBy: 'x', createdAt: 1, lastActive: old });
+            env.CHAT_ROOM.get = vi.fn(() => ({
+                fetch: vi.fn(async () => new Response(JSON.stringify({ activeConnections: 3 }), {
+                    headers: { 'Content-Type': 'application/json' }
+                }))
+            }));
+
+            await registry.alarm();
+
+            expect(registry.channels.has('busy')).toBe(true);
+            expect(registry.channels.get('busy').lastActive).toBeGreaterThan(old);
+        });
+
+        it('keeps channels when emptiness cannot be verified', async () => {
+            registry.channels.set('ghost', { name: 'ghost', createdBy: 'x', createdAt: 1, lastActive: Date.now() - CHANNEL.EMPTY_TTL - 60000 });
+            env.CHAT_ROOM.get = vi.fn(() => ({
+                fetch: vi.fn(async () => { throw new Error('DO unavailable'); })
+            }));
+
+            await registry.alarm();
+
+            expect(registry.channels.has('ghost')).toBe(true);
+        });
+
+        it('schedules an alarm for the earliest expiry and clears it when empty', async () => {
+            state.storage.setAlarm = vi.fn(() => Promise.resolve());
+            state.storage.deleteAlarm = vi.fn(() => Promise.resolve());
+            const now = Date.now();
+            registry.channels.set('a', { name: 'a', createdBy: 'x', createdAt: 1, lastActive: now });
+            registry.channels.set('b', { name: 'b', createdBy: 'x', createdAt: 1, lastActive: now + 60000 });
+            registry._scheduledAt = undefined;
+
+            await registry.scheduleCleanupAlarm();
+            expect(state.storage.setAlarm).toHaveBeenCalledWith(now + CHANNEL.EMPTY_TTL + 1000);
+
+            registry.channels.clear();
+            registry._scheduledAt = undefined;
+            await registry.scheduleCleanupAlarm();
+            expect(state.storage.deleteAlarm).toHaveBeenCalled();
         });
     });
 

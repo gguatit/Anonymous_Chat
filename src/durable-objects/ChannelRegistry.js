@@ -16,6 +16,7 @@ export class ChannelRegistry {
         this.env = env;
         this.channels = new Map();
         this.initialized = false;
+        this._scheduledAt = undefined;
         this.cleanupInterval = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
     }
 
@@ -50,6 +51,8 @@ export class ChannelRegistry {
 
     async fetch(request) {
         await this.initialize();
+        // Opportunistic sweep so stale channels are reaped even without alarms
+        await this.cleanup();
         const url = new URL(request.url);
 
         // Read-only existence lookup for the worker's /ws guard; no internal token required
@@ -340,27 +343,64 @@ export class ChannelRegistry {
         }
     }
 
+    // Alarms fire even after the DO is evicted, so cleanup actually runs
+    async alarm() {
+        await this.initialize();
+        await this.cleanup();
+        await this.scheduleCleanupAlarm();
+    }
+
+    async scheduleCleanupAlarm() {
+        let next = Infinity;
+        for (const info of this.channels.values()) {
+            next = Math.min(next, (info.lastActive || 0) + CHANNEL.EMPTY_TTL + 1000);
+        }
+        const target = next === Infinity ? null : next;
+        if (this._scheduledAt === target) return;
+        this._scheduledAt = target;
+        try {
+            if (target === null) {
+                await this.state.storage.deleteAlarm();
+            } else {
+                await this.state.storage.setAlarm(target);
+            }
+        } catch (error) {
+            this._scheduledAt = undefined;
+            console.error('Failed to schedule registry cleanup alarm:', error);
+        }
+    }
+
     async cleanup() {
         if (!this.initialized) return;
         const now = Date.now();
         let changed = false;
 
         for (const [slug, info] of this.channels) {
-            if (now - info.lastActive > CHANNEL.EMPTY_TTL) {
-                this.channels.delete(slug);
+            if (now - info.lastActive <= CHANNEL.EMPTY_TTL) continue;
+
+            // lastActive only tracks joins, so verify the room is actually empty first
+            const stats = await this.fetchChannelInfo(slug).catch(() => null);
+            if (stats && (stats.activeConnections ?? 0) > 0) {
+                info.lastActive = now;
                 changed = true;
-                try {
-                    const roomId = this.env.CHAT_ROOM.idFromName('channel:' + slug);
-                    const room = this.env.CHAT_ROOM.get(roomId);
-                    await room.fetch(new Request('https://dummy/destroy', {
-                        headers: { 'X-HMAC-Secret': this.env.HMAC_SECRET }
-                    }));
-                } catch (_e) { /* DO delete best-effort */ }
+                continue;
             }
+            if (!stats) continue; // fail-safe: keep the channel when emptiness cannot be verified
+
+            this.channels.delete(slug);
+            changed = true;
+            try {
+                const roomId = this.env.CHAT_ROOM.idFromName('channel:' + slug);
+                const room = this.env.CHAT_ROOM.get(roomId);
+                await room.fetch(new Request('https://dummy/destroy', {
+                    headers: { 'X-HMAC-Secret': this.env.HMAC_SECRET }
+                }));
+            } catch (_e) { /* DO delete best-effort */ }
         }
 
         if (changed) {
             await this.persist();
         }
+        await this.scheduleCleanupAlarm();
     }
 }

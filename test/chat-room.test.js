@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatRoom } from '../src/durable-objects/ChatRoom.js';
+import { CHANNEL } from '../src/config/constants.js';
 
 function mockState() {
     const storage = new Map();
@@ -441,6 +442,32 @@ describe('ChatRoom', () => {
 
             expect(room.bannedIPs.has('10.0.0.1')).toBe(false);
             expect(room.bannedIPs.has('10.0.0.2')).toBe(true);
+        });
+
+        it('schedules an empty-channel alarm and clears it when the room is reoccupied', async () => {
+            state.storage.setAlarm = vi.fn(() => Promise.resolve());
+            state.storage.deleteAlarm = vi.fn(() => Promise.resolve());
+            room.channelSlug = 'test-room';
+            room.emptySince = Date.now();
+
+            await room.scheduleEmptyAlarm();
+            expect(state.storage.setAlarm).toHaveBeenCalledWith(room.emptySince + CHANNEL.EMPTY_TTL + 1000);
+
+            room.emptySince = null;
+            await room.scheduleEmptyAlarm();
+            expect(state.storage.deleteAlarm).toHaveBeenCalled();
+        });
+
+        it('alarm() deletes the channel once the empty TTL has passed', async () => {
+            state.storage.deleteAll = vi.fn(() => Promise.resolve());
+            state.storage.deleteAlarm = vi.fn(() => Promise.resolve());
+            room.channelSlug = 'test-room';
+            room.emptySince = Date.now() - CHANNEL.EMPTY_TTL - 1000;
+
+            await room.alarm();
+
+            expect(state.storage.deleteAll).toHaveBeenCalled();
+            expect(room.channelSlug).toBe('0');
         });
     });
 
