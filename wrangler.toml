@@ -1,6 +1,6 @@
 name = "anonymous-chat"
 main = "src/worker.js"
-compatibility_date = "2025-05-28"
+compatibility_date = "2026-07-15"
 
 # 관리자 인증 시크릿 (필수 설정!)
 # npx wrangler secret put ADMIN_ID
