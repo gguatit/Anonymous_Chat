@@ -406,8 +406,12 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             forwardBody.timestamp = timestamp;
         }
         if (request.method === 'POST' || request.method === 'PUT') {
-            if (Object.hasOwn(body, 'isEmergency')) {
-                forwardBody.isEmergency = !!body.isEmergency;
+            // Accept both isEmergency (canonical) and emergency (legacy client field)
+            const emergencyValue = Object.hasOwn(body, 'isEmergency')
+                ? body.isEmergency
+                : (Object.hasOwn(body, 'emergency') ? body.emergency : undefined);
+            if (emergencyValue !== undefined) {
+                forwardBody.isEmergency = !!emergencyValue;
             }
             if (Object.hasOwn(body, 'emergencyUntil')) {
                 forwardBody.emergencyUntil = body.emergencyUntil ? Number(body.emergencyUntil) : null;

@@ -257,10 +257,15 @@ export function renderAnnouncements(announcements) {
         const ts = new Date(a.timestamp).toLocaleString('ko-KR');
         const emergency = a.isEmergency ? '<span class="text-xs bg-red-600 text-white font-bold border border-red-500 px-1.5 py-0.5 rounded ml-1 animate-pulse">긴급</span>' : '';
         const content = h(a.content).replace(/\n/g, '<br>').replace(/(https?:\/\/[^\s<>"']+)/g, '<a href="$1" target="_blank" rel="noopener" class="text-blue-400 hover:text-blue-300 underline break-all">$1</a>');
+        const delBtn = `<button class="delete-announce-btn text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded shrink-0" data-timestamp="${a.timestamp}">삭제</button>`;
         return a.isEmergency
-            ? `<div class="bg-red-900/30 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-red-500"><div class="flex-1"><div class="text-xs text-red-300 font-semibold mb-1">${ts}${emergency}</div><div class="text-sm text-red-100">${content}</div></div></div>`
-            : `<div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4"><div class="flex-1"><div class="text-xs text-gray-400 mb-1">${ts}</div><div class="text-sm text-gray-200">${content}</div></div></div>`;
+            ? `<div class="bg-red-900/30 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-red-500"><div class="flex-1"><div class="text-xs text-red-300 font-semibold mb-1">${ts}${emergency}</div><div class="text-sm text-red-100">${content}</div></div>${delBtn}</div>`
+            : `<div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4"><div class="flex-1"><div class="text-xs text-gray-400 mb-1">${ts}</div><div class="text-sm text-gray-200">${content}</div></div>${delBtn}</div>`;
     }).join('');
+
+    container.querySelectorAll('.delete-announce-btn').forEach(b => {
+        b.addEventListener('click', () => window._deleteAnnouncement && window._deleteAnnouncement(Number(b.dataset.timestamp)));
+    });
 }
 
 export function renderChannels(channels) {

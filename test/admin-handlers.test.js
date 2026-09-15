@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleAdminLogout } from '../src/handlers/admin.js';
+import { handleAdminLogout, handleAdminAnnounce } from '../src/handlers/admin.js';
 import { generateAdminToken } from '../src/middleware/auth.js';
 
 function mockKv() {
@@ -105,5 +105,58 @@ describe('handleAdminLogout', () => {
         });
         const res = await handleAdminLogout(req, env, cors());
         expect(res.status).toBe(401);
+    });
+});
+
+describe('handleAdminAnnounce emergency field mapping', () => {
+    let env;
+    let forwarded;
+
+    beforeEach(async () => {
+        env = mockEnv();
+        forwarded = [];
+        env.CHAT_ROOM = {
+            idFromName: vi.fn(() => 'do-id'),
+            get: vi.fn(() => ({
+                fetch: vi.fn(async (request) => {
+                    forwarded.push(await request.clone().json());
+                    return new Response(JSON.stringify({ success: true }), { status: 200 });
+                }),
+            })),
+        };
+        env._token = await generateAdminToken(env);
+    });
+
+    async function sendAnnounce(body, method = 'POST') {
+        const req = new Request('https://example.com/api/admin/announce', {
+            method,
+            headers: {
+                'Authorization': `Bearer ${env._token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        });
+        return await handleAdminAnnounce(req, env, cors());
+    }
+
+    it('maps the legacy "emergency" field to isEmergency for the DO', async () => {
+        const future = Date.now() + 3600000;
+        const res = await sendAnnounce({ content: '긴급 공지', emergency: true, emergencyUntil: future });
+        expect(res.status).toBe(200);
+        expect(forwarded.length).toBe(1);
+        expect(forwarded[0].isEmergency).toBe(true);
+        expect(forwarded[0].emergencyUntil).toBe(future);
+    });
+
+    it('passes through the canonical isEmergency field', async () => {
+        const res = await sendAnnounce({ content: '일반 공지', isEmergency: false });
+        expect(res.status).toBe(200);
+        expect(forwarded[0].isEmergency).toBe(false);
+    });
+
+    it('does not invent isEmergency when neither field is present', async () => {
+        const res = await sendAnnounce({ content: '공지' });
+        expect(res.status).toBe(200);
+        expect(Object.hasOwn(forwarded[0], 'isEmergency')).toBe(false);
     });
 });

@@ -7,6 +7,19 @@ function debounce(fn, delay) {
 }
 
 export async function init(core) {
+    window._deleteAnnouncement = async (timestamp) => {
+        if (!Number.isFinite(timestamp)) return;
+        if (!confirm('이 공지사항을 삭제할까요?')) return;
+        try {
+            const res = await ApiClient.del('/api/admin/announce', { timestamp });
+            if (res && res.success === false) throw new Error(res.error || 'delete failed');
+            core.showNotification('공지사항 삭제 완료', 'success');
+            await refresh(core);
+        } catch (error) {
+            console.error('Failed to delete announcement:', error);
+            core.showNotification('공지 삭제 실패', 'error');
+        }
+    };
     document.getElementById('announce-preview-btn')?.addEventListener('click', () => {
         const content = document.getElementById('admin-announce-input')?.value || '';
         const p = document.getElementById('announce-preview'), pc = document.getElementById('announce-preview-content');
@@ -26,7 +39,8 @@ export async function init(core) {
             const emergencyUntil = emergency && expiresInt > 0 ? Date.now() + expiresInt : null;
             const expiresAt = !emergency && expiresInt > 0 ? Date.now() + expiresInt : null;
             await ApiClient.post('/api/admin/announce', {
-                content, emergency,
+                content,
+                isEmergency: !!emergency,
                 scheduleAt: scheduleAt ? new Date(scheduleAt).getTime() : null,
                 expiresAt,
                 emergencyUntil,
