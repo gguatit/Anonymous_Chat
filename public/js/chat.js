@@ -1,5 +1,4 @@
 // Main Chat Client Application
-/* global hljs */
 import ApiClient from './api-client.js';
 import { SessionManager } from './session.js?v=1.0.4';
 import { WebSocketManager } from './websocket.js?v=1.0.3';
@@ -918,8 +917,6 @@ class ChatClient {
                 contentDiv.querySelectorAll('pre.code-block code[class*="language-"]').forEach(el => {
                     if (typeof Prism !== 'undefined') {
                         try { Prism.highlightElement(el); } catch { /* Prism error */ }
-                    } else if (typeof hljs !== 'undefined') {
-                        try { hljs.highlightElement(el); } catch { /* hljs error */ }
                     }
                 });
             }, 50);
