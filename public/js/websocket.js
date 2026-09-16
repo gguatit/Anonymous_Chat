@@ -22,6 +22,8 @@ export class WebSocketManager {
         this.manualClose = false;
         this.channelId = '0'; // '0' = main room
         this.sessionSecret = null;
+        this._socketOpened = false;
+        this._failedUpgrades = 0;
         // Heartbeat timing (visible vs hidden)
         this.visibleHeartbeatInterval = WS_RECONNECT.HEARTBEAT_VISIBLE;
         this.visibleHeartbeatTimeout = WS_RECONNECT.HEARTBEAT_TIMEOUT_VISIBLE;
@@ -69,6 +71,7 @@ export class WebSocketManager {
                 return;
             }
 
+            this._socketOpened = false;
             this.ws = new WebSocket(wsUrl);
 
             this.ws.onopen = () => this.handleOpen();
@@ -84,6 +87,8 @@ export class WebSocketManager {
 
     handleOpen() {
         this.reconnectAttempts = 0;
+        this._socketOpened = true;
+        this._failedUpgrades = 0;
 
         // Connection succeeded - clear any stale ban tokens
         this.clearKickToken();
@@ -171,6 +176,21 @@ export class WebSocketManager {
             this.isReconnecting = true;
             this.scheduleReconnect();
             return;
+        }
+
+        // Upgrade never completed (e.g. 403 for a stale Turnstile ticket): after a couple of
+        // failures ask for fresh verification instead of hammering the server forever
+        if (!this._socketOpened && !this.manualClose) {
+            this._failedUpgrades++;
+            if (this._failedUpgrades >= 2) {
+                this._failedUpgrades = 0;
+                this.isReconnecting = false;
+                sessionStorage.removeItem('chatTurnstileTicket');
+                sessionStorage.removeItem('turnstileVerified');
+                sessionStorage.removeItem('turnstileVerifiedAt');
+                this.messageHandler.onAuthExpired?.();
+                return;
+            }
         }
 
         // Don't reconnect if:

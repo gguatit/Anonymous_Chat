@@ -180,6 +180,20 @@ export class TurnstileManager {
         this.resetWidget();
     }
 
+    // Called when the server rejects a stale ticket: force re-verification before reconnecting
+    reverify() {
+        sessionStorage.removeItem(this.STORAGE_KEY);
+        sessionStorage.removeItem(this.SESSION_TIMESTAMP_KEY);
+        sessionStorage.removeItem('chatTurnstileTicket');
+        this.verified = false;
+        this.showModal();
+        if (typeof turnstile !== 'undefined' && this.widgetId !== null) {
+            turnstile.reset(this.widgetId);
+        } else {
+            this.renderWidget();
+        }
+    }
+
     resetWidget() {
         if (typeof turnstile !== 'undefined' && this.widgetId) {
             turnstile.reset(this.widgetId);

@@ -61,7 +61,8 @@ class ChatClient {
             {
                 onMessage: (data) => this.handleMessage(data),
                 onConnectionChange: (status, attempt, max) => this.handleConnectionChange(status, attempt, max),
-                onError: (message) => this.ui.displayError(message)
+                onError: (message) => this.ui.displayError(message),
+                onAuthExpired: () => { if (this.turnstile) this.turnstile.reverify(); }
             },
             this.sessionManager
         );

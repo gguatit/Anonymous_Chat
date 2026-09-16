@@ -178,7 +178,7 @@ export const SEARCH_CLIENT = {
 
 // Client-side Turnstile configuration
 export const TURNSTILE_CLIENT = {
-    SESSION_AGE_MS: 4 * 60 * 60 * 1000, // 4 hours
+    SESSION_AGE_MS: 90 * 60 * 1000, // 1.5 hours — must stay below the server ticket TTL (2h)
     HIDE_DELAY_MS: 800,
     POLL_MAX_ATTEMPTS: 50,
     POLL_INTERVAL_MS: 100,
