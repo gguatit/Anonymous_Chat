@@ -75,6 +75,8 @@ KALPHA_API_URL = "https://api.kalpha.kr"
 # Observability configuration
 [observability]
 enabled = true
+# Keep credentials out of persisted request URLs (admin token / tickets / dead-drop IDs)
+redact_query_string = true
 
 [observability.logs]
 enabled = true
