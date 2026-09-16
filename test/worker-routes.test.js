@@ -65,7 +65,10 @@ function makeEnv(overrides = {}) {
             delete: vi.fn(async () => {}),
         },
         DB_ADMIN: {
-            prepare: vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn(async () => ({})) })) })),
+            prepare: vi.fn(() => ({
+                bind: vi.fn(() => ({ run: vi.fn(async () => ({})) })),
+                all: vi.fn(async () => ({ results: [] })),
+            })),
         },
         TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
         FILE_UPLOAD_URL: 'https://files.example.com/api/files',
@@ -101,6 +104,18 @@ describe('worker router smoke (real worker.fetch)', () => {
     it('serves /metrics with 200', async () => {
         const res = await worker.fetch(makeRequest('/metrics'), env);
         expect(res.status).toBe(200);
+    });
+
+    it('serves /api/announcements from D1', async () => {
+        env.DB_ADMIN.prepare.mockImplementation(() => ({
+            all: vi.fn(async () => ({
+                results: [{ timestamp: 123, content: '공지 내용', is_emergency: 1 }]
+            })),
+        }));
+        const res = await worker.fetch(makeRequest('/api/announcements'), env);
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body).toEqual([{ timestamp: 123, content: '공지 내용', isEmergency: true }]);
     });
 
     it('serves /api/config from env values', async () => {

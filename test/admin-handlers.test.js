@@ -18,6 +18,8 @@ function mockDb() {
         prepare: vi.fn(function () { return this; }),
         bind: vi.fn(function () { return this; }),
         run: vi.fn(async () => ({ changes: 0, meta: { changes: 0 } })),
+        first: vi.fn(async () => null),
+        all: vi.fn(async () => ({ results: [] })),
     };
 }
 
@@ -165,6 +167,33 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         const res = await sendAnnounce({ content: '영구 공지', expiresAt: Date.now() + 3600000 });
         expect(res.status).toBe(200);
         expect(Object.hasOwn(forwarded[0], 'expiresAt')).toBe(false);
+    });
+
+    it('returns 404 when updating a missing announcement', async () => {
+        const res = await sendAnnounce({ content: '수정', timestamp: 12345 }, 'PUT');
+        expect(res.status).toBe(404);
+        expect(forwarded.length).toBe(0);
+    });
+
+    it('updates the D1 row and forwards the merged values (PUT)', async () => {
+        env.DB_ADMIN.first.mockResolvedValue({ content: 'old content', is_emergency: 0 });
+        const res = await sendAnnounce({ content: 'new content', timestamp: 12345 }, 'PUT');
+        expect(res.status).toBe(200);
+        expect(forwarded[0]).toMatchObject({ content: 'new content', timestamp: 12345 });
+    });
+
+    it('returns 404 when deleting a missing announcement', async () => {
+        const res = await sendAnnounce({ timestamp: 12345 }, 'DELETE');
+        expect(res.status).toBe(404);
+        expect(forwarded.length).toBe(0);
+    });
+
+    it('forwards the latest remaining announcement as nextAnnouncement on delete', async () => {
+        env.DB_ADMIN.run.mockResolvedValue({ changes: 1, meta: { changes: 1 } });
+        env.DB_ADMIN.first.mockResolvedValue({ timestamp: 555, content: '남은 공지', is_emergency: 0 });
+        const res = await sendAnnounce({ timestamp: 12345 }, 'DELETE');
+        expect(res.status).toBe(200);
+        expect(forwarded[0].nextAnnouncement).toEqual({ timestamp: 555, content: '남은 공지', isEmergency: false });
     });
 });
 

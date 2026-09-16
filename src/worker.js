@@ -111,8 +111,22 @@ const publicRoutes = [
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.ANNOUNCEMENTS, 'announcements')) {
             return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
         }
-        const resp = await forwardToDO(env, '/announcement-history');
-        return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+        // Announcements are stored in D1 for durable storage (M24)
+        try {
+            const { results } = await env.DB_ADMIN.prepare(
+                'SELECT timestamp, content, is_emergency FROM announcements ORDER BY timestamp DESC LIMIT 100'
+            ).all();
+            const list = (results || []).map(r => ({
+                content: r.content,
+                timestamp: r.timestamp,
+                isEmergency: !!r.is_emergency
+            }));
+            return new Response(JSON.stringify(list), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
+        } catch (error) {
+            console.error('Announcements D1 read failed:', error);
+            const resp = await forwardToDO(env, '/announcement-history');
+            return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+        }
     }],
     ['/api/emergency-announcement', 'GET', async (req, env, cors) => {
         if (!checkRateLimit(req.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.ANNOUNCEMENTS, 'emergency-announcement')) {

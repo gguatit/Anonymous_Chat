@@ -646,7 +646,7 @@ export async function handleAdminAnnounce(chatRoom, request) {
 
         chatRoom.currentAnnouncement = {
             content: sanitizeInput(content),
-            timestamp: Date.now(),
+            timestamp: Number(data.timestamp) || Date.now(),
             isEmergency,
             emergencyUntil
         };
@@ -657,7 +657,12 @@ export async function handleAdminAnnounce(chatRoom, request) {
         if (chatRoom.announcementHistory.length > ADMIN.ANNOUNCEMENT_HISTORY_MAX) {
             chatRoom.announcementHistory = chatRoom.announcementHistory.slice(0, ADMIN.ANNOUNCEMENT_HISTORY_MAX);
         }
-        await chatRoom.state.storage.put('announcementHistory', chatRoom.announcementHistory);
+        // D1 is the source of truth for history now; keep the DO copy best-effort so a full value cannot break sends (M24)
+        try {
+            await chatRoom.state.storage.put('announcementHistory', chatRoom.announcementHistory);
+        } catch (error) {
+            console.error('announcement history persist failed:', error);
+        }
 
         if (scheduleAt && scheduleAt > Date.now()) {
             chatRoom.currentAnnouncement.scheduleAt = scheduleAt;
@@ -718,38 +723,41 @@ export async function handleAdminEditAnnounce(chatRoom, request) {
             });
         }
 
+        const sanitized = content ? sanitizeInput(content) : '';
         const announcementIndex = chatRoom.announcementHistory.findIndex(a => a.timestamp === timestamp);
-        if (announcementIndex === -1) {
-            return new Response(JSON.stringify({ error: 'Announcement not found' }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        const wasEmergency = chatRoom.announcementHistory[announcementIndex].isEmergency;
-        if (content) {
-            chatRoom.announcementHistory[announcementIndex].content = sanitizeInput(content);
-        }
-        if (isEmergency !== undefined) {
-            chatRoom.announcementHistory[announcementIndex].isEmergency = isEmergency;
-            chatRoom.announcementHistory[announcementIndex].emergencyUntil = emergencyUntil;
-        }
-        await chatRoom.state.storage.put('announcementHistory', chatRoom.announcementHistory);
-
-        if (chatRoom.currentAnnouncement && chatRoom.currentAnnouncement.timestamp === timestamp) {
-            if (content) {
-                chatRoom.currentAnnouncement.content = chatRoom.announcementHistory[announcementIndex].content;
+        if (announcementIndex !== -1) {
+            if (sanitized) {
+                chatRoom.announcementHistory[announcementIndex].content = sanitized;
             }
             if (isEmergency !== undefined) {
-                chatRoom.currentAnnouncement.isEmergency = isEmergency;
-                chatRoom.currentAnnouncement.emergencyUntil = emergencyUntil;
+                chatRoom.announcementHistory[announcementIndex].isEmergency = isEmergency;
+                chatRoom.announcementHistory[announcementIndex].emergencyUntil = emergencyUntil;
             }
-            await chatRoom.state.storage.put('currentAnnouncement', chatRoom.currentAnnouncement);
+            // D1 is the source of truth now; the DO copy is best-effort cache (M24)
+            try {
+                await chatRoom.state.storage.put('announcementHistory', chatRoom.announcementHistory);
+            } catch (error) {
+                console.error('announcement history persist failed:', error);
+            }
+        }
 
-            if (wasEmergency && isEmergency === false && (!chatRoom.currentAnnouncement || !chatRoom.currentAnnouncement.isEmergency)) {
+        const current = chatRoom.currentAnnouncement;
+        const currentMatches = current && current.timestamp === timestamp;
+        const wasEmergency = currentMatches ? !!current.isEmergency : false;
+        if (currentMatches) {
+            if (sanitized) {
+                current.content = sanitized;
+            }
+            if (isEmergency !== undefined) {
+                current.isEmergency = isEmergency;
+                current.emergencyUntil = emergencyUntil;
+            }
+            await chatRoom.state.storage.put('currentAnnouncement', current);
+
+            if (wasEmergency && current.isEmergency === false) {
                 chatRoom.broadcast({
                     type: 'emergency_cleared',
-                    content: wasEmergency ? '긴급 공지가 해제되었습니다.' : '',
+                    content: '긴급 공지가 해제되었습니다.',
                     timestamp: Date.now()
                 });
             }
@@ -786,26 +794,40 @@ export async function handleAdminDeleteAnnounce(chatRoom, request) {
             });
         }
 
+        // The worker already deleted the D1 row; nextAnnouncement is the latest remaining row (M24)
+        const nextAnnouncement = data.nextAnnouncement
+            ? {
+                content: data.nextAnnouncement.content,
+                timestamp: Number(data.nextAnnouncement.timestamp),
+                isEmergency: !!data.nextAnnouncement.isEmergency,
+                emergencyUntil: null
+            }
+            : null;
+
         const announcementIndex = chatRoom.announcementHistory.findIndex(a => a.timestamp === timestamp);
-        if (announcementIndex === -1) {
-            return new Response(JSON.stringify({ error: 'Announcement not found' }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' }
-            });
+        if (announcementIndex !== -1) {
+            chatRoom.announcementHistory.splice(announcementIndex, 1);
+            try {
+                await chatRoom.state.storage.put('announcementHistory', chatRoom.announcementHistory);
+            } catch (error) {
+                console.error('announcement history persist failed:', error);
+            }
         }
 
-        chatRoom.announcementHistory.splice(announcementIndex, 1);
-        await chatRoom.state.storage.put('announcementHistory', chatRoom.announcementHistory);
+        const current = chatRoom.currentAnnouncement;
+        const currentMatches = current && current.timestamp === timestamp;
+        const wasEmergency = currentMatches ? !!current.isEmergency : false;
 
-        const wasEmergency = chatRoom.currentAnnouncement && chatRoom.currentAnnouncement.timestamp === timestamp && chatRoom.currentAnnouncement.isEmergency;
-
-        if (chatRoom.currentAnnouncement && chatRoom.currentAnnouncement.timestamp === timestamp) {
-            if (chatRoom.announcementHistory.length > 0) {
-                chatRoom.currentAnnouncement = chatRoom.announcementHistory[0];
-                await chatRoom.state.storage.put('currentAnnouncement', chatRoom.currentAnnouncement);
-            } else {
-                chatRoom.currentAnnouncement = null;
-                await chatRoom.state.storage.delete('currentAnnouncement');
+        if (currentMatches || (!current && nextAnnouncement)) {
+            chatRoom.currentAnnouncement = nextAnnouncement;
+            try {
+                if (nextAnnouncement) {
+                    await chatRoom.state.storage.put('currentAnnouncement', nextAnnouncement);
+                } else {
+                    await chatRoom.state.storage.delete('currentAnnouncement');
+                }
+            } catch (error) {
+                console.error('current announcement persist failed:', error);
             }
             if (wasEmergency && (!chatRoom.currentAnnouncement || !chatRoom.currentAnnouncement.isEmergency)) {
                 chatRoom.broadcast({ type: 'emergency_cleared' });

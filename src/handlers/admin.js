@@ -3,7 +3,7 @@ import { sleep, constantTimeCompare } from '../utils/security.js';
 import { logAdminActivity, logSecurityEvent } from '../utils/logger.js';
 import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken, revokeToken } from '../middleware/auth.js';
 import { forwardToDO, forwardToChannelDO } from '../utils/do.js';
-import { safeJson } from '../utils/helpers.js';
+import { safeJson, sanitizeInput } from '../utils/helpers.js';
 import { jsonError, emptyResponse } from '../utils/errors.js';
 import { issueObserverTicket } from './turnstile.js';
 
@@ -408,6 +408,10 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             return jsonError('Missing timestamp', 400, request.headers.get('Origin'));
         }
 
+        if (!env.DB_ADMIN) {
+            return jsonError('Database not configured', 503, request.headers.get('Origin'));
+        }
+
         const forwardBody = { content };
         if (request.method === 'PUT' || request.method === 'DELETE') {
             forwardBody.timestamp = timestamp;
@@ -428,6 +432,43 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             forwardBody.scheduleAt = body.scheduleAt;
         }
         // expiresAt is no longer forwarded — announcements persist until manual deletion
+
+        // Announcements live in D1 (permanent); the DO keeps the live banner + broadcast (M24)
+        if (request.method === 'POST') {
+            const storedAt = Date.now();
+            forwardBody.timestamp = storedAt;
+            await env.DB_ADMIN.prepare(
+                'INSERT INTO announcements (timestamp, content, is_emergency) VALUES (?, ?, ?)'
+            ).bind(storedAt, sanitizeInput(content), forwardBody.isEmergency ? 1 : 0).run();
+        } else if (request.method === 'PUT') {
+            const existing = await env.DB_ADMIN.prepare(
+                'SELECT content, is_emergency FROM announcements WHERE timestamp = ?'
+            ).bind(timestamp).first();
+            if (!existing) {
+                return jsonError('Announcement not found', 404, request.headers.get('Origin'));
+            }
+            const nextContent = content ? sanitizeInput(content) : existing.content;
+            const nextEmergency = Object.hasOwn(forwardBody, 'isEmergency')
+                ? (forwardBody.isEmergency ? 1 : 0)
+                : existing.is_emergency;
+            await env.DB_ADMIN.prepare(
+                'UPDATE announcements SET content = ?, is_emergency = ? WHERE timestamp = ?'
+            ).bind(nextContent, nextEmergency, timestamp).run();
+        } else {
+            const deleted = await env.DB_ADMIN.prepare(
+                'DELETE FROM announcements WHERE timestamp = ?'
+            ).bind(timestamp).run();
+            const changes = deleted?.meta?.changes ?? deleted?.changes ?? 0;
+            if (changes === 0) {
+                return jsonError('Announcement not found', 404, request.headers.get('Origin'));
+            }
+            const remaining = await env.DB_ADMIN.prepare(
+                'SELECT timestamp, content, is_emergency FROM announcements ORDER BY timestamp DESC LIMIT 1'
+            ).first();
+            forwardBody.nextAnnouncement = remaining
+                ? { timestamp: remaining.timestamp, content: remaining.content, isEmergency: !!remaining.is_emergency }
+                : null;
+        }
 
         const response = await forwardToDO(env, '/admin/announce', {
             method: request.method,
