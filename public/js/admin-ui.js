@@ -158,7 +158,7 @@ export function renderBannedSessions(sessions) {
         const remaining = s.remainingSeconds > 0 ? dur(s.remainingSeconds * 1000) : '-';
         const sid = s.sessionId || '';
         return `<tr>
-            <td class="mono text-xs">${sid.substring(0, 20)}${sid.length > 20 ? '...' : ''}</td>
+            <td class="mono text-xs">${h(String(sid).substring(0, 20))}${sid.length > 20 ? '...' : ''}</td>
             <td class="mono text-xs">${h(s.ip || '-')}</td>
             <td class="text-sm">${remaining}</td>
             <td class="text-sm">${h(s.reason || '-')}</td>
@@ -208,7 +208,7 @@ export function renderActiveSessions(sessions) {
             <div class="flex items-center gap-3 flex-1">
                 <div class="w-2 h-2 ${sc} rounded-full ${online ? 'animate-pulse' : ''}"></div>
                 <div class="flex-1">
-                    <p class="text-sm font-mono text-gray-300 break-all">${tr(s.sessionId)}${s.nickname ? `<span class="text-xs ml-2 text-yellow-300">(${h(s.nickname)})</span>` : ''}</p>
+                    <p class="text-sm font-mono text-gray-300 break-all">${h(tr(s.sessionId))}${s.nickname ? `<span class="text-xs ml-2 text-yellow-300">(${h(s.nickname)})</span>` : ''}</p>
                     <p class="text-xs text-gray-500">${h(s.ip || 'Unknown')}${s.country ? ' · ' + h(s.country) : ''}</p>
                     <p class="text-xs text-gray-400">${last}</p>
                 </div>
@@ -254,7 +254,7 @@ export function renderRecentMessages(messages) {
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
             </button>
             <div class="flex items-start justify-between mb-1">
-                <div class="flex items-center gap-2"><span class="text-xs font-mono text-gray-400">${tr(msg.sessionId)}</span>${adminBadge}</div>
+                <div class="flex items-center gap-2"><span class="text-xs font-mono text-gray-400">${h(tr(msg.sessionId))}</span>${adminBadge}</div>
                 <span class="text-xs text-gray-500">${new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</span>
             </div>
             ${msg.content ? `<p class="text-sm text-gray-200 break-words whitespace-pre-wrap">${h(msg.content)}</p>` : ''}
@@ -352,7 +352,7 @@ export function renderChannelDetail(channel) {
             <div><span class="text-gray-400">생성일:</span> ${channel.createdAt ? new Date(channel.createdAt).toLocaleString('ko-KR') : '-'}</div>
             <div><span class="text-gray-400">접속자:</span> ${channel.activeConnections ?? channel.connections ?? '-'}</div>
             <div><span class="text-gray-400">메시지:</span> ${channel.totalMessages ?? channel.messageCount ?? '-'}</div>
-            <div><span class="text-gray-400">상태:</span> ${channel.status || 'active'}</div>
+            <div><span class="text-gray-400">상태:</span> ${h(channel.status || 'active')}</div>
         </div>
     `;
     modal.classList.add('open');

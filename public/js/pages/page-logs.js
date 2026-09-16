@@ -58,12 +58,18 @@ async function deleteErrors(core) {
     catch { core.showNotification('삭제 실패', 'error'); }
 }
 
+export function csvField(value) {
+    let s = String(value ?? '');
+    if (/^[=+\-@]/.test(s)) s = `'${s}`;
+    return s.replace(/"/g, '""');
+}
+
 async function exportAuditCsv(core) {
     try {
         const data = await ApiClient.get('/api/admin/audit-logs');
         const logs = Array.isArray(data) ? data : (data.logs || []);
         const csv = ['type,details,admin_ip,timestamp'];
-        logs.forEach(l => csv.push(`"${l.type || ''}","${(l.description || l.details || '').replace(/"/g, '""')}","${l.ip || l.admin_ip || ''}","${l.timestamp || ''}"`));
+        logs.forEach(l => csv.push(`"${csvField(l.type)}","${csvField(l.description || l.details)}","${csvField(l.ip || l.admin_ip)}","${csvField(l.timestamp)}"`));
         const b = new Blob([csv.join('\n')], { type: 'text/csv' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `audit-logs-${Date.now()}.csv`; a.click();
     } catch { core.showNotification('CSV 내보내기 실패', 'error'); }

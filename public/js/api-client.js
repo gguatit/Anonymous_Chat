@@ -10,6 +10,13 @@ const ApiClient = {
         return this._token;
     },
 
+    // A 401 means the admin token is stale; let the host app log out.
+    _checkUnauthorized(res) {
+        if (res.status === 401 && typeof this.onUnauthorized === 'function') {
+            this.onUnauthorized();
+        }
+    },
+
     headers(extra = {}) {
         const h = { ...extra };
         if (this._token) {
@@ -28,6 +35,7 @@ const ApiClient = {
 
     async get(url) {
         const res = await this.request(url);
+        this._checkUnauthorized(res);
         if (!res.ok) {
             throw new Error(`GET ${url} failed: ${res.status}`);
         }
@@ -36,15 +44,14 @@ const ApiClient = {
 
     async getRaw(url) {
         const res = await this.request(url, { method: 'GET' });
+        this._checkUnauthorized(res);
         return res;
     },
 
     // Parse JSON, but reject on HTTP errors so callers can show failures truthfully
     async _json(res, label) {
         if (!res.ok) {
-            if (res.status === 401 && typeof this.onUnauthorized === 'function') {
-                this.onUnauthorized();
-            }
+            this._checkUnauthorized(res);
             let detail = '';
             try {
                 const d = await res.json();

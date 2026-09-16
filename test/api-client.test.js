@@ -75,6 +75,23 @@ describe('ApiClient', () => {
         }
     });
 
+    it('invokes onUnauthorized on a 401 from get and getRaw', async () => {
+        const onUnauthorized = vi.fn();
+        ApiClient.onUnauthorized = onUnauthorized;
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({}, 401)));
+        try {
+            await expect(ApiClient.get('/api/admin/metrics')).rejects.toThrow(
+                'GET /api/admin/metrics failed: 401'
+            );
+            expect(onUnauthorized).toHaveBeenCalledTimes(1);
+            const res = await ApiClient.getRaw('/api/admin/metrics');
+            expect(res.status).toBe(401);
+            expect(onUnauthorized).toHaveBeenCalledTimes(2);
+        } finally {
+            ApiClient.onUnauthorized = null;
+        }
+    });
+
     it('does not invoke onUnauthorized on non-401 failures', async () => {
         const onUnauthorized = vi.fn();
         ApiClient.onUnauthorized = onUnauthorized;

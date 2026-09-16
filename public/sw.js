@@ -67,7 +67,13 @@ self.addEventListener('notificationclick', (event) => {
 
     if (event.action === 'dismiss') return;
 
-    const urlToOpen = event.notification.data?.url || '/';
+    let target = event.notification.data?.url || '/';
+    try {
+        const u = new URL(target, self.location.origin);
+        if (u.origin !== self.location.origin) target = '/';
+    } catch {
+        target = '/';
+    }
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
@@ -76,13 +82,15 @@ self.addEventListener('notificationclick', (event) => {
                     return client.focus();
                 }
             }
-            return self.clients.openWindow(urlToOpen);
+            return self.clients.openWindow(target);
         })
     );
 });
 
 self.addEventListener('pushsubscriptionchange', (event) => {
     console.log('[SW] Push subscription changed/expired');
+    // 'resubscribe' only refreshes the record for an endpoint the server already knows;
+    // it does not create a new server-side subscription.
     event.waitUntil(
         self.registration.pushManager.getSubscription().then((subscription) => {
             if (!subscription) {

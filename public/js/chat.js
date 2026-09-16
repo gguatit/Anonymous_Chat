@@ -601,9 +601,7 @@ class ChatClient {
                 }
                 // 비밀 메시지로 보내기 - Dead Drop에 저장
                 try {
-                    console.log('[Secret] Storing message:', trimmedMessage ? trimmedMessage.substring(0, 50) : '[file]');
                     const deadDropResult = await this.deadDrop.store(trimmedMessage || '[파일]');
-                    console.log('[Secret] Store result:', deadDropResult);
                     messageData.replyTo = {
                         messageId: replyingTo.messageId,
                         content: replyingTo.content,
@@ -900,9 +898,7 @@ class ChatClient {
 
         try {
             // Dead Drop에서 메시지 읽기 (한 번만 가능)
-            console.log('[Secret] Reading data for id:', secretId);
             const result = await this.deadDrop.read(secretId);
-            console.log('[Secret] Read result:', result);
 
             // 버튼 숨기고 메시지 표시
             btn.remove();
