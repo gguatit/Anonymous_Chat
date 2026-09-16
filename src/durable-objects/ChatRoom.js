@@ -15,6 +15,9 @@ function logId(sessionId) {
     return s.length > 8 ? `${s.slice(0, 8)}…` : s;
 }
 
+// Per-socket join counter: one socket should only ever join once, so cap it (H1 hardening)
+const socketJoinCounts = new WeakMap();
+
 export class ChatRoom {
     constructor(state, env) {
         this.state = state;
@@ -559,6 +562,13 @@ export class ChatRoom {
     }
 
     async handleJoin(data, websocket, clientIP, setSession) {
+        const joins = (socketJoinCounts.get(websocket) || 0) + 1;
+        socketJoinCounts.set(websocket, joins);
+        if (joins > 10) {
+            websocket.close(1008, 'Too many joins');
+            return;
+        }
+
         if (!this.cleanupInterval) {
             this.cleanupInterval = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
         }
@@ -941,7 +951,11 @@ export class ChatRoom {
             this.messages = this.messages.slice(-MAX_STORED_MESSAGES);
         }
 
-        this.broadcast(message);
+        // Broadcast a copy without the sessionId so participants cannot harvest each
+        // other's session identifiers (H1/M4); the stored message keeps it for ownership checks.
+        const liveMessage = { ...message };
+        delete liveMessage.sessionId;
+        this.broadcast(liveMessage);
 
         try {
             await this._persistMessages();
@@ -1077,9 +1091,12 @@ export class ChatRoom {
 
         await this._persistMessages();
 
+        // Live edit events must not leak the author's sessionId either
+        const liveMessage = { ...editedMessage };
+        delete liveMessage.sessionId;
         this.broadcast({
             type: 'message_edited',
-            message: editedMessage
+            message: liveMessage
         });
     }
 
@@ -1204,7 +1221,6 @@ export class ChatRoom {
                 messageId: data.messageId,
                 emoji: data.emoji,
                 count,
-                sessionId,
                 reacted: reactedSessions.includes(sid)
             });
         }
@@ -1232,7 +1248,7 @@ export class ChatRoom {
 
         this.broadcast({
             type: 'typing',
-            sessionId,
+            authorId: this.userMetadata.get(sessionId)?.authorId || null,
             nickname: sanitizeInput(data.nickname || DEFAULT_NICKNAME).substring(0, MAX_NICKNAME_LENGTH),
             typing: data.typing
         }, sessionId);
@@ -1440,9 +1456,15 @@ export class ChatRoom {
             }
         }
         if (this.sessionKeys.size > SESSION_KEYS.MAX_KEYS) {
-            const sorted = Array.from(this.sessionKeys.entries()).sort((a, b) => a[1].lastSeen - b[1].lastSeen);
-            for (const [sessionId] of sorted.slice(0, this.sessionKeys.size - SESSION_KEYS.MAX_KEYS)) {
-                this.sessionKeys.delete(sessionId);
+            // Never evict keys belonging to currently connected sessions (H1); drop the
+            // oldest disconnected keys first and allow the cap to be exceeded when everyone
+            // holding a key is still online.
+            const evictable = Array.from(this.sessionKeys.entries())
+                .filter(([sid]) => !this.sessions.has(sid))
+                .sort((a, b) => a[1].lastSeen - b[1].lastSeen);
+            const excess = this.sessionKeys.size - SESSION_KEYS.MAX_KEYS;
+            for (const [sid] of evictable.slice(0, excess)) {
+                this.sessionKeys.delete(sid);
                 sessionKeysChanged = true;
             }
         }

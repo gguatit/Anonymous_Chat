@@ -346,7 +346,7 @@ class ChatClient {
                 break;
             case 'typing':
                 if (data.sessionId !== this.sessionManager.getSessionId()) {
-                    this.handleTypingEvent(data.sessionId, data.nickname, data.typing);
+                    this.handleTypingEvent(data.authorId || data.sessionId, data.nickname, data.typing);
                 }
                 break;
             case 'channel_deleted':
