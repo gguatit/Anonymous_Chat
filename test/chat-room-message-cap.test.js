@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatRoom } from '../src/durable-objects/ChatRoom.js';
+import { handleAdminBroadcast } from '../src/durable-objects/chat-room/admin.js';
 import { generateMessageSignature } from '../src/utils/helpers.js';
 import { MESSAGES_MAX_BYTES } from '../src/config/constants.js';
 
@@ -145,6 +146,35 @@ describe('ChatRoom message size cap (H3)', () => {
         expect(stored[stored.length - 1].content).toBe('newest message');
         expect(stored[stored.length - 1].timestamp).toBe(timestamp);
         expect(stored.some(m => m.messageId === 'old_0')).toBe(false);
+    });
+
+    it('admin broadcast prunes to the byte cap before persisting', async () => {
+        const bigContent = 'x'.repeat(2000);
+        for (let i = 0; i < 100; i++) {
+            room.messages.push({
+                messageId: `old_${i}`,
+                content: bigContent,
+                sessionId: 'user_old',
+                timestamp: Date.now() - 1000,
+                editedAt: null,
+                signature: 'sig',
+            });
+        }
+        expect(byteSize(room.messages)).toBeGreaterThan(MESSAGES_MAX_BYTES);
+
+        const req = new Request('https://dummy/admin/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: 'admin message' }),
+        });
+        const res = await handleAdminBroadcast(room, req, env.HMAC_SECRET);
+        expect(res.status).toBe(200);
+
+        const putCall = state.storage.put.mock.calls.find(c => c[0] === 'messages');
+        expect(putCall).toBeDefined();
+        const stored = putCall[1];
+        expect(byteSize(stored)).toBeLessThanOrEqual(MESSAGES_MAX_BYTES);
+        expect(stored[stored.length - 1].content).toBe('admin message');
     });
 
     it('still broadcasts the message when persistence fails', async () => {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleAdminLogout, handleAdminAnnounce, handleAdminLogin } from '../src/handlers/admin.js';
+import { handleAdminLogout, handleAdminAnnounce, handleAdminLogin, handleAdminKickUser } from '../src/handlers/admin.js';
 import { generateAdminToken } from '../src/middleware/auth.js';
+import { BAN_DURATIONS } from '../src/config/constants.js';
 
 function mockKv() {
     const store = new Map();
@@ -158,6 +159,54 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         const res = await sendAnnounce({ content: '공지' });
         expect(res.status).toBe(200);
         expect(Object.hasOwn(forwarded[0], 'isEmergency')).toBe(false);
+    });
+});
+
+describe('handleAdminKickUser ban duration normalization', () => {
+    let env;
+    let forwarded;
+
+    beforeEach(async () => {
+        env = mockEnv();
+        forwarded = [];
+        env.CHAT_ROOM = {
+            idFromName: vi.fn(() => 'do-id'),
+            get: vi.fn(() => ({
+                fetch: vi.fn(async (request) => {
+                    forwarded.push(await request.clone().json());
+                    return new Response(JSON.stringify({ success: true }), { status: 200 });
+                }),
+            })),
+        };
+        env._token = await generateAdminToken(env);
+    });
+
+    async function kick(banDuration) {
+        const req = new Request('https://example.com/api/admin/kick-user', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${env._token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sessionId: 'user_1', banDuration }),
+        });
+        return await handleAdminKickUser(req, env, cors());
+    }
+
+    it.each([
+        [NaN, 0],
+        [Infinity, 0],
+        ['Infinity', 0],
+        [-60, 0],
+        ['not-a-number', 0],
+        [0, 0],
+        ['300', 300],
+        [12.9, 12],
+        [BAN_DURATIONS.MAX_IP_BAN_SECONDS + 1000, BAN_DURATIONS.MAX_IP_BAN_SECONDS],
+    ])('normalizes banDuration %s to %s', async (input, expected) => {
+        const res = await kick(input);
+        expect(res.status).toBe(200);
+        expect(forwarded[0].banDuration).toBe(expected);
     });
 });
 

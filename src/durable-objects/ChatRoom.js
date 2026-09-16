@@ -213,7 +213,7 @@ export class ChatRoom {
         const url = new URL(request.url);
 
         if (url.pathname.startsWith('/admin/')) {
-            if (HMAC_SECRET !== this.env.HMAC_SECRET) {
+            if (!(await constantTimeCompare(HMAC_SECRET, this.env.HMAC_SECRET))) {
                 this.addErrorLog('SECURITY', 'Unauthorized DO Admin Access Attempt', {}, `Path: ${url.pathname}`);
                 return new Response('Forbidden', { status: 403 });
             }
@@ -221,7 +221,7 @@ export class ChatRoom {
 
         // Internal DO destruction (called by ChannelRegistry cleanup)
         if (url.pathname === '/destroy') {
-            if (request.headers.get('X-HMAC-Secret') !== this.env.HMAC_SECRET) {
+            if (!(await constantTimeCompare(request.headers.get('X-HMAC-Secret'), this.env.HMAC_SECRET))) {
                 return new Response('Forbidden', { status: 403 });
             }
             await this.deleteChannel();
@@ -305,7 +305,7 @@ export class ChatRoom {
         }
 
         if (url.pathname === '/messages/recent') {
-            if (request.headers.get('X-HMAC-Secret') !== this.env.HMAC_SECRET) {
+            if (!(await constantTimeCompare(request.headers.get('X-HMAC-Secret'), this.env.HMAC_SECRET))) {
                 return new Response('Forbidden', { status: 403 });
             }
             await this.initializeMessages();
@@ -329,7 +329,7 @@ export class ChatRoom {
         }
 
         if (url.pathname === '/broadcast-summary' && request.method === 'POST') {
-            if (request.headers.get('X-HMAC-Secret') !== this.env.HMAC_SECRET) {
+            if (!(await constantTimeCompare(request.headers.get('X-HMAC-Secret'), this.env.HMAC_SECRET))) {
                 return new Response('Forbidden', { status: 403 });
             }
             return await handleBroadcastSummary(this, request, HMAC_SECRET);
@@ -550,6 +550,7 @@ export class ChatRoom {
 
                 if (this.channelSlug !== '0' && this.sessions.size === 0) {
                     this.emptySince = Date.now();
+                    this.scheduleEmptyAlarm().catch(() => {});
                 }
             }
         });
@@ -1598,6 +1599,9 @@ export class ChatRoom {
             this.cleanupInterval = null;
         }
 
+        for (const ws of this.sessions.values()) {
+            try { ws.close(1000, 'Channel closed'); } catch (_e) { /* ignore */ }
+        }
         this.sessions.clear();
         this.sessionKeys.clear();
         this.ipConnections.clear();

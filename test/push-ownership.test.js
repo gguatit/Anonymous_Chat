@@ -135,6 +135,47 @@ describe('push subscription ownership', () => {
         expect(parsed.data.endpoint).toBe(webSubscription.endpoint);
     });
 
+    it('resubscribe with no matching stored endpoint returns 404 and writes nothing', async () => {
+        const kv = makeKv();
+        const env = makeEnv(kv, vi.fn());
+        const req = new Request('https://dummy/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'resubscribe', subscription: webSubscription })
+        });
+
+        const res = await handlePushSubscribe(req, env, {});
+        expect(res.status).toBe(404);
+        expect((await res.json()).error).toBe('Subscription not found');
+        expect(kv.put).not.toHaveBeenCalled();
+    });
+
+    it('resubscribe updates only the entry whose stored endpoint matches', async () => {
+        const kv = makeKv();
+        const storedKey = 'sub:existing-entry';
+        kv.store.set(storedKey, JSON.stringify({
+            type: 'web',
+            data: { endpoint: webSubscription.endpoint, keys: { p256dh: 'old', auth: 'old' } },
+            sessionId: 'user_existing'
+        }));
+        kv.list = vi.fn(async () => ({ keys: [{ name: storedKey }], list_complete: true, cursor: null }));
+
+        const env = makeEnv(kv, vi.fn());
+        const req = new Request('https://dummy/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'resubscribe', subscription: webSubscription })
+        });
+
+        const res = await handlePushSubscribe(req, env, {});
+        expect(res.status).toBe(200);
+        expect(kv.put).toHaveBeenCalledTimes(1);
+        const [putKey, putValue] = kv.put.mock.calls[0];
+        expect(putKey).toBe(storedKey);
+        expect(JSON.parse(putValue).sessionId).toBe('user_existing');
+        expect(JSON.parse(putValue).data.endpoint).toBe(webSubscription.endpoint);
+    });
+
     it('rejects unsubscribe without a session key', async () => {
         const kv = makeKv();
         const doFetch = vi.fn();

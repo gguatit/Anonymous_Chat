@@ -398,6 +398,28 @@ describe('ChatRoom', () => {
         });
     });
 
+    describe('internal admin auth', () => {
+        it('rejects admin routes with a wrong HMAC secret', async () => {
+            const res = await room.fetch(new Request('https://do/admin/info', {
+                headers: { 'X-HMAC-Secret': 'wrong-secret' }
+            }));
+            expect(res.status).toBe(403);
+        });
+
+        it('rejects admin routes with no HMAC secret', async () => {
+            const res = await room.fetch(new Request('https://do/admin/info'));
+            expect(res.status).toBe(403);
+        });
+
+        it('rejects /destroy with a wrong HMAC secret', async () => {
+            room.channelSlug = 'test-room';
+            const res = await room.fetch(new Request('https://do/destroy', {
+                headers: { 'X-HMAC-Secret': 'wrong-secret' }
+            }));
+            expect(res.status).toBe(403);
+        });
+    });
+
     describe('cleanup', () => {
         it('removes messages older than retention period', async () => {
             const now = Date.now();
@@ -467,6 +489,23 @@ describe('ChatRoom', () => {
             await room.alarm();
 
             expect(state.storage.deleteAll).toHaveBeenCalled();
+            expect(room.channelSlug).toBe('0');
+        });
+
+        it('deleteChannel closes live sockets before clearing sessions', async () => {
+            state.storage.deleteAll = vi.fn(() => Promise.resolve());
+            state.storage.deleteAlarm = vi.fn(() => Promise.resolve());
+            const ws1 = createWebSocketMock();
+            const ws2 = createWebSocketMock();
+            room.channelSlug = 'test-room';
+            room.sessions.set('user_1', ws1);
+            room.sessions.set('user_2', ws2);
+
+            await room.deleteChannel();
+
+            expect(ws1.close).toHaveBeenCalledWith(1000, 'Channel closed');
+            expect(ws2.close).toHaveBeenCalledWith(1000, 'Channel closed');
+            expect(room.sessions.size).toBe(0);
             expect(room.channelSlug).toBe('0');
         });
     });

@@ -3,7 +3,7 @@ import worker from '../src/worker.js';
 import { API_RATE_LIMIT } from '../src/config/constants.js';
 import { createRateLimiter } from '../src/utils/rate-limiter.js';
 
-// Route table mirrors src/worker.js adminRoutes (30 entries)
+// Route table mirrors src/worker.js adminRoutes (31 entries)
 const adminRouteNames = [
     'login', 'verify', 'metrics', 'sessions', 'messages',
     'delete-error-logs', 'logout', 'logs', 'delete-logs',
@@ -12,13 +12,46 @@ const adminRouteNames = [
     'audit-logs', 'delete-audit-logs', 'channels', 'channel-details', 'channel-delete',
     'security/events', 'security/stats', 'security/risk-ips',
     'security/events/export', 'security/events/clear',
-    'security/badge', 'security/block-ip',
+    'security/badge', 'security/block-ip', 'observer-ticket',
 ];
 
-const POST_ONLY = new Set([
-    'delete-logs', 'delete-audit-logs', 'channel-delete',
-    'security/events/clear', 'security/block-ip',
-]);
+// Real method per route; announce also accepts PUT/DELETE
+const ROUTE_METHODS = {
+    login: 'POST',
+    verify: 'POST',
+    metrics: 'GET',
+    sessions: 'GET',
+    messages: 'GET',
+    'delete-error-logs': 'POST',
+    logout: 'POST',
+    logs: 'GET',
+    'delete-logs': 'POST',
+    broadcast: 'POST',
+    'edit-message': 'POST',
+    'delete-message': 'POST',
+    'delete-all-messages': 'POST',
+    'kick-user': 'POST',
+    announce: 'POST',
+    'banned-ips': 'GET',
+    'unban-ip': 'POST',
+    'user-details': 'GET',
+    'audit-logs': 'GET',
+    'delete-audit-logs': 'POST',
+    channels: 'GET',
+    'channel-details': 'GET',
+    'channel-delete': 'POST',
+    'security/events': 'GET',
+    'security/stats': 'GET',
+    'security/risk-ips': 'GET',
+    'security/events/export': 'GET',
+    'security/events/clear': 'POST',
+    'security/badge': 'GET',
+    'security/block-ip': 'POST',
+    'observer-ticket': 'POST',
+};
+
+const POST_ROUTES = Object.entries(ROUTE_METHODS).filter(([, m]) => m === 'POST').map(([name]) => name);
+const GET_ROUTES = Object.entries(ROUTE_METHODS).filter(([, m]) => m === 'GET').map(([name]) => name);
 
 // login and verify are the only admin routes that do not require a bearer token
 const UNAUTHENTICATED = new Set(['login', 'verify']);
@@ -89,8 +122,7 @@ describe('worker router smoke (real worker.fetch)', () => {
         const protectedRoutes = adminRouteNames.filter((name) => !UNAUTHENTICATED.has(name));
 
         it.each(protectedRoutes)('/api/admin/%s → 401 without token', async (name) => {
-            const method = POST_ONLY.has(name) ? 'POST' : 'GET';
-            const res = await worker.fetch(makeRequest(`/api/admin/${name}`, method), env);
+            const res = await worker.fetch(makeRequest(`/api/admin/${name}`, ROUTE_METHODS[name]), env);
             expect(res.status).toBe(401);
         });
 
@@ -101,10 +133,23 @@ describe('worker router smoke (real worker.fetch)', () => {
     });
 
     describe('method enforcement', () => {
-        it.each([...POST_ONLY])('POST-only route %s rejects GET', async (name) => {
+        it.each(POST_ROUTES)('POST route %s rejects GET', async (name) => {
             const res = await worker.fetch(makeRequest(`/api/admin/${name}`, 'GET'), env);
-            expect(res.status).not.toBe(401);
             expect(res.status).toBe(404);
+        });
+
+        it.each(GET_ROUTES)('GET route %s rejects POST', async (name) => {
+            const res = await worker.fetch(makeRequest(`/api/admin/${name}`, 'POST'), env);
+            expect(res.status).toBe(404);
+        });
+
+        it('announce accepts POST, PUT and DELETE but not GET', async () => {
+            for (const method of ['POST', 'PUT', 'DELETE']) {
+                const res = await worker.fetch(makeRequest('/api/admin/announce', method), env);
+                expect(res.status).toBe(401);
+            }
+            const getRes = await worker.fetch(makeRequest('/api/admin/announce', 'GET'), env);
+            expect(getRes.status).toBe(404);
         });
     });
 });

@@ -37,35 +37,35 @@ const ADMIN_CHANNEL_PREFIXES = ['admin'];
 const API_PREFIX = '/api/admin/';
 
 const adminRoutes = [
-    ['login', null, admin.handleAdminLogin],
-    ['verify', null, admin.handleAdminVerify],
-    ['metrics', null, admin.handleAdminMetrics],
-    ['sessions', null, admin.handleAdminSessions],
-    ['messages', null, admin.handleAdminMessages],
-    ['delete-error-logs', null, admin.handleAdminDeleteErrorLogs],
-    ['logout', null, admin.handleAdminLogout],
-    ['logs', null, admin.handleAdminLogs],
+    ['login', 'POST', admin.handleAdminLogin],
+    ['verify', 'POST', admin.handleAdminVerify],
+    ['metrics', 'GET', admin.handleAdminMetrics],
+    ['sessions', 'GET', admin.handleAdminSessions],
+    ['messages', 'GET', admin.handleAdminMessages],
+    ['delete-error-logs', 'POST', admin.handleAdminDeleteErrorLogs],
+    ['logout', 'POST', admin.handleAdminLogout],
+    ['logs', 'GET', admin.handleAdminLogs],
     ['delete-logs', 'POST', admin.handleAdminDeleteLogs],
-    ['broadcast', null, admin.handleAdminBroadcast],
-    ['edit-message', null, admin.handleAdminEditMessage],
-    ['delete-message', null, admin.handleAdminDeleteMessage],
-    ['delete-all-messages', null, admin.handleAdminDeleteAllMessages],
-    ['kick-user', null, admin.handleAdminKickUser],
-    ['announce', null, admin.handleAdminAnnounce],
-    ['banned-ips', null, admin.handleAdminBannedIPs],
-    ['unban-ip', null, admin.handleAdminUnbanIP],
-    ['user-details', null, admin.handleAdminUserDetails],
-    ['audit-logs', null, admin.handleAdminAuditLogs],
+    ['broadcast', 'POST', admin.handleAdminBroadcast],
+    ['edit-message', 'POST', admin.handleAdminEditMessage],
+    ['delete-message', 'POST', admin.handleAdminDeleteMessage],
+    ['delete-all-messages', 'POST', admin.handleAdminDeleteAllMessages],
+    ['kick-user', 'POST', admin.handleAdminKickUser],
+    ['announce', ['POST', 'PUT', 'DELETE'], admin.handleAdminAnnounce],
+    ['banned-ips', 'GET', admin.handleAdminBannedIPs],
+    ['unban-ip', 'POST', admin.handleAdminUnbanIP],
+    ['user-details', 'GET', admin.handleAdminUserDetails],
+    ['audit-logs', 'GET', admin.handleAdminAuditLogs],
     ['delete-audit-logs', 'POST', admin.handleAdminDeleteAuditLogs],
-    ['channels', null, admin.handleAdminChannels],
-    ['channel-details', null, admin.handleAdminChannelDetails],
+    ['channels', 'GET', admin.handleAdminChannels],
+    ['channel-details', 'GET', admin.handleAdminChannelDetails],
     ['channel-delete', 'POST', admin.handleAdminChannelDelete],
-    ['security/events', null, security.handleListEvents],
-    ['security/stats', null, security.handleGetStats],
-    ['security/risk-ips', null, security.handleGetRiskIPs],
-    ['security/events/export', null, security.handleExportCSV],
+    ['security/events', 'GET', security.handleListEvents],
+    ['security/stats', 'GET', security.handleGetStats],
+    ['security/risk-ips', 'GET', security.handleGetRiskIPs],
+    ['security/events/export', 'GET', security.handleExportCSV],
     ['security/events/clear', 'POST', security.handleClearEvents],
-    ['security/badge', null, security.handleGetBadge],
+    ['security/badge', 'GET', security.handleGetBadge],
     ['security/block-ip', 'POST', security.handleBlockIP],
     ['observer-ticket', 'POST', admin.handleAdminObserverTicket],
 ];
@@ -238,7 +238,11 @@ async function serveStaticAssets(request, env, url) {
 function matchRoute(routes, pathname, method) {
     for (const route of routes) {
         const [routePath, routeMethod, handler] = route;
-        if (routeMethod !== null && routeMethod !== method) continue;
+        if (Array.isArray(routeMethod)) {
+            if (!routeMethod.includes(method)) continue;
+        } else if (routeMethod !== null && routeMethod !== method) {
+            continue;
+        }
         if (routePath === pathname) return handler;
     }
     return null;

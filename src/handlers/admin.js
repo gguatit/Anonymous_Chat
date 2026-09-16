@@ -1,3 +1,4 @@
+import { BAN_DURATIONS } from '../config/constants.js';
 import { sleep, constantTimeCompare } from '../utils/security.js';
 import { logAdminActivity, logSecurityEvent } from '../utils/logger.js';
 import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken, revokeToken } from '../middleware/auth.js';
@@ -375,7 +376,9 @@ export const handleAdminKickUser = withAuth(async (request, env, corsHeaders) =>
     try {
         const body = await safeJson(request);
         const sessionId = body.sessionId;
-        const banDuration = body.banDuration || 0;
+        let banDuration = Number(body.banDuration);
+        if (!Number.isFinite(banDuration) || banDuration < 0) banDuration = 0;
+        banDuration = Math.min(Math.floor(banDuration), BAN_DURATIONS.MAX_IP_BAN_SECONDS);
 
         if (!sessionId) {
             return jsonError('Missing sessionId', 400, request.headers.get('Origin'));

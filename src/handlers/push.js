@@ -81,9 +81,7 @@ export async function handlePushSubscribe(request, env, corsHeaders) {
                 }
             }
 
-            return new Response(JSON.stringify({ success: true, note: 'No matching subscription found' }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            return jsonError('Subscription not found', 404, request.headers.get('Origin'));
         }
 
         if (!subscription || !sessionId) {

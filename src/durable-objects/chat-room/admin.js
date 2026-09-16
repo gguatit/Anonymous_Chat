@@ -198,7 +198,7 @@ export async function handleAdminBroadcast(chatRoom, request, HMAC_SECRET) {
             chatRoom.messages = chatRoom.messages.slice(-MAX_STORED_MESSAGES);
         }
 
-        await chatRoom.state.storage.put('messages', chatRoom.messages);
+        await chatRoom._persistMessages();
 
         chatRoom.broadcast(message);
 
@@ -258,7 +258,7 @@ export async function handleAdminEditMessage(chatRoom, request, HMAC_SECRET) {
 
         chatRoom.messages[messageIndex] = editedMessage;
 
-        await chatRoom.state.storage.put('messages', chatRoom.messages);
+        await chatRoom._persistMessages();
 
         chatRoom.broadcast({
             type: 'message_edited',
@@ -308,7 +308,7 @@ export async function handleAdminDeleteMessage(chatRoom, request) {
 
         chatRoom.messages.splice(messageIndex, 1);
 
-        await chatRoom.state.storage.put('messages', chatRoom.messages);
+        await chatRoom._persistMessages();
 
         chatRoom.broadcast({
             type: 'message_deleted',
@@ -352,7 +352,7 @@ export async function handleAdminDeleteAllMessages(chatRoom, request) {
 
         chatRoom.messages = [];
 
-        await chatRoom.state.storage.put('messages', chatRoom.messages);
+        await chatRoom._persistMessages();
 
         chatRoom.broadcast({
             type: 'all_messages_deleted'
@@ -454,7 +454,9 @@ export async function handleAdminKickUser(chatRoom, request) {
     try {
         const data = await safeJson(request);
         const sessionId = data.sessionId;
-        const banDuration = data.banDuration || 0;
+        let banDuration = Number(data.banDuration);
+        if (!Number.isFinite(banDuration) || banDuration < 0) banDuration = 0;
+        banDuration = Math.min(Math.floor(banDuration), BAN_DURATIONS.MAX_IP_BAN_SECONDS);
 
         if (!sessionId) {
             return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
@@ -1138,7 +1140,7 @@ export async function handleBroadcastSummary(chatRoom, request, HMAC_SECRET) {
             chatRoom.messages = chatRoom.messages.slice(-MAX_STORED_MESSAGES);
         }
 
-        await chatRoom.state.storage.put('messages', chatRoom.messages);
+        await chatRoom._persistMessages();
 
         chatRoom.broadcast(message);
 

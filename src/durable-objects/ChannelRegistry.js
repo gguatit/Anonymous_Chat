@@ -1,5 +1,6 @@
 import { CHANNEL, CLEANUP_INTERVAL_MS } from '../config/constants.js';
 import { sanitizeInput, safeJson } from '../utils/helpers.js';
+import { constantTimeCompare } from '../utils/security.js';
 import { validateChannelName } from '../utils/validate.js';
 
 /**
@@ -65,7 +66,7 @@ export class ChannelRegistry {
         }
 
         const internalToken = request.headers.get('X-Admin-Internal-Token');
-        if (!internalToken || internalToken !== this.env.HMAC_SECRET) {
+        if (!(await constantTimeCompare(internalToken, this.env.HMAC_SECRET))) {
             return new Response('Forbidden', { status: 403 });
         }
 
