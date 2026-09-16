@@ -650,9 +650,7 @@ export async function handleAdminAnnounce(chatRoom, request) {
             isEmergency,
             emergencyUntil
         };
-        if (data.expiresAt && data.expiresAt > Date.now()) {
-            chatRoom.currentAnnouncement.expiresAt = data.expiresAt;
-        }
+        // Announcements persist until an admin deletes them — expiresAt is intentionally ignored
         await chatRoom.state.storage.put('currentAnnouncement', chatRoom.currentAnnouncement);
 
         chatRoom.announcementHistory.unshift(chatRoom.currentAnnouncement);

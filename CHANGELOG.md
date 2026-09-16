@@ -83,6 +83,10 @@
 - **서버 LOW 배치**: 내부 DO HMAC 비교를 `constantTimeCompare`로 통일, kick `banDuration` 0~MAX 클램프, 관리자 메시지 쓰기를 `_persistMessages()`(바이트 캡 일원화)로 교체, 채널 삭제 시 소켓 종료·마지막 세션 퇴장 시 빈 채널 alarm 예약, 미소유 push resubscribe 404, 라우트 메서드 명시. 커밋 `a0131d4`.
 - **클라이언트/구성 LOW 배치**: `ApiClient.get/getRaw` 401 훅 확대, 관리자 렌더러 이스케이프 보강, 감사 CSV 수식 인젝션 방지(`=+-@` 접두 시 `'`), SW notificationclick origin 검증, `security.txt` Policy를 SECURITY.md로 교정, 번들 소스맵·중복 evernight GIF 제거. 커밋 `1c0ecbc`.
 
+#### 버그 수정
+
+- **공지사항 자동 만료 제거**: 공지 전송 시 선택한 만료 시간(1시간/24시간/7일/30일)이 지나면 채팅 배너에서 공지가 사라지던 동작을 제거했습니다. 이제 공지사항은 관리자가 직접 삭제할 때까지 유지됩니다 — 서버가 `expiresAt`을 무시하고(전송 라우트·DO 저장·cleanup 로테이션 제거), 관리자 UI에서 만료/긴급 지속시간 선택 컨트롤을 삭제했습니다(예약 발송은 유지).
+
 #### 인프라
 
 - **Dependabot + CI audit (M12)**: `.github/dependabot.yml`(npm/actions 주간) 추가, CI에 `permissions: contents: read`와 `npm audit --audit-level=high` 스텝을 추가했습니다. 커밋 `61c0afe`.

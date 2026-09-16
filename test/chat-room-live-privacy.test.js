@@ -213,4 +213,18 @@ describe('ChatRoom live privacy and key eviction (H1/M4)', () => {
         expect(lastCall.type).toBe('typing');
         expect(lastCall.typing).toBe(false);
     });
+
+    it('keeps announcements after their expiresAt passes — manual deletion only', async () => {
+        room.currentAnnouncement = {
+            content: 'persistent notice',
+            timestamp: Date.now(),
+            isEmergency: false,
+            expiresAt: Date.now() - 1000
+        };
+
+        await room.cleanup();
+
+        expect(room.currentAnnouncement).not.toBeNull();
+        expect(room.currentAnnouncement.content).toBe('persistent notice');
+    });
 });

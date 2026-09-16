@@ -160,6 +160,12 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         expect(res.status).toBe(200);
         expect(Object.hasOwn(forwarded[0], 'isEmergency')).toBe(false);
     });
+
+    it('does not forward expiresAt — announcements persist until manual deletion', async () => {
+        const res = await sendAnnounce({ content: '영구 공지', expiresAt: Date.now() + 3600000 });
+        expect(res.status).toBe(200);
+        expect(Object.hasOwn(forwarded[0], 'expiresAt')).toBe(false);
+    });
 });
 
 describe('handleAdminKickUser ban duration normalization', () => {

@@ -48,26 +48,17 @@ export async function init(core) {
         try {
             const emergency = document.getElementById('emergency-checkbox')?.checked;
             const schedule = document.getElementById('schedule-checkbox')?.checked;
-            const expires = document.getElementById('announce-expiry-select')?.value || '0';
-            const expiresInt = parseInt(expires);
             const scheduleAt = schedule ? (document.getElementById('schedule-datetime')?.value || null) : null;
-            const emergencyUntil = emergency && expiresInt > 0 ? Date.now() + expiresInt : null;
-            const expiresAt = !emergency && expiresInt > 0 ? Date.now() + expiresInt : null;
+            // Announcements never expire — only manual deletion removes them
             await ApiClient.post('/api/admin/announce', {
                 content,
                 isEmergency: !!emergency,
                 scheduleAt: scheduleAt ? new Date(scheduleAt).getTime() : null,
-                expiresAt,
-                emergencyUntil,
             });
             input.value = '';
             core.showNotification('공지사항 전송 완료', 'success');
             await refresh(core);
         } catch { core.showNotification('공지 전송 실패', 'error'); }
-    });
-    document.getElementById('emergency-checkbox')?.addEventListener('change', (e) => {
-        const dur = document.getElementById('emergency-duration');
-        if (dur) dur.classList.toggle('hidden', !e.target.checked);
     });
     document.getElementById('schedule-checkbox')?.addEventListener('change', (e) => {
         const dt = document.getElementById('schedule-datetime');

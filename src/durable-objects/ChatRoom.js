@@ -1526,19 +1526,7 @@ export class ChatRoom {
             announcementChanged = true;
         }
 
-        if (this.currentAnnouncement && !this.currentAnnouncement.isEmergency && this.currentAnnouncement.expiresAt && now >= this.currentAnnouncement.expiresAt) {
-            if (this.announcementHistory.length > 0) {
-                const next = this.announcementHistory[0];
-                if (next.timestamp !== this.currentAnnouncement.timestamp) {
-                    this.currentAnnouncement = next;
-                } else {
-                    this.currentAnnouncement = null;
-                }
-            } else {
-                this.currentAnnouncement = null;
-            }
-            announcementChanged = true;
-        }
+        // Announcements persist until an admin deletes them — no time-based expiry.
 
         if (announcementChanged) {
             await this.state.storage.put('currentAnnouncement', this.currentAnnouncement);

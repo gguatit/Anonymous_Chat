@@ -427,9 +427,7 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
         if (body.scheduleAt) {
             forwardBody.scheduleAt = body.scheduleAt;
         }
-        if (body.expiresAt) {
-            forwardBody.expiresAt = body.expiresAt;
-        }
+        // expiresAt is no longer forwarded — announcements persist until manual deletion
 
         const response = await forwardToDO(env, '/admin/announce', {
             method: request.method,

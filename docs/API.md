@@ -104,11 +104,11 @@ WebSocket 업그레이드 엔드포인트.
     "content": "서버 점검 안내",
     "timestamp": 1717890123000,
     "isEmergency": false,
-    "emergencyUntil": null,
-    "expiresAt": 1717893723000
+    "emergencyUntil": null
   }
 ]
 ```
+공지사항은 수동 삭제 전까지 유지됩니다(자동 만료 없음).
 
 #### `GET /api/emergency-announcement`
 현재 활성 긴급공지 1개.
@@ -737,10 +737,10 @@ Liveness probe.
   "content": "공지 내용",
   "isEmergency": false,
   "emergencyUntil": 1717893723000,
-  "scheduleAt": 1717890123000,
-  "expiresAt": 1717893723000
+  "scheduleAt": 1717890123000
 }
 ```
+> `expiresAt`는 더 이상 지원되지 않습니다 — 공지사항은 수동 삭제 전까지 유지됩니다.
 
 **PUT Body** (수정, `timestamp` 키로 공지 지정):
 ```json
