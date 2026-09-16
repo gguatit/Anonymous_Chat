@@ -168,8 +168,28 @@
                         </tr>
                         <tr>
                             <td class="py-2 pr-3">오류 로그</td>
-                            <td class="py-2 pr-3">최대 100건</td>
-                            <td class="py-2">링 버퍼 순환(초과분 자동 제거)</td>
+                            <td class="py-2 pr-3">메모리 최대 500건 / 서버 로그 최대 30일</td>
+                            <td class="py-2">링 버퍼 순환(초과분 자동 제거) 및 30일 경과분 자동 삭제</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">보안 이벤트 기록</td>
+                            <td class="py-2 pr-3">최대 90일</td>
+                            <td class="py-2">90일 경과 시 자동 삭제</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">감사 로그 (관리자 작업 이력)</td>
+                            <td class="py-2 pr-3">최대 90일</td>
+                            <td class="py-2">90일 경과 시 자동 삭제</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">관리자 접속 기록</td>
+                            <td class="py-2 pr-3">최대 30일</td>
+                            <td class="py-2">30일 경과 시 자동 삭제</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 pr-3">요청 로그 (Cloudflare Workers Logs)</td>
+                            <td class="py-2 pr-3">최대 7일</td>
+                            <td class="py-2">Cloudflare 플랫폼 정책에 따라 자동 만료(쿼리스트링은 수집 시 마스킹)</td>
                         </tr>
                         <tr>
                             <td class="py-2 pr-3">채널 임시 데이터</td>
@@ -182,9 +202,9 @@
                             <td class="py-2">이용자가 브라우저 설정에서 직접 삭제</td>
                         </tr>
                         <tr>
-                            <td class="py-2 pr-3">서비스 워커 캐시 (PWA)</td>
+                            <td class="py-2 pr-3">서비스 워커 (푸시 알림 전용)</td>
                             <td class="py-2 pr-3">브라우저 캐시 정책 따름</td>
-                            <td class="py-2">오프라인 지원용 정적 리소스</td>
+                            <td class="py-2">오프라인 캐시를 사용하지 않으며, 푸시 구독은 구독 해제 시 삭제</td>
                         </tr>
                     </tbody>
                 </table>
@@ -268,7 +288,7 @@
                 <li>Cloudflare Turnstile 봇 방지 및 Rate limiting을 통한 비정상 접근 차단</li>
                 <li>XSS/CSRF 방어, CSP(Content Security Policy) 헤더 적용</li>
                 <li>로그 최소화 및 보관 기간 제한, 자동 만료/정리 정책 운영</li>
-                <li>오류 로그 순환 보관(최대 100건) 및 민감 정보 필터링</li>
+                <li>오류 로그 순환 보관(메모리 최대 500건, 서버 로그 최대 30일) 및 민감 정보 필터링</li>
                 <li>파일 업로드 시 서버 측 프록시를 통한 간접 전송으로 이용자 IP 보호</li>
             </ul>
         </section>
