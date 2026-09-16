@@ -1,11 +1,12 @@
 /.well-known/security.txt
   Content-Type: text/plain; charset=utf-8
 
+# Bundle filenames are stable (unhashed), so always revalidate to avoid serving stale JS/CSS after deploys
 /js/*
-  Cache-Control: public, max-age=3600, must-revalidate
+  Cache-Control: no-cache, must-revalidate
 
 /css/*
-  Cache-Control: public, max-age=3600, must-revalidate
+  Cache-Control: no-cache, must-revalidate
 
 /*
   X-Content-Type-Options: nosniff

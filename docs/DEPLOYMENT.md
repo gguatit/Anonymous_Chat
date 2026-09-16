@@ -340,7 +340,7 @@ wrangler rollback [deployment-id]
 
 ### 13.4 Cache 전략
 - OG Preview: 1시간 (Edge + Client LRU 50)
-- 정적 자산: `/js/*`, `/css/*`는 `public/_headers`로 `max-age=3600, must-revalidate` (그 외 Cloudflare 자동)
+- 정적 자산: `/js/*`, `/css/*`는 `public/_headers`로 `no-cache, must-revalidate` — 번들 파일명이 고정(무해시)이라 배포 후에도 브라우저·엣지가 구버전을 내려주지 않도록 매 로드마다 재검증(ETag 304)
 - API 응답: 대부분 캐시하지 않음 (실시간성 우선)
 
 ## 14. 트러블슈팅
