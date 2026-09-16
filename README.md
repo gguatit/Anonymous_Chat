@@ -267,7 +267,7 @@ npm run build    # esbuild 클라이언트 번들
 npm run deploy   # 빌드 + wrangler deploy (Worker)
 ```
 
-CI(`.github/workflows/ci.yml`): push/PR 시 `npm ci` → `npm audit --omit=dev --audit-level=high` → 테스트 → lint → `wrangler deploy --dry-run` · Dependabot(npm·GitHub Actions 주간) 활성화
+GitHub Actions·Dependabot 미사용 (2026-09-16 제거) — 검증은 로컬에서 `npm test` · `npm run lint` · `npx wrangler deploy --dry-run` 실행, 배포는 push 시 Cloudflare Workers Builds가 자동 수행
 
 자세한 내용: [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md)
 

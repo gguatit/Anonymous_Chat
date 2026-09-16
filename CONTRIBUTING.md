@@ -209,7 +209,7 @@ chore: 의존성 업데이트
 | 3 | 프로덕션 배포 | `npm run deploy` (= `wrangler deploy`) |
 | 4 | D1 마이그레이션 (해당 시) | `wrangler d1 migrations apply <DB명> --remote` |
 
-> PR/push 시 CI(`.github/workflows/ci.yml`)가 `npm ci` → 테스트 → lint → `wrangler deploy --dry-run`을 실행합니다.
+> 커밋 전 로컬에서 `npm test` → `npm run lint` → `npx wrangler deploy --dry-run` 순서로 검증합니다 (GitHub Actions 미사용).
 
 ---
 

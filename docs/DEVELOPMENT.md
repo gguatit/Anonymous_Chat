@@ -159,17 +159,15 @@ npm run format         # Prettier
 npm run deploy         # 빌드 + wrangler deploy
 ```
 
-### 4.6 CI (GitHub Actions)
-`.github/workflows/ci.yml` — push/PR 시 Node 22에서 실행:
+### 4.6 검증 (로컬)
+GitHub Actions·Dependabot은 사용하지 않습니다 (2026-09-16 제거). 커밋 전 로컬에서 실행:
 ```bash
-npm ci                 # 의존성 설치
-npm audit --omit=dev --audit-level=high   # 프로덕션 의존성 취약점 검사
-npm test               # 596 케이스
+npm test               # 599 케이스
 npm run lint           # 0 errors
 npx wrangler deploy --dry-run
 ```
 
-Dependabot(`.github/dependabot.yml`)이 npm·GitHub Actions 업데이트 PR을 주간 생성합니다.
+배포는 push 시 Cloudflare Workers Builds가 자동 수행합니다.
 
 ## 5. 코딩 컨벤션
 

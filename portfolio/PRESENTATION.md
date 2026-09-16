@@ -382,7 +382,7 @@ self.addEventListener('push', e => {
 ## 10. 발전 가능성 & 로드맵
 
 ### 단기 (1-2개월)
-- [x] CI/CD 파이프라인 (GitHub Actions, `.github/workflows/ci.yml` + `npm audit` + Dependabot)
+- [x] 배포 파이프라인 (Cloudflare Workers Builds 자동배포 + 로컬 검증: test·lint·deploy dry-run)
 - [x] 핵심 DO (`ChatRoom.js`) 테스트 보강 (chat-room*.test.js, 총 596건)
 - [x] 클라이언트 XSS 핫픽스 (escapeHtml 따옴표 + stored XSS 체인 + SVG 파일 프록시 첨부 강제)
 - [x] CSP 강화 (인라인 핸들러 0건, 스크립트 외부화 — script-src에 unsafe-inline/eval 없음, cdnjs 제거)
