@@ -114,12 +114,13 @@ const publicRoutes = [
         // Announcements are stored in D1 for durable storage (M24)
         try {
             const { results } = await env.DB_ADMIN.prepare(
-                'SELECT timestamp, content, is_emergency FROM announcements ORDER BY timestamp DESC LIMIT 100'
+                'SELECT timestamp, content, is_emergency, emergency_until FROM announcements ORDER BY timestamp DESC LIMIT 100'
             ).all();
+            const now = Date.now();
             const list = (results || []).map(r => ({
                 content: r.content,
                 timestamp: r.timestamp,
-                isEmergency: !!r.is_emergency
+                isEmergency: !!r.is_emergency && (!r.emergency_until || now < r.emergency_until)
             }));
             return new Response(JSON.stringify(list), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
         } catch (error) {

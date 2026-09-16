@@ -438,11 +438,11 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             const storedAt = Date.now();
             forwardBody.timestamp = storedAt;
             await env.DB_ADMIN.prepare(
-                'INSERT INTO announcements (timestamp, content, is_emergency) VALUES (?, ?, ?)'
-            ).bind(storedAt, sanitizeInput(content), forwardBody.isEmergency ? 1 : 0).run();
+                'INSERT INTO announcements (timestamp, content, is_emergency, emergency_until) VALUES (?, ?, ?, ?)'
+            ).bind(storedAt, sanitizeInput(content), forwardBody.isEmergency ? 1 : 0, forwardBody.emergencyUntil ?? null).run();
         } else if (request.method === 'PUT') {
             const existing = await env.DB_ADMIN.prepare(
-                'SELECT content, is_emergency FROM announcements WHERE timestamp = ?'
+                'SELECT content, is_emergency, emergency_until FROM announcements WHERE timestamp = ?'
             ).bind(timestamp).first();
             if (!existing) {
                 return jsonError('Announcement not found', 404, request.headers.get('Origin'));
@@ -451,9 +451,12 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             const nextEmergency = Object.hasOwn(forwardBody, 'isEmergency')
                 ? (forwardBody.isEmergency ? 1 : 0)
                 : existing.is_emergency;
+            const nextEmergencyUntil = Object.hasOwn(forwardBody, 'emergencyUntil')
+                ? (forwardBody.emergencyUntil ? Number(forwardBody.emergencyUntil) : null)
+                : (existing.emergency_until ?? null);
             await env.DB_ADMIN.prepare(
-                'UPDATE announcements SET content = ?, is_emergency = ? WHERE timestamp = ?'
-            ).bind(nextContent, nextEmergency, timestamp).run();
+                'UPDATE announcements SET content = ?, is_emergency = ?, emergency_until = ? WHERE timestamp = ?'
+            ).bind(nextContent, nextEmergency, nextEmergencyUntil, timestamp).run();
         } else {
             const deleted = await env.DB_ADMIN.prepare(
                 'DELETE FROM announcements WHERE timestamp = ?'

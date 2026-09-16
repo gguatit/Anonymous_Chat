@@ -151,6 +151,15 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         expect(forwarded[0].emergencyUntil).toBe(future);
     });
 
+    it('stores the emergency expiry in D1', async () => {
+        const future = Date.now() + 3600000;
+        const res = await sendAnnounce({ content: '긴급 공지', isEmergency: true, emergencyUntil: future });
+        expect(res.status).toBe(200);
+        const bindArgs = env.DB_ADMIN.bind.mock.calls[0];
+        expect(bindArgs[2]).toBe(1);
+        expect(bindArgs[3]).toBe(future);
+    });
+
     it('passes through the canonical isEmergency field', async () => {
         const res = await sendAnnounce({ content: '일반 공지', isEmergency: false });
         expect(res.status).toBe(200);

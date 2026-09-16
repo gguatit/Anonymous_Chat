@@ -118,6 +118,21 @@ describe('worker router smoke (real worker.fetch)', () => {
         expect(body).toEqual([{ timestamp: 123, content: '공지 내용', isEmergency: true }]);
     });
 
+    it('marks emergency announcements inactive after their expiry', async () => {
+        env.DB_ADMIN.prepare.mockImplementation(() => ({
+            all: vi.fn(async () => ({
+                results: [
+                    { timestamp: 3, content: '만료됨', is_emergency: 1, emergency_until: Date.now() - 1000 },
+                    { timestamp: 2, content: '진행중', is_emergency: 1, emergency_until: Date.now() + 60000 },
+                    { timestamp: 1, content: '계속', is_emergency: 1, emergency_until: null }
+                ]
+            })),
+        }));
+        const res = await worker.fetch(makeRequest('/api/announcements'), env);
+        const body = await res.json();
+        expect(body.map(a => a.isEmergency)).toEqual([false, true, true]);
+    });
+
     it('serves /api/config from env values', async () => {
         const res = await worker.fetch(makeRequest('/api/config'), env);
         expect(res.status).toBe(200);
