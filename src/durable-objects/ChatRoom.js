@@ -1,4 +1,4 @@
-import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MESSAGES_MAX_BYTES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH, SESSION_KEYS } from '../config/constants.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MESSAGES_MAX_BYTES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH, SESSION_KEYS, REACTION_RATE_LIMIT_MS, TYPING_THROTTLE_MS } from '../config/constants.js';
 import { logAuditLog, logErrorLog, logSecurityEvent } from '../utils/logger.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
 import { verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl, generateMessageSignature } from '../utils/helpers.js';
@@ -1189,6 +1189,15 @@ export class ChatRoom {
         const messageIndex = this.messages.findIndex(msg => msg.messageId === data.messageId);
         if (messageIndex === -1) return;
 
+        // Per-session cooldown: rapid add/remove loops force a full persist + broadcast per call (M6)
+        const reactorMeta = this.userMetadata.get(sessionId);
+        if (reactorMeta) {
+            const now = Date.now();
+            if (reactorMeta.lastReactionTime && now - reactorMeta.lastReactionTime < REACTION_RATE_LIMIT_MS) return;
+            reactorMeta.lastReactionTime = now;
+            this.userMetadata.set(sessionId, reactorMeta);
+        }
+
         const message = this.messages[messageIndex];
         if (!message.reactions) message.reactions = {};
         if (!message.reactionSessions) message.reactionSessions = {};
@@ -1252,6 +1261,17 @@ export class ChatRoom {
             }
         } catch (_e) {
             // ignore
+        }
+
+        if (data.typing) {
+            // Throttle start-typing broadcasts; stop-typing always goes out so the indicator clears (M6)
+            const meta = this.userMetadata.get(sessionId);
+            if (meta) {
+                const now = Date.now();
+                if (meta.lastTypingBroadcastAt && now - meta.lastTypingBroadcastAt < TYPING_THROTTLE_MS) return;
+                meta.lastTypingBroadcastAt = now;
+                this.userMetadata.set(sessionId, meta);
+            }
         }
 
         this.broadcast({

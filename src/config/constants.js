@@ -89,6 +89,7 @@ export const API_RATE_LIMIT = {
 export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
 export const MAX_REACTIONS_PER_EMOJI = 100;
 export const REACTION_RATE_LIMIT_MS = 3000;
+export const TYPING_THROTTLE_MS = 2000;
 
 // AI summary constants
 export const AI_SUMMARY = {

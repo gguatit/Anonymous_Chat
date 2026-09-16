@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatRoom } from '../src/durable-objects/ChatRoom.js';
-import { SESSION_KEYS } from '../src/config/constants.js';
+import { SESSION_KEYS, REACTION_RATE_LIMIT_MS } from '../src/config/constants.js';
 import { generateMessageSignature } from '../src/utils/helpers.js';
 
 function mockState() {
@@ -156,5 +156,61 @@ describe('ChatRoom live privacy and key eviction (H1/M4)', () => {
         );
         expect(ws.close).not.toHaveBeenCalled();
         expect(findSent(ws, 'handshake')).not.toBeNull();
+    });
+
+    it('throttles rapid reactions from the same session (M6)', async () => {
+        room.sessions.set('user_a', createWebSocketMock());
+        room.messages.push({
+            type: 'message', messageId: 'msg_1', content: 'hello',
+            sessionId: 'user_b', nickname: 'B', timestamp: Date.now(), editedAt: null, signature: 'sig'
+        });
+        room.userMetadata.set('user_a', { ip: '10.0.0.1', authorId: 'authoridaa0000001', lastReactionTime: Date.now() });
+
+        await room.handleReaction(
+            { type: 'reaction', messageId: 'msg_1', emoji: '👍', action: 'add', sessionId: 'user_a' },
+            'user_a',
+            env.HMAC_SECRET
+        );
+
+        const msg = room.messages.find(m => m.messageId === 'msg_1');
+        expect(msg.reactionSessions).toBeUndefined();
+    });
+
+    it('allows reactions again once the cooldown has passed (M6)', async () => {
+        room.sessions.set('user_a', createWebSocketMock());
+        room.messages.push({
+            type: 'message', messageId: 'msg_1', content: 'hello',
+            sessionId: 'user_b', nickname: 'B', timestamp: Date.now(), editedAt: null, signature: 'sig'
+        });
+        room.userMetadata.set('user_a', { ip: '10.0.0.1', authorId: 'authoridaa0000001', lastReactionTime: Date.now() - REACTION_RATE_LIMIT_MS - 1000 });
+
+        await room.handleReaction(
+            { type: 'reaction', messageId: 'msg_1', emoji: '👍', action: 'add', sessionId: 'user_a' },
+            'user_a',
+            env.HMAC_SECRET
+        );
+
+        const msg = room.messages.find(m => m.messageId === 'msg_1');
+        expect(msg.reactionSessions['👍']).toContain('user_a');
+    });
+
+    it('throttles start-typing broadcasts but always sends stop-typing (M6)', () => {
+        const wsA = createWebSocketMock();
+        const wsB = createWebSocketMock();
+        room.sessions.set('user_a', wsA);
+        room.sessions.set('user_b', wsB);
+        room.userMetadata.set('user_a', { ip: '10.0.0.1', authorId: 'authoridaa0000001', nickname: 'A' });
+
+        room.handleTyping({ typing: true, nickname: 'A' }, 'user_a');
+        const firstCount = wsB.send.mock.calls.length;
+        expect(firstCount).toBeGreaterThan(0);
+
+        room.handleTyping({ typing: true, nickname: 'A' }, 'user_a');
+        expect(wsB.send.mock.calls.length).toBe(firstCount);
+
+        room.handleTyping({ typing: false, nickname: 'A' }, 'user_a');
+        const lastCall = JSON.parse(wsB.send.mock.calls.at(-1)[0]);
+        expect(lastCall.type).toBe('typing');
+        expect(lastCall.typing).toBe(false);
     });
 });
