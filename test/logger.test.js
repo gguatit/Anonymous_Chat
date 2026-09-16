@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { logAdminActivity, logAuditLog, logErrorLog } from '../src/utils/logger.js';
+import { logAdminActivity, logAuditLog, logErrorLog, _resetLoggerCleanupCounter } from '../src/utils/logger.js';
 
 function makeDb() {
     const run = vi.fn(async () => ({}));
@@ -11,6 +11,7 @@ function makeDb() {
 describe('logger', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
+        _resetLoggerCleanupCounter();
         vi.spyOn(Math, 'random').mockReturnValue(1); // skip cleanup branch
     });
 
@@ -47,6 +48,18 @@ describe('logger', () => {
             await logAdminActivity({ DB_ADMIN: db }, { type: 'login' });
             expect(prepare).toHaveBeenCalledTimes(2);
             expect(prepare.mock.calls[1][0]).toContain('DELETE FROM admin_activity_logs');
+        });
+
+        it('forces a cleanup sweep every 10th write even when random is high (M13)', async () => {
+            vi.spyOn(Math, 'random').mockReturnValue(1);
+            const { db, prepare } = makeDb();
+            for (let i = 0; i < 9; i += 1) {
+                await logAdminActivity({ DB_ADMIN: db }, { type: 'login' });
+            }
+            expect(prepare).toHaveBeenCalledTimes(9);
+            await logAdminActivity({ DB_ADMIN: db }, { type: 'login' });
+            expect(prepare).toHaveBeenCalledTimes(11);
+            expect(prepare.mock.calls[10][0]).toContain('DELETE FROM admin_activity_logs');
         });
     });
 

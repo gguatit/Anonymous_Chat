@@ -6,6 +6,14 @@ import {
 
 const _dedupStore = new Map();
 
+const CLEANUP_EVERY_N_WRITES = 10;
+let _writesSinceCleanup = 0;
+
+// Deterministic retention: force a sweep every Nth write, plus the occasional random one (M13)
+export function _resetSecurityCleanupCounter() {
+    _writesSinceCleanup = 0;
+}
+
 function isDuplicate(eventType, ip, now) {
     if (!ip) return false;
     const dedupKey = `${ip}:${eventType}`;
@@ -18,7 +26,13 @@ function isDuplicate(eventType, ip, now) {
 }
 
 async function runCleanupIfNeeded(env, now) {
-    if (Math.random() >= CLEANUP_PROBABILITY) return;
+    _writesSinceCleanup += 1;
+    const forced = _writesSinceCleanup >= CLEANUP_EVERY_N_WRITES;
+    if (forced) {
+        _writesSinceCleanup = 0;
+    } else if (Math.random() >= CLEANUP_PROBABILITY) {
+        return;
+    }
     try {
         const cutoff = now - 90 * 24 * 60 * 60 * 1000;
         await env.DB_ADMIN.prepare(

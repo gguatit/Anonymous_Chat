@@ -3,6 +3,24 @@ import { logSecurityEvent as _logSecurityEvent } from './security-logger.js';
 const MAX_LOG_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const AUDIT_LOG_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 const CLEANUP_PROBABILITY = 0.1;
+const CLEANUP_EVERY_N_WRITES = 10;
+
+let _writesSinceCleanup = 0;
+
+// Retention is enforced on a schedule, not just by chance: every Nth write forces a
+// sweep, while occasional extra sweeps keep the distribution even (M13)
+function shouldCleanup() {
+    _writesSinceCleanup += 1;
+    if (_writesSinceCleanup >= CLEANUP_EVERY_N_WRITES) {
+        _writesSinceCleanup = 0;
+        return true;
+    }
+    return Math.random() < CLEANUP_PROBABILITY;
+}
+
+export function _resetLoggerCleanupCounter() {
+    _writesSinceCleanup = 0;
+}
 
 export { _logSecurityEvent as logSecurityEvent };
 
@@ -23,7 +41,7 @@ export async function logAdminActivity(env, activity) {
         return;
     }
 
-    if (Math.random() < CLEANUP_PROBABILITY) {
+    if (shouldCleanup()) {
         try {
             await env.DB_ADMIN.prepare(
                 'DELETE FROM admin_activity_logs WHERE timestamp < ?'
@@ -46,7 +64,7 @@ export async function logAuditLog(db, action, details, metadata = {}) {
         return;
     }
 
-    if (Math.random() < CLEANUP_PROBABILITY) {
+    if (shouldCleanup()) {
         try {
             await db.prepare(
                 'DELETE FROM audit_logs WHERE timestamp < ?'
@@ -69,7 +87,7 @@ export async function logErrorLog(db, type, message, stackTrace, location, envir
         return;
     }
 
-    if (Math.random() < CLEANUP_PROBABILITY) {
+    if (shouldCleanup()) {
         try {
             // error_logs.timestamp is an ISO string — bind the same type or SQLite compares INTEGER < TEXT
             await db.prepare(
