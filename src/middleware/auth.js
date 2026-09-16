@@ -73,9 +73,10 @@ export async function generateAdminToken(env) {
 }
 
 // Verify opaque admin token against KV state (no credentials in payload, no local signature check)
-export async function verifyAdminToken(env, token) {
+export async function verifyAdminToken(env, token, ip = null) {
     if (!token || typeof token !== 'string' || !env?.ADMIN_TOKENS) {
         await logSecurityEvent(env, 'TOKEN_INVALID', {
+            ip,
             details: 'Token verification unavailable or malformed',
         });
         return false;
@@ -85,6 +86,7 @@ export async function verifyAdminToken(env, token) {
         const data = await env.ADMIN_TOKENS.get(`${TOKEN_PREFIX}${token}`);
         if (!data) {
             await logSecurityEvent(env, 'TOKEN_INVALID', {
+                ip,
                 details: 'Token not found, revoked or expired',
             });
             return false;
@@ -93,6 +95,7 @@ export async function verifyAdminToken(env, token) {
         const { exp } = JSON.parse(data);
         if (!exp || Date.now() > exp) {
             await logSecurityEvent(env, 'TOKEN_EXPIRED', {
+                ip,
                 details: 'Token expired',
             });
             return false;

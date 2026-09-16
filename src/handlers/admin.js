@@ -22,7 +22,7 @@ async function requireAdminAuth(request, env) {
         return null;
     }
     const token = authHeader.substring(7);
-    const isValid = await verifyAdminToken(env, token);
+    const isValid = await verifyAdminToken(env, token, request.headers.get('CF-Connecting-IP') || 'unknown');
     if (!isValid) {
         await logSecurityEvent(env, 'ADMIN_FORBIDDEN', {
             ip: request.headers.get('CF-Connecting-IP') || 'unknown',
@@ -55,9 +55,9 @@ function forwardResponse(response, corsHeaders) {
 export async function handleAdminLogin(request, env, corsHeaders) {
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
     const timestamp = Date.now();
+    const rateLimitKey = `ratelimit:${clientIP}`;
 
     try {
-        const rateLimitKey = `ratelimit:${clientIP}`;
         const isBlocked = await checkRateLimit(env, rateLimitKey);
 
         if (isBlocked) {
@@ -178,6 +178,9 @@ export async function handleAdminLogin(request, env, corsHeaders) {
             ip: clientIP,
             timestamp
         });
+
+        // Malformed requests must count toward the lockout too, or the throttle is bypassable
+        await incrementRateLimit(env, rateLimitKey);
 
         await sleep(100);
 

@@ -238,3 +238,18 @@ describe('rate limiter pruning (M3)', () => {
         vi.useRealTimers();
     });
 });
+
+describe('admin route rate limiting (M2)', () => {
+    it('rejects admin requests past the per-minute cap', async () => {
+        const env = makeEnv();
+        const burstHeaders = { 'CF-Connecting-IP': '198.51.100.9' };
+
+        let lastStatus = 0;
+        for (let i = 0; i < 121; i++) {
+            const res = await worker.fetch(makeRequest('/api/admin/metrics', 'GET', burstHeaders), env);
+            lastStatus = res.status;
+        }
+
+        expect(lastStatus).toBe(429);
+    });
+});

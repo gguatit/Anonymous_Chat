@@ -82,6 +82,7 @@ export const API_RATE_LIMIT = {
     ANNOUNCEMENTS: { windowMs: 60000, max: 60 },
     WS: { windowMs: 60000, max: 30 },
     VAPID: { windowMs: 60000, max: 30 },
+    ADMIN: { windowMs: 60000, max: 120 },
 };
 
 // Reaction constants

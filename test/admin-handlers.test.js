@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleAdminLogout, handleAdminAnnounce } from '../src/handlers/admin.js';
+import { handleAdminLogout, handleAdminAnnounce, handleAdminLogin } from '../src/handlers/admin.js';
 import { generateAdminToken } from '../src/middleware/auth.js';
 
 function mockKv() {
@@ -158,5 +158,28 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         const res = await sendAnnounce({ content: '공지' });
         expect(res.status).toBe(200);
         expect(Object.hasOwn(forwarded[0], 'isEmergency')).toBe(false);
+    });
+});
+
+describe('admin login lockout counting (M2)', () => {
+    it('counts malformed login bodies toward the lockout', async () => {
+        const env = mockEnv();
+        const sendMalformed = () => handleAdminLogin(
+            new Request('https://example.com/api/admin/login', {
+                method: 'POST',
+                headers: { 'CF-Connecting-IP': '203.0.113.99', 'Content-Type': 'application/json' },
+                body: 'not-json'
+            }),
+            env,
+            cors()
+        );
+
+        for (let i = 0; i < 5; i++) {
+            const res = await sendMalformed();
+            expect(res.status).toBe(400);
+        }
+
+        const blocked = await sendMalformed();
+        expect(blocked.status).toBe(429);
     });
 });

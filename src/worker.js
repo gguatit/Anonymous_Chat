@@ -293,6 +293,9 @@ export default {
 
             // Match admin routes: /api/admin/<name>
             if (url.pathname.startsWith(API_PREFIX)) {
+                if (!checkRateLimit(request.headers.get('CF-Connecting-IP') || 'unknown', API_RATE_LIMIT.ADMIN, 'admin')) {
+                    return jsonError('Rate limit exceeded', 429, origin);
+                }
                 const name = url.pathname.slice(API_PREFIX.length);
                 let handler = matchRoute(adminRoutes, name, request.method);
                 if (!handler && /^security\/events\/\d+$/.test(name)) {
