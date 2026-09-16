@@ -347,8 +347,8 @@ wrangler rollback [deployment-id]
 
 ### 14.1 WebSocket 연결 실패
 - `Origin` 필수(fail-closed): 누락 또는 허용 목록 외면 `403` → `SECURITY.ALLOWED_ORIGINS` 확인 (개발은 `ENVIRONMENT=development` + `http://localhost:8788`만 허용)
-- `ticket` 쿼리 필수: `POST /api/turnstile/verify`(body에 `sessionId`)로 발급받은 HMAC 티켓(12시간). 누락/불일치 시 연결 거부
-- `admin_obs_*` 옵저버 세션은 `token` 쿼리(관리자 토큰) 필요, 실패 시 `401`
+- `ticket` 쿼리 필수: `POST /api/turnstile/verify`(body에 `sessionId`)로 발급받은 HMAC 티켓(2시간, join sessionId에 바인딩 — 불일치 시 close `4401`). 누락/불일치 시 연결 거부
+- `admin_obs_*` 옵저버 세션은 `POST /api/admin/observer-ticket`(관리자 인증)으로 발급받은 5분 티켓을 `ticket` 쿼리로 전달, 실패 시 `401` (관리자 토큰을 URL에 넣지 않음)
 - `/api/check-ban` 200 확인
 - `HMAC_SECRET` 일치 확인
 - 로컬 개발 포트는 `8788` (`wrangler dev --var ENVIRONMENT:development --port 8788`)

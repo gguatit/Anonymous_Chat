@@ -9,6 +9,7 @@
 - [개요](#개요)
 - [범례](#범례)
 - [릴리스](#릴리스)
+  - [2026-09-16](#2026-09-16)
   - [2026-09-15](#2026-09-15)
   - [2026-06-22](#2026-06-22)
   - [2026-06-16](#2026-06-16)
@@ -37,8 +38,8 @@
 | 항목 | 값 |
 |---|---|
 | 시작일 | 2025-12-19 |
-| 최근 업데이트 | 2026-09-15 |
-| 릴리스 수 | 19 |
+| 최근 업데이트 | 2026-09-16 |
+| 릴리스 수 | 20 |
 | 카테고리 | 신규 기능 / 개선 / 버그 수정 / 보안 / 인프라 / 문서 / 아키텍처 / 디자인 / 코드 품질 |
 
 ---
@@ -60,6 +61,40 @@
 ---
 
 ## 릴리스
+
+### 2026-09-16
+
+2차 심층 보안 분석 기반 하드닝 v2. CRITICAL 1건·HIGH 2건·MEDIUM 13건과 LOW 다수를 수정했습니다. 계획서는 `docs/superpowers/plans/2026-09-16-security-hardening-v2.md`이며, 최종 HEAD `1c0ecbc`가 https://kalpha.mmv.kr에 배포되었습니다.
+
+#### 보안
+
+- **파일 프록시 SVG/문서형 첨부 강제 (C1)**: `/api/file/:id`가 업스트림 content-type을 그대로 신뢰해 `image/svg+xml` 등이 인라인 렌더링되어 동일 오리진에서 스크립트가 실행될 수 있던 문제를 수정했습니다. 래스터 이미지(png/jpeg/gif/webp/avif/bmp/icon)만 인라인을 허용하고 나머지는 `Content-Disposition: attachment` + `nosniff`, 문서형에는 CSP `default-src 'none'; sandbox`를 부여합니다. 커밋 `e735e1d`.
+- **세션키 퇴출 가드 + 라이브 sessionId 제거 (H1/M4)**: 키 캡 초과 시 연결 중 세션의 capability key가 퇴출되어 정상 사용자가 재접속 4401로 차단되던 문제를 비연결 키 우선 퇴출로 수정하고, 소켓당 join을 10회로 캡했습니다. 이벤트·반응·타이핑 등 라이브 브로드캐스트에서 sessionId를 제거하고 authorId로 대체했습니다(저장 메시지·옵저버 이벤트는 유지). 커밋 `e01228a`.
+- **Workers Logs 쿼리스트링 마스킹 (H2)**: observability에 `redact_query_string = true`를 추가해 관리자 토큰·티켓·DeadDrop ID가 로그 URL에 영속되던 경로를 차단했습니다. 커밋 `a782e69`.
+- **옵저버 일회성 티켓 (M8)**: 옵저버 WS가 `?token=`으로 관리자 토큰을 URL에 노출하던 방식을 5분 TTL HMAC 일회성 티켓(`/api/admin/observer-ticket` → `&ticket=`)으로 교체했고, 기존 `token=` 파라미터는 거부합니다. 커밋 `3f09cec`.
+- **Turnstile 티켓 join 바인딩 (M1)**: Turnstile 티켓을 최초 join 예정 sessionId에 바인딩하고 TTL을 12시간→2시간으로 단축했습니다. 불일치 시 close 4401, 클라이언트는 4401 수신 시 티켓을 초기화합니다. 커밋 `a67228a`.
+- **관리자 라우트 레이트리밋 (M2)**: `/api/admin/*` 공통 리미터(120/분/IP)를 적용하고 malformed JSON 로그인 시도도 실패 카운터에 포함시켰으며, TOKEN_INVALID/EXPIRED 보안 이벤트에 `ip`를 기록했습니다. 커밋 `344b306`.
+- **레지스트리 전수 스윕 alarm 전용화 (M3)**: 요청마다 돌던 채널 레지스트리 정리를 `alarm()`으로 이동하고 5분 스로틀을 적용했습니다. 커밋 `e7e6061`.
+- **DeadDrop 만료 alarm GC (M5)**: 저장 시 가장 이른 만료로 alarm을 예약하고 alarm마다 만료 정리·재예약하도록 전환해 단일 시크릿 JSON 포화 문제를 해소했습니다. 커밋 `0d37a41`.
+- **반응·타이핑 스로틀 (M6)**: 반응 1초·타이핑 2초 스로틀을 적용했습니다. 커밋 `836838a`.
+- **preview SSRF 데니리스트 보강 (M7)**: IPv4-mapped IPv6(`::ffff:*`), 0.0.0.0/8, 192.0.0.0/24, 198.18.0.0/15, 멀티캐스트/예약 대역을 거부하고 DNS 리바인딩 한계를 문서화했습니다. 커밋 `34f0eb4`.
+- **Prism 자체 번들 이관 (M9)**: CDN(cdnjs) 로드 2줄을 제거하고 Prism을 esbuild 번들로 이관, CSP에서 cdnjs를 제거했습니다. 커밋 `d01aebe`.
+- **강제 보존 스윕 (M13)**: 확률(10%) 정리만으로는 오래 미실행될 수 있어 쓰기 10회마다 강제 스윕을 수행하도록 `logger.js`/`security-logger.js`를 보강했습니다. 커밋 `99809ff`.
+- **서버 LOW 배치**: 내부 DO HMAC 비교를 `constantTimeCompare`로 통일, kick `banDuration` 0~MAX 클램프, 관리자 메시지 쓰기를 `_persistMessages()`(바이트 캡 일원화)로 교체, 채널 삭제 시 소켓 종료·마지막 세션 퇴장 시 빈 채널 alarm 예약, 미소유 push resubscribe 404, 라우트 메서드 명시. 커밋 `a0131d4`.
+- **클라이언트/구성 LOW 배치**: `ApiClient.get/getRaw` 401 훅 확대, 관리자 렌더러 이스케이프 보강, 감사 CSV 수식 인젝션 방지(`=+-@` 접두 시 `'`), SW notificationclick origin 검증, `security.txt` Policy를 SECURITY.md로 교정, 번들 소스맵·중복 evernight GIF 제거. 커밋 `1c0ecbc`.
+
+#### 인프라
+
+- **Dependabot + CI audit (M12)**: `.github/dependabot.yml`(npm/actions 주간) 추가, CI에 `permissions: contents: read`와 `npm audit --audit-level=high` 스텝을 추가했습니다. 커밋 `61c0afe`.
+
+#### 문서
+
+- **개인정보처리방침 현행화 (M11)**: 보존 기간(감사 90일·오류 30일·관리자 활동 30일·보안 이벤트 90일), D1/Workers Logs 7일 보존, SW 캐시 서술 제거를 반영했습니다. 커밋 `e47dc64`.
+
+#### 테스트
+
+- 신규/보강: file-proxy-headers, observer-ticket, ops-config(wrangler redact·CSP cdnjs), chat-room-live-privacy(라이브 sessionId·join 캡), chat-room-message-cap, push-ownership, page-logs-csv, api-client 401, turnstile join 바인딩, preview denylist, dead-drop alarm, channel-registry alarm.
+- 총 **596건 / 40개 파일** 전부 통과, lint 0 errors, build green.
 
 ### 2026-09-15
 

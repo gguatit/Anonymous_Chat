@@ -68,7 +68,7 @@
 | **푸시** | Web Push (VAPID) + FCM v1 | 표준 Web Push + Android 호환 |
 | **빌드** | esbuild | 10개 엔트리 코드 스플리팅, 1초 이내 빌드 |
 | **프론트** | 바닐라 JS + CSS Custom Properties | 프레임워크 의존성 최소화, 학습 곡선 ↓ |
-| **테스트** | Vitest | 496개 케이스, 35개 파일 |
+| **테스트** | Vitest | 596개 케이스, 40개 파일 |
 | **린팅** | ESLint + Prettier | 코드 스타일 통일 |
 
 ### 선택의 트레이드오프
@@ -221,6 +221,8 @@ X-Content-Type-Options: nosniff
 Referrer-Policy: strict-origin-when-cross-origin
 ```
 
+외부 스크립트 CDN 의존이 없습니다 — Prism.js도 cdnjs 대신 자체 번들로 호스팅하고, CSP에서 cdnjs를 제거했습니다.
+
 ### 6.4 Rate Limiting (4중)
 
 | 레이어 | 대상 | 한도 |
@@ -230,7 +232,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 | L3 DO 메모리 | IP당 WebSocket 연결 | 25개 |
 | L4 DO 메시지 쿨다운 | 세션당 | 1초 / 30msg/분 |
 
-추가로 `/ws` 등 주요 진입점은 Cloudflare Turnstile 티켓 검증을 통과해야 합니다 (HMAC 서명된 티켓, sessionId 바인딩).
+추가로 `/ws` 등 주요 진입점은 Cloudflare Turnstile 티켓(join 세션 바인딩, 2시간 TTL) 검증을 통과해야 합니다. 관리자 API(`/api/admin/*`)는 공통 120/분/IP 리미터와 로그인 실패 카운터(IP 기록 포함)로 보호됩니다.
 
 ### 6.5 Risk Scoring (자동 차단 추천)
 
@@ -353,16 +355,20 @@ self.addEventListener('push', e => {
   - 총 라인 수: ~15,000줄
 
 🧪 테스트
-  - Vitest 496 cases (35개 파일)
+  - Vitest 596 cases (40개 파일)
   - 전체 스위트 20초 이내 통과
   - 커버리지 모듈: rate-limiter, helpers, security, classifier, risk-scorer, security-logger, security routes
 
 🛡️ 보안 통제
   - 보안 이벤트 22가지 (4 카테고리, 4 severity)
-  - 다층 rate limit (4중)
+  - 다층 rate limit (4중) + 관리자 라우트 120/분/IP·로그인 락아웃 카운터
   - Triple-ban (IP + Session + Token)
   - 11가지 보안 헤더
   - HMAC + Ephemeral Token
+  - 옵저버 WS 5분 일회성 티켓 (URL 관리자 토큰 노출 제거)
+  - Turnstile 티켓 join 세션 바인딩 (2h TTL)
+  - D1/로그 보존 강제 스윕 (쓰기 10회마다) + DeadDrop alarm GC
+  - Prism 자체 번들 (CSP cdnjs 제거)
 
 ⚡ 성능
   - chat.bundle.js 136KB (gzip ~40KB)
@@ -376,10 +382,11 @@ self.addEventListener('push', e => {
 ## 10. 발전 가능성 & 로드맵
 
 ### 단기 (1-2개월)
-- [x] CI/CD 파이프라인 (GitHub Actions, `.github/workflows/ci.yml`)
-- [x] 핵심 DO (`ChatRoom.js`) 테스트 보강 (chat-room*.test.js, 총 496건)
-- [x] 클라이언트 XSS 핫픽스 (escapeHtml 따옴표 + stored XSS 체인 수정)
-- [x] CSP 강화 (인라인 핸들러 0건, 스크립트 외부화 — script-src에 unsafe-inline/eval 없음)
+- [x] CI/CD 파이프라인 (GitHub Actions, `.github/workflows/ci.yml` + `npm audit` + Dependabot)
+- [x] 핵심 DO (`ChatRoom.js`) 테스트 보강 (chat-room*.test.js, 총 596건)
+- [x] 클라이언트 XSS 핫픽스 (escapeHtml 따옴표 + stored XSS 체인 + SVG 파일 프록시 첨부 강제)
+- [x] CSP 강화 (인라인 핸들러 0건, 스크립트 외부화 — script-src에 unsafe-inline/eval 없음, cdnjs 제거)
+- [x] 옵저버 일회성 티켓·Turnstile join 바인딩·관리자 라우트 리미터·보존 강제 스윕 (2026-09-16 v2)
 
 ### 중기 (3-6개월)
 - [ ] 종단간 암호화 (E2EE) — 비밀 메시지 확장
@@ -663,14 +670,15 @@ Cloudflare D1은:
 ```
 프로젝트명: Anonymous Chat
 스택: Cloudflare Workers + DO + D1 + KV + Workers AI
-규모: 서버 32파일, 클라이언트 30개 소스 모듈 + 6개 페이지 래퍼, 테스트 496건 통과
+규모: 서버 32파일, 클라이언트 30개 소스 모듈 + 6개 페이지 래퍼, 테스트 596건 통과
 핵심 설계:
   1. Ephemeral Token (HMAC 서명, 32-byte secret)
   2. Triple-ban (IP + Session + Token)
-  3. 4중 Rate Limit
+  3. 4중 Rate Limit + 관리자 라우트 리미터
   4. 9-Theme CSS Custom Properties
   5. 3개 Durable Object (ChatRoom/ChannelRegistry/DeadDropStore)
   6. Risk Scoring (22 events, auto-block recommendation)
+  7. 옵저버 일회성 티켓 + Turnstile join 바인딩
 가장 어려웠던 점: WebSocket fan-out in DO (해결: Map<sid, ws>)
 가장 자랑스러운 점: 보안 헤더 + HMAC + Rate Limit 풀스택 적용
 다음 단계: E2EE, 테스트 커버리지 임계치, 모바일 앱

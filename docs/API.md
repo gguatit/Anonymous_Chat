@@ -1,6 +1,6 @@
 # API 명세
 
-53개 HTTP 엔드포인트의 명세입니다. 모든 응답은 CORS 헤더를 포함합니다 (`src/config/cors.js`).
+54개 HTTP 엔드포인트의 명세입니다. 모든 응답은 CORS 헤더를 포함합니다 (`src/config/cors.js`).
 
 **기본 URL**: `https://kalpha.mmv.kr` (프로덕션) | `http://localhost:8788` (개발)
 
@@ -18,7 +18,7 @@
   - [1.6 푸시 알림](#16-푸시-알림)
   - [1.7 보안](#17-보안)
   - [1.8 시스템](#18-시스템)
-- [2. 관리자 엔드포인트](#2-관리자-엔드포인트-31개-bearer-인증)
+- [2. 관리자 엔드포인트](#2-관리자-엔드포인트-32개-bearer-인증)
   - [2.1 인증](#21-인증)
   - [2.2 메트릭/세션/메시지](#22-메트릭세션메시지)
   - [2.3 메시지 관리](#23-메시지-관리)
@@ -37,7 +37,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 총 엔드포인트 | 53개 (공개 22 + 관리자 31) |
+| 총 엔드포인트 | 54개 (공개 22 + 관리자 32) |
 | 인증 방식 | 공개: 없음 / 관리자: Bearer 토큰 |
 | 데이터 형식 | JSON (multipart는 `/api/upload`만) |
 | CORS | 모든 응답 포함 (`src/config/cors.js`) |
@@ -55,7 +55,7 @@
 | 푸시 알림 | 3 | VAPID 키, 구독, 해제 |
 | 보안 | 2 | Turnstile 검증, 차단 확인 |
 | 시스템 | 4 | metrics, health, error log, config |
-| 관리자 인증 | 3 | login, verify, logout |
+| 관리자 인증 | 4 | login, verify, logout, observer-ticket |
 | 관리자 데이터 | 4 | metrics, sessions, messages, user-details |
 | 관리자 메시지 | 4 | broadcast, edit, delete, delete-all |
 | 관리자 차단 | 3 | kick-user, unban-ip, banned-ips |
@@ -74,10 +74,9 @@
 WebSocket 업그레이드 엔드포인트.
 
 **Query**:
-- `sessionId` (required) — `user_<uuid>_<ts>` 형식
+- `sessionId` (required) — `user_<uuid>_<ts>` 형식 (관리자 옵저버는 `admin_obs_<16hex>`)
 - `channel` (optional) — 채널 slug (생략 시 메인룸)
-- `ticket` (required) — `POST /api/turnstile/verify`가 발급한 HMAC 티켓 (12시간 유효)
-- `token` — `admin_obs_*` 관리자 옵저버 세션 전용 관리자 토큰 (일반 세션은 불필요)
+- `ticket` (required) — HMAC 티켓 (2시간 유효, `sessionId`에 바인딩). 일반 세션은 `POST /api/turnstile/verify`, 관리자 옵저버는 `POST /api/admin/observer-ticket`이 발급
 
 **Headers**:
 - `Origin` — 필수. 누락/비허용 Origin이면 `403` (fail-closed)
@@ -85,10 +84,11 @@ WebSocket 업그레이드 엔드포인트.
 
 **참고**:
 - 사전 차단 확인을 위해 `/api/check-ban`을 먼저 호출합니다
-- 내부적으로 `X-Admin-Internal-Token` (HMAC_SECRET) 헤더를 DO에 전달
-- `admin_obs_*` 세션은 `token` 검증 실패 시 `401`로 거부됩니다
+- 내부적으로 `X-Admin-Internal-Token` (HMAC_SECRET) 및 `X-Ws-Session-Id` 헤더를 DO에 전달
+- `admin_obs_*` 세션은 URL의 관리자 토큰 대신 옵저버 티켓으로 검증되며, 실패 시 `401`로 거부됩니다
+- `join`의 `sessionId`가 티켓에 바인딩된 값과 다르면 `close 4401 (Session mismatch)`
 
-**메시지 프로토콜**: [ARCHITECTURE.md §ChatRoom Durable Object](./ARCHITECTURE.md#2-chatroom-durable-object-srcdurable-objectschatroomjs-1435줄)
+**메시지 프로토콜**: [ARCHITECTURE.md §ChatRoom Durable Object](./ARCHITECTURE.md#2-chatroom-durable-object-srcdurable-objectschatroomjs-1642줄)
 
 ---
 
@@ -336,6 +336,7 @@ VAPID 공개키 (Web Push 구독용).
 
 **Errors**:
 - `401`: 세션 검증 실패 (`key` 누락/불일치)
+- `404`: 재구독(`type: 'resubscribe'`) 시 저장된 동일 endpoint 구독이 없음 (`Subscription not found`)
 
 **Response 200**:
 ```json
@@ -373,9 +374,10 @@ Cloudflare Turnstile 토큰 검증 후 WebSocket용 티켓 발급.
 
 **Response 200** (성공):
 ```json
-{ "success": true, "ticket": "<HMAC 티켓, 12시간 유효>" }
+{ "success": true, "ticket": "<HMAC 티켓, 2시간 유효, sessionId 바인딩>" }
 ```
 > `HMAC_SECRET` 미설정 시 `ticket`은 생략됩니다.
+> 티켓은 요청한 `sessionId`에 바인딩되며, `/ws`의 `join.sessionId`가 다르면 `close 4401`로 거부됩니다.
 
 **Response 200** (검증 실패):
 ```json
@@ -456,9 +458,9 @@ Liveness probe.
 
 ---
 
-## 2. 관리자 엔드포인트 (31개, Bearer 인증)
+## 2. 관리자 엔드포인트 (32개, Bearer 인증)
 
-모든 `/api/admin/*` 엔드포인트는 `Authorization: Bearer <token>` 헤더 필요 (단, `login` 제외).
+모든 `/api/admin/*` 엔드포인트는 `Authorization: Bearer <token>` 헤더 필요 (단, `login` 제외). 라우트별 허용 메서드는 명시적으로 선언됩니다 (`announce`: POST/PUT/DELETE, `observer-ticket`: POST, 나머지 단일 메서드).
 
 **인증 흐름**:
 1. `POST /api/admin/login` → 토큰 발급 (KV `token:<t>`에 12시간 슬라이딩 TTL로 저장)
@@ -482,8 +484,9 @@ Liveness probe.
 ```
 
 **Errors**:
+- `400`: 형식 오류(JSON 파싱 실패 등) — 실패 횟수에 포함
 - `401`: 자격 증명 오류
-- `429`: 5분 내 5회 실패 시 차단
+- `429`: 5분 내 5회 실패 시 차단 (형식 오류 포함)
 - `503`: `ADMIN_ID`/`ADMIN_PASSWORD` 미설정
 
 #### `GET /api/admin/verify`
@@ -504,6 +507,22 @@ Liveness probe.
 ```json
 { "success": true }
 ```
+
+#### `POST /api/admin/observer-ticket`
+**인증 필요** — 관리자 옵저버 WebSocket용 단기 티켓 발급.
+
+**Response 200**:
+```json
+{
+  "sessionId": "admin_obs_<16hex>",
+  "ticket": "<HMAC 티켓, 5분 유효>",
+  "expiresIn": 300
+}
+```
+
+**참고**:
+- 발급된 `sessionId` + `ticket`으로 `/ws?sessionId=<issued>&ticket=<issued>`에 연결합니다 (URL에 관리자 토큰 미포함)
+- `ticket`은 발급된 `sessionId`에만 유효하며 5분 후 만료됩니다
 
 ---
 
@@ -1006,6 +1025,7 @@ type ClientMessage =
 ```
 
 - `join`의 `key`는 재연결 시 필수입니다. handshake에서 받은 `key`와 불일치하면 `close 4401 (Invalid session key)`로 연결이 끊깁니다.
+- 티켓에 바인딩된 세션 ID와 다른 `join.sessionId`는 `close 4401 (Session mismatch)`로 거부됩니다.
 - `message`/`edit`의 `signature`는 **필수**입니다 (2026-06-22 강화).
   - 클라이언트(`public/js/signature.js`)가 `handshake.secret`으로 자동 생성
   - 미포함 또는 불일치 시 거부 + `WS_INVALID_MSG` 보안 이벤트 기록
@@ -1027,10 +1047,10 @@ type ServerMessage =
   | { type: 'system'; content: string }
   | { type: 'error'; message: string }
   | { type: 'message'; message: StoredMessage; signature: string }
-  | { type: 'message_edited'; messageId: string; content: string; editedAt: number }
+  | { type: 'message_edited'; message: StoredMessage }
   | { type: 'message_deleted'; messageId: string }
   | { type: 'message_reaction'; messageId: string; emoji: string; count: number; reacted: boolean }
-  | { type: 'typing'; sessionId: string; nickname: string; isTyping: boolean }
+  | { type: 'typing'; authorId: string; nickname: string; typing: boolean }
   | { type: 'user_count'; count: number }
   | { type: 'summary'; text: string; mode: string; messageId: string }
   | { type: 'kicked'; message: string }
@@ -1038,6 +1058,8 @@ type ServerMessage =
 ```
 
 자세한 타입 정의: `src/schema.js`
+
+> live broadcast(`message`/`message_edited`/`message_reaction`/`typing`)에는 `sessionId`가 포함되지 않습니다 (`authorId` 사용). 히스토리도 `authorId` 기준입니다.
 
 ---
 
@@ -1086,6 +1108,7 @@ type ServerMessage =
 | `/api/search` | 60s | 20 |
 | `/ws` (연결) | 60s | 30 |
 | 메시지 (WS) | 1s 쿨다운 | 분당 30개 슬라이딩 |
+| `/api/admin/*` | 60s | 120 (IP 기준) |
 | 관리자 로그인 | 5min | 5회 실패 시 차단 |
 
 상수 위치: `src/config/constants.js`

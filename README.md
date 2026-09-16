@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/License-Commercial-blue.svg)](./COMMERCIAL_LICENSE.md)
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](./SECURITY.md)
-[![Tests](https://img.shields.io/badge/Tests-496%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/Tests-596%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
 
 Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 채팅 서비스입니다.
 회원가입 없이 닉네임만으로 즉시 참여하며, **12시간 후 모든 메시지는 자동 소멸**합니다.
@@ -39,7 +39,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | AI 요약 | `/summary` · `/topic` · `/mood` · `/conflict` 4가지 모드 |
 | 메시지 검색 | 키워드 + 태그(`#images` · `#files` · `#code` · `#url`) |
 | 링크 프리뷰 | OG 태그 자동 파싱 + 보안 헤더 분석 |
-| 코드 하이라이팅 | Prism.js 단일 스택 |
+| 코드 하이라이팅 | Prism.js 단일 스택 (npm 셀프 호스팅 번들 · CDN 미사용) |
 | 다중 채널 | 주제별 독립 채팅방 |
 | 공지사항 | 일반/긴급 공지 + 스케줄링 |
 | 푸시 알림 | VAPID Web Push + FCM |
@@ -53,7 +53,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | 사용자 차단 | IP + SessionID 이중 (시간/영구) |
 | 공지사항 관리 | 발송 · 수정 · 삭제 · 긴급 · 만료 |
 | 채널 관리 | 목록 · 상세 · 강제 삭제 |
-| 감사 로그 | D1 저장 · 필터링 · CSV 내보내기 · `audit_logs` 90일 / `admin_activity_logs`·`error_logs` 30일 확률적 정리 |
+| 감사 로그 | D1 저장 · 필터링 · CSV 내보내기 · `audit_logs` 90일 / `admin_activity_logs`·`error_logs` 30일 정리(쓰기 10회마다 강제) |
 | 오류 추적 | 자동 수집 · 다운로드 · 초기화 |
 | 로그인 기록 | 성공/실패/차단/로그아웃 |
 
@@ -64,9 +64,12 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | HMAC 메시지 서명 | 클라이언트 → 서버 메시지 변조 방지 |
 | HMAC 인증 토큰 | opaque 랜덤 토큰 + KV 세션 (JWT 아님) |
 | Rate Limiting | 전역 + 엔드포인트별 + 사용자별 다층 |
-| Cloudflare Turnstile | 봇 방지 · `/ws` 연결 시 서버 발급 HMAC 티켓(12시간) 필수 |
+| Cloudflare Turnstile | 봇 방지 · `/ws` 연결 시 조인 sessionId에 바인딩된 HMAC 티켓(2시간) 필수 |
 | WS Origin 검증 | Origin 헤더 필수 (fail-closed) |
-| 보안 헤더 | CSP · HSTS · COOP · COEP · `unsafe-inline`/`unsafe-eval` 제거 |
+| 관리자 API 레이트 리밋 | `/api/admin/*` IP당 120회/분 |
+| 옵저버 티켓 | 관리자 옵저버 WS는 5분 1회용 티켓(`POST /api/admin/observer-ticket`)으로 접속 (관리자 토큰 URL 미노출) |
+| 파일 프록시 | 문서(SVG/HTML/PDF)는 `attachment` + `nosniff` + CSP, 래스터 이미지만 인라인 |
+| 보안 헤더 | CSP · HSTS · COOP · COEP · `unsafe-inline`/`unsafe-eval` 제거 · cdnjs 미허용 |
 | Dead Drop | 30분 TTL · 1회 읽기 후 영구 삭제 |
 | 자동 소멸 | 메시지 12시간 · 차단 자동 만료 |
 
@@ -82,7 +85,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
 | **푸시** | Web Push (VAPID) + FCM v1 |
 | **빌드** | esbuild (chat · admin · 보안센터 · 관리자 페이지 번들 10종) |
-| **테스트** | Vitest (496 cases · 35 파일) |
+| **테스트** | Vitest (596 cases · 40 파일) |
 | **린팅** | ESLint + Prettier |
 | **프론트** | 바닐라 JS (모듈식) · CSS Custom Properties 테마 · Tailwind(빌드) |
 
@@ -116,7 +119,7 @@ npm run dev
 
 ```bash
 npm run build      # 클라이언트 번들 (esbuild)
-npm test           # 496개 유닛 테스트 (35 파일)
+npm test           # 596개 유닛 테스트 (40 파일)
 npm run lint       # ESLint
 ```
 
@@ -183,7 +186,7 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 │   │   └── utils.js              # 공통 유틸
 │   └── css/                      # 테마 + 애니메이션
 │
-├── test/                         # Vitest 496 cases (35 파일)
+├── test/                         # Vitest 596 cases (40 파일)
 ├── migrations/                   # D1 스키마
 ├── docs/                         # 상세 문서
 └── wrangler.toml                 # Cloudflare 설정
@@ -246,9 +249,9 @@ flowchart LR
 | 상수 시간 비교 | 타이밍 공격 방지 |
 | 입력 sanitization | `sanitizeInput`, `escapeHtml` |
 | 메시지 서명 검증 | HMAC-SHA256 + Ephemeral Token (세션별 secret 폐기) · ±30초 신선도 · 재접속 capability key (close 4401) |
-| Rate Limiting | 다층 적용 |
-| 보안 헤더 | CSP · HSTS · COOP · COEP · `unsafe-inline`/`unsafe-eval` 제거 |
-| Cloudflare Turnstile | `/ws` 연결 시 서버 발급 HMAC 티켓(12시간) 필수 |
+| Rate Limiting | 다층 적용 (관리자 라우트 120회/분) |
+| 보안 헤더 | CSP · HSTS · COOP · COEP · `unsafe-inline`/`unsafe-eval` 제거 · cdnjs 미허용 |
+| Cloudflare Turnstile | `/ws` 연결 시 조인 sessionId 바인딩 HMAC 티켓(2시간) 필수 |
 | WS Origin 검증 | Origin 헤더 필수 (fail-closed) |
 | SSRF 방지 | 내부 토큰 |
 
@@ -264,7 +267,7 @@ npm run build    # esbuild 클라이언트 번들
 npm run deploy   # 빌드 + wrangler deploy (Worker)
 ```
 
-CI(`.github/workflows/ci.yml`): push/PR 시 `npm ci` → 테스트 → lint → `wrangler deploy --dry-run`
+CI(`.github/workflows/ci.yml`): push/PR 시 `npm ci` → `npm audit --omit=dev --audit-level=high` → 테스트 → lint → `wrangler deploy --dry-run` · Dependabot(npm·GitHub Actions 주간) 활성화
 
 자세한 내용: [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md)
 

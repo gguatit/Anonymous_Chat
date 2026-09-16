@@ -37,9 +37,10 @@ When a vulnerability is reported, we will handle it with the following process:
 
 ## Current Security Posture
 
-- **WebSocket admission**: `/ws` requires a valid `Origin` header (fail-closed) and a Turnstile ticket issued by `POST /api/turnstile/verify` (12-hour TTL; skipped only when `TURNSTILE_SECRET_KEY` is unset).
+- **WebSocket admission**: `/ws` requires a valid `Origin` header (fail-closed) and a Turnstile ticket issued by `POST /api/turnstile/verify` (2-hour TTL, bound to the connection's session ID; skipped only when `TURNSTILE_SECRET_KEY` is unset). A `join` whose session ID does not match the ticket is closed with code 4401.
+- **Observer access**: the admin dashboard connects through a short-lived (5-minute) observer ticket issued by `POST /api/admin/observer-ticket`; the admin token is never placed in the WebSocket URL.
 - **Message integrity**: messages and edits are rejected unless signed with the session capability key; signatures older than ±30 seconds are refused, and reconnects without a valid key are closed with code 4401.
-- **Admin sessions**: opaque random tokens stored in KV with a 12-hour sliding TTL, revocable server-side on logout, with automatic client logout on 401.
+- **Admin sessions**: opaque random tokens stored in KV with a 12-hour sliding TTL, revocable server-side on logout, with automatic client logout on 401. All `/api/admin/*` requests are rate-limited to 120 requests per minute per IP.
 
 ## AI Data Handling
 

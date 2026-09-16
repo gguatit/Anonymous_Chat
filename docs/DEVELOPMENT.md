@@ -31,7 +31,7 @@ Anonymous Chat의 개발 환경 설정 및 워크플로우입니다.
 | 테스트 | Vitest |
 | 린트 | ESLint (flat config) |
 | 포맷터 | Prettier |
-| 코드 통계 | 테스트 496케이스 (35파일), 서버 DO 3종 + Worker 라우터 |
+| 코드 통계 | 테스트 596케이스 (40파일), 서버 DO 3종 + Worker 라우터 |
 
 ---
 
@@ -100,7 +100,7 @@ cp .dev.vars.example .dev.vars
 - `public/js/dead-drop.js` — 비밀 메시지
 - `public/js/sakura.js` — 벚꽃 파티클
 - `public/js/evernight.js` — GIF 파티클
-- `public/js/code-highlight.js` — Prism
+- `public/js/code-highlight.js` — Prism (npm 셀프 호스팅 번들, CDN 미사용)
 - `public/js/utils.js` — escapeHtml, isValidUrl, sendErrorReport
 - `public/css/themes.css` — 9 테마 정의 (869줄)
 - `public/css/base.css` — 기본 스타일
@@ -109,7 +109,7 @@ cp .dev.vars.example .dev.vars
 - `public/css/prism-tomorrow.css` — Prism One Dark
 - `public/css/tailwind.min.css` — 빌드된 Tailwind
 
-### 3.3 테스트 (35 파일, 496 cases)
+### 3.3 테스트 (40 파일, 596 cases)
 정확한 파일/케이스 수는 `npm test` 실행 결과를 기준으로 한다. 주요 영역:
 - `test/worker-routes.test.js` — Worker 라우터 스모크 (인증·레이트리밋·CSP)
 - `test/chat-room*.test.js` — ChatRoom DO (초기화·세션 키·메시지 캡·서명·관리자 라우트)
@@ -163,10 +163,13 @@ npm run deploy         # 빌드 + wrangler deploy
 `.github/workflows/ci.yml` — push/PR 시 Node 22에서 실행:
 ```bash
 npm ci                 # 의존성 설치
-npm test               # 496 케이스
+npm audit --omit=dev --audit-level=high   # 프로덕션 의존성 취약점 검사
+npm test               # 596 케이스
 npm run lint           # 0 errors
 npx wrangler deploy --dry-run
 ```
+
+Dependabot(`.github/dependabot.yml`)이 npm·GitHub Actions 업데이트 PR을 주간 생성합니다.
 
 ## 5. 코딩 컨벤션
 

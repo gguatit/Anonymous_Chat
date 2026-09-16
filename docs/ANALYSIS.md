@@ -67,6 +67,39 @@
 - **관리자 401 체인**: 12h 슬라이딩 TTL + 401 응답 시 자동 로그아웃.
 - **채널 정리**: `setInterval` 의존 → DO alarm 기반으로 전환 (유휴 시 미실행 문제 해결).
 
+### v2 분석 발견·수정 현황 (2026-09-16)
+
+> 2026-09-16 2차 분석(v2)의 발견을 별도 번호로 기록합니다(위 '수정 완료 현황' 표의 동일 번호와 무관). 기준 HEAD `1c0ecbc`, 테스트 596건/40파일, 배포 https://kalpha.mmv.kr.
+
+| v2 발견 | 상태 | 내용 | 커밋 |
+|---|---|---|---|
+| C1 | FIXED | 파일 프록시가 SVG/HTML 등 문서형을 인라인 렌더링하던 XSS 경로 차단 — 래스터만 인라인, 나머지 `attachment` + `nosniff` + CSP `default-src 'none'; sandbox` | `e735e1d` |
+| H1 | FIXED | capability key 캡 초과 시 연결 중 세션 키가 퇴출되던 문제 — 비연결 키 우선 퇴출 + 소켓당 join 10회 캡 | `e01228a` |
+| H2 | FIXED | Workers Logs에 쿼리스트링(관리자 토큰·티켓·DeadDrop ID) 영속 — `redact_query_string = true` | `a782e69` |
+| M1 | FIXED | Turnstile 티켓을 join sessionId에 바인딩 + TTL 12h→2h, 불일치 4401 | `a67228a` |
+| M2 | FIXED | `/api/admin/*` 120/분/IP 리미터 + malformed 로그인 카운터 포함 + 토큰 무효 이벤트 IP 기록 | `344b306` |
+| M3 | FIXED | 레지스트리 전수 스윕을 요청 경로→`alarm()` 전용 + 5분 스로틀 | `e7e6061` |
+| M4 | FIXED | 라이브 message/edit/reaction/typing 브로드캐스트에서 sessionId 제거(`authorId` 대체) | `e01228a` |
+| M5 | FIXED | DeadDrop 만료 정리를 alarm GC로 전환(저장 시 재예약) | `0d37a41` |
+| M6 | FIXED | 반응 1초·타이핑 2초 스로틀 | `836838a` |
+| M7 | FIXED | preview SSRF 데니리스트 확장(IPv4-mapped IPv6·예약 대역 등) | `34f0eb4` |
+| M8 | FIXED | 옵저버 WS URL 토큰 노출 → 5분 일회성 HMAC 티켓(`token=` 파라미터 거부) | `3f09cec` |
+| M9 | FIXED | Prism CDN(cdnjs) 제거·자체 번들 이관, CSP에서 cdnjs 삭제 | `d01aebe` |
+| M10 | FIXED | 운영 D1 마이그레이션 원장(004/005)은 기존 커밋에서 프로덕션 적용 완료 — v2 추가 작업 없음 | `5832e64`, `91a5245` |
+| M11 | FIXED | privacy.html 보존 정책 현행화(90/30/30/90일, Workers Logs 7일, SW 캐시 서술 제거) | `e47dc64` |
+| M12 | FIXED | Dependabot 활성화 + CI `npm audit --audit-level=high`/`permissions` | `61c0afe` |
+| M13 | FIXED | 로그 보존 정리를 확률(10%)→쓰기 10회마다 강제 스윕으로 보강 | `99809ff` |
+| LOW(서버) | FIXED | 상수시간 HMAC, kick 기간 클램프, `_persistMessages` 바이트캡 일원화, 채널 삭제 소켓 종료, resubscribe 소유권 404, 라우트 메서드 명시 | `a0131d4` |
+| LOW(클라/구성) | FIXED | `ApiClient.get/getRaw` 401 훅, 렌더러 이스케이프, CSV 수식 방지, SW origin 검증, security.txt Policy, 소스맵·중복 GIF 제거 | `1c0ecbc` |
+
+**의도적 제외(EXCLUDED)**
+
+| 항목 | 상태 | 비고 |
+|---|---|---|
+| 시계 스큐 UX 안내 | EXCLUDED | v2 계획 Phase 3 항목 — 사용자 판단으로 스킵 |
+| CSP `img-src` 축소 | EXCLUDED | 현행 `https:`/`data:` 유지 — 사용자 판단으로 스킵 |
+| HSTS preload 존 레벨 등록 | EXCLUDED | `_headers`의 `preload` 지시자는 유지, 도메인 존 설정은 별도 작업 |
+
 ---
 
 ## 1. 요약

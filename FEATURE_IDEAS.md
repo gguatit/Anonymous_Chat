@@ -260,12 +260,13 @@
 | 현황 | `/health`는 `{"status": "healthy"}`만 반환. D1 연결, DO 도달성 체크 없음 |
 | 방향 | D1 ping, ChatRoom DO health check 추가 |
 
-#### 16. [LOW] DO cleanup 간격 최적화
+#### 16. [DONE] DO cleanup 간격 최적화 (2026-09-16)
 
 | 항목 | 내용 |
 |------|------|
 | 현황 | DeadDropStore는 cleanup interval 없이 initialize 시 또는 read 시에만 만료 정리. 세션이 많을 경우 메모리 누적 |
 | 방향 | ChatRoom과 동일한 5분 주기 cleanup 추가 |
+| 완료 | 저장 시 가장 이른 만료로 alarm 예약, `alarm()`에서 만료 정리·재예약 (보안 하드닝 v2 M5, 커밋 `0d37a41`) |
 
 ---
 
@@ -352,7 +353,6 @@
 |---|------|
 | 10 | OG Preview 파서 강화 |
 | 15 | Health check 심화 |
-| 16 | DO cleanup 간격 |
 
 ### 완료 (Phase 0, 2026-07-14)
 | # | 과제 |
@@ -370,6 +370,11 @@
 | 13 | 관리자 토큰 비밀번호 분리 (불투명 KV 토큰, 12h 슬라이딩 TTL) |
 | 18 | D1 schema 정리 (`migrations/004_drop_admin_logs.sql`) |
 
+### 완료 (2026-09-16)
+| # | 과제 |
+|---|------|
+| 16 | DO cleanup 간격 최적화 (DeadDropStore 저장 시 alarm 예약·만료 GC + 재예약 — 보안 하드닝 v2 M5) |
+
 ---
 
 ## 변경 이력
@@ -385,3 +390,4 @@
 | 2026-07-14 | 코드 품질 재분석: #29(console 93개), #30(중복), #31(긴 함수), #32(에러), #33(magic number) 추가 |
 | 2026-07-14 | Phase 0 완료: #5(데드 코드 2파일 삭제+ocean/forest 테마 활성화), #8(rate limiter 문서화), #19(deploy.sh→pre-deploy-check.sh), #33(magic number 주석+상수화). 테스트 320개 통과 |
 | 2026-09-15 | 보안 하드닝 Stage 1~3 (ANALYSIS.md CRITICAL/HIGH/MEDIUM 다수 수정). strftime 인덱스 버그 수정(005), alarm 기반 채널 정리, 관리자 UI 백엔드 연결. 테스트 496개(35파일) 통과 |
+| 2026-09-16 | 보안 하드닝 v2 (C1·H1/H2·M1~M13·LOW). #16 DeadDrop alarm GC 완료. 테스트 596개(40파일) 통과 |

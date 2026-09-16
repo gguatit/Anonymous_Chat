@@ -105,3 +105,35 @@
 
 ## 실행 순서
 Phase 1 → 2 → 3 → 4. 각 Phase 종료 시 사용자 보고. 운영 반영은 푸시→Workers Builds 자동배포.
+
+---
+
+## 완료 현황 (2026-09-16)
+
+> HEAD `1c0ecbc` · 38 commits pushed · tests **596/596 (40 files)** · lint 0 errors/96 warnings · build green · deployed https://kalpha.mmv.kr (Worker `anonymous-chat`).
+
+| Phase | 상태 | 커밋/비고 |
+|---|---|---|
+| Phase 1 — C1 · H1/M4 · H2 · M8 | DONE | `e735e1d` · `e01228a` · `a782e69` · `3f09cec` |
+| Phase 2 — M1 | DONE | `a67228a` (join 바인딩 + TTL 2h, 불일치 4401) |
+| Phase 2 — M2 | DONE | `344b306` (120/분/IP + 로그인 카운터 + 이벤트 IP) |
+| Phase 2 — M3 | DONE | `e7e6061` (alarm 전용 + 5분 스로틀) |
+| Phase 2 — M5 | DONE | `0d37a41` (alarm GC + 재예약) |
+| Phase 2 — M6 | DONE | `836838a` (반응 1초/타이핑 2초) |
+| Phase 2 — M7 | DONE | `34f0eb4` (denylist 확장) |
+| Phase 2 — M9 | DONE | `d01aebe` (Prism 자체 번들, CSP cdnjs 제거) |
+| Phase 2 — M10 | DONE(기존) | 004/005 원장은 `5832e64`·`91a5245`에서 프로덕션 적용 완료 — v2 추가 작업 없음 |
+| Phase 2 — M11 | DONE | `e47dc64` (privacy.html) |
+| Phase 2 — M12 | DONE | `61c0afe` (Dependabot + CI audit/permissions) |
+| Phase 2 — M13 | DONE | `99809ff` (쓰기 10회마다 강제 스윕) |
+| Phase 3 — LOW 서버 | DONE | `a0131d4` |
+| Phase 3 — LOW 클라/구성 | DONE | `1c0ecbc` (SW/CSV/401/렌더러/security.txt/소스맵·중복 GIF) |
+| Phase 4 — 문서 | DONE* | README·CONTRIBUTING·SECURITY·docs/{SECURITY,API,ARCHITECTURE,DEVELOPMENT} 현행화 + CHANGELOG/ANALYSIS/FEATURE_IDEAS/PRESENTATION/본 계획서 갱신 (*작업 트리 기준, 커밋 예정) |
+
+### 의도적 스킵 (EXCLUDED)
+
+| 항목 | 비고 |
+|---|---|
+| 시계 스큐 UX 안내 (Phase 3 클라) | 사용자 판단으로 스킵 |
+| CSP `img-src` 축소 (Phase 3 구성) | 현행 `https:`/`data:` 유지 — 사용자 판단으로 스킵 |
+| HSTS preload 존 레벨 등록 (Phase 3 구성) | `_headers`의 `preload` 지시자는 유지, 도메인 존 설정은 별도 작업 |
