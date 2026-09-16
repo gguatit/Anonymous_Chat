@@ -170,4 +170,51 @@ describe('DeadDropStore', () => {
             expect(res.status).toBe(404);
         });
     });
+
+    describe('expiry alarms (M5)', () => {
+        it('schedules an alarm for the earliest expiry when a secret is stored', async () => {
+            state.storage.setAlarm = vi.fn(() => Promise.resolve());
+            state.storage.deleteAlarm = vi.fn(() => Promise.resolve());
+            await store.initialize();
+
+            const req = new Request('https://dummy/store', {
+                method: 'POST',
+                body: JSON.stringify({ message: 'hello' }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            await store.fetch(req);
+
+            expect(state.storage.setAlarm).toHaveBeenCalled();
+            const [when] = state.storage.setAlarm.mock.calls.at(-1);
+            expect(when).toBeGreaterThan(Date.now());
+        });
+
+        it('prunes expired secrets when the alarm fires and reschedules for the next expiry', async () => {
+            state.storage.setAlarm = vi.fn(() => Promise.resolve());
+            state.storage.deleteAlarm = vi.fn(() => Promise.resolve());
+            await store.initialize();
+            const futureExpiry = Date.now() + 60000;
+            store.secrets['expired'] = { message: 'old', expiresAt: Date.now() - 1000 };
+            store.secrets['active'] = { message: 'fresh', expiresAt: futureExpiry };
+
+            await store.alarm();
+
+            expect(store.secrets['expired']).toBeUndefined();
+            expect(store.secrets['active']).toBeDefined();
+            const [when] = state.storage.setAlarm.mock.calls.at(-1);
+            expect(when).toBe(futureExpiry);
+        });
+
+        it('deletes the alarm when no secrets remain', async () => {
+            state.storage.setAlarm = vi.fn(() => Promise.resolve());
+            state.storage.deleteAlarm = vi.fn(() => Promise.resolve());
+            await store.initialize();
+            store.secrets['expired'] = { message: 'old', expiresAt: Date.now() - 1000 };
+
+            await store.alarm();
+
+            expect(store.secrets['expired']).toBeUndefined();
+            expect(state.storage.deleteAlarm).toHaveBeenCalled();
+        });
+    });
 });

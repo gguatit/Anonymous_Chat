@@ -46,10 +46,48 @@ export class DeadDropStore {
         }
 
         this.initialized = true;
+        await this.scheduleExpiryAlarm();
     }
 
     async persist() {
         await this.state.storage.put('secrets', JSON.stringify(this.secrets));
+        await this.scheduleExpiryAlarm();
+    }
+
+    // Keep an alarm pointed at the earliest expiry so entries are reaped even while the DO is idle (M5)
+    async scheduleExpiryAlarm() {
+        try {
+            let next = Infinity;
+            for (const entry of Object.values(this.secrets)) {
+                if (entry.expiresAt) next = Math.min(next, entry.expiresAt);
+            }
+            if (next === Infinity) {
+                await this.state.storage.deleteAlarm();
+            } else {
+                await this.state.storage.setAlarm(next);
+            }
+        } catch (error) {
+            // Best-effort: expired entries are still pruned on initialize/read
+            console.error('DeadDropStore failed to schedule expiry alarm:', error);
+        }
+    }
+
+    async alarm() {
+        await this.initialize();
+        const now = Date.now();
+        let changed = false;
+        for (const id of Object.keys(this.secrets)) {
+            const entry = this.secrets[id];
+            if (entry.expiresAt && entry.expiresAt <= now) {
+                delete this.secrets[id];
+                changed = true;
+            }
+        }
+        if (changed) {
+            await this.persist();
+        } else {
+            await this.scheduleExpiryAlarm();
+        }
     }
 
     async fetch(request) {
