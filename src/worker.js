@@ -330,12 +330,16 @@ export default {
                     const ct = fileResp.headers.get('content-type') || '';
                     if (ct) respHeaders.set('content-type', ct);
                     respHeaders.set('cache-control', 'public, max-age=86400');
-                    const cd = fileResp.headers.get('content-disposition');
-                    const isInline = /^image\//.test(ct) || /^video\//.test(ct) || /^audio\//.test(ct) || /^application\/pdf/.test(ct);
-                    if (cd && !isInline) {
-                        respHeaders.set('content-disposition', cd);
-                    } else if (!cd && !isInline) {
-                        respHeaders.set('content-disposition', 'attachment');
+                    respHeaders.set('x-content-type-options', 'nosniff');
+                    // Only plain raster images may render inline; document types like SVG/HTML/PDF
+                    // would execute scripts on this origin (C1), so force them to download.
+                    const isRasterImage = /^image\/(png|jpe?g|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon)$/i.test(ct);
+                    if (!isRasterImage) {
+                        const cd = fileResp.headers.get('content-disposition') || '';
+                        const filenameMatch = cd.match(/filename\*?=(?:UTF-8'')?("?)([^";]+)\1/i);
+                        const filename = filenameMatch ? filenameMatch[2] : '';
+                        respHeaders.set('content-disposition', filename ? `attachment; filename="${filename}"` : 'attachment');
+                        respHeaders.set('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
                     }
                     for (const [k, v] of Object.entries(corsHeaders)) {
                         respHeaders.set(k, v);
