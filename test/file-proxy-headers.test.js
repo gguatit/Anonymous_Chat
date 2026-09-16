@@ -53,9 +53,14 @@ describe('file proxy response headers (C1 hardening)', () => {
         expect(res.headers.get('content-security-policy')).toContain("default-src 'none'");
     });
 
-    it('keeps the upstream filename when forcing attachment', async () => {
+    it('omits the upstream filename so the chat link name (Korean-safe) wins', async () => {
         const res = await getProxiedFile('image/svg+xml', 'inline; filename="payload.svg"');
-        expect(res.headers.get('content-disposition')).toBe('attachment; filename="payload.svg"');
+        expect(res.headers.get('content-disposition')).toBe('attachment');
+    });
+
+    it('does not leak the service-sanitized filename (Korean becomes underscores)', async () => {
+        const res = await getProxiedFile('application/pdf', 'attachment; filename="__________.pdf"');
+        expect(res.headers.get('content-disposition')).toBe('attachment');
     });
 
     it('forces attachment for HTML responses', async () => {

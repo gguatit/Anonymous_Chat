@@ -343,10 +343,10 @@ export default {
                     // would execute scripts on this origin (C1), so force them to download.
                     const isRasterImage = /^image\/(png|jpe?g|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon)$/i.test(ct);
                     if (!isRasterImage) {
-                        const cd = fileResp.headers.get('content-disposition') || '';
-                        const filenameMatch = cd.match(/filename\*?=(?:UTF-8'')?("?)([^";]+)\1/i);
-                        const filename = filenameMatch ? filenameMatch[2] : '';
-                        respHeaders.set('content-disposition', filename ? `attachment; filename="${filename}"` : 'attachment');
+                        // No filename on purpose: the file service sanitizes Korean to underscores in its
+                        // Content-Disposition, and browsers prefer any CD filename over the chat link's
+                        // `download` attribute. Omitting it lets the original Korean name win (same-origin link).
+                        respHeaders.set('content-disposition', 'attachment');
                         respHeaders.set('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
                     }
                     for (const [k, v] of Object.entries(corsHeaders)) {
