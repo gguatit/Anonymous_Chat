@@ -158,6 +158,10 @@ export class WebSocketManager {
             this._capabilityRetried = true;
             this.sessionSecret = null;
             this.authorId = null;
+            // The Turnstile ticket is bound to the previous sessionId (M1); clear it so a fresh one is issued
+            sessionStorage.removeItem('chatTurnstileTicket');
+            sessionStorage.removeItem('turnstileVerified');
+            sessionStorage.removeItem('turnstileVerifiedAt');
             if (this.sessionManager) {
                 this.sessionId = this.sessionManager.resetSession();
             } else {

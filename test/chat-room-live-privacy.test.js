@@ -130,4 +130,31 @@ describe('ChatRoom live privacy and key eviction (H1/M4)', () => {
         expect(typing.authorId).toBe('authoridaa0000001');
         expect(Object.hasOwn(typing, 'sessionId')).toBe(false);
     });
+
+    it('rejects a join whose sessionId does not match the verified WS session (M1)', async () => {
+        const ws = createWebSocketMock();
+        await room.handleJoin(
+            { sessionId: 'user_attacker', timestamp: Date.now() },
+            ws,
+            '10.0.0.1',
+            vi.fn(),
+            'user_victim'
+        );
+        expect(ws.close).toHaveBeenCalledWith(4401, 'Session mismatch');
+        expect(findSent(ws, 'error')).not.toBeNull();
+        expect(findSent(ws, 'handshake')).toBeNull();
+    });
+
+    it('accepts a join when the sessionId matches the verified WS session', async () => {
+        const ws = createWebSocketMock();
+        await room.handleJoin(
+            { sessionId: 'user_match', timestamp: Date.now() },
+            ws,
+            '10.0.0.1',
+            vi.fn(),
+            'user_match'
+        );
+        expect(ws.close).not.toHaveBeenCalled();
+        expect(findSent(ws, 'handshake')).not.toBeNull();
+    });
 });

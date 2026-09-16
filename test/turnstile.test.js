@@ -77,6 +77,16 @@ describe('turnstile ticket flow', () => {
         await expect(verifyTurnstileTicket(ENV, ticket, 'session-1')).resolves.toBe(false);
     });
 
+    it('rejects a ticket older than the 2h TTL and accepts one within it', async () => {
+        const oldTs = Date.now() - (2 * 60 * 60 * 1000 + 1000);
+        const oldTicket = await craftTicket(ENV.HMAC_SECRET, 'session-1', oldTs);
+        await expect(verifyTurnstileTicket(ENV, oldTicket, 'session-1')).resolves.toBe(false);
+
+        const freshTs = Date.now() - 60 * 60 * 1000;
+        const freshTicket = await craftTicket(ENV.HMAC_SECRET, 'session-1', freshTs);
+        await expect(verifyTurnstileTicket(ENV, freshTicket, 'session-1')).resolves.toBe(true);
+    });
+
     it('rejects a ticket timestamped more than 60s in the future', async () => {
         const ts = Date.now() + 120 * 1000;
         const ticket = await craftTicket(ENV.HMAC_SECRET, 'session-1', ts);

@@ -1,7 +1,7 @@
 import { safeJson, arrayBufferToHex } from '../utils/helpers.js';
 import { constantTimeCompare } from '../utils/security.js';
 
-const TICKET_TTL_MS = 12 * 60 * 60 * 1000;
+const TICKET_TTL_MS = 2 * 60 * 60 * 1000;
 const TICKET_FUTURE_SKEW_MS = 60 * 1000;
 
 async function hmacHex(secret, message) {

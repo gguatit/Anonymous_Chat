@@ -372,6 +372,7 @@ export class ChatRoom {
         const wsUrl = new URL(request.url);
         const banToken = wsUrl.searchParams.get('token');
         const isObserver = (wsUrl.searchParams.get('sessionId') || '').startsWith('admin_obs_');
+        const wsSessionId = request.headers.get('X-Ws-Session-Id') || '';
         if (banToken) {
             const tokenBan = this.bannedTokens.get(banToken);
             if (tokenBan) {
@@ -406,7 +407,7 @@ export class ChatRoom {
         const pair = new WebSocketPair();
         const [client, server] = Object.values(pair);
 
-        await this.handleSession(server, clientIP, HMAC_SECRET, environment, isObserver);
+        await this.handleSession(server, clientIP, HMAC_SECRET, environment, isObserver, wsSessionId);
 
         return new Response(null, {
             status: 101,
@@ -414,7 +415,7 @@ export class ChatRoom {
         });
     }
 
-    async handleSession(websocket, clientIP, HMAC_SECRET, environment, isObserver = false) {
+    async handleSession(websocket, clientIP, HMAC_SECRET, environment, isObserver = false, wsSessionId = '') {
         websocket.accept();
 
         if (isObserver) {
@@ -457,7 +458,7 @@ export class ChatRoom {
                             sessionId = sid;
                             metadata = meta;
                             if (environment) metadata.environment = environment;
-                        });
+                        }, wsSessionId);
                         break;
                     }
 
@@ -561,11 +562,18 @@ export class ChatRoom {
         });
     }
 
-    async handleJoin(data, websocket, clientIP, setSession) {
+    async handleJoin(data, websocket, clientIP, setSession, wsSessionId = '') {
         const joins = (socketJoinCounts.get(websocket) || 0) + 1;
         socketJoinCounts.set(websocket, joins);
         if (joins > 10) {
             websocket.close(1008, 'Too many joins');
+            return;
+        }
+
+        // The Turnstile ticket is bound to the sessionId in the WS URL (M1); join must match it
+        if (wsSessionId && data.sessionId !== wsSessionId) {
+            websocket.send(JSON.stringify({ type: 'error', content: '세션 검증에 실패했습니다. 새로고침 해주세요.' }));
+            websocket.close(4401, 'Session mismatch');
             return;
         }
 
