@@ -343,3 +343,59 @@ describe('ChannelRegistry', () => {
         });
     });
 });
+
+describe('ChannelRegistry cleanup throttling (M3)', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+    });
+
+    it('does not sweep on regular fetches', async () => {
+        const state = mockState();
+        const env = {
+            HMAC_SECRET: 'test-secret',
+            CHAT_ROOM: {
+                idFromName: vi.fn((name) => ({ name })),
+                get: vi.fn(() => ({ fetch: vi.fn() }))
+            }
+        };
+        const registry = new ChannelRegistry(state, env);
+        registry.initialized = true;
+        const roomFetch = vi.fn(async () => new Response(JSON.stringify({ activeConnections: 0 }), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        env.CHAT_ROOM.get = vi.fn(() => ({ fetch: roomFetch }));
+        registry.channels.set('stale', { name: 'stale', createdBy: 'x', createdAt: 1, lastActive: Date.now() - CHANNEL.EMPTY_TTL - 60000 });
+
+        const res = await registry.fetch(new Request('https://dummy/list', { headers: authHeaders() }));
+
+        expect(res.status).toBe(200);
+        expect(registry.channels.has('stale')).toBe(true);
+        expect(roomFetch).not.toHaveBeenCalled();
+    });
+
+    it('clamps cleanup alarms that would fire immediately', async () => {
+        const state = mockState();
+        const env = {
+            HMAC_SECRET: 'test-secret',
+            CHAT_ROOM: {
+                idFromName: vi.fn((name) => ({ name })),
+                get: vi.fn(() => ({ fetch: vi.fn() }))
+            }
+        };
+        const registry = new ChannelRegistry(state, env);
+        registry.initialized = true;
+        state.storage.setAlarm = vi.fn(() => Promise.resolve());
+        state.storage.deleteAlarm = vi.fn(() => Promise.resolve());
+        registry.channels.set('stale-old', { name: 'stale-old', createdBy: 'x', createdAt: 1, lastActive: Date.now() - CHANNEL.EMPTY_TTL - 60000 });
+
+        await registry.scheduleCleanupAlarm();
+
+        const [when] = state.storage.setAlarm.mock.calls[0];
+        expect(when).toBeGreaterThanOrEqual(Date.now() + 4 * 60 * 1000);
+    });
+});

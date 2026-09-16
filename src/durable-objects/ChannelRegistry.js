@@ -10,6 +10,10 @@ import { validateChannelName } from '../utils/validate.js';
  *
  * @property {Map<string,ChannelInfo>} channels - All channels keyed by slug
  */
+// Alarms always fire at least this far in the future, so a channel that cannot be
+// deleted yet does not cause an immediate re-fire loop (M3)
+const CLEANUP_MIN_INTERVAL_MS = 5 * 60 * 1000;
+
 export class ChannelRegistry {
     constructor(state, env) {
         this.state = state;
@@ -51,8 +55,8 @@ export class ChannelRegistry {
 
     async fetch(request) {
         await this.initialize();
-        // Opportunistic sweep so stale channels are reaped even without alarms
-        await this.cleanup();
+        // Keep the cleanup alarm scheduled (M3) without sweeping channels on every request
+        await this.scheduleCleanupAlarm();
         const url = new URL(request.url);
 
         // Read-only existence lookup for the worker's /ws guard; no internal token required
@@ -355,7 +359,7 @@ export class ChannelRegistry {
         for (const info of this.channels.values()) {
             next = Math.min(next, (info.lastActive || 0) + CHANNEL.EMPTY_TTL + 1000);
         }
-        const target = next === Infinity ? null : next;
+        const target = next === Infinity ? null : Math.max(next, Date.now() + CLEANUP_MIN_INTERVAL_MS);
         if (this._scheduledAt === target) return;
         this._scheduledAt = target;
         try {
