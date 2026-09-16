@@ -141,3 +141,43 @@ export async function handleTurnstileVerify(request, env, corsHeaders) {
         });
     }
 }
+// Observer tickets: short-lived credentials for the admin dashboard WebSocket (M8 hardening)
+export const OBSERVER_TICKET_TTL_MS = 5 * 60 * 1000;
+const OBSERVER_TICKET_FUTURE_SKEW_MS = 60 * 1000;
+
+export async function issueObserverTicket(secret, sessionId, ts = Date.now()) {
+    const signature = await hmacHex(secret, `observer:${sessionId}:${ts}`);
+    return `${ts}.${signature}`;
+}
+
+export async function verifyObserverTicket(env, ticket, sessionId) {
+    if (!ticket || typeof ticket !== 'string') {
+        console.warn('[ObserverTicket] missing ticket');
+        return false;
+    }
+    if (!env?.HMAC_SECRET) {
+        console.warn('[ObserverTicket] HMAC_SECRET not configured');
+        return false;
+    }
+    const parts = ticket.split('.');
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        console.warn('[ObserverTicket] malformed ticket');
+        return false;
+    }
+    const ts = Number(parts[0]);
+    if (!Number.isFinite(ts)) {
+        console.warn('[ObserverTicket] malformed timestamp');
+        return false;
+    }
+    const now = Date.now();
+    if (ts - now > OBSERVER_TICKET_FUTURE_SKEW_MS) {
+        console.warn('[ObserverTicket] future ticket');
+        return false;
+    }
+    if (now - ts >= OBSERVER_TICKET_TTL_MS) {
+        console.warn('[ObserverTicket] expired ticket');
+        return false;
+    }
+    const expected = await hmacHex(env.HMAC_SECRET, `observer:${sessionId}:${ts}`);
+    return await constantTimeCompare(expected, parts[1]);
+}

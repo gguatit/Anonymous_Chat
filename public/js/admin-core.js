@@ -173,11 +173,20 @@ class AdminCore {
         location.hash = '';
     }
 
-    connectObserver() {
-        if (this.observerWs && this.observerWs.readyState === WebSocket.OPEN) return;
+    async connectObserver() {
+        if (this.observerWs && (this.observerWs.readyState === WebSocket.CONNECTING || this.observerWs.readyState === WebSocket.OPEN)) return;
+        let observerSession, observerTicket;
+        try {
+            const issued = await ApiClient.post('/api/admin/observer-ticket');
+            observerSession = issued?.sessionId;
+            observerTicket = issued?.ticket;
+            if (!observerSession || !observerTicket) throw new Error('observer ticket missing');
+        } catch (_e) {
+            setTimeout(() => { if (this.sessionToken) this.connectObserver(); }, 10000);
+            return;
+        }
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const obsId = 'admin_obs_' + (this.sessionToken || '').substring(0, 16);
-        const wsUrl = `${protocol}//${location.host}/ws?sessionId=${encodeURIComponent(obsId)}&token=${encodeURIComponent(this.sessionToken || '')}`;
+        const wsUrl = `${protocol}//${location.host}/ws?sessionId=${encodeURIComponent(observerSession)}&ticket=${encodeURIComponent(observerTicket)}`;
 
         const ws = new WebSocket(wsUrl);
         this.observerWs = ws;

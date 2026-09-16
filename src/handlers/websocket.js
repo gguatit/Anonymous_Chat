@@ -1,6 +1,6 @@
 import { ROOM_NAME, CHANNEL_PREFIX, MAX_SESSION_ID_LENGTH } from '../config/constants.js';
 import { isAllowedOrigin } from '../utils/security.js';
-import { verifyAdminToken } from '../middleware/auth.js';
+import { verifyObserverTicket } from './turnstile.js';
 
 export async function handleWebSocket(request, env, HMAC_SECRET) {
     // Check for WebSocket upgrade
@@ -31,12 +31,10 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
         return new Response('Invalid sessionId', { status: 400 });
     }
 
-    // Observer sessions (admin dashboard) must prove admin identity before reaching the DO
+    // Observer sessions (admin dashboard) authenticate with a short-lived one-time ticket (M8)
     if (sessionId && sessionId.startsWith('admin_obs_')) {
-        const observerToken = url.searchParams.get('token');
-        const isValidObserver = observerToken
-            ? await verifyAdminToken(env, observerToken)
-            : false;
+        const observerTicket = url.searchParams.get('ticket');
+        const isValidObserver = await verifyObserverTicket(env, observerTicket, sessionId);
         if (!isValidObserver) {
             console.warn('Blocked unauthenticated observer session');
             return new Response('Unauthorized observer', { status: 401 });

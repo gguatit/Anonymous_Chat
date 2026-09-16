@@ -4,6 +4,7 @@ import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToke
 import { forwardToDO, forwardToChannelDO } from '../utils/do.js';
 import { safeJson } from '../utils/helpers.js';
 import { jsonError, emptyResponse } from '../utils/errors.js';
+import { issueObserverTicket } from './turnstile.js';
 
 async function requireAdminAuth(request, env) {
     const authHeader = request.headers.get('Authorization');
@@ -606,4 +607,13 @@ export const handleAdminChannelDelete = withAuth(async (request, env, corsHeader
     } catch (_e) {
         return jsonError('Failed to delete channel', 500, request.headers.get('Origin'));
     }
+});
+
+// Issue a short-lived one-time ticket for the admin observer WebSocket (M8 hardening)
+export const handleAdminObserverTicket = withAuth(async (_request, env, corsHeaders) => {
+    const sessionId = `admin_obs_${crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
+    const ticket = await issueObserverTicket(env.HMAC_SECRET, sessionId);
+    return new Response(JSON.stringify({ sessionId, ticket, expiresIn: 300 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 });

@@ -67,6 +67,7 @@ const adminRoutes = [
     ['security/events/clear', 'POST', security.handleClearEvents],
     ['security/badge', null, security.handleGetBadge],
     ['security/block-ip', 'POST', security.handleBlockIP],
+    ['observer-ticket', 'POST', admin.handleAdminObserverTicket],
 ];
 
 async function channelRequest(request, env, corsHeaders, endpoint, method, errorMsg) {

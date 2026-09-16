@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { handleWebSocket } from '../src/handlers/websocket.js';
 import { generateAdminToken } from '../src/middleware/auth.js';
+import { issueObserverTicket } from '../src/handlers/turnstile.js';
 
 function makeEnv() {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ banned: false }), {
@@ -61,25 +62,49 @@ describe('handleWebSocket observer authentication', () => {
         expect(env._fetchMock).not.toHaveBeenCalled();
     });
 
-    it('rejects observer session without token', async () => {
+    it('rejects observer session without ticket', async () => {
         const env = makeEnv();
         const res = await handleWebSocket(makeRequest('sessionId=admin_obs_abc'), env, 'test-secret');
         expect(res.status).toBe(401);
         expect(env._fetchMock).not.toHaveBeenCalled();
     });
 
-    it('rejects observer session with invalid token', async () => {
+    it('rejects observer session with invalid ticket', async () => {
         const env = makeEnv();
-        const res = await handleWebSocket(makeRequest('sessionId=admin_obs_abc&token=bogus.token'), env, 'test-secret');
+        const res = await handleWebSocket(makeRequest('sessionId=admin_obs_abc&ticket=bogus.token'), env, 'test-secret');
         expect(res.status).toBe(401);
         expect(env._fetchMock).not.toHaveBeenCalled();
     });
 
-    it('allows observer session with valid admin token', async () => {
+    it('rejects an expired observer ticket', async () => {
         const env = makeEnv();
-        const token = await generateAdminToken(env);
+        const expired = await issueObserverTicket(env.HMAC_SECRET, 'admin_obs_abc', Date.now() - 6 * 60 * 1000);
         const res = await handleWebSocket(
-            makeRequest(`sessionId=admin_obs_abc&token=${encodeURIComponent(token)}`),
+            makeRequest(`sessionId=admin_obs_abc&ticket=${encodeURIComponent(expired)}`),
+            env,
+            'test-secret'
+        );
+        expect(res.status).toBe(401);
+        expect(env._fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects a legacy admin token in the query (URL tokens are no longer accepted)', async () => {
+        const env = makeEnv();
+        const adminToken = await generateAdminToken(env);
+        const res = await handleWebSocket(
+            makeRequest(`sessionId=admin_obs_abc&token=${encodeURIComponent(adminToken)}`),
+            env,
+            'test-secret'
+        );
+        expect(res.status).toBe(401);
+        expect(env._fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('allows observer session with a valid observer ticket', async () => {
+        const env = makeEnv();
+        const ticket = await issueObserverTicket(env.HMAC_SECRET, 'admin_obs_abc');
+        const res = await handleWebSocket(
+            makeRequest(`sessionId=admin_obs_abc&ticket=${encodeURIComponent(ticket)}`),
             env,
             'test-secret'
         );
@@ -87,7 +112,7 @@ describe('handleWebSocket observer authentication', () => {
         expect(env._fetchMock).toHaveBeenCalled();
     });
 
-    it('allows regular session without token', async () => {
+    it('allows regular session without ticket', async () => {
         const env = makeEnv();
         const res = await handleWebSocket(makeRequest('sessionId=user_regular'), env, 'test-secret');
         expect(res.status).not.toBe(401);
