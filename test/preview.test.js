@@ -55,7 +55,20 @@ describe('isPrivateHost', () => {
         '[::1]',
         'fd00::1',
         'fc00::1',
-        'fe80::1'
+        'fe80::1',
+        'fe90::1',
+        '::ffff:127.0.0.1',
+        '::ffff:7f00:1',
+        '0.1.2.3',
+        '192.0.0.1',
+        '192.0.2.1',
+        '198.18.0.1',
+        '198.19.255.255',
+        '198.51.100.1',
+        '203.0.113.1',
+        '224.0.0.1',
+        '240.0.0.1',
+        '255.255.255.255'
     ])('blocks %s', (host) => {
         expect(isPrivateHost(host)).toBe(true);
     });
@@ -65,7 +78,10 @@ describe('isPrivateHost', () => {
         'sub.example.com',
         '93.184.216.34',
         '172.32.0.1',
-        '192.169.0.1'
+        '192.169.0.1',
+        '192.0.1.1',
+        '198.20.0.1',
+        '223.255.255.255'
     ])('allows %s', (host) => {
         expect(isPrivateHost(host)).toBe(false);
     });
@@ -81,6 +97,9 @@ describe('handlePreview URL validation', () => {
         'http://localhost/',
         'http://foo.internal/',
         'http://[::1]/',
+        'http://[::ffff:127.0.0.1]/',
+        'http://192.0.0.1/',
+        'http://224.0.0.1/',
         'ftp://example.com/file',
         'file:///etc/passwd'
     ])('rejects %s without fetching', async (url) => {
