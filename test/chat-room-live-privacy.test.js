@@ -227,4 +227,26 @@ describe('ChatRoom live privacy and key eviction (H1/M4)', () => {
         expect(room.currentAnnouncement).not.toBeNull();
         expect(room.currentAnnouncement.content).toBe('persistent notice');
     });
+
+    it('sends the handshake before history so own-message detection works after refresh', async () => {
+        const ws = createWebSocketMock();
+        room.messages = [{
+            messageId: 'msg_seed',
+            content: 'seed',
+            sessionId: 'user_seed',
+            authorId: 'authorseed000001',
+            nickname: 'seed',
+            timestamp: Date.now(),
+            editedAt: null
+        }];
+
+        await room.handleJoin({ sessionId: 'user_order', timestamp: Date.now() }, ws, '10.0.0.1', vi.fn());
+
+        const types = ws.send.mock.calls.map((call) => {
+            try { return JSON.parse(call[0]).type; } catch (_e) { return null; }
+        });
+        expect(types).toContain('handshake');
+        expect(types).toContain('history');
+        expect(types.indexOf('handshake')).toBeLessThan(types.indexOf('history'));
+    });
 });

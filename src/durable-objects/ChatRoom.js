@@ -658,6 +658,15 @@ export class ChatRoom {
         }
         const authorId = await this._computeAuthorId(sessionId);
 
+        // Send the handshake before history/announcement so the client knows its authorId
+        // before rendering messages (own-message detection) — previously it arrived last
+        websocket.send(JSON.stringify({
+            type: 'handshake',
+            secret: this.sessionSecrets.get(sessionId),
+            key: sessionKey,
+            authorId
+        }));
+
         const now = Date.now();
         const existingMetadata = this.userMetadata.get(sessionId);
         if (existingMetadata) {
@@ -746,13 +755,6 @@ export class ChatRoom {
                 });
             }
         }
-
-        websocket.send(JSON.stringify({
-            type: 'handshake',
-            secret: this.sessionSecrets.get(sessionId),
-            key: sessionKey,
-            authorId
-        }));
 
         metadata.authorId = authorId;
         setSession(sessionId, metadata);
