@@ -1,10 +1,12 @@
 # Anonymous Chat
 
+> 🌐 [English](./README.en.md) | **한국어**
+
 > **Cloudflare Workers 기반 익명 실시간 채팅 플랫폼**
 
 [![License](https://img.shields.io/badge/License-Commercial-blue.svg)](./COMMERCIAL_LICENSE.md)
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](./SECURITY.md)
-[![Tests](https://img.shields.io/badge/Tests-596%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/Tests-611%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
 
 Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 채팅 서비스입니다.
 회원가입 없이 닉네임만으로 즉시 참여하며, **12시간 후 모든 메시지는 자동 소멸**합니다.
@@ -85,7 +87,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
 | **푸시** | Web Push (VAPID) + FCM v1 |
 | **빌드** | esbuild (chat · admin · 보안센터 · 관리자 페이지 번들 10종) |
-| **테스트** | Vitest (596 cases · 40 파일) |
+| **테스트** | Vitest (611 cases · 41 파일) |
 | **린팅** | ESLint + Prettier |
 | **프론트** | 바닐라 JS (모듈식) · CSS Custom Properties 테마 · Tailwind(빌드) |
 
@@ -119,7 +121,7 @@ npm run dev
 
 ```bash
 npm run build      # 클라이언트 번들 (esbuild)
-npm test           # 596개 유닛 테스트 (40 파일)
+npm test           # 611개 유닛 테스트 (41 파일)
 npm run lint       # ESLint
 ```
 
@@ -186,7 +188,7 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 │   │   └── utils.js              # 공통 유틸
 │   └── css/                      # 테마 + 애니메이션
 │
-├── test/                         # Vitest 596 cases (40 파일)
+├── test/                         # Vitest 611 cases (41 파일)
 ├── migrations/                   # D1 스키마
 ├── docs/                         # 상세 문서
 └── wrangler.toml                 # Cloudflare 설정

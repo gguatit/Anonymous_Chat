@@ -1,5 +1,7 @@
 # API 명세
 
+> 🌐 [English](./API.en.md) | **한국어**
+
 54개 HTTP 엔드포인트의 명세입니다. 모든 응답은 CORS 헤더를 포함합니다 (`src/config/cors.js`).
 
 **기본 URL**: `https://kalpha.mmv.kr` (프로덕션) | `http://localhost:8788` (개발)

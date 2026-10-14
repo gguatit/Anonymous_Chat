@@ -1,5 +1,7 @@
 # 아키텍처
 
+> 🌐 [English](./ARCHITECTURE.en.md) | **한국어**
+
 > Anonymous Chat의 시스템 아키텍처 및 데이터 흐름
 
 ---

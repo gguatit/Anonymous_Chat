@@ -1,5 +1,7 @@
 # 배포 가이드
 
+> 🌐 [English](./DEPLOYMENT.en.md) | **한국어**
+
 Anonymous Chat을 Cloudflare Workers(정적 자산 포함)에 배포하는 절차입니다.
 
 ---

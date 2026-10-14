@@ -1,5 +1,7 @@
 # 상업 라이선스 안내 (듀얼 라이선스)
 
+> 🌐 [English](./COMMERCIAL_LICENSE.en.md) | **한국어**
+
 이 프로젝트는 다음 2가지 트랙으로 제공됩니다.
 
 - 오픈소스 라이선스: AGPL-3.0 (LICENSE 참조)
