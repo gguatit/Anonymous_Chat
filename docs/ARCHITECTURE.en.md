@@ -78,7 +78,7 @@ flowchart TB
 
 ## Components
 
-### 1. Worker (`src/worker.js`, 543 lines)
+### 1. Worker (`src/worker.js`, 558 lines)
 
 Cloudflare Workers entry point (static assets are served through the `[assets]` binding). HTTP routing, WebSocket upgrades, and static asset fallback handling.
 
@@ -101,7 +101,7 @@ Cloudflare Workers entry point (static assets are served through the `[assets]` 
 
 ---
 
-### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1642 lines)
+### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1632 lines)
 
 The core WebSocket handler. One instance per channel (1 main room + N channels).
 

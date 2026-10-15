@@ -354,7 +354,7 @@ self.addEventListener('push', e => {
   - 클라이언트: 30개 소스 모듈 + 6개 페이지 래퍼 (chat.js 47KB, ui mixin 5개)
   - 마이그레이션: 5개 SQL (001~005, admin_logs DROP·security_events 인덱스 수정 포함)
   - 문서: 11개 (README, 5개 docs/, 디자인 스펙, CHANGELOG 등)
-  - 총 라인 수: ~15,000줄
+  - 총 라인 수: ~15,700줄
 
 🧪 테스트
   - Vitest 611 cases (41개 파일)

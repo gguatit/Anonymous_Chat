@@ -82,7 +82,7 @@ cp .dev.vars.example .dev.vars
 - `public/_headers` — security header definitions
 - `public/_redirects` — redirects (currently unused, handled by the Worker)
 - `public/.well-known/security.txt` — RFC 9116
-- `public/js/chat.js` — main client (1147 lines)
+- `public/js/chat.js` — main client (1144 lines)
 - `public/js/chat-page.js` — chat page entry point
 - `public/js/announcements-page.js` — announcement history page entry point
 - `public/js/ui.js` — UI manager + 5 mixins (render, menu, modal, edit, lightbox)

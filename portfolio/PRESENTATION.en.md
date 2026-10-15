@@ -356,7 +356,7 @@ self.addEventListener('push', e => {
   - Client: 30 source modules + 6 page wrappers (chat.js 47KB, 5 UI mixins)
   - Migrations: 5 SQL files (001–005, including the admin_logs DROP and security_events index fix)
   - Docs: 11 (README, 5 under docs/, design spec, CHANGELOG, etc.)
-  - Total lines: ~15,000
+  - Total lines: ~15,700
 
 🧪 Tests
   - Vitest 611 cases (41 files)

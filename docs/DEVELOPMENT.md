@@ -80,7 +80,7 @@ cp .dev.vars.example .dev.vars
 - `public/_headers` — 보안 헤더 정의
 - `public/_redirects` — 리다이렉트 (현재 미사용, Worker가 처리)
 - `public/.well-known/security.txt` — RFC 9116
-- `public/js/chat.js` — 메인 클라이언트 (1147줄)
+- `public/js/chat.js` — 메인 클라이언트 (1144줄)
 - `public/js/chat-page.js` — 채팅 페이지 진입점
 - `public/js/announcements-page.js` — 공지 히스토리 페이지 진입점
 - `public/js/ui.js` — UI 매니저 + 5 mixin (render, menu, modal, edit, lightbox)

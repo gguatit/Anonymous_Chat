@@ -254,7 +254,7 @@ async function broadcastPush(env, message) {
 
 ## 개발 경험 심화
 
-### Q: 1,588줄짜리 ChatRoom.js를 어떻게 리팩토링할 건가요?
+### Q: 1,632줄짜리 ChatRoom.js를 어떻게 리팩토링할 건가요?
 
 **A**: **책임별 분리** 전략:
 

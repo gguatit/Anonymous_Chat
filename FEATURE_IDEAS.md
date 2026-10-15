@@ -143,8 +143,8 @@
 
 | 항목 | 내용 |
 |------|------|
-| 현황 | `ChatRoom.js` 1588줄 (handleJoin/handleMessage/handleEdit/handleDelete/handleReaction이 단일 파일) |
-| | `chat-room/admin.js` 1154줄 (19개 admin route handler) |
+| 현황 | `ChatRoom.js` 1632줄 (handleJoin/handleMessage/handleEdit/handleDelete/handleReaction이 단일 파일) |
+| | `chat-room/admin.js` 1176줄 (19개 admin route handler) |
 | 방향 | join/message/reaction/edit/delete 각각 `chat-room/` 서브디렉토리로 분리 |
 | | admin 도 kick/announcement/message-management로 추가 분할 |
 | 참고 | 2026-06-09에 `ChatRoom.js` 2446줄에서 1024줄로 1차 분할 완료. 추가 분할 필요 |
@@ -391,3 +391,4 @@
 | 2026-07-14 | Phase 0 완료: #5(데드 코드 2파일 삭제+ocean/forest 테마 활성화), #8(rate limiter 문서화), #19(deploy.sh→pre-deploy-check.sh), #33(magic number 주석+상수화). 테스트 320개 통과 |
 | 2026-09-15 | 보안 하드닝 Stage 1~3 (ANALYSIS.md CRITICAL/HIGH/MEDIUM 다수 수정). strftime 인덱스 버그 수정(005), alarm 기반 채널 정리, 관리자 UI 백엔드 연결. 테스트 496개(35파일) 통과 |
 | 2026-09-16 | 보안 하드닝 v2 (C1·H1/H2·M1~M13·LOW). #16 DeadDrop alarm GC 완료. 테스트 596개(40파일) 통과 |
+| 2026-10-16 | 문서 수치 현행화 (worker.js 558줄·ChatRoom.js 1632줄·chat.js 1144줄 등 drift 수정) + AGENTS.md 문서 동기화 규칙 추가 |

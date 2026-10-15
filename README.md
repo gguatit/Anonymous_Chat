@@ -142,12 +142,12 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 ```
 .
 ├── src/                          # Worker (서버)
-│   ├── worker.js                 # 메인 라우터 (531줄)
+│   ├── worker.js                 # 메인 라우터 (558줄)
 │   ├── schema.js                 # JSDoc 타입 정의
 │   ├── config/                   # 상수/설정
 │   ├── handlers/                 # HTTP 핸들러
 │   ├── durable-objects/          # 3개 DO 클래스
-│   │   ├── ChatRoom.js           # WebSocket 채팅 (1588줄)
+│   │   ├── ChatRoom.js           # WebSocket 채팅 (1632줄)
 │   │   ├── ChannelRegistry.js    # 채널 메타데이터
 │   │   ├── DeadDropStore.js      # 비밀 메시지
 │   │   └── chat-room/            # ChatRoom 보조
@@ -164,7 +164,7 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 │   ├── manifest.json             # PWA 매니페스트
 │   ├── _headers                  # 보안 헤더
 │   ├── js/                       # 클라이언트 모듈
-│   │   ├── chat.js               # 메인 (1147줄)
+│   │   ├── chat.js               # 메인 (1144줄)
 │   │   ├── chat-page.js          # 채팅 페이지 부트스트랩 (사이드바/닉네임 배치)
 │   │   ├── announcements-page.js # 공지 페이지 부트스트랩 (긴급공지 폴링/리다이렉트)
 │   │   ├── ui.js + ui-*.js       # UI 매니저 + 5 mixin

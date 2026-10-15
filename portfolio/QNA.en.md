@@ -256,7 +256,7 @@ One message = 1 WS message (sender) + N (receivers)
 
 ## Development Experience Deep Dive
 
-### Q: How would you refactor the 1,588-line ChatRoom.js?
+### Q: How would you refactor the 1,632-line ChatRoom.js?
 
 **A**: With a **split by responsibility** strategy:
 

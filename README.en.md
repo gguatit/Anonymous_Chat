@@ -144,12 +144,12 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 ```
 .
 ├── src/                          # Worker (server)
-│   ├── worker.js                 # main router (531 lines)
+│   ├── worker.js                 # main router (558 lines)
 │   ├── schema.js                 # JSDoc type definitions
 │   ├── config/                   # constants/config
 │   ├── handlers/                 # HTTP handlers
 │   ├── durable-objects/          # 3 DO classes
-│   │   ├── ChatRoom.js           # WebSocket chat (1588 lines)
+│   │   ├── ChatRoom.js           # WebSocket chat (1632 lines)
 │   │   ├── ChannelRegistry.js    # channel metadata
 │   │   ├── DeadDropStore.js      # secret messages
 │   │   └── chat-room/            # ChatRoom helpers
@@ -166,7 +166,7 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 │   ├── manifest.json             # PWA manifest
 │   ├── _headers                  # security headers
 │   ├── js/                       # client modules
-│   │   ├── chat.js               # main (1147 lines)
+│   │   ├── chat.js               # main (1144 lines)
 │   │   ├── chat-page.js          # chat page bootstrap (sidebar/nickname placement)
 │   │   ├── announcements-page.js # announcements page bootstrap (urgent announcement polling/redirect)
 │   │   ├── ui.js + ui-*.js       # UI manager + 5 mixins

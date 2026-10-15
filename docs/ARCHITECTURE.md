@@ -76,7 +76,7 @@ flowchart TB
 
 ## 컴포넌트
 
-### 1. Worker (`src/worker.js`, 543줄)
+### 1. Worker (`src/worker.js`, 558줄)
 
 Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙). HTTP 라우팅, WebSocket 업그레이드, 정적 자산 폴백 처리.
 
@@ -99,7 +99,7 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 
 ---
 
-### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1642줄)
+### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1632줄)
 
 핵심 WebSocket 핸들러. 채널당 1개 인스턴스 (메인룸 1 + 채널 N).
 
