@@ -101,7 +101,7 @@ Cloudflare Workers entry point (static assets are served through the `[assets]` 
 
 ---
 
-### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1632 lines)
+### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1735 lines)
 
 The core WebSocket handler. One instance per channel (1 main room + N channels).
 
@@ -135,7 +135,7 @@ The core WebSocket handler. One instance per channel (1 main room + N channels).
 
 ---
 
-### 3. ChannelRegistry Durable Object (`src/durable-objects/ChannelRegistry.js`, 411 lines)
+### 3. ChannelRegistry Durable Object (`src/durable-objects/ChannelRegistry.js`, 418 lines)
 
 Channel metadata singleton. Maps slug → channel info.
 
@@ -164,8 +164,8 @@ One-time secret message singleton.
 
 | File | Lines | Responsibility |
 |---|---|---|
-| `admin.js` | 625 | 24 handlers (login + 23 withAuth types, including observer-ticket) |
-| `websocket.js` | 133 | WebSocket upgrade + observer ticket/ban pre-checks |
+| `admin.js` | 675 | 24 handlers (login + 23 withAuth types, including observer-ticket) |
+| `websocket.js` | 136 | WebSocket upgrade + observer ticket/ban pre-checks |
 | `push.js` | 351 | VAPID/FCM subscription management + delivery |
 | `summary.js` | 216 | Workers AI summary (4 modes, 15-second rate limit) |
 | `preview.js` | 279 | OG tag scraper (1-hour edge cache, SSRF denylist) |

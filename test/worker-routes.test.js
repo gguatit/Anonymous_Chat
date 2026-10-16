@@ -108,6 +108,7 @@ describe('worker router smoke (real worker.fetch)', () => {
 
     it('serves /api/announcements from D1', async () => {
         env.DB_ADMIN.prepare.mockImplementation(() => ({
+            bind: vi.fn(function () { return this; }),
             all: vi.fn(async () => ({
                 results: [{ timestamp: 123, content: '공지 내용', is_emergency: 1 }]
             })),
@@ -120,6 +121,7 @@ describe('worker router smoke (real worker.fetch)', () => {
 
     it('marks emergency announcements inactive after their expiry', async () => {
         env.DB_ADMIN.prepare.mockImplementation(() => ({
+            bind: vi.fn(function () { return this; }),
             all: vi.fn(async () => ({
                 results: [
                     { timestamp: 3, content: '만료됨', is_emergency: 1, emergency_until: Date.now() - 1000 },
@@ -131,6 +133,32 @@ describe('worker router smoke (real worker.fetch)', () => {
         const res = await worker.fetch(makeRequest('/api/announcements'), env);
         const body = await res.json();
         expect(body.map(a => a.isEmergency)).toEqual([false, true, true]);
+    });
+
+    it('filters announcements by schedule_at so future ones stay hidden', async () => {
+        let capturedSql = null;
+        let capturedBind = null;
+        env.DB_ADMIN.prepare.mockImplementation((sql) => {
+            capturedSql = sql;
+            const stmt = {
+                all: vi.fn(async () => ({
+                    results: [{ timestamp: 123, content: '예약 공지', is_emergency: 0, schedule_at: Date.now() + 3600000 }]
+                })),
+            };
+            return {
+                bind: vi.fn((...args) => {
+                    capturedBind = args;
+                    return stmt;
+                }),
+                all: stmt.all,
+            };
+        });
+
+        const res = await worker.fetch(makeRequest('/api/announcements'), env);
+
+        expect(res.status).toBe(200);
+        expect(capturedSql).toContain('schedule_at');
+        expect(capturedBind).toEqual([expect.any(Number)]);
     });
 
     it('serves /api/config from env values', async () => {

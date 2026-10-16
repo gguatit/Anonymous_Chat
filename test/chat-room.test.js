@@ -162,7 +162,8 @@ describe('ChatRoom', () => {
                 { sessionId: 'user_1' },
                 ws,
                 '10.0.0.1',
-                setSession
+                setSession,
+                'user_1'
             );
 
             expect(room.sessions.has('user_1')).toBe(true);
@@ -193,7 +194,8 @@ describe('ChatRoom', () => {
                 { sessionId: 'user_1' },
                 ws,
                 '10.0.0.1',
-                setSession
+                setSession,
+                'user_1'
             );
 
             const historyCall = ws.send.mock.calls.find(
@@ -209,8 +211,8 @@ describe('ChatRoom', () => {
             room.sessions.set('user_2', ws2);
 
             const cb = vi.fn();
-            await room.handleJoin({ sessionId: 'user_1' }, ws1, '10.0.0.1', cb);
-            await room.handleJoin({ sessionId: 'user_2' }, ws2, '10.0.0.2', cb);
+            await room.handleJoin({ sessionId: 'user_1' }, ws1, '10.0.0.1', cb, 'user_1');
+            await room.handleJoin({ sessionId: 'user_2' }, ws2, '10.0.0.2', cb, 'user_2');
 
             expect(room.sessionSecrets.get('user_1')).not.toBe(
                 room.sessionSecrets.get('user_2')
@@ -398,6 +400,72 @@ describe('ChatRoom', () => {
         });
     });
 
+    describe('channel identity is structural', () => {
+        it('keeps the main-room identity even when X-Channel-Slug claims main-room', async () => {
+            state.id = { name: 'main-room' };
+
+            await room.fetch(new Request('https://do/admin/info', {
+                headers: {
+                    'X-HMAC-Secret': 'test-hmac-secret',
+                    'X-Channel-Slug': 'main-room'
+                }
+            }));
+
+            expect(room.channelSlug).toBe('0');
+        });
+
+        it('rejects force-delete on the main room routed with slug main-room', async () => {
+            state.id = { name: 'main-room' };
+            state.storage.deleteAll = vi.fn(() => Promise.resolve());
+
+            const resPromise = room.fetch(new Request('https://do/admin/force-delete', {
+                method: 'POST',
+                headers: {
+                    'X-HMAC-Secret': 'test-hmac-secret',
+                    'X-Channel-Slug': 'main-room',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ confirmation: 'FORCE_DELETE_CHANNEL' })
+            }));
+            await vi.advanceTimersByTimeAsync(5000);
+            const res = await resPromise;
+
+            expect(res.status).toBe(403);
+        });
+
+        it('derives the channel slug from the DO name, ignoring the header', async () => {
+            state.id = { name: 'channel:test-room' };
+
+            await room.fetch(new Request('https://do/admin/info', {
+                headers: {
+                    'X-HMAC-Secret': 'test-hmac-secret',
+                    'X-Channel-Slug': 'attacker'
+                }
+            }));
+
+            expect(room.channelSlug).toBe('test-room');
+        });
+
+        it('still allows force-delete on a real channel DO', async () => {
+            state.id = { name: 'channel:test-room' };
+            state.storage.deleteAll = vi.fn(() => Promise.resolve());
+
+            const resPromise = room.fetch(new Request('https://do/admin/force-delete', {
+                method: 'POST',
+                headers: {
+                    'X-HMAC-Secret': 'test-hmac-secret',
+                    'X-Channel-Slug': 'main-room',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ confirmation: 'FORCE_DELETE_CHANNEL' })
+            }));
+            await vi.advanceTimersByTimeAsync(5000);
+            const res = await resPromise;
+
+            expect(res.status).toBe(200);
+        });
+    });
+
     describe('internal admin auth', () => {
         it('rejects admin routes with a wrong HMAC secret', async () => {
             const res = await room.fetch(new Request('https://do/admin/info', {
@@ -520,6 +588,170 @@ describe('ChatRoom', () => {
             room.sendToSession('user_1', { type: 'test' });
 
             expect(room.sessions.has('user_1')).toBe(false);
+        });
+    });
+
+    describe('session id binding', () => {
+        it('rejects reserved underscore identities', async () => {
+            const ws = createWebSocketMock();
+
+            await room.handleJoin({ sessionId: '_ai_summary' }, ws, '10.0.0.1', vi.fn(), '_ai_summary');
+
+            expect(ws.close).toHaveBeenCalledWith(1008, 'Invalid session id');
+            expect(room.sessions.has('_ai_summary')).toBe(false);
+        });
+        it('rejects a join without the ws session id binding', async () => {
+            const ws = createWebSocketMock();
+
+            await room.handleJoin(
+                { sessionId: 'user_1', timestamp: Date.now() },
+                ws,
+                '10.0.0.1',
+                vi.fn()
+            );
+
+            expect(ws.close).toHaveBeenCalledWith(4401, 'Session mismatch');
+        });
+
+        it('rejects a join whose ws session id does not match', async () => {
+            const ws = createWebSocketMock();
+
+            await room.handleJoin(
+                { sessionId: 'user_1', timestamp: Date.now() },
+                ws,
+                '10.0.0.1',
+                vi.fn(),
+                'user_other'
+            );
+
+            expect(ws.close).toHaveBeenCalledWith(4401, 'Session mismatch');
+        });
+    });
+
+    describe('scheduled announcement gating', () => {
+        const sentAnnouncements = (ws) => ws.send.mock.calls
+            .map(([raw]) => JSON.parse(raw))
+            .filter(msg => msg.type === 'announcement');
+
+        it('withholds a future-scheduled announcement on join', async () => {
+            room.currentAnnouncement = {
+                content: '예약 공지',
+                timestamp: Date.now(),
+                scheduleAt: Date.now() + 3600000
+            };
+            const ws = createWebSocketMock();
+
+            await room.handleJoin({ sessionId: 'user_1', timestamp: Date.now() }, ws, '10.0.0.1', vi.fn(), 'user_1');
+
+            expect(sentAnnouncements(ws)).toEqual([]);
+        });
+
+        it('sends a due announcement on join', async () => {
+            room.currentAnnouncement = {
+                content: '공지',
+                timestamp: Date.now(),
+                scheduleAt: Date.now() - 1000
+            };
+            const ws = createWebSocketMock();
+
+            await room.handleJoin({ sessionId: 'user_1', timestamp: Date.now() }, ws, '10.0.0.1', vi.fn(), 'user_1');
+
+            expect(sentAnnouncements(ws)).toHaveLength(1);
+        });
+
+        it('reports a future-scheduled emergency announcement as inactive', async () => {
+            room.currentAnnouncement = {
+                content: '긴급',
+                timestamp: Date.now(),
+                isEmergency: true,
+                scheduleAt: Date.now() + 3600000
+            };
+
+            const res = await room.fetch(new Request('https://do/emergency-announcement', {
+                headers: { 'X-HMAC-Secret': 'test-hmac-secret' }
+            }));
+            const body = await res.json();
+
+            expect(body.isEmergency).toBe(false);
+        });
+    });
+
+    describe('observer ticket consumption', () => {
+        it('consumes an observer ticket exactly once', () => {
+            const expiresAt = Date.now() + 60 * 1000;
+            expect(room.consumeObserverTicket('ticket-a', expiresAt)).toBe(true);
+            expect(room.consumeObserverTicket('ticket-a', expiresAt)).toBe(false);
+            expect(room.consumeObserverTicket('', expiresAt)).toBe(false);
+            expect(room.consumeObserverTicket('ticket-b', Date.now() - 1)).toBe(false);
+        });
+
+        it('rejects a replayed observer connection with 401', async () => {
+            const ticket = '1234567890123.abcdef';
+            room.consumedObserverTickets.set(ticket, Date.now() + 60 * 1000);
+
+            const res = await room.fetch(new Request(
+                `https://do/?sessionId=admin_obs_abc&ticket=${encodeURIComponent(ticket)}`,
+                {
+                    headers: {
+                        'CF-Connecting-IP': '10.0.0.9',
+                        'X-HMAC-Secret': 'test-hmac-secret',
+                        'X-Observer-Ticket': ticket
+                    }
+                }
+            ));
+
+            expect(res.status).toBe(401);
+        });
+
+        it('marks the observer ticket consumed before the socket upgrade', async () => {
+            const ticket = `${Date.now()}.abcdef`;
+            const req = new Request(
+                `https://do/?sessionId=admin_obs_abc&ticket=${encodeURIComponent(ticket)}`,
+                {
+                    headers: {
+                        'CF-Connecting-IP': '10.0.0.9',
+                        'X-HMAC-Secret': 'test-hmac-secret',
+                        'X-Observer-Ticket': ticket
+                    }
+                }
+            );
+
+            // WebSocketPair/Response(101) are unavailable under Node — the consume must
+            // happen before that point, so swallow the environment error and assert state
+            try { await room.fetch(req); } catch (_e) { /* no WebSocketPair in Node */ }
+
+            expect(room.consumedObserverTickets.has(ticket)).toBe(true);
+        });
+
+        it('closes observers whose ticket window has expired during cleanup', async () => {
+            const observerWs = createWebSocketMock();
+            room.observers.add(observerWs);
+            room.observerExpiries.set(observerWs, Date.now() - 1000);
+
+            await room.cleanup();
+
+            expect(observerWs.close).toHaveBeenCalledWith(1000, 'Observer ticket expired');
+            expect(room.observers.has(observerWs)).toBe(false);
+            expect(room.observerExpiries.has(observerWs)).toBe(false);
+        });
+    });
+
+    describe('session socket replacement', () => {
+        it('closes the replaced socket when the same session rejoins', async () => {
+            const wsFirst = createWebSocketMock();
+            const wsSecond = createWebSocketMock();
+
+            await room.handleJoin({ sessionId: 'user_1', timestamp: Date.now() }, wsFirst, '10.0.0.1', vi.fn(), 'user_1');
+
+            const handshake = wsFirst.send.mock.calls
+                .map(([raw]) => JSON.parse(raw))
+                .find(msg => msg.type === 'handshake');
+            expect(handshake).toBeTruthy();
+
+            await room.handleJoin({ sessionId: 'user_1', timestamp: Date.now(), key: handshake.key }, wsSecond, '10.0.0.1', vi.fn(), 'user_1');
+
+            expect(wsFirst.close).toHaveBeenCalledWith(1000, 'Replaced by new session');
+            expect(room.sessions.get('user_1')).toBe(wsSecond);
         });
     });
 });

@@ -33,7 +33,7 @@ Anonymous Chat의 개발 환경 설정 및 워크플로우입니다.
 | 테스트 | Vitest |
 | 린트 | ESLint (flat config) |
 | 포맷터 | Prettier |
-| 코드 통계 | 테스트 611케이스 (41파일), 서버 DO 3종 + Worker 라우터 |
+| 코드 통계 | 테스트 638케이스 (41파일), 서버 DO 3종 + Worker 라우터 |
 
 ---
 
@@ -111,7 +111,7 @@ cp .dev.vars.example .dev.vars
 - `public/css/prism-tomorrow.css` — Prism One Dark
 - `public/css/tailwind.min.css` — 빌드된 Tailwind
 
-### 3.3 테스트 (41 파일, 611 cases)
+### 3.3 테스트 (41 파일, 638 cases)
 정확한 파일/케이스 수는 `npm test` 실행 결과를 기준으로 한다. 주요 영역:
 - `test/worker-routes.test.js` — Worker 라우터 스모크 (인증·레이트리밋·CSP)
 - `test/chat-room*.test.js` — ChatRoom DO (초기화·세션 키·메시지 캡·서명·관리자 라우트)
@@ -164,7 +164,7 @@ npm run deploy         # 빌드 + wrangler deploy
 ### 4.6 검증 (로컬)
 GitHub Actions·Dependabot은 사용하지 않습니다 (2026-09-16 제거). 커밋 전 로컬에서 실행:
 ```bash
-npm test               # 611 케이스
+npm test               # 638 케이스
 npm run lint           # 0 errors
 npx wrangler deploy --dry-run
 ```

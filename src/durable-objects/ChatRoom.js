@@ -1,9 +1,10 @@
-import { RATE_LIMIT, SECURITY, CHANNEL, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MESSAGES_MAX_BYTES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH, SESSION_KEYS, REACTION_RATE_LIMIT_MS, TYPING_THROTTLE_MS } from '../config/constants.js';
+import { RATE_LIMIT, SECURITY, CHANNEL, ROOM_NAME, CHANNEL_PREFIX, metrics, MESSAGE_RETENTION_MS, MAX_STORED_MESSAGES, MESSAGES_MAX_BYTES, MAX_AUDIT_LOGS, MESSAGE_EDIT_WINDOW_MS, CLEANUP_INTERVAL_MS, SESSION_TIMEOUT_MS, PUSH_THROTTLE_MS, RECENT_MESSAGES_BATCH, DEFAULT_NICKNAME, MAX_NICKNAME_LENGTH, REACTION_EMOJIS, MAX_REACTIONS_PER_EMOJI, AI_SUMMARY, UPLOAD, SEARCH, SESSION_KEYS, REACTION_RATE_LIMIT_MS, TYPING_THROTTLE_MS } from '../config/constants.js';
 import { logAuditLog, logErrorLog, logSecurityEvent } from '../utils/logger.js';
 import { sendPushToOfflineUsers } from '../handlers/push.js';
 import { verifyMessageSignature, sanitizeInput, safeJson, isValidFileUrl, generateMessageSignature } from '../utils/helpers.js';
 import { validateClientMessage, validateSessionId } from '../utils/validate.js';
 import { constantTimeCompare } from '../utils/security.js';
+import { OBSERVER_TICKET_TTL_MS } from '../handlers/turnstile.js';
 
 import { dispatchAdminRoute, handleCheckBan, handleBroadcastSummary, notifyAdmin } from './chat-room/admin.js';
 import { validateMessage, sanitizeContentForAI, generateSessionId, generateSessionKey, extractErrorLocation, searchMessages, isLikelyCode } from './chat-room/messages.js';
@@ -47,6 +48,12 @@ export class ChatRoom {
 
         this.channelSlug = '0';
         this.emptySince = null;
+
+        // Observer tickets are single-use: consumed tickets are tracked until their
+        // 5-minute window passes, and each observer socket carries its ticket expiry
+        // so it is closed when the window ends
+        this.observerExpiries = new Map();
+        this.consumedObserverTickets = new Map();
 
         this.cleanupInterval = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
     }
@@ -205,9 +212,13 @@ export class ChatRoom {
     async fetch(request) {
         const HMAC_SECRET = request.headers.get('X-HMAC-Secret') || request.headers.get('X-Admin-Internal-Token');
 
-        const channelHeader = request.headers.get('X-Channel-Slug');
-        if (channelHeader) {
-            this.channelSlug = channelHeader;
+        // Channel identity is structural: derive it from the DO name, never from a
+        // client-supplied header — a 'main-room' header used to alias the main room (H1)
+        const roomName = this.state?.id?.name || '';
+        if (roomName === ROOM_NAME) {
+            this.channelSlug = '0';
+        } else if (roomName.startsWith(CHANNEL_PREFIX)) {
+            this.channelSlug = roomName.slice(CHANNEL_PREFIX.length);
         }
 
         const url = new URL(request.url);
@@ -246,7 +257,10 @@ export class ChatRoom {
 
         if (url.pathname === '/announcement-history') {
             await this.initializeMessages();
-            return new Response(JSON.stringify(this.announcementHistory), {
+            // Scheduled announcements must not be readable before their activation time
+            const now = Date.now();
+            const visibleHistory = this.announcementHistory.filter(entry => !entry.scheduleAt || entry.scheduleAt <= now);
+            return new Response(JSON.stringify(visibleHistory), {
                 headers: { 'Content-Type': 'application/json' }
             });
         }
@@ -255,7 +269,7 @@ export class ChatRoom {
             await this.initializeMessages();
             const now = Date.now();
             const ann = this.currentAnnouncement;
-            if (ann && ann.isEmergency && (!ann.emergencyUntil || now < ann.emergencyUntil)) {
+            if (ann && ann.isEmergency && (!ann.scheduleAt || now >= ann.scheduleAt) && (!ann.emergencyUntil || now < ann.emergencyUntil)) {
                 return new Response(JSON.stringify({
                     isEmergency: true,
                     content: ann.content,
@@ -373,6 +387,18 @@ export class ChatRoom {
         const banToken = wsUrl.searchParams.get('token');
         const isObserver = (wsUrl.searchParams.get('sessionId') || '').startsWith('admin_obs_');
         const wsSessionId = request.headers.get('X-Ws-Session-Id') || '';
+        let observerExpiresAt = 0;
+        if (isObserver) {
+            // Observer tickets are single-use: consume before the socket upgrades (M8)
+            const observerTicket = request.headers.get('X-Observer-Ticket') || '';
+            const ticketTs = Number(observerTicket.split('.')[0] || 0);
+            observerExpiresAt = Number.isFinite(ticketTs) && ticketTs > 0
+                ? ticketTs + OBSERVER_TICKET_TTL_MS
+                : 0;
+            if (!this.consumeObserverTicket(observerTicket, observerExpiresAt)) {
+                return new Response('Observer ticket already used or expired', { status: 401 });
+            }
+        }
         if (banToken) {
             const tokenBan = this.bannedTokens.get(banToken);
             if (tokenBan) {
@@ -407,7 +433,7 @@ export class ChatRoom {
         const pair = new WebSocketPair();
         const [client, server] = Object.values(pair);
 
-        await this.handleSession(server, clientIP, HMAC_SECRET, environment, isObserver, wsSessionId);
+        await this.handleSession(server, clientIP, HMAC_SECRET, environment, isObserver, wsSessionId, observerExpiresAt);
 
         return new Response(null, {
             status: 101,
@@ -415,17 +441,36 @@ export class ChatRoom {
         });
     }
 
-    async handleSession(websocket, clientIP, HMAC_SECRET, environment, isObserver = false, wsSessionId = '') {
+    consumeObserverTicket(ticket, expiresAt) {
+        if (!ticket || !expiresAt) return false;
+        const now = Date.now();
+        if (expiresAt <= now) return false;
+        const existing = this.consumedObserverTickets.get(ticket);
+        if (existing && existing > now) return false;
+        this.consumedObserverTickets.set(ticket, expiresAt);
+        return true;
+    }
+
+    async handleSession(websocket, clientIP, HMAC_SECRET, environment, isObserver = false, wsSessionId = '', observerExpiresAt = 0) {
         websocket.accept();
 
         if (isObserver) {
+            const forgetObserver = () => {
+                this.observers.delete(websocket);
+                this.observerExpiries.delete(websocket);
+            };
             this.observers.add(websocket);
-            websocket.addEventListener('close', () => {
-                this.observers.delete(websocket);
-            });
-            websocket.addEventListener('error', () => {
-                this.observers.delete(websocket);
-            });
+            this.observerExpiries.set(websocket, observerExpiresAt);
+            websocket.addEventListener('close', forgetObserver);
+            websocket.addEventListener('error', forgetObserver);
+            const expiryDelay = observerExpiresAt - Date.now();
+            if (expiryDelay > 0) {
+                setTimeout(() => {
+                    try {
+                        websocket.close(1000, 'Observer ticket expired');
+                    } catch (_e) { /* already closed */ }
+                }, expiryDelay);
+            }
             return;
         }
 
@@ -572,7 +617,7 @@ export class ChatRoom {
         }
 
         // The Turnstile ticket is bound to the sessionId in the WS URL (M1); join must match it
-        if (wsSessionId && data.sessionId !== wsSessionId) {
+        if (!wsSessionId || data.sessionId !== wsSessionId) {
             websocket.send(JSON.stringify({ type: 'error', content: '세션 검증에 실패했습니다. 새로고침 해주세요.' }));
             websocket.close(4401, 'Session mismatch');
             return;
@@ -595,7 +640,7 @@ export class ChatRoom {
             websocket.close(1008, 'Invalid session');
             return;
         }
-        if (sessionId.startsWith('admin')) {
+        if (sessionId.startsWith('admin') || sessionId.startsWith('_')) {
             websocket.send(JSON.stringify({ type: 'error', content: 'Invalid session id' }));
             websocket.close(1008, 'Invalid session id');
             return;
@@ -676,6 +721,14 @@ export class ChatRoom {
 
         let metadata;
         if (wasAlreadyConnected || existingMetadata) {
+            // One live socket per session: reclaim the replaced one so a kicked or
+            // revoked session cannot keep talking through an orphaned socket
+            const replacedSocket = this.sessions.get(sessionId);
+            if (replacedSocket && replacedSocket !== websocket) {
+                try {
+                    replacedSocket.close(1000, 'Replaced by new session');
+                } catch (_e) { /* already closed */ }
+            }
             this.sessions.set(sessionId, websocket);
 
             metadata = existingMetadata || {
@@ -695,7 +748,7 @@ export class ChatRoom {
                 });
             }
 
-            if (this.currentAnnouncement) {
+            if (this.currentAnnouncement && (!this.currentAnnouncement.scheduleAt || now >= this.currentAnnouncement.scheduleAt)) {
                 this.sendToSession(sessionId, {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
@@ -746,7 +799,7 @@ export class ChatRoom {
                 });
             }
 
-            if (this.currentAnnouncement) {
+            if (this.currentAnnouncement && (!this.currentAnnouncement.scheduleAt || now >= this.currentAnnouncement.scheduleAt)) {
                 this.sendToSession(sessionId, {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
@@ -966,7 +1019,20 @@ export class ChatRoom {
         // other's session identifiers (H1/M4); the stored message keeps it for ownership checks.
         const liveMessage = { ...message };
         delete liveMessage.sessionId;
-        this.broadcast(liveMessage);
+        // The secret-note capability id is a bearer token for a read-once drop: only the
+        // intended recipient may see it, everyone else gets a redacted projection (M4).
+        if (liveMessage.replyTo && liveMessage.replyTo.isSecret) {
+            const recipientSessionId = liveMessage.replyTo.targetSessionId || null;
+            const redacted = { ...liveMessage, replyTo: { ...liveMessage.replyTo } };
+            delete redacted.replyTo.secretId;
+            delete redacted.replyTo.targetSessionId;
+            this.broadcast(redacted, recipientSessionId);
+            if (recipientSessionId) {
+                this.sendToSession(recipientSessionId, liveMessage);
+            }
+        } else {
+            this.broadcast(liveMessage);
+        }
 
         try {
             await this._persistMessages();
@@ -1105,10 +1171,23 @@ export class ChatRoom {
         // Live edit events must not leak the author's sessionId either
         const liveMessage = { ...editedMessage };
         delete liveMessage.sessionId;
-        this.broadcast({
-            type: 'message_edited',
-            message: liveMessage
-        });
+        // Same per-recipient projection as handleMessage: a secret-note capability id
+        // must never be re-broadcast to non-recipients (M4).
+        if (liveMessage.replyTo && liveMessage.replyTo.isSecret) {
+            const recipientSessionId = liveMessage.replyTo.targetSessionId || null;
+            const redacted = { ...liveMessage, replyTo: { ...liveMessage.replyTo } };
+            delete redacted.replyTo.secretId;
+            delete redacted.replyTo.targetSessionId;
+            this.broadcast({ type: 'message_edited', message: redacted }, recipientSessionId);
+            if (recipientSessionId) {
+                this.sendToSession(recipientSessionId, { type: 'message_edited', message: liveMessage });
+            }
+        } else {
+            this.broadcast({
+                type: 'message_edited',
+                message: liveMessage
+            });
+        }
     }
 
     async handleDelete(data, sessionId) {
@@ -1393,6 +1472,13 @@ export class ChatRoom {
             if (clone.authorId && !String(clone.sessionId || '').startsWith('admin_')) {
                 delete clone.sessionId;
             }
+            // Replayed history gets the same treatment: a secret-note capability id is
+            // only visible to the session it targets (M4).
+            if (clone.replyTo && clone.replyTo.isSecret && clone.replyTo.targetSessionId !== clientSessionId) {
+                clone.replyTo = { ...clone.replyTo };
+                delete clone.replyTo.secretId;
+                delete clone.replyTo.targetSessionId;
+            }
             if (clone.reactionSessions) {
                 clone.reacted = {};
                 for (const [emoji, sessions] of Object.entries(clone.reactionSessions)) {
@@ -1454,6 +1540,23 @@ export class ChatRoom {
         if (tokenBansChanged) {
             await this.state.storage.put('bannedTokens', Array.from(this.bannedTokens.entries()));
             notifyAdmin(this, 'token_expired', { reason: 'expired' });
+        }
+
+        // Observer ticket sweep: drop consumed markers past their window and close
+        // observers whose one-time ticket has expired (M8)
+        for (const [ticket, expiresAt] of this.consumedObserverTickets) {
+            if (now >= expiresAt) {
+                this.consumedObserverTickets.delete(ticket);
+            }
+        }
+        for (const [observerWs, expiresAt] of this.observerExpiries) {
+            if (now >= expiresAt) {
+                try {
+                    observerWs.close(1000, 'Observer ticket expired');
+                } catch (_e) { /* already closed */ }
+                this.observers.delete(observerWs);
+                this.observerExpiries.delete(observerWs);
+            }
         }
 
         let sessionsRemoved = false;

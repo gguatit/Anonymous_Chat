@@ -99,7 +99,7 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 
 ---
 
-### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1632줄)
+### 2. ChatRoom Durable Object (`src/durable-objects/ChatRoom.js`, 1735줄)
 
 핵심 WebSocket 핸들러. 채널당 1개 인스턴스 (메인룸 1 + 채널 N).
 
@@ -133,7 +133,7 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 
 ---
 
-### 3. ChannelRegistry Durable Object (`src/durable-objects/ChannelRegistry.js`, 411줄)
+### 3. ChannelRegistry Durable Object (`src/durable-objects/ChannelRegistry.js`, 418줄)
 
 채널 메타데이터 싱글톤. slug → 채널 정보 매핑.
 
@@ -162,8 +162,8 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 
 | 파일 | 줄 | 책임 |
 |---|---|---|
-| `admin.js` | 625 | 24개 핸들러 (login + withAuth 23종, observer-ticket 포함) |
-| `websocket.js` | 133 | WebSocket 업그레이드 + 옵저버 티켓/차단 사전 확인 |
+| `admin.js` | 675 | 24개 핸들러 (login + withAuth 23종, observer-ticket 포함) |
+| `websocket.js` | 136 | WebSocket 업그레이드 + 옵저버 티켓/차단 사전 확인 |
 | `push.js` | 351 | VAPID/FCM 구독 관리 + 발송 |
 | `summary.js` | 216 | Workers AI 요약 (4 모드, 15초 레이트리밋) |
 | `preview.js` | 279 | OG 태그 스크래퍼 (Edge cache 1시간, SSRF denylist) |

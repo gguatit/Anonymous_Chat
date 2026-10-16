@@ -92,7 +92,7 @@ WebSocket upgrade endpoint.
 - `admin_obs_*` sessions are verified with the observer ticket instead of the admin token in the URL; failures are rejected with `401`
 - If the `join` `sessionId` differs from the value bound to the ticket, the connection closes with `close 4401 (Session mismatch)`
 
-**Message protocol**: [ARCHITECTURE.en.md §ChatRoom Durable Object](./ARCHITECTURE.en.md#2-chatroom-durable-object-srcdurable-objectschatroomjs-1632-lines)
+**Message protocol**: [ARCHITECTURE.en.md §ChatRoom Durable Object](./ARCHITECTURE.en.md#2-chatroom-durable-object-srcdurable-objectschatroomjs-1735-lines)
 
 ---
 

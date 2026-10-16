@@ -32,6 +32,7 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
     }
 
     // Observer sessions (admin dashboard) authenticate with a short-lived one-time ticket (M8)
+    let observerTicketForDO = '';
     if (sessionId && sessionId.startsWith('admin_obs_')) {
         const observerTicket = url.searchParams.get('ticket');
         const isValidObserver = await verifyObserverTicket(env, observerTicket, sessionId);
@@ -39,6 +40,7 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
             console.warn('Blocked unauthenticated observer session');
             return new Response('Unauthorized observer', { status: 401 });
         }
+        observerTicketForDO = observerTicket || '';
     }
 
     // Check ban status BEFORE allowing WebSocket connection
@@ -88,7 +90,8 @@ export async function handleWebSocket(request, env, HMAC_SECRET) {
                 ...Object.fromEntries(request.headers),
                 'X-HMAC-Secret': HMAC_SECRET,
                 'X-Channel-Slug': channelParam,
-                'X-Ws-Session-Id': sessionId || ''
+                'X-Ws-Session-Id': sessionId || '',
+                'X-Observer-Ticket': observerTicketForDO
             }
         });
     return room.fetch(modifiedRequest);

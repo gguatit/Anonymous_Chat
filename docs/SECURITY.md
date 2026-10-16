@@ -78,11 +78,12 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
   - Origin 누락 시 fail-closed (연결 거부)
 - ✅ **Turnstile ticket 검증** (`/ws`)
   - `POST /api/turnstile/verify`(sessionId 연계)가 발급한 HMAC ticket 필요 (2시간 TTL)
-  - `join.sessionId`가 티켓 바인딩과 다르면 `close 4401 (Session mismatch)`
+  - `join.sessionId`가 티켓 바인딩과 다르거나 누락되면 `close 4401 (Session mismatch)` (fail-closed)
   - `TURNSTILE_SECRET_KEY` 미설정 시에만 생략
 - ✅ **옵저버 티켓** (`admin_obs_*` 세션)
   - `POST /api/admin/observer-ticket`(관리자 인증)이 5분 TTL 티켓 + `admin_obs_<16hex>` 세션 ID 발급
   - `/ws`는 URL 관리자 토큰 없이 옵저버 티켓만 검증 (`src/handlers/turnstile.js:verifyObserverTicket`)
+  - 티켓은 DO에서 1회용으로 소비되며 재사용 시 401 — 5분 TTL 만료 시 관찰 소켓은 자동 종료됩니다
 
 ### 1.3 내부 API (Worker ↔ DO)
 - ✅ **`X-Admin-Internal-Token` 헤더** (모든 DO 호출)
@@ -104,6 +105,7 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
   - `authorId`(HMAC 파생 16hex)는 히스토리/검색에서 sessionId 대체
   - 클라이언트는 이후 `message`/`edit` 송신 시 `sessionSecret`으로 HMAC 자동 서명
   - WebSocket `close` 시 서버는 즉시 `Map`에서 secret 폐기
+  - 관리자 kick/ban 시에도 해당 세션의 secret을 회수하고, 같은 세션 재입장 시 이전 소켓을 종료합니다 (세션당 1소켓)
   - capability 키 상한(`SESSION_KEYS.MAX_KEYS=500`)에서 연결 중 세션의 키는 축출하지 않음
   - 소켓당 `join` 10회 제한 (초과 시 `close 1008 Too many joins`)
 - ✅ **서명 누락/불일치 시 거부** (생략 불가)
@@ -141,6 +143,7 @@ Anonymous Chat의 보안 통제는 15개 영역에 걸쳐 분산되어 있습니
 
 ### 2.4 SessionID
 - ✅ **정규식** `[a-zA-Z0-9_-]{1,200}`
+  - `admin`/`_` 접두사 거부 (예약 신원 `_ai_summary` 등 사칭 방지)
 
 ### 2.5 Dead Drop
 - ✅ **길이** ≤ 10000자 (`DEAD_DROP.MAX_MESSAGE_LENGTH`)

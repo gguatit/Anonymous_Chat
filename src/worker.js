@@ -113,10 +113,10 @@ const publicRoutes = [
         }
         // Announcements are stored in D1 for durable storage (M24)
         try {
-            const { results } = await env.DB_ADMIN.prepare(
-                'SELECT timestamp, content, is_emergency, emergency_until FROM announcements ORDER BY timestamp DESC LIMIT 100'
-            ).all();
             const now = Date.now();
+            const { results } = await env.DB_ADMIN.prepare(
+                'SELECT timestamp, content, is_emergency, emergency_until FROM announcements WHERE schedule_at IS NULL OR schedule_at <= ? ORDER BY timestamp DESC LIMIT 100'
+            ).bind(now).all();
             const list = (results || []).map(r => ({
                 content: r.content,
                 timestamp: r.timestamp,

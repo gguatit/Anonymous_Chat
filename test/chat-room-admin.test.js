@@ -32,6 +32,68 @@ describe('chat-room admin', () => {
         });
     });
 
+    describe('kick revokes the session secret', () => {
+        it('deletes the session secret when a user is kicked', async () => {
+            const wsMock = { send: vi.fn(), close: vi.fn() };
+            const room = mockChatRoom({
+                sessions: new Map([['user_1', wsMock]]),
+                userMetadata: new Map([['user_1', { ip: '10.0.0.1', authorId: 'authoridaa0000001', joinTime: Date.now(), lastActivityTime: Date.now() }]]),
+                ipConnections: new Map([['10.0.0.1', 1]]),
+                sessionSecrets: new Map([['user_1', 'secret-hex']]),
+                typingUsers: new Map(),
+                bannedIPs: new Map(),
+                bannedSessions: new Map(),
+                bannedTokens: new Map(),
+                state: { storage: { put: vi.fn(() => Promise.resolve()) } },
+                addAuditLog: vi.fn(() => Promise.resolve()),
+                broadcastUserCount: vi.fn()
+            });
+
+            const req = new Request('https://dummy/admin/kick-user', {
+                method: 'POST',
+                body: JSON.stringify({ sessionId: 'user_1', banDuration: 600 }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const res = await dispatchAdminRoute(room, new URL(req.url), req, HMAC);
+
+            expect(res.status).toBe(200);
+            expect(room.sessions.has('user_1')).toBe(false);
+            expect(room.sessionSecrets.has('user_1')).toBe(false);
+        });
+
+        it('records the IP ban even when the target IP has multiple connections', async () => {
+            const room = mockChatRoom({
+                sessions: new Map([
+                    ['user_1', { send: vi.fn(), close: vi.fn() }],
+                    ['user_2', { send: vi.fn(), close: vi.fn() }]
+                ]),
+                userMetadata: new Map([
+                    ['user_1', { ip: '10.0.0.1', authorId: 'authoridaa0000001', joinTime: Date.now(), lastActivityTime: Date.now() }],
+                    ['user_2', { ip: '10.0.0.1', authorId: 'authoridbb0000002', joinTime: Date.now(), lastActivityTime: Date.now() }]
+                ]),
+                ipConnections: new Map([['10.0.0.1', 2]]),
+                sessionSecrets: new Map([['user_1', 'secret-hex'], ['user_2', 'secret-hex-2']]),
+                typingUsers: new Map(),
+                bannedIPs: new Map(),
+                bannedSessions: new Map(),
+                bannedTokens: new Map(),
+                state: { storage: { put: vi.fn(() => Promise.resolve()) } },
+                addAuditLog: vi.fn(() => Promise.resolve()),
+                broadcastUserCount: vi.fn()
+            });
+
+            const req = new Request('https://dummy/admin/kick-user', {
+                method: 'POST',
+                body: JSON.stringify({ sessionId: 'user_1', banDuration: 600 }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const res = await dispatchAdminRoute(room, new URL(req.url), req, HMAC);
+
+            expect(res.status).toBe(200);
+            expect(room.bannedIPs.has('10.0.0.1')).toBe(true);
+        });
+    });
+
     describe('dispatchAdminRoute', () => {
         it('returns metrics', async () => {
             const room = mockChatRoom({

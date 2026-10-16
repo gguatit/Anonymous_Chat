@@ -1,4 +1,4 @@
-import { CHANNEL, CLEANUP_INTERVAL_MS } from '../config/constants.js';
+import { CHANNEL, CLEANUP_INTERVAL_MS, ROOM_NAME } from '../config/constants.js';
 import { sanitizeInput, safeJson } from '../utils/helpers.js';
 import { constantTimeCompare } from '../utils/security.js';
 import { validateChannelName } from '../utils/validate.js';
@@ -200,6 +200,13 @@ export class ChannelRegistry {
             const slug = this.toSlug(nameCheck.value);
             if (!slug) {
                 return new Response(JSON.stringify({ error: '사용할 수 없는 채널 이름입니다.' }), {
+                    status: 400, headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            // Reserved slugs alias the main room DO — block creation (H1)
+            if (slug === '0' || slug === ROOM_NAME) {
+                return new Response(JSON.stringify({ error: '예약된 채널 이름입니다.' }), {
                     status: 400, headers: { 'Content-Type': 'application/json' }
                 });
             }

@@ -90,7 +90,7 @@ WebSocket 업그레이드 엔드포인트.
 - `admin_obs_*` 세션은 URL의 관리자 토큰 대신 옵저버 티켓으로 검증되며, 실패 시 `401`로 거부됩니다
 - `join`의 `sessionId`가 티켓에 바인딩된 값과 다르면 `close 4401 (Session mismatch)`
 
-**메시지 프로토콜**: [ARCHITECTURE.md §ChatRoom Durable Object](./ARCHITECTURE.md#2-chatroom-durable-object-srcdurable-objectschatroomjs-1632줄)
+**메시지 프로토콜**: [ARCHITECTURE.md §ChatRoom Durable Object](./ARCHITECTURE.md#2-chatroom-durable-object-srcdurable-objectschatroomjs-1735줄)
 
 ---
 

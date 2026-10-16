@@ -109,7 +109,7 @@ describe('ChatRoom session capability keys', () => {
 
     it('issues secret, key and authorId on first join', async () => {
         const ws = createWebSocketMock();
-        await room.handleJoin({ sessionId: 'user_first' }, ws, '10.0.0.1', vi.fn());
+        await room.handleJoin({ sessionId: 'user_first' }, ws, '10.0.0.1', vi.fn(), 'user_first');
 
         const handshake = findSent(ws, 'handshake');
         expect(handshake).not.toBeNull();
@@ -128,10 +128,10 @@ describe('ChatRoom session capability keys', () => {
 
     it('rejects a rejoin without the key (4401) and sends no history', async () => {
         const ws1 = createWebSocketMock();
-        await room.handleJoin({ sessionId: 'user_reclaim' }, ws1, '10.0.0.1', vi.fn());
+        await room.handleJoin({ sessionId: 'user_reclaim' }, ws1, '10.0.0.1', vi.fn(), 'user_reclaim');
 
         const ws2 = createWebSocketMock();
-        await room.handleJoin({ sessionId: 'user_reclaim' }, ws2, '10.0.0.2', vi.fn());
+        await room.handleJoin({ sessionId: 'user_reclaim' }, ws2, '10.0.0.2', vi.fn(), 'user_reclaim');
 
         expect(ws2.close).toHaveBeenCalledWith(4401, expect.any(String));
         expect(findSent(ws2, 'handshake')).toBeNull();
@@ -140,21 +140,21 @@ describe('ChatRoom session capability keys', () => {
 
     it('rejects a rejoin with a wrong key (4401)', async () => {
         const ws1 = createWebSocketMock();
-        await room.handleJoin({ sessionId: 'user_wrong' }, ws1, '10.0.0.1', vi.fn());
+        await room.handleJoin({ sessionId: 'user_wrong' }, ws1, '10.0.0.1', vi.fn(), 'user_wrong');
 
         const ws2 = createWebSocketMock();
-        await room.handleJoin({ sessionId: 'user_wrong', key: 'deadbeef'.repeat(8) }, ws2, '10.0.0.2', vi.fn());
+        await room.handleJoin({ sessionId: 'user_wrong', key: 'deadbeef'.repeat(8) }, ws2, '10.0.0.2', vi.fn(), 'user_wrong');
 
         expect(ws2.close).toHaveBeenCalledWith(4401, expect.any(String));
     });
 
     it('accepts a rejoin with the correct key and rotates the key', async () => {
         const ws1 = createWebSocketMock();
-        await room.handleJoin({ sessionId: 'user_rotate' }, ws1, '10.0.0.1', vi.fn());
+        await room.handleJoin({ sessionId: 'user_rotate' }, ws1, '10.0.0.1', vi.fn(), 'user_rotate');
         const firstKey = findSent(ws1, 'handshake').key;
 
         const ws2 = createWebSocketMock();
-        await room.handleJoin({ sessionId: 'user_rotate', key: firstKey }, ws2, '10.0.0.1', vi.fn());
+        await room.handleJoin({ sessionId: 'user_rotate', key: firstKey }, ws2, '10.0.0.1', vi.fn(), 'user_rotate');
 
         expect(ws2.close).not.toHaveBeenCalled();
         const handshake = findSent(ws2, 'handshake');
@@ -169,7 +169,7 @@ describe('ChatRoom session capability keys', () => {
 
     it('rejects joins with admin_ prefixed session ids', async () => {
         const ws = createWebSocketMock();
-        await room.handleJoin({ sessionId: 'admin_kalpha' }, ws, '10.0.0.1', vi.fn());
+        await room.handleJoin({ sessionId: 'admin_kalpha' }, ws, '10.0.0.1', vi.fn(), 'admin_kalpha');
 
         expect(ws.close).toHaveBeenCalledWith(1008, expect.any(String));
         expect(findSent(ws, 'handshake')).toBeNull();
@@ -183,7 +183,7 @@ describe('ChatRoom session capability keys', () => {
         );
 
         const ws = createWebSocketMock();
-        await room.handleJoin({ sessionId: 'user_viewer' }, ws, '10.0.0.1', vi.fn());
+        await room.handleJoin({ sessionId: 'user_viewer' }, ws, '10.0.0.1', vi.fn(), 'user_viewer');
 
         const history = findSent(ws, 'history');
         expect(history).not.toBeNull();

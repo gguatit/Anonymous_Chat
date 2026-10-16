@@ -9,6 +9,7 @@
 - [개요](#개요)
 - [범례](#범례)
 - [릴리스](#릴리스)
+  - [2026-10-16](#2026-10-16)
   - [2026-09-16](#2026-09-16)
   - [2026-09-15](#2026-09-15)
   - [2026-06-22](#2026-06-22)
@@ -38,8 +39,8 @@
 | 항목 | 값 |
 |---|---|
 | 시작일 | 2025-12-19 |
-| 최근 업데이트 | 2026-09-16 |
-| 릴리스 수 | 20 |
+| 최근 업데이트 | 2026-10-16 |
+| 릴리스 수 | 21 |
 | 카테고리 | 신규 기능 / 개선 / 버그 수정 / 보안 / 인프라 / 문서 / 아키텍처 / 디자인 / 코드 품질 |
 
 ---
@@ -61,6 +62,24 @@
 ---
 
 ## 릴리스
+
+### 2026-10-16
+
+소스 전용 보안 감사(run-1)에서 확정된 발견 8건을 수정했습니다. 감사는 커밋 `dda7436` 기준으로 수행되었고, 런타임 사실이 결정적이던 13건은 `needs_validation`으로 분리해 수정 범위에서 제외했습니다. Vitest 638건(41파일) 전체 통과, lint 0 errors, `wrangler deploy --dry-run` 정상.
+
+#### 보안
+
+- **메인룸 파괴 경로 차단**: 채널 slug `main-room`이 메인룸 DO로 별칭되어 관리자 채널 삭제/상세 조회만으로 메인룸 저장소가 초기화될 수 있던 경로를 차단했습니다. 채널 아이덴티티를 클라이언트 헤더가 아닌 DO 이름 기반 구조 판정으로 전환하고, 관리자 채널 라우트와 채널 생성에서 예약 슬러그(`0`/`main-room`)를 거부합니다. `src/durable-objects/ChatRoom.js`, `src/handlers/admin.js`, `src/durable-objects/ChannelRegistry.js`.
+- **옵서버 티켓 1회용 소비**: 5분 TTL 옵서버 티켓을 DO에서 1회용으로 소비(재사용 시 401)하고, TTL 만료 시 관찰 소켓을 자동 종료합니다. `src/durable-objects/ChatRoom.js`, `src/handlers/websocket.js`.
+- **kick/ban 세션 회수 강화**: 재입장 시 이전 소켓을 종료해 세션당 단일 소켓을 보장하고, kick/ban 시 해당 세션의 서명 secret을 회수합니다. 공유 IP(동시접속 2개 이상)에서도 IP 밴을 항상 기록해 2세션으로 밴을 회피할 수 없게 했습니다. `src/durable-objects/chat-room/admin.js`.
+- **비밀 쪽지 capability 유출 차단**: `replyTo.secretId`/`targetSessionId`를 수신자 소켓에만 전달하고, 라이브 방송·히스토리·수정 이벤트에서는 redaction합니다. `src/durable-objects/ChatRoom.js`.
+- **join 세션 바인딩 fail-closed**: 빈 WS sessionId join을 거부(close 4401)해 Turnstile 티켓 바인딩 우회를 차단했습니다. `src/durable-objects/ChatRoom.js`.
+- **예약 신원 차단**: `_` 접두사 sessionId를 거부해 `_ai_summary` 등 예약 신원 선점을 차단했습니다. `src/durable-objects/ChatRoom.js`.
+- **예약 공지 사전 노출 차단**: `announcements.schedule_at` 컬럼(마이그레이션 `008_announcement_schedule.sql`)을 추가하고, 공개 목록 SQL 필터·join 공지 전송·긴급 배너·announcement-history 응답에서 활성화 시각 이전 공지를 숨깁니다. `src/worker.js`, `src/handlers/admin.js`, `src/durable-objects/ChatRoom.js`, `migrations/008_announcement_schedule.sql`.
+
+#### 테스트
+
+- Vitest 638건(41파일) 전체 통과. confirmed 8건에 대한 회귀 테스트 27건 추가(메인룸 구조 판정, 옵서버 1회용 소비, kick 세션 회수, 공유 IP 밴, replyTo redaction, fail-closed join, `_` 예약 신원 거부, schedule 필터).
 
 ### 2026-09-16
 

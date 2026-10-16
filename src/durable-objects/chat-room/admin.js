@@ -500,7 +500,9 @@ export async function handleAdminKickUser(chatRoom, request) {
             });
             await chatRoom.state.storage.put('bannedTokens', Array.from(chatRoom.bannedTokens.entries()));
 
-            if (clientIP && !isSharedIP) {
+            // Record the IP ban even for shared IPs — otherwise a target holding two
+            // connections can skip the ban entirely and rejoin with a fresh session
+            if (clientIP) {
                 chatRoom.bannedIPs.set(clientIP, {
                     bannedUntil,
                     reason: 'Admin kick',
@@ -528,6 +530,7 @@ export async function handleAdminKickUser(chatRoom, request) {
                 chatRoom.sessions.delete(sessionId);
                 chatRoom.userMetadata.delete(sessionId);
                 chatRoom.typingUsers.delete(sessionId);
+                chatRoom.sessionSecrets?.delete(sessionId);
 
                 if (clientIP) {
                     const currentCount = chatRoom.ipConnections.get(clientIP) || 0;
@@ -558,6 +561,7 @@ export async function handleAdminKickUser(chatRoom, request) {
                         chatRoom.sessions.delete(sid);
                         chatRoom.userMetadata.delete(sid);
                         chatRoom.typingUsers.delete(sid);
+                        chatRoom.sessionSecrets?.delete(sid);
                     }
                 }
 
@@ -587,6 +591,7 @@ export async function handleAdminKickUser(chatRoom, request) {
             }
             chatRoom.userMetadata.delete(sessionId);
             chatRoom.typingUsers.delete(sessionId);
+            chatRoom.sessionSecrets?.delete(sessionId);
         }
 
         metrics.activeConnections = chatRoom.sessions.size;

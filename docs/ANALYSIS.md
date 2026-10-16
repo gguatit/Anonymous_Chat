@@ -100,6 +100,21 @@
 | CSP `img-src` 축소 | EXCLUDED | 현행 `https:`/`data:` 유지 — 사용자 판단으로 스킵 |
 | HSTS preload 존 레벨 등록 | EXCLUDED | `_headers`의 `preload` 지시자는 유지, 도메인 존 설정은 별도 작업 |
 
+**v3 소스 감사(run-1) 발견·수정 현황 (2026-10-16)**
+
+> 2026-10-16 소스 전용 보안 감사(run-1)에서 확정된 8건 전부 수정. 감사 시점 HEAD `dda7436` 기준, 테스트 638건/41파일·lint 0 errors·`wrangler deploy --dry-run` 정상. 런타임/배포 확인이 필요한 `needs_validation` 13건은 심각도 미부여로 별도 관리.
+
+| 발견 | 상태 | 내용 | 커밋 |
+|---|---|---|---|
+| main-room 별칭 | FIXED | 채널 slug `main-room`이 메인룸 DO로 별칭되던 경로 차단 — 채널 아이덴티티를 DO 이름 기반 구조 판정으로 전환(`ChatRoom.fetch`), 관리자 channel-details/delete·레지스트리 생성 예약 슬러그 거부 | — |
+| observer 티켓 재사용 | FIXED | 옵저버 티켓을 DO에서 1회용으로 소비(재사용 시 401), 5분 TTL 만료 시 관찰 소켓 자동 종료 | — |
+| kick 소켓 미회수 | FIXED | 재입장 시 이전 소켓 종료(세션당 1소켓) + kick/ban 시 `sessionSecrets` 회수 | — |
+| 공유 IP 밴 우회 | FIXED | 동시접속 ≥2여도 `bannedIPs` 기록 — 다중 세션 유지로 밴 회피 불가 | — |
+| replyTo capability 유출 | FIXED | 비밀 쪽지 `secretId`/`targetSessionId`를 수신자 소켓에만 전달(방송·히스토리·수정 이벤트 redaction) | — |
+| 턴스타일 빈 sessionId | FIXED | join 시 ws sessionId 누락/불일치 fail-closed(close 4401) | — |
+| `_` 예약 신원 | FIXED | `_` 접두사 sessionId 거부(`_ai_summary` 선점·요약 위조 차단) | — |
+| 예약 공지 사전 노출 | FIXED | `announcements.schedule_at`(migration 008) + 공개 목록 SQL 필터 + join/emergency/announcement-history 게이트 | — |
+
 ---
 
 ## 1. 요약

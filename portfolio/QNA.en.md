@@ -256,7 +256,7 @@ One message = 1 WS message (sender) + N (receivers)
 
 ## Development Experience Deep Dive
 
-### Q: How would you refactor the 1,632-line ChatRoom.js?
+### Q: How would you refactor the 1,735-line ChatRoom.js?
 
 **A**: With a **split by responsibility** strategy:
 
@@ -280,7 +280,7 @@ Each file stays under **300 lines**. Landed as step-by-step PRs (lower risk).
 
 ### Q: How will you increase test coverage?
 
-**A**: Most of the priority areas now have tests (611 cases / 41 files in total):
+**A**: Most of the priority areas now have tests (638 cases / 41 files in total):
 
 1. **`utils/validate.js` (input validation)** — done (including validate-extra)
 2. **`utils/helpers.js` HMAC functions** — done

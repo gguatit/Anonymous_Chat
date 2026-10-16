@@ -79,11 +79,11 @@ describe('ChatRoom live privacy and key eviction (H1/M4)', () => {
         const ws = createWebSocketMock();
 
         for (let i = 1; i <= 10; i++) {
-            await room.handleJoin({ sessionId: `user_cap_${i}` }, ws, '10.0.0.1', vi.fn());
+            await room.handleJoin({ sessionId: `user_cap_${i}` }, ws, '10.0.0.1', vi.fn(), `user_cap_${i}`);
         }
         expect(ws.close).not.toHaveBeenCalled();
 
-        await room.handleJoin({ sessionId: 'user_cap_11' }, ws, '10.0.0.1', vi.fn());
+        await room.handleJoin({ sessionId: 'user_cap_11' }, ws, '10.0.0.1', vi.fn(), 'user_cap_11');
 
         expect(ws.close).toHaveBeenCalledWith(1008, 'Too many joins');
         expect(findSent(ws, 'handshake')).not.toBeNull();
@@ -240,7 +240,7 @@ describe('ChatRoom live privacy and key eviction (H1/M4)', () => {
             editedAt: null
         }];
 
-        await room.handleJoin({ sessionId: 'user_order', timestamp: Date.now() }, ws, '10.0.0.1', vi.fn());
+        await room.handleJoin({ sessionId: 'user_order', timestamp: Date.now() }, ws, '10.0.0.1', vi.fn(), 'user_order');
 
         const types = ws.send.mock.calls.map((call) => {
             try { return JSON.parse(call[0]).type; } catch (_e) { return null; }
@@ -248,5 +248,111 @@ describe('ChatRoom live privacy and key eviction (H1/M4)', () => {
         expect(types).toContain('handshake');
         expect(types).toContain('history');
         expect(types.indexOf('handshake')).toBeLessThan(types.indexOf('history'));
+    });
+
+    it('only sends the secret-note capability id to the intended recipient (M4)', async () => {
+        const wsA = createWebSocketMock();
+        const wsB = createWebSocketMock();
+        const wsC = createWebSocketMock();
+        room.sessions.set('user_a', wsA);
+        room.sessions.set('user_b', wsB);
+        room.sessions.set('user_c', wsC);
+        room.sessionSecrets.set('user_a', 'secret-a');
+        room.userMetadata.set('user_a', { ip: '10.0.0.1', authorId: 'authoridaa0000001', nickname: 'A', messageCount: 0, lastMessageTime: 0, lastActivityTime: Date.now() });
+
+        const timestamp = Date.now();
+        const signature = await generateMessageSignature({ content: 'secret note: hi', sessionId: 'user_a', timestamp }, 'secret-a');
+
+        await room.handleMessage(
+            {
+                type: 'message',
+                content: 'secret note: hi',
+                sessionId: 'user_a',
+                timestamp,
+                signature,
+                nickname: 'A',
+                replyTo: { messageId: null, content: '', isSecret: true, secretId: 'sd_capability_123', targetSessionId: 'user_b' }
+            },
+            'user_a',
+            room.userMetadata.get('user_a'),
+            env.HMAC_SECRET
+        );
+
+        const recipientFrames = wsB.send.mock.calls.filter(c => { try { return JSON.parse(c[0]).type === 'message'; } catch (_e) { return false; } });
+        expect(recipientFrames.length).toBe(1);
+        const recipientFrame = JSON.parse(recipientFrames[0][0]);
+        expect(recipientFrame.replyTo.secretId).toBe('sd_capability_123');
+
+        const thirdPartyFrame = findSent(wsC, 'message');
+        expect(thirdPartyFrame).not.toBeNull();
+        expect(thirdPartyFrame.replyTo.isSecret).toBe(true);
+        expect(Object.hasOwn(thirdPartyFrame.replyTo, 'secretId')).toBe(false);
+        expect(Object.hasOwn(thirdPartyFrame.replyTo, 'targetSessionId')).toBe(false);
+    });
+
+    it('redacts the secret-note capability id in history except for the recipient (M4)', async () => {
+        room.messages = [{
+            messageId: 'msg_secret',
+            content: 'secret note',
+            sessionId: 'user_a',
+            authorId: 'authoridaa0000001',
+            nickname: 'A',
+            timestamp: Date.now(),
+            editedAt: null,
+            replyTo: { messageId: null, content: '', isOwnMessage: false, isSecret: true, secretId: 'sd_capability_123', targetSessionId: 'user_b' }
+        }];
+
+        const wsThird = createWebSocketMock();
+        await room.handleJoin({ sessionId: 'user_c', timestamp: Date.now() }, wsThird, '10.0.0.3', vi.fn(), 'user_c');
+        const thirdHistory = findSent(wsThird, 'history');
+        expect(thirdHistory).not.toBeNull();
+        const thirdMsg = thirdHistory.messages.find(m => m.messageId === 'msg_secret');
+        expect(thirdMsg.replyTo.isSecret).toBe(true);
+        expect(Object.hasOwn(thirdMsg.replyTo, 'secretId')).toBe(false);
+        expect(Object.hasOwn(thirdMsg.replyTo, 'targetSessionId')).toBe(false);
+
+        const wsRecipient = createWebSocketMock();
+        await room.handleJoin({ sessionId: 'user_b', timestamp: Date.now() }, wsRecipient, '10.0.0.2', vi.fn(), 'user_b');
+        const recipientHistory = findSent(wsRecipient, 'history');
+        const recipientMsg = recipientHistory.messages.find(m => m.messageId === 'msg_secret');
+        expect(recipientMsg.replyTo.secretId).toBe('sd_capability_123');
+    });
+
+    it('redacts the secret-note capability id in message_edited broadcasts (M4)', async () => {
+        const wsB = createWebSocketMock();
+        const wsC = createWebSocketMock();
+        room.sessions.set('user_b', wsB);
+        room.sessions.set('user_c', wsC);
+        room.sessionSecrets.set('user_a', 'secret-a');
+        room.messages = [{
+            messageId: 'msg_secret',
+            content: 'secret note',
+            sessionId: 'user_a',
+            authorId: 'authoridaa0000001',
+            nickname: 'A',
+            timestamp: Date.now(),
+            editedAt: null,
+            signature: 'sig',
+            replyTo: { messageId: null, content: '', isOwnMessage: false, isSecret: true, secretId: 'sd_capability_123', targetSessionId: 'user_b' }
+        }];
+
+        const timestamp = Date.now();
+        const signature = await generateMessageSignature({ content: 'secret note v2', sessionId: 'user_a', timestamp }, 'secret-a');
+
+        await room.handleEdit(
+            { type: 'edit', messageId: 'msg_secret', newContent: 'secret note v2', sessionId: 'user_a', timestamp, signature },
+            'user_a',
+            { ip: '10.0.0.1', authorId: 'authoridaa0000001', lastActivityTime: Date.now() },
+            env.HMAC_SECRET
+        );
+
+        const recipientFrame = findSent(wsB, 'message_edited');
+        expect(recipientFrame).not.toBeNull();
+        expect(recipientFrame.message.replyTo.secretId).toBe('sd_capability_123');
+
+        const thirdFrame = findSent(wsC, 'message_edited');
+        expect(thirdFrame).not.toBeNull();
+        expect(thirdFrame.message.replyTo.isSecret).toBe(true);
+        expect(Object.hasOwn(thirdFrame.message.replyTo, 'secretId')).toBe(false);
     });
 });

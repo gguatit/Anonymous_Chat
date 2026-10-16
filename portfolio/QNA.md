@@ -254,7 +254,7 @@ async function broadcastPush(env, message) {
 
 ## 개발 경험 심화
 
-### Q: 1,632줄짜리 ChatRoom.js를 어떻게 리팩토링할 건가요?
+### Q: 1,735줄짜리 ChatRoom.js를 어떻게 리팩토링할 건가요?
 
 **A**: **책임별 분리** 전략:
 
@@ -278,7 +278,7 @@ src/durable-objects/ChatRoom/
 
 ### Q: 테스트 커버리지를 어떻게 늘릴 건가요?
 
-**A**: 우선순위로 꼽았던 영역은 대부분 테스트가 붙었습니다 (총 611건 / 41파일):
+**A**: 우선순위로 꼽았던 영역은 대부분 테스트가 붙었습니다 (총 638건 / 41파일):
 
 1. **`utils/validate.js` (입력 검증)** — 완료 (validate-extra 포함)
 2. **`utils/helpers.js` HMAC 함수** — 완료

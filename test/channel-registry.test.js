@@ -112,6 +112,22 @@ describe('ChannelRegistry', () => {
             const res = await registry.fetch(req);
             expect(res.status).toBe(400);
         });
+
+        it('rejects reserved names that alias the main room', async () => {
+            const makeReq = (name) => new Request('https://dummy/create', {
+                method: 'POST',
+                body: JSON.stringify({ name }),
+                headers: { ...authHeaders(), ...jsonHeaders() }
+            });
+
+            const resMain = await registry.fetch(makeReq('main-room'));
+            expect(resMain.status).toBe(400);
+            expect(registry.channels.has('main-room')).toBe(false);
+
+            const resZero = await registry.fetch(makeReq('0'));
+            expect(resZero.status).toBe(400);
+            expect(registry.channels.has('0')).toBe(false);
+        });
     });
 
     describe('touch', () => {

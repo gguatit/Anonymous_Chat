@@ -118,4 +118,17 @@ describe('handleWebSocket observer authentication', () => {
         expect(res.status).not.toBe(401);
         expect(env._fetchMock).toHaveBeenCalled();
     });
+
+    it('forwards the observer ticket to the DO for single-use consumption', async () => {
+        const env = makeEnv();
+        const ticket = await issueObserverTicket(env.HMAC_SECRET, 'admin_obs_abc');
+        await handleWebSocket(
+            makeRequest(`sessionId=admin_obs_abc&ticket=${encodeURIComponent(ticket)}`),
+            env,
+            'test-secret'
+        );
+        expect(env._fetchMock).toHaveBeenCalled();
+        const forwarded = env._fetchMock.mock.calls.at(-1)[0];
+        expect(forwarded.headers.get('X-Observer-Ticket')).toBe(ticket);
+    });
 });

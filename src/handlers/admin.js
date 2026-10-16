@@ -1,4 +1,4 @@
-import { BAN_DURATIONS } from '../config/constants.js';
+import { BAN_DURATIONS, ROOM_NAME } from '../config/constants.js';
 import { sleep, constantTimeCompare } from '../utils/security.js';
 import { logAdminActivity, logSecurityEvent } from '../utils/logger.js';
 import { checkRateLimit, incrementRateLimit, generateAdminToken, verifyAdminToken, revokeToken } from '../middleware/auth.js';
@@ -438,8 +438,8 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             const storedAt = Date.now();
             forwardBody.timestamp = storedAt;
             await env.DB_ADMIN.prepare(
-                'INSERT INTO announcements (timestamp, content, is_emergency, emergency_until) VALUES (?, ?, ?, ?)'
-            ).bind(storedAt, sanitizeInput(content), forwardBody.isEmergency ? 1 : 0, forwardBody.emergencyUntil ?? null).run();
+                'INSERT INTO announcements (timestamp, content, is_emergency, emergency_until, schedule_at) VALUES (?, ?, ?, ?, ?)'
+            ).bind(storedAt, sanitizeInput(content), forwardBody.isEmergency ? 1 : 0, forwardBody.emergencyUntil ?? null, forwardBody.scheduleAt ? Number(forwardBody.scheduleAt) : null).run();
         } else if (request.method === 'PUT') {
             const existing = await env.DB_ADMIN.prepare(
                 'SELECT content, is_emergency, emergency_until FROM announcements WHERE timestamp = ?'
@@ -612,6 +612,10 @@ export const handleAdminChannelDetails = withAuth(async (request, env, corsHeade
         if (!slug) {
             return jsonError('Missing channel slug', 400, request.headers.get('Origin'));
         }
+        // '0' and ROOM_NAME alias the main room DO — never reachable via channel APIs (H1)
+        if (slug === '0' || slug === ROOM_NAME) {
+            return jsonError('Invalid channel slug', 400, request.headers.get('Origin'));
+        }
 
         const response = await forwardToChannelDO(env, slug, '/admin/info');
         return new Response(response.body, { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -626,6 +630,10 @@ export const handleAdminChannelDelete = withAuth(async (request, env, corsHeader
         const slug = body.slug;
         if (!slug) {
             return jsonError('Missing channel slug', 400, request.headers.get('Origin'));
+        }
+        // '0' and ROOM_NAME alias the main room DO — never reachable via channel APIs (H1)
+        if (slug === '0' || slug === ROOM_NAME) {
+            return jsonError('Invalid channel slug', 400, request.headers.get('Origin'));
         }
 
         try {

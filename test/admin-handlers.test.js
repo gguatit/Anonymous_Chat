@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleAdminLogout, handleAdminAnnounce, handleAdminLogin, handleAdminKickUser } from '../src/handlers/admin.js';
+import { handleAdminLogout, handleAdminAnnounce, handleAdminLogin, handleAdminKickUser, handleAdminChannelDetails, handleAdminChannelDelete } from '../src/handlers/admin.js';
 import { generateAdminToken } from '../src/middleware/auth.js';
 import { BAN_DURATIONS } from '../src/config/constants.js';
 
@@ -160,6 +160,14 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         expect(bindArgs[3]).toBe(future);
     });
 
+    it('stores schedule_at in D1 for scheduled announcements', async () => {
+        const future = Date.now() + 3600000;
+        const res = await sendAnnounce({ content: '예약 공지', scheduleAt: future });
+        expect(res.status).toBe(200);
+        const bindArgs = env.DB_ADMIN.bind.mock.calls[0];
+        expect(bindArgs[4]).toBe(future);
+    });
+
     it('passes through the canonical isEmergency field', async () => {
         const res = await sendAnnounce({ content: '일반 공지', isEmergency: false });
         expect(res.status).toBe(200);
@@ -203,6 +211,62 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         const res = await sendAnnounce({ timestamp: 12345 }, 'DELETE');
         expect(res.status).toBe(200);
         expect(forwarded[0].nextAnnouncement).toEqual({ timestamp: 555, content: '남은 공지', isEmergency: false });
+    });
+});
+
+describe('handleAdminChannelDetails/Delete reserved slugs', () => {
+    let env;
+
+    beforeEach(async () => {
+        env = mockEnv();
+        env.CHAT_ROOM = {
+            idFromName: vi.fn(() => 'do-id'),
+            get: vi.fn(() => ({
+                fetch: vi.fn(async () => new Response(JSON.stringify({ slug: 'ok' }), { status: 200 })),
+            })),
+        };
+        env.CHANNEL_REGISTRY = {
+            idFromName: vi.fn(() => 'reg-id'),
+            get: vi.fn(() => ({
+                fetch: vi.fn(async () => new Response(JSON.stringify({ success: true }), { status: 200 })),
+            })),
+        };
+        env._token = await generateAdminToken(env);
+    });
+
+    function detailsReq(slug) {
+        return new Request(`https://example.com/api/admin/channel-details?slug=${slug}`, {
+            headers: { 'Authorization': `Bearer ${env._token}` },
+        });
+    }
+
+    function deleteReq(slug) {
+        return new Request('https://example.com/api/admin/channel-delete', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${env._token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug }),
+        });
+    }
+
+    it('rejects channel-details for main-room and 0', async () => {
+        for (const slug of ['main-room', '0']) {
+            const res = await handleAdminChannelDetails(detailsReq(slug), env, cors());
+            expect(res.status).toBe(400);
+        }
+    });
+
+    it('rejects channel-delete for main-room and 0', async () => {
+        for (const slug of ['main-room', '0']) {
+            const res = await handleAdminChannelDelete(deleteReq(slug), env, cors());
+            expect(res.status).toBe(400);
+        }
+        expect(env.CHANNEL_REGISTRY.get).not.toHaveBeenCalled();
+    });
+
+    it('still resolves normal channel slugs', async () => {
+        const res = await handleAdminChannelDetails(detailsReq('some-room'), env, cors());
+        expect(res.status).toBe(200);
+        expect(env.CHAT_ROOM.get).toHaveBeenCalled();
     });
 });
 
