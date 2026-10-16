@@ -204,6 +204,7 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         const res = await sendAnnounce({ timestamp: 12345, pinned: true }, 'PUT');
         expect(res.status).toBe(200);
         expect(forwarded[0].pinned).toBe(true);
+        expect(forwarded[0].content).toBe('old content');
         const updateArgs = env.DB_ADMIN.bind.mock.calls.at(-1);
         expect(updateArgs).toEqual(['old content', 0, null, 1, 12345]);
     });

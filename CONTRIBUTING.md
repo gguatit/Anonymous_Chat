@@ -198,7 +198,7 @@ chore: 의존성 업데이트
 | 인증/관리자 | `auth`, `admin-handlers` |
 | 채팅/DO/세션 | `chat-room`, `chat-room-init`, `chat-room-messages`, `chat-room-message-cap`, `chat-room-session-key`, `chat-room-admin`, `channel-registry`, `dead-drop-store`, `websocket-observer` |
 | 메시징/Worker | `web-push`, `fcm-auth`, `preview`, `summary`, `worker-routes`, `handlers` |
-| **합계** | **642 cases / 41 파일** |
+| **합계** | **643 cases / 41 파일** |
 
 ---
 

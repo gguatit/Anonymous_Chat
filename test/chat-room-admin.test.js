@@ -52,6 +52,28 @@ describe('chat-room admin', () => {
             expect(res.status).toBe(200);
             expect(history[0].pinned).toBe(true);
         });
+
+        it('logs a pin audit even when merged content is attached', async () => {
+            const history = [{ timestamp: 111, content: '공지', isEmergency: false }];
+            const addAuditLog = vi.fn(() => Promise.resolve());
+            const room = mockChatRoom({
+                announcementHistory: history,
+                currentAnnouncement: null,
+                state: { storage: { put: vi.fn(() => Promise.resolve()) } },
+                addAuditLog
+            });
+
+            const req = new Request('https://dummy/admin/announce', {
+                method: 'PUT',
+                body: JSON.stringify({ timestamp: 111, content: '공지', pinned: true }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const res = await dispatchAdminRoute(room, new URL(req.url), req, HMAC);
+
+            expect(res.status).toBe(200);
+            expect(addAuditLog).toHaveBeenCalled();
+            expect(addAuditLog.mock.calls[0][1]).toContain('pinned to top');
+        });
     });
 
     describe('kick revokes the session secret', () => {

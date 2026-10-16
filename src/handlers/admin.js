@@ -461,6 +461,7 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             await env.DB_ADMIN.prepare(
                 'UPDATE announcements SET content = ?, is_emergency = ?, emergency_until = ?, pinned = ? WHERE timestamp = ?'
             ).bind(nextContent, nextEmergency, nextEmergencyUntil, nextPinned, timestamp).run();
+            forwardBody.content = nextContent; // Merge content for older-code Durable Objects (eventually-consistent DO updates)
         } else {
             const deleted = await env.DB_ADMIN.prepare(
                 'DELETE FROM announcements WHERE timestamp = ?'

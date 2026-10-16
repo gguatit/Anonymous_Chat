@@ -771,9 +771,11 @@ export async function handleAdminEditAnnounce(chatRoom, request) {
             }
         }
 
-        const changeDetail = content
-            ? content.substring(0, ADMIN.AUDIT_LOG_TRUNCATION) + '...'
-            : (isEmergency !== undefined ? 'emergency status changed' : (data.pinned ? 'pinned to top' : 'unpinned'));
+        const changeDetail = Object.hasOwn(data, 'pinned')
+            ? (data.pinned ? 'pinned to top' : 'unpinned')
+            : (content
+                ? content.substring(0, ADMIN.AUDIT_LOG_TRUNCATION) + '...'
+                : (isEmergency !== undefined ? 'emergency status changed' : 'updated'));
         await chatRoom.addAuditLog('edit_announcement', `Edited announcement from timestamp ${timestamp}: ${changeDetail}`, {
             timestamp,
             isEmergency,

@@ -164,7 +164,7 @@ One-time secret message singleton.
 
 | File | Lines | Responsibility |
 |---|---|---|
-| `admin.js` | 679 | 24 handlers (login + 23 withAuth types, including observer-ticket) |
+| `admin.js` | 680 | 24 handlers (login + 23 withAuth types, including observer-ticket) |
 | `websocket.js` | 136 | WebSocket upgrade + observer ticket/ban pre-checks |
 | `push.js` | 351 | VAPID/FCM subscription management + delivery |
 | `summary.js` | 216 | Workers AI summary (4 modes, 15-second rate limit) |

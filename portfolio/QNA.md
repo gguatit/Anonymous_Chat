@@ -278,7 +278,7 @@ src/durable-objects/ChatRoom/
 
 ### Q: 테스트 커버리지를 어떻게 늘릴 건가요?
 
-**A**: 우선순위로 꼽았던 영역은 대부분 테스트가 붙었습니다 (총 642건 / 41파일):
+**A**: 우선순위로 꼽았던 영역은 대부분 테스트가 붙었습니다 (총 643건 / 41파일):
 
 1. **`utils/validate.js` (입력 검증)** — 완료 (validate-extra 포함)
 2. **`utils/helpers.js` HMAC 함수** — 완료

@@ -10,7 +10,7 @@
 
 ## 커밋/PR 전 검증 (필수)
 
-1. `npm test` — Vitest 전체 (현재 642 cases / 41 파일)
+1. `npm test` — Vitest 전체 (현재 643 cases / 41 파일)
 2. `npm run lint` — 0 errors
 3. `npx wrangler deploy --dry-run`
 4. (선택) `npm run format`
@@ -36,7 +36,7 @@ EN 쌍 없음(수정 시 EN 불필요): `CHANGELOG.md`, `SECURITY.md`(루트), `
 
 ### 수치 현행화 체크리스트
 
-- **테스트 수** (현재 "642 cases / 41 파일") 표기: `README.md`(배지 포함), `README.en.md`, `CONTRIBUTING.md`, `CONTRIBUTING.en.md`, `docs/DEVELOPMENT.md`, `docs/DEVELOPMENT.en.md`, `portfolio/PRESENTATION.md`, `portfolio/PRESENTATION.en.md`, `portfolio/QNA.md`, `portfolio/QNA.en.md`. 테스트 추가/삭제 시 `grep "642"`으로 전부 갱신.
+- **테스트 수** (현재 "643 cases / 41 파일") 표기: `README.md`(배지 포함), `README.en.md`, `CONTRIBUTING.md`, `CONTRIBUTING.en.md`, `docs/DEVELOPMENT.md`, `docs/DEVELOPMENT.en.md`, `portfolio/PRESENTATION.md`, `portfolio/PRESENTATION.en.md`, `portfolio/QNA.md`, `portfolio/QNA.en.md`. 테스트 추가/삭제 시 `grep "643"`으로 전부 갱신.
 - **파일 줄 수** 표기: `README.md`(+EN) 구조 트리, `docs/ARCHITECTURE.md`(+EN) 컴포넌트 제목, `docs/DEVELOPMENT.md`(+EN), `portfolio/PRESENTATION.md`(+EN) 통계, `FEATURE_IDEAS.md` 현황.
 - ⚠ **앵커 결합**: `docs/API.md`(+EN)에 ARCHITECTURE 제목(줄 수 포함)을 슬러그로 한 링크가 있음 → ARCHITECTURE 제목 수치 변경 시 API.md 앵커도 함께 수정.
 - 줄 수 측정은 `[IO.File]::ReadAllLines(...).Length` 사용 (PowerShell `Get-Content | Measure-Object -Line`은 빈 줄을 세지 않아 부정확).

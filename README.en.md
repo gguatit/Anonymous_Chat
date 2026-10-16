@@ -8,7 +8,7 @@
 
 [![License](https://img.shields.io/badge/License-Commercial-blue.svg)](./COMMERCIAL_LICENSE.md)
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](./SECURITY.md)
-[![Tests](https://img.shields.io/badge/Tests-642%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/Tests-643%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
 
 An anonymous chat service built with Cloudflare Workers · Durable Objects · D1 · Workers AI.
 Join instantly with just a nickname — no sign-up — and **all messages are automatically destroyed after 12 hours**.
@@ -89,7 +89,7 @@ Join instantly with just a nickname — no sign-up — and **all messages are au
 | **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
 | **Push** | Web Push (VAPID) + FCM v1 |
 | **Build** | esbuild (10 bundles: chat · admin · security center · admin pages) |
-| **Tests** | Vitest (642 cases · 41 files) |
+| **Tests** | Vitest (643 cases · 41 files) |
 | **Linting** | ESLint + Prettier |
 | **Frontend** | Vanilla JS (modular) · CSS Custom Properties themes · Tailwind (build) |
 
@@ -123,7 +123,7 @@ npm run dev
 
 ```bash
 npm run build      # client bundle (esbuild)
-npm test           # 642 unit tests (41 files)
+npm test           # 643 unit tests (41 files)
 npm run lint       # ESLint
 ```
 
@@ -190,7 +190,7 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 │   │   └── utils.js              # shared utilities
 │   └── css/                      # themes + animations
 │
-├── test/                         # Vitest 642 cases (41 files)
+├── test/                         # Vitest 643 cases (41 files)
 ├── migrations/                   # D1 schema
 ├── docs/                         # detailed documentation
 └── wrangler.toml                 # Cloudflare config

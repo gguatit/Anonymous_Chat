@@ -144,7 +144,7 @@
 | 항목 | 내용 |
 |------|------|
 | 현황 | `ChatRoom.js` 1735줄 (handleJoin/handleMessage/handleEdit/handleDelete/handleReaction이 단일 파일) |
-| | `chat-room/admin.js` 1188줄 (19개 admin route handler) |
+| | `chat-room/admin.js` 1190줄 (19개 admin route handler) |
 | 방향 | join/message/reaction/edit/delete 각각 `chat-room/` 서브디렉토리로 분리 |
 | | admin 도 kick/announcement/message-management로 추가 분할 |
 | 참고 | 2026-06-09에 `ChatRoom.js` 2446줄에서 1024줄로 1차 분할 완료. 추가 분할 필요 |

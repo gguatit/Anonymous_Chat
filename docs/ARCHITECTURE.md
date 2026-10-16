@@ -162,7 +162,7 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 
 | 파일 | 줄 | 책임 |
 |---|---|---|
-| `admin.js` | 679 | 24개 핸들러 (login + withAuth 23종, observer-ticket 포함) |
+| `admin.js` | 680 | 24개 핸들러 (login + withAuth 23종, observer-ticket 포함) |
 | `websocket.js` | 136 | WebSocket 업그레이드 + 옵저버 티켓/차단 사전 확인 |
 | `push.js` | 351 | VAPID/FCM 구독 관리 + 발송 |
 | `summary.js` | 216 | Workers AI 요약 (4 모드, 15초 레이트리밋) |
