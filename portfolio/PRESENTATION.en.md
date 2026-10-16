@@ -72,7 +72,7 @@
 | **Push** | Web Push (VAPID) + FCM v1 | Standard Web Push + Android compatibility |
 | **Build** | esbuild | Code splitting across 10 entries, builds in under a second |
 | **Frontend** | Vanilla JS + CSS Custom Properties | Minimal framework dependency, lower learning curve |
-| **Testing** | Vitest | 638 cases, 41 files |
+| **Testing** | Vitest | 642 cases, 41 files |
 | **Linting** | ESLint + Prettier | Consistent code style |
 
 ### Trade-offs
@@ -359,7 +359,7 @@ self.addEventListener('push', e => {
   - Total lines: ~15,700
 
 🧪 Tests
-  - Vitest 638 cases (41 files)
+  - Vitest 642 cases (41 files)
   - Full suite passes in under 20 seconds
   - Coverage modules: rate-limiter, helpers, security, classifier, risk-scorer, security-logger, security routes
 
@@ -387,7 +387,7 @@ self.addEventListener('push', e => {
 
 ### Short Term (1-2 Months)
 - [x] Deployment pipeline (Cloudflare Workers Builds auto-deploy + local verification: test·lint·deploy dry-run)
-- [x] Strengthened core DO (`ChatRoom.js`) tests (chat-room*.test.js, 638 total)
+- [x] Strengthened core DO (`ChatRoom.js`) tests (chat-room*.test.js, 642 total)
 - [x] Client XSS hotfix (escapeHtml quotes + stored XSS chain + forced SVG file proxy attachment)
 - [x] CSP hardening (0 inline handlers, scripts externalized — no unsafe-inline/eval in script-src, cdnjs removed)
 - [x] Observer one-time ticket · Turnstile join binding · admin route limiter · retention enforcement sweep (2026-09-16 v2)
@@ -674,7 +674,7 @@ Examples:
 ```
 Project: Anonymous Chat
 Stack: Cloudflare Workers + DO + D1 + KV + Workers AI
-Scale: 32 server files, 30 client source modules + 6 page wrappers, 638 tests passing
+Scale: 32 server files, 30 client source modules + 6 page wrappers, 642 tests passing
 Key designs:
   1. Ephemeral Token (HMAC signing, 32-byte secret)
   2. Triple-ban (IP + Session + Token)

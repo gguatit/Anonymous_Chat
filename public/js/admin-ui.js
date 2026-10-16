@@ -291,12 +291,14 @@ export function renderAnnouncements(announcements) {
     container.innerHTML = announcements.map(a => {
         const ts = new Date(a.timestamp).toLocaleString('ko-KR');
         const emergency = a.isEmergency ? '<span class="text-xs bg-red-600 text-white font-bold border border-red-500 px-1.5 py-0.5 rounded ml-1 animate-pulse">긴급</span>' : '';
+        const pinBadge = a.pinned ? '<span class="text-xs bg-yellow-600 text-white font-bold border border-yellow-500 px-1.5 py-0.5 rounded ml-1">고정</span>' : '';
         const content = h(a.content).replace(/\n/g, '<br>').replace(/(https?:\/\/[^\s<>"']+)/g, '<a href="$1" target="_blank" rel="noopener" class="text-blue-400 hover:text-blue-300 underline break-all">$1</a>');
+        const pinBtn = `<button class="pin-announce-btn text-xs bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-1 rounded shrink-0" data-timestamp="${a.timestamp}" data-pinned="${a.pinned ? '1' : '0'}">${a.pinned ? '고정해제' : '고정'}</button>`;
         const editBtn = `<button class="edit-announce-btn text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shrink-0" data-timestamp="${a.timestamp}" data-content="${h(a.content)}">수정</button>`;
         const delBtn = `<button class="delete-announce-btn text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded shrink-0" data-timestamp="${a.timestamp}">삭제</button>`;
         return a.isEmergency
-            ? `<div class="bg-red-900/30 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-red-500"><div class="flex-1"><div class="text-xs text-red-300 font-semibold mb-1">${ts}${emergency}</div><div class="text-sm text-red-100">${content}</div></div><div class="flex flex-col gap-1">${editBtn}${delBtn}</div></div>`
-            : `<div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4"><div class="flex-1"><div class="text-xs text-gray-400 mb-1">${ts}</div><div class="text-sm text-gray-200">${content}</div></div><div class="flex flex-col gap-1">${editBtn}${delBtn}</div></div>`;
+            ? `<div class="bg-red-900/30 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-red-500"><div class="flex-1"><div class="text-xs text-red-300 font-semibold mb-1">${ts}${emergency}${pinBadge}</div><div class="text-sm text-red-100">${content}</div></div><div class="flex flex-col gap-1">${pinBtn}${editBtn}${delBtn}</div></div>`
+            : `<div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4"><div class="flex-1"><div class="text-xs text-gray-400 mb-1">${ts}${pinBadge}</div><div class="text-sm text-gray-200">${content}</div></div><div class="flex flex-col gap-1">${pinBtn}${editBtn}${delBtn}</div></div>`;
     }).join('');
 
 container.querySelectorAll('.edit-announce-btn').forEach(b => {
@@ -306,6 +308,11 @@ container.querySelectorAll('.edit-announce-btn').forEach(b => {
     });
         container.querySelectorAll('.delete-announce-btn').forEach(b => {
         b.addEventListener('click', () => window._deleteAnnouncement && window._deleteAnnouncement(Number(b.dataset.timestamp)));
+    });
+    container.querySelectorAll('.pin-announce-btn').forEach(b => {
+        b.addEventListener('click', () => {
+            if (window._toggleAnnouncePin) window._toggleAnnouncePin(Number(b.dataset.timestamp), b.dataset.pinned !== '1');
+        });
     });
 }
 

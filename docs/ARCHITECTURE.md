@@ -76,7 +76,7 @@ flowchart TB
 
 ## 컴포넌트
 
-### 1. Worker (`src/worker.js`, 558줄)
+### 1. Worker (`src/worker.js`, 559줄)
 
 Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙). HTTP 라우팅, WebSocket 업그레이드, 정적 자산 폴백 처리.
 
@@ -110,7 +110,7 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 | 세션 관리 | `sessions` Map, `ipConnections` Map |
 | 메시지 저장 | DO Storage 12시간, 최대 2000개 (96KiB 바이트 캡) |
 | 차단 | IP + SessionID |
-| 공지 | 일반/긴급 + 스케줄링 |
+| 공지 | 일반/긴급 + 고정 + 스케줄링 |
 | 반응 | 이모지 토글 |
 | 푸시 | 오프라인 사용자 |
 | AI 요약 | Workers AI 호출 |
@@ -162,7 +162,7 @@ Cloudflare Workers 진입점 (정적 자산은 `[assets]` 바인딩으로 서빙
 
 | 파일 | 줄 | 책임 |
 |---|---|---|
-| `admin.js` | 675 | 24개 핸들러 (login + withAuth 23종, observer-ticket 포함) |
+| `admin.js` | 679 | 24개 핸들러 (login + withAuth 23종, observer-ticket 포함) |
 | `websocket.js` | 136 | WebSocket 업그레이드 + 옵저버 티켓/차단 사전 확인 |
 | `push.js` | 351 | VAPID/FCM 구독 관리 + 발송 |
 | `summary.js` | 216 | Workers AI 요약 (4 모드, 15초 레이트리밋) |

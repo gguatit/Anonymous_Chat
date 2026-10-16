@@ -116,7 +116,7 @@ describe('worker router smoke (real worker.fetch)', () => {
         const res = await worker.fetch(makeRequest('/api/announcements'), env);
         expect(res.status).toBe(200);
         const body = await res.json();
-        expect(body).toEqual([{ timestamp: 123, content: '공지 내용', isEmergency: true }]);
+        expect(body).toEqual([{ timestamp: 123, content: '공지 내용', isEmergency: true, pinned: false }]);
     });
 
     it('marks emergency announcements inactive after their expiry', async () => {
@@ -159,6 +159,31 @@ describe('worker router smoke (real worker.fetch)', () => {
         expect(res.status).toBe(200);
         expect(capturedSql).toContain('schedule_at');
         expect(capturedBind).toEqual([expect.any(Number)]);
+    });
+
+    it('orders pinned announcements first and exposes the pinned flag', async () => {
+        let capturedSql = null;
+        env.DB_ADMIN.prepare.mockImplementation((sql) => {
+            capturedSql = sql;
+            return {
+                bind: vi.fn(function () { return this; }),
+                all: vi.fn(async () => ({
+                    results: [
+                        { timestamp: 2, content: '고정 공지', is_emergency: 0, pinned: 1 },
+                        { timestamp: 1, content: '일반 공지', is_emergency: 0, pinned: 0 }
+                    ]
+                })),
+            };
+        });
+
+        const res = await worker.fetch(makeRequest('/api/announcements'), env);
+
+        expect(res.status).toBe(200);
+        expect(capturedSql).toContain('pinned');
+        expect(capturedSql).toContain('ORDER BY pinned DESC');
+        const body = await res.json();
+        expect(body[0]).toMatchObject({ timestamp: 2, pinned: true });
+        expect(body[1]).toMatchObject({ timestamp: 1, pinned: false });
     });
 
     it('serves /api/config from env values', async () => {

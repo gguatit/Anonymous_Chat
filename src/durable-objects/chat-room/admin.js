@@ -721,7 +721,7 @@ export async function handleAdminEditAnnounce(chatRoom, request) {
         const isEmergency = Object.hasOwn(data, 'isEmergency') ? !!data.isEmergency : undefined;
         const emergencyUntil = Object.hasOwn(data, 'emergencyUntil') ? (data.emergencyUntil ? Number(data.emergencyUntil) : null) : undefined;
 
-        if (!timestamp || (content === '' && !Object.hasOwn(data, 'isEmergency'))) {
+        if (!timestamp || (content === '' && !Object.hasOwn(data, 'isEmergency') && !Object.hasOwn(data, 'pinned'))) {
             return new Response(JSON.stringify({ error: 'Missing timestamp or content' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
@@ -737,6 +737,9 @@ export async function handleAdminEditAnnounce(chatRoom, request) {
             if (isEmergency !== undefined) {
                 chatRoom.announcementHistory[announcementIndex].isEmergency = isEmergency;
                 chatRoom.announcementHistory[announcementIndex].emergencyUntil = emergencyUntil;
+            }
+            if (Object.hasOwn(data, 'pinned')) {
+                chatRoom.announcementHistory[announcementIndex].pinned = !!data.pinned;
             }
             // D1 is the source of truth now; the DO copy is best-effort cache (M24)
             try {
@@ -768,12 +771,16 @@ export async function handleAdminEditAnnounce(chatRoom, request) {
             }
         }
 
-        await chatRoom.addAuditLog('edit_announcement', `Edited announcement from timestamp ${timestamp}: ${content ? content.substring(0, ADMIN.AUDIT_LOG_TRUNCATION) + '...' : 'emergency status changed'}`, {
+        const changeDetail = content
+            ? content.substring(0, ADMIN.AUDIT_LOG_TRUNCATION) + '...'
+            : (isEmergency !== undefined ? 'emergency status changed' : (data.pinned ? 'pinned to top' : 'unpinned'));
+        await chatRoom.addAuditLog('edit_announcement', `Edited announcement from timestamp ${timestamp}: ${changeDetail}`, {
             timestamp,
-            isEmergency
+            isEmergency,
+            ...(Object.hasOwn(data, 'pinned') ? { pinned: !!data.pinned } : {})
         });
 
-        notifyAdmin(chatRoom, 'announcement_edited', { timestamp, isEmergency });
+        notifyAdmin(chatRoom, 'announcement_edited', { timestamp, isEmergency, ...(Object.hasOwn(data, 'pinned') ? { pinned: !!data.pinned } : {}) });
 
         return new Response(JSON.stringify({ success: true }), {
             headers: { 'Content-Type': 'application/json' }

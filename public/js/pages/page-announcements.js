@@ -35,6 +35,17 @@ export async function init(core) {
             core.showNotification('공지 수정 실패', 'error');
         }
     };
+    window._toggleAnnouncePin = async (timestamp, pinned) => {
+        if (!Number.isFinite(timestamp)) return;
+        try {
+            await ApiClient.put('/api/admin/announce', { timestamp, pinned });
+            core.showNotification(pinned ? '공지 고정 완료' : '공지 고정 해제', 'success');
+            await refresh(core);
+        } catch (error) {
+            console.error('Failed to toggle announcement pin:', error);
+            core.showNotification('고정 상태 변경 실패', 'error');
+        }
+    };
     document.getElementById('announce-preview-btn')?.addEventListener('click', () => {
         const content = document.getElementById('admin-announce-input')?.value || '';
         const p = document.getElementById('announce-preview'), pc = document.getElementById('announce-preview-content');

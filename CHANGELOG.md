@@ -65,7 +65,11 @@
 
 ### 2026-10-16
 
-소스 전용 보안 감사(run-1)에서 확정된 발견 8건을 수정했습니다. 감사는 커밋 `dda7436` 기준으로 수행되었고, 런타임 사실이 결정적이던 13건은 `needs_validation`으로 분리해 수정 범위에서 제외했습니다. Vitest 638건(41파일) 전체 통과, lint 0 errors, `wrangler deploy --dry-run` 정상.
+소스 전용 보안 감사(run-1)에서 확정된 발견 8건을 수정하고, 공지사항 상단 고정 기능을 추가했습니다. 감사는 커밋 `dda7436` 기준으로 수행되었고, 런타임 사실이 결정적이던 13건은 `needs_validation`으로 분리해 수정 범위에서 제외했습니다. Vitest 642건(41파일) 전체 통과, lint 0 errors, `wrangler deploy --dry-run` 정상.
+
+#### 신규 기능
+
+- **공지 상단 고정**: 관리자 공지 목록에서 행별 고정/해제 토글. `GET /api/announcements` 응답에 `pinned` 포함·고정 우선 정렬, 공지 페이지 고정 뱃지 표시. `announcements.pinned` 컬럼 추가(migration `009_announcement_pin.sql`).
 
 #### 보안
 
@@ -79,7 +83,7 @@
 
 #### 테스트
 
-- Vitest 638건(41파일) 전체 통과. confirmed 8건에 대한 회귀 테스트 27건 추가(메인룸 구조 판정, 옵서버 1회용 소비, kick 세션 회수, 공유 IP 밴, replyTo redaction, fail-closed join, `_` 예약 신원 거부, schedule 필터).
+- Vitest 642건(41파일) 전체 통과. confirmed 8건에 대한 회귀 테스트 27건(메인룸 구조 판정, 옵서버 1회용 소비, kick 세션 회수, 공유 IP 밴, replyTo redaction, fail-closed join, `_` 예약 신원 거부, schedule 필터)과 공지 상단 고정 회귀 테스트 4건(pinned 정렬·PUT 토글·pin-only 수정)을 함께 추가했습니다.
 
 ### 2026-09-16
 

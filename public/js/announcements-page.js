@@ -50,6 +50,7 @@
             countBadge.classList.remove('hidden');
 
             // Render cards
+            const newestTs = data.reduce((m, x) => Math.max(m, x.timestamp || 0), 0);
             data.forEach((item, i) => {
                 const card = document.createElement('div');
                 const isEmergency = item.isEmergency;
@@ -66,7 +67,10 @@
                 const emergencyBadge = isEmergency
                     ? `<span class="ml-auto text-xs bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-medium">긴급</span>`
                     : '';
-                const latestBadge = i === 0 && !isEmergency
+                const pinBadge = item.pinned
+                    ? `<span class="ml-auto text-xs bg-yellow-600/20 text-yellow-200 border border-yellow-600/40 px-2 py-0.5 rounded-full font-medium">고정</span>`
+                    : '';
+                const latestBadge = item.timestamp === newestTs && !isEmergency
                     ? `<span class="ml-auto text-xs bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 px-2 py-0.5 rounded-full font-medium">최신</span>`
                     : '';
 
@@ -90,6 +94,7 @@
                         </svg>
                         ${typeLabel}
                         ${emergencyBadge}
+                        ${pinBadge}
                         ${latestBadge}
                     </div>
                     <p class="text-sm text-gray-200 whitespace-pre-wrap break-words leading-relaxed mb-3">${contentHtml}</p>

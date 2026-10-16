@@ -108,11 +108,11 @@ Announcement history (unauthenticated).
     "content": "서버 점검 안내",
     "timestamp": 1717890123000,
     "isEmergency": false,
-    "emergencyUntil": null
+    "pinned": false
   }
 ]
 ```
-Announcements persist until manually deleted (no automatic expiry).
+Announcements persist until manually deleted (no automatic expiry). Pinned announcements (`pinned`) are listed first, then by newest.
 
 #### `GET /api/emergency-announcement`
 The single currently active emergency announcement.
@@ -752,9 +752,12 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
   "timestamp": 1717890123000,
   "content": "수정된 공지",
   "isEmergency": false,
-  "emergencyUntil": null
+  "emergencyUntil": null,
+  "pinned": true
 }
 ```
+
+> `pinned` (optional): toggles top pinning. Settable via PUT only; new announcements default to unpinned.
 
 **DELETE Body** (delete; the announcement is identified by the `timestamp` key):
 ```json

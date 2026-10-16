@@ -35,7 +35,7 @@ Anonymous Chat's development environment setup and workflow.
 | Tests | Vitest |
 | Lint | ESLint (flat config) |
 | Formatter | Prettier |
-| Code stats | Tests 638 cases (41 files), 3 server DOs + Worker router |
+| Code stats | Tests 642 cases (41 files), 3 server DOs + Worker router |
 
 ---
 
@@ -113,7 +113,7 @@ cp .dev.vars.example .dev.vars
 - `public/css/prism-tomorrow.css` — Prism One Dark
 - `public/css/tailwind.min.css` — built Tailwind
 
-### 3.3 Tests (41 files, 638 cases)
+### 3.3 Tests (41 files, 642 cases)
 The exact file/case counts are based on the results of running `npm test`. Main areas:
 - `test/worker-routes.test.js` — Worker router smoke tests (auth, rate limiting, CSP)
 - `test/chat-room*.test.js` — ChatRoom DO (initialization, session keys, message cap, signatures, admin routes)
@@ -166,7 +166,7 @@ npm run deploy         # build + wrangler deploy
 ### 4.6 Verification (local)
 GitHub Actions and Dependabot are not used (removed 2026-09-16). Run locally before committing:
 ```bash
-npm test               # 638 cases
+npm test               # 642 cases
 npm run lint           # 0 errors
 npx wrangler deploy --dry-run
 ```

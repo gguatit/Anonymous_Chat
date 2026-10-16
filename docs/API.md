@@ -106,11 +106,11 @@ WebSocket 업그레이드 엔드포인트.
     "content": "서버 점검 안내",
     "timestamp": 1717890123000,
     "isEmergency": false,
-    "emergencyUntil": null
+    "pinned": false
   }
 ]
 ```
-공지사항은 수동 삭제 전까지 유지됩니다(자동 만료 없음).
+공지사항은 수동 삭제 전까지 유지됩니다(자동 만료 없음). 고정(`pinned`)된 공지가 먼저, 그다음 최신순으로 정렬됩니다.
 
 #### `GET /api/emergency-announcement`
 현재 활성 긴급공지 1개.
@@ -750,9 +750,12 @@ Liveness probe.
   "timestamp": 1717890123000,
   "content": "수정된 공지",
   "isEmergency": false,
-  "emergencyUntil": null
+  "emergencyUntil": null,
+  "pinned": true
 }
 ```
+
+> `pinned`(선택): 공지 상단 고정 토글. PUT에서만 지정 가능하며, 신규 공지는 기본 미고정입니다.
 
 **DELETE Body** (삭제, `timestamp` 키로 공지 지정):
 ```json

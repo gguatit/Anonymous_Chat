@@ -199,6 +199,23 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         expect(forwarded[0]).toMatchObject({ content: 'new content', timestamp: 12345 });
     });
 
+    it('toggles pinned on via PUT without touching content', async () => {
+        env.DB_ADMIN.first.mockResolvedValue({ content: 'old content', is_emergency: 0, emergency_until: null, pinned: 0 });
+        const res = await sendAnnounce({ timestamp: 12345, pinned: true }, 'PUT');
+        expect(res.status).toBe(200);
+        expect(forwarded[0].pinned).toBe(true);
+        const updateArgs = env.DB_ADMIN.bind.mock.calls.at(-1);
+        expect(updateArgs).toEqual(['old content', 0, null, 1, 12345]);
+    });
+
+    it('keeps the existing pinned value when other fields are edited', async () => {
+        env.DB_ADMIN.first.mockResolvedValue({ content: 'old content', is_emergency: 0, emergency_until: null, pinned: 1 });
+        const res = await sendAnnounce({ content: 'new content', timestamp: 12345 }, 'PUT');
+        expect(res.status).toBe(200);
+        const updateArgs = env.DB_ADMIN.bind.mock.calls.at(-1);
+        expect(updateArgs[3]).toBe(1);
+    });
+
     it('returns 404 when deleting a missing announcement', async () => {
         const res = await sendAnnounce({ timestamp: 12345 }, 'DELETE');
         expect(res.status).toBe(404);

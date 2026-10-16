@@ -32,6 +32,28 @@ describe('chat-room admin', () => {
         });
     });
 
+    describe('pin-only announcement edit', () => {
+        it('accepts a pin-only edit and updates the history entry', async () => {
+            const history = [{ timestamp: 111, content: '공지', isEmergency: false }];
+            const room = mockChatRoom({
+                announcementHistory: history,
+                currentAnnouncement: null,
+                state: { storage: { put: vi.fn(() => Promise.resolve()) } },
+                addAuditLog: vi.fn(() => Promise.resolve())
+            });
+
+            const req = new Request('https://dummy/admin/announce', {
+                method: 'PUT',
+                body: JSON.stringify({ timestamp: 111, pinned: true }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const res = await dispatchAdminRoute(room, new URL(req.url), req, HMAC);
+
+            expect(res.status).toBe(200);
+            expect(history[0].pinned).toBe(true);
+        });
+    });
+
     describe('kick revokes the session secret', () => {
         it('deletes the session secret when a user is kicked', async () => {
             const wsMock = { send: vi.fn(), close: vi.fn() };

@@ -78,7 +78,7 @@ flowchart TB
 
 ## Components
 
-### 1. Worker (`src/worker.js`, 558 lines)
+### 1. Worker (`src/worker.js`, 559 lines)
 
 Cloudflare Workers entry point (static assets are served through the `[assets]` binding). HTTP routing, WebSocket upgrades, and static asset fallback handling.
 
@@ -112,7 +112,7 @@ The core WebSocket handler. One instance per channel (1 main room + N channels).
 | Session management | `sessions` Map, `ipConnections` Map |
 | Message storage | DO Storage 12 hours, max 2000 (96KiB byte cap) |
 | Bans | IP + SessionID |
-| Announcements | Normal/emergency + scheduling |
+| Announcements | Normal/emergency + pinning + scheduling |
 | Reactions | Emoji toggle |
 | Push | Offline users |
 | AI summary | Workers AI calls |
@@ -164,7 +164,7 @@ One-time secret message singleton.
 
 | File | Lines | Responsibility |
 |---|---|---|
-| `admin.js` | 675 | 24 handlers (login + 23 withAuth types, including observer-ticket) |
+| `admin.js` | 679 | 24 handlers (login + 23 withAuth types, including observer-ticket) |
 | `websocket.js` | 136 | WebSocket upgrade + observer ticket/ban pre-checks |
 | `push.js` | 351 | VAPID/FCM subscription management + delivery |
 | `summary.js` | 216 | Workers AI summary (4 modes, 15-second rate limit) |

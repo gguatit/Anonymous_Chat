@@ -431,6 +431,9 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
         if (body.scheduleAt) {
             forwardBody.scheduleAt = body.scheduleAt;
         }
+        if (request.method === 'PUT' && Object.hasOwn(body, 'pinned')) {
+            forwardBody.pinned = !!body.pinned;
+        }
         // expiresAt is no longer forwarded — announcements persist until manual deletion
 
         // Announcements live in D1 (permanent); the DO keeps the live banner + broadcast (M24)
@@ -442,7 +445,7 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             ).bind(storedAt, sanitizeInput(content), forwardBody.isEmergency ? 1 : 0, forwardBody.emergencyUntil ?? null, forwardBody.scheduleAt ? Number(forwardBody.scheduleAt) : null).run();
         } else if (request.method === 'PUT') {
             const existing = await env.DB_ADMIN.prepare(
-                'SELECT content, is_emergency, emergency_until FROM announcements WHERE timestamp = ?'
+                'SELECT content, is_emergency, emergency_until, pinned FROM announcements WHERE timestamp = ?'
             ).bind(timestamp).first();
             if (!existing) {
                 return jsonError('Announcement not found', 404, request.headers.get('Origin'));
@@ -454,9 +457,10 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             const nextEmergencyUntil = Object.hasOwn(forwardBody, 'emergencyUntil')
                 ? (forwardBody.emergencyUntil ? Number(forwardBody.emergencyUntil) : null)
                 : (existing.emergency_until ?? null);
+            const nextPinned = Object.hasOwn(forwardBody, 'pinned') ? (forwardBody.pinned ? 1 : 0) : (existing.pinned ?? 0);
             await env.DB_ADMIN.prepare(
-                'UPDATE announcements SET content = ?, is_emergency = ?, emergency_until = ? WHERE timestamp = ?'
-            ).bind(nextContent, nextEmergency, nextEmergencyUntil, timestamp).run();
+                'UPDATE announcements SET content = ?, is_emergency = ?, emergency_until = ?, pinned = ? WHERE timestamp = ?'
+            ).bind(nextContent, nextEmergency, nextEmergencyUntil, nextPinned, timestamp).run();
         } else {
             const deleted = await env.DB_ADMIN.prepare(
                 'DELETE FROM announcements WHERE timestamp = ?'
