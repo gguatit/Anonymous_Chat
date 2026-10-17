@@ -52,7 +52,15 @@ export async function init(core) {
         if (p && pc) { pc.textContent = content; p.style.display = content ? 'block' : 'none'; }
     });
     const input = document.getElementById('admin-announce-input');
-    input?.addEventListener('input', () => { const cc = document.getElementById('announce-char-count'); if (cc) cc.textContent = `${input.value.length}/7500`; });
+    const autoResizeInput = () => {
+        if (!input) return;
+        input.style.height = 'auto';
+        const maxH = 200;
+        const scrollH = input.scrollHeight;
+        input.style.height = Math.min(scrollH, maxH) + 'px';
+        input.style.overflowY = scrollH > maxH ? 'auto' : 'hidden';
+    };
+    input?.addEventListener('input', () => { const cc = document.getElementById('announce-char-count'); if (cc) cc.textContent = `${input.value.length}/7500`; autoResizeInput(); });
     document.getElementById('admin-announce-btn')?.addEventListener('click', async () => {
         const content = input?.value?.trim();
         if (!content) return;
@@ -68,7 +76,7 @@ export async function init(core) {
                 emergencyUntil: emergency && emergencyDuration > 0 ? Date.now() + emergencyDuration : null,
                 scheduleAt: scheduleAt ? new Date(scheduleAt).getTime() : null,
             });
-            input.value = '';
+            input.value = ''; input.dispatchEvent(new Event('input'));
             core.showNotification('공지사항 전송 완료', 'success');
             await refresh(core);
         } catch { core.showNotification('공지 전송 실패', 'error'); }
