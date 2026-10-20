@@ -6,6 +6,7 @@
 
 > **Anonymous real-time chat platform built on Cloudflare Workers**
 
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/gguatit/badge.svg)](https://hub.xerj.org/contributors/gguatit)
 [![License](https://img.shields.io/badge/License-Commercial-blue.svg)](./COMMERCIAL_LICENSE.md)
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](./SECURITY.md)
 [![Tests](https://img.shields.io/badge/Tests-643%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
