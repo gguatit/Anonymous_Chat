@@ -432,6 +432,7 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             // Type is fixed at creation: important (0/1) and emergency (1/0) are mutually exclusive,
             // with an emergency taking priority.
             forwardBody.isImportant = !!body.isImportant && !forwardBody.isEmergency;
+            forwardBody.importantUntil = forwardBody.isImportant && body.importantUntil ? Number(body.importantUntil) : null;
         }
         if (body.scheduleAt) {
             forwardBody.scheduleAt = body.scheduleAt;
@@ -446,8 +447,8 @@ export const handleAdminAnnounce = withAuth(async (request, env, corsHeaders) =>
             const storedAt = Date.now();
             forwardBody.timestamp = storedAt;
             await env.DB_ADMIN.prepare(
-                'INSERT INTO announcements (timestamp, content, is_emergency, emergency_until, schedule_at, is_important) VALUES (?, ?, ?, ?, ?, ?)'
-            ).bind(storedAt, sanitizeInput(content), forwardBody.isEmergency ? 1 : 0, forwardBody.emergencyUntil ?? null, forwardBody.scheduleAt ? Number(forwardBody.scheduleAt) : null, forwardBody.isImportant ? 1 : 0).run();
+                'INSERT INTO announcements (timestamp, content, is_emergency, emergency_until, schedule_at, is_important, important_until) VALUES (?, ?, ?, ?, ?, ?, ?)'
+            ).bind(storedAt, sanitizeInput(content), forwardBody.isEmergency ? 1 : 0, forwardBody.emergencyUntil ?? null, forwardBody.scheduleAt ? Number(forwardBody.scheduleAt) : null, forwardBody.isImportant ? 1 : 0, forwardBody.importantUntil ?? null).run();
         } else if (request.method === 'PUT') {
             const existing = await env.DB_ADMIN.prepare(
                 'SELECT content, is_emergency, emergency_until, pinned FROM announcements WHERE timestamp = ?'

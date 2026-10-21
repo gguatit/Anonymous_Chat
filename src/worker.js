@@ -115,15 +115,16 @@ const publicRoutes = [
         try {
             const now = Date.now();
             const { results } = await env.DB_ADMIN.prepare(
-                'SELECT timestamp, content, is_emergency, emergency_until, is_important, pinned FROM announcements WHERE schedule_at IS NULL OR schedule_at <= ? ORDER BY pinned DESC, timestamp DESC LIMIT 100'
+                'SELECT timestamp, content, is_emergency, emergency_until, is_important, important_until, pinned FROM announcements WHERE schedule_at IS NULL OR schedule_at <= ? ORDER BY pinned DESC, timestamp DESC LIMIT 100'
             ).bind(now).all();
             const list = (results || []).map(r => {
                 const isEmergency = !!r.is_emergency && (!r.emergency_until || now < r.emergency_until);
+                const isImportant = !isEmergency && !!r.is_important && (!r.important_until || now < r.important_until);
                 return {
                     content: r.content,
                     timestamp: r.timestamp,
                     isEmergency,
-                    isImportant: !isEmergency && !!r.is_important,
+                    isImportant,
                     pinned: !!r.pinned
                 };
             });
@@ -155,8 +156,8 @@ const publicRoutes = [
         try {
             const now = Date.now();
             important = await env.DB_ADMIN.prepare(
-                'SELECT timestamp, content FROM announcements WHERE is_important = 1 AND (schedule_at IS NULL OR schedule_at <= ?) ORDER BY timestamp DESC LIMIT 1'
-            ).bind(now).first();
+                'SELECT timestamp, content FROM announcements WHERE is_important = 1 AND (important_until IS NULL OR important_until > ?) AND (schedule_at IS NULL OR schedule_at <= ?) ORDER BY timestamp DESC LIMIT 1'
+            ).bind(now, now).first();
         } catch (error) {
             console.error('Important announcement D1 read failed:', error);
             important = null;

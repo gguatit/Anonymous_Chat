@@ -9,6 +9,7 @@
 - [개요](#개요)
 - [범례](#범례)
 - [릴리스](#릴리스)
+  - [2026-10-21](#2026-10-21)
   - [2026-10-19](#2026-10-19)
   - [2026-10-16](#2026-10-16)
   - [2026-09-16](#2026-09-16)
@@ -40,8 +41,8 @@
 | 항목 | 값 |
 |---|---|
 | 시작일 | 2025-12-19 |
-| 최근 업데이트 | 2026-10-19 |
-| 릴리스 수 | 22 |
+| 최근 업데이트 | 2026-10-21 |
+| 릴리스 수 | 23 |
 | 카테고리 | 신규 기능 / 개선 / 버그 수정 / 보안 / 인프라 / 문서 / 아키텍처 / 디자인 / 코드 품질 |
 
 ---
@@ -64,8 +65,19 @@
 
 ## 릴리스
 
-### 2026-10-19
+### 2026-10-21
 
+중요 공지에 긴급 공지와 동일한 지속시간(만료) 개념을 추가했습니다. '중요' 선택 시 기간(계속/1시간/6시간/24시간)을 지정할 수 있고, 만료되면 강제 이동만 멈추고 공지는 목록에 일반 공지처럼 남습니다. Vitest 657건(41파일) 전체 통과, lint 0 errors, `wrangler deploy --dry-run` 정상.
+
+#### 개선
+
+- **중요 공지 지속시간**: `announcements.important_until` 컬럼 추가(migration `011_add_announcement_important_until.sql`). 관리자 작성 폼에서 '중요' 선택 시 기간 select가 표시되고 `POST /api/admin/announce`가 `importantUntil`을 저장·DO 전달합니다. `GET /api/announcements`의 `isImportant`와 DO 브로드캐스트(생성·예약 발송·join)·`GET /api/emergency-announcement`의 중요 조회가 모두 만료 시각을 반영하며, 만료 후에는 강제 이동 없이 일반 공지처럼 표시됩니다(자동 삭제 없음). 타입·기간은 생성 시 고정입니다. `src/worker.js`, `src/handlers/admin.js`, `src/durable-objects/chat-room/announcements.js`, `src/durable-objects/chat-room/admin.js`, `src/durable-objects/ChatRoom.js`, `public/js/pages/page-announcements.js`, `public/administrator.html`.
+
+#### 테스트
+
+- Vitest 657건(41파일) 전체 통과. 중요 지속시간 회귀 테스트 6건(목록 만료 매핑·긴급 엔드포인트 만료 필터·D1 저장/DO 전달·긴급 우선 시 importantUntil 제거·DO 브로드캐스트 지속시간·만료 브로드캐스트 비활성)을 추가했습니다.
+
+### 2026-10-19
 공지사항에 '중요' 타입을 추가해 일반/중요/긴급 3종으로 확장했습니다. 중요 공지는 채팅 화면에서 공지 페이지로 1회 강제 이동시키되, 빨간 긴급 연출·카운트다운·강제 대기 없이 앰버 톤으로 표시합니다. Vitest 651건(41파일) 전체 통과, lint 0 errors, `wrangler deploy --dry-run` 정상.
 
 #### 신규 기능

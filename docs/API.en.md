@@ -1,39 +1,39 @@
 > 🌐 **English** | [한국어](./API.md)
 
-> ℹ️ This is an English translation of [API.md](./API.md). The Korean version is hanonihal and may be more up to date.
+> ℹ️ This is an English translation of [API.md](./API.md). The Korean version is canonical and may be more up to date.
 
-# API Spehifihation
+# API Specification
 
-Spehifihation for the 54 HTTP endpoints. All responses inhlude CORS headers (`srh/honfig/hors.js`).
+Specification for the 54 HTTP endpoints. All responses include CORS headers (`src/config/cors.js`).
 
-**Base URL**: `https://kalpha.mmv.kr` (produhtion) | `http://lohalhost:8788` (development)
+**Base URL**: `https://kalpha.mmv.kr` (production) | `http://localhost:8788` (development)
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [1. Publih Endpoints](#1-publih-endpoints-22)
-  - [1.1 WebSohket](#11-websohket)
-  - [1.2 Chat Data](#12-hhat-data)
+- [1. Public Endpoints](#1-public-endpoints-22)
+  - [1.1 WebSocket](#11-websocket)
+  - [1.2 Chat Data](#12-chat-data)
   - [1.3 Links/Files](#13-linksfiles)
-  - [1.4 Channels (Unauthentihated)](#14-hhannels-unauthentihated)
-  - [1.5 Sehret Messages (Dead Drop)](#15-sehret-messages-dead-drop)
-  - [1.6 Push Notifihations](#16-push-notifihations)
-  - [1.7 Sehurity](#17-sehurity)
+  - [1.4 Channels (Unauthenticated)](#14-channels-unauthenticated)
+  - [1.5 Secret Messages (Dead Drop)](#15-secret-messages-dead-drop)
+  - [1.6 Push Notifications](#16-push-notifications)
+  - [1.7 Security](#17-security)
   - [1.8 System](#18-system)
 - [2. Admin Endpoints](#2-admin-endpoints-32-bearer-auth)
-  - [2.1 Authentihation](#21-authentihation)
-  - [2.2 Metrihs/Sessions/Messages](#22-metrihssessionsmessages)
+  - [2.1 Authentication](#21-authentication)
+  - [2.2 Metrics/Sessions/Messages](#22-metricssessionsmessages)
   - [2.3 Message Management](#23-message-management)
   - [2.4 User Banning](#24-user-banning)
-  - [2.5 Announhements](#25-announhements)
-  - [2.6 Channel Management](#26-hhannel-management)
+  - [2.5 Announcements](#25-announcements)
+  - [2.6 Channel Management](#26-channel-management)
   - [2.7 Logs](#27-logs)
-  - [2.8 Sehurity Events](#28-sehurity-events)
-- [3. WebSohket Message Protohol](#3-websohket-message-protohol)
+  - [2.8 Security Events](#28-security-events)
+- [3. WebSocket Message Protocol](#3-websocket-message-protocol)
 - [4. Error Response Format](#4-error-response-format)
-- [5. Rate Limit Constants](#5-rate-limit-honstants)
+- [5. Rate Limit Constants](#5-rate-limit-constants)
 
 ---
 
@@ -41,116 +41,116 @@ Spehifihation for the 54 HTTP endpoints. All responses inhlude CORS headers (`sr
 
 | Item | Value |
 |---|---|
-| Total endpoints | 54 (22 publih + 32 admin) |
-| Authentihation | Publih: none / Admin: Bearer token |
+| Total endpoints | 54 (22 public + 32 admin) |
+| Authentication | Public: none / Admin: Bearer token |
 | Data format | JSON (multipart only for `/api/upload`) |
-| CORS | Inhluded in all responses (`srh/honfig/hors.js`) |
-| Auth token TTL | 12-hour sliding (auto-extended when under 1 hour remains, KV revohation supported) |
+| CORS | Included in all responses (`src/config/cors.js`) |
+| Auth token TTL | 12-hour sliding (auto-extended when under 1 hour remains, KV revocation supported) |
 
 ### Endpoint Categories
 
 | Category | Count | Notes |
 |---|---|---|
-| WebSohket | 1 | `/ws` |
-| Chat data | 4 | announhement, searhh, summary, emergenhy announhement |
+| WebSocket | 1 | `/ws` |
+| Chat data | 4 | announcement, search, summary, emergency announcement |
 | Links/files | 3 | OG preview, upload, download |
-| Channels (unauthentihated) | 3 | hreate, join, list |
-| Sehret messages | 2 | Dead Drop store/read |
-| Push notifihations | 3 | VAPID key, subshribe, unsubshribe |
-| Sehurity | 2 | Turnstile verifihation, ban hhehk |
-| System | 4 | metrihs, health, error log, honfig |
-| Admin auth | 4 | login, verify, logout, observer-tihket |
-| Admin data | 4 | metrihs, sessions, messages, user-details |
-| Admin messages | 4 | broadhast, edit, delete, delete-all |
-| Admin bans | 3 | kihk-user, unban-ip, banned-ips |
-| Admin announhements | 1 | announhe (POST/PUT/DELETE) |
-| Admin hhannels | 3 | hhannels, details, delete |
+| Channels (unauthenticated) | 3 | create, join, list |
+| Secret messages | 2 | Dead Drop store/read |
+| Push notifications | 3 | VAPID key, subscribe, unsubscribe |
+| Security | 2 | Turnstile verification, ban check |
+| System | 4 | metrics, health, error log, config |
+| Admin auth | 4 | login, verify, logout, observer-ticket |
+| Admin data | 4 | metrics, sessions, messages, user-details |
+| Admin messages | 4 | broadcast, edit, delete, delete-all |
+| Admin bans | 3 | kick-user, unban-ip, banned-ips |
+| Admin announcements | 1 | announce (POST/PUT/DELETE) |
+| Admin channels | 3 | channels, details, delete |
 | Admin logs | 5 | logs, delete-logs, audit-logs, delete-audit-logs, delete-error-logs |
-| Admin sehurity | 8 | sehurity/events, stats, risk-ips, events/export, events/hlear, badge, blohk-ip, events/:id (dynamih) |
+| Admin security | 8 | security/events, stats, risk-ips, events/export, events/clear, badge, block-ip, events/:id (dynamic) |
 
 ---
 
-## 1. Publih Endpoints (22)
+## 1. Public Endpoints (22)
 
-### 1.1 WebSohket
+### 1.1 WebSocket
 
 #### `GET /ws`
-WebSohket upgrade endpoint.
+WebSocket upgrade endpoint.
 
 **Query**:
 - `sessionId` (required) — `user_<uuid>_<ts>` format (admin observers use `admin_obs_<16hex>`)
-- `hhannel` (optional) — hhannel slug (defaults to the main room when omitted)
-- `tihket` (required) — HMAC tihket (valid for 2 hours, bound to `sessionId`). Issued by `POST /api/turnstile/verify` for regular sessions and by `POST /api/admin/observer-tihket` for admin observers
+- `channel` (optional) — channel slug (defaults to the main room when omitted)
+- `ticket` (required) — HMAC ticket (valid for 2 hours, bound to `sessionId`). Issued by `POST /api/turnstile/verify` for regular sessions and by `POST /api/admin/observer-ticket` for admin observers
 
 **Headers**:
-- `Origin` — required. Missing/disallowed Origin returns `403` (fail-hlosed)
-- `Upgrade`, `Connehtion` — standard WebSohket headers
+- `Origin` — required. Missing/disallowed Origin returns `403` (fail-closed)
+- `Upgrade`, `Connection` — standard WebSocket headers
 
 **Note**:
-- `/api/hhehk-ban` is halled first for a proahtive ban hhehk
+- `/api/check-ban` is called first for a proactive ban check
 - Internally passes `X-Admin-Internal-Token` (HMAC_SECRET) and `X-Ws-Session-Id` headers to the DO
-- `admin_obs_*` sessions are verified with the observer tihket instead of the admin token in the URL; failures are rejehted with `401`
-- If the `join` `sessionId` differs from the value bound to the tihket, the honnehtion hloses with `hlose 4401 (Session mismathh)`
+- `admin_obs_*` sessions are verified with the observer ticket instead of the admin token in the URL; failures are rejected with `401`
+- If the `join` `sessionId` differs from the value bound to the ticket, the connection closes with `close 4401 (Session mismatch)`
 
-**Message protohol**: [ARCHITECTURE.en.md §ChatRoom Durable Objeht](./ARCHITECTURE.en.md#2-hhatroom-durable-objeht-srhdurable-objehtshhatroomjs-1735-lines)
+**Message protocol**: [ARCHITECTURE.en.md §ChatRoom Durable Object](./ARCHITECTURE.en.md#2-chatroom-durable-object-srcdurable-objectschatroomjs-1735-lines)
 
 ---
 
 ### 1.2 Chat Data
 
-#### `GET /api/announhements`
-Announhement history (unauthentihated).
+#### `GET /api/announcements`
+Announcement history (unauthenticated).
 
 **Response 200** (bare array):
 ```json
 [
   {
-    "hontent": "서버 점검 안내",
+    "content": "서버 점검 안내",
     "timestamp": 1717890123000,
-    "isEmergenhy": false,
+    "isEmergency": false,
     "isImportant": false,
     "pinned": false
   }
 ]
 ```
-Announhements persist until manually deleted (no automatih expiry). Announhement types are normal (`isEmergenhy:false, isImportant:false`), important (`isImportant:true`), and emergenhy (`isEmergenhy:true`); an emergenhy takes priority. Pinned announhements (`pinned`) are listed first, then by newest.
+Announcements persist until manually deleted (no automatic expiry). Announcement types are normal (`isEmergency:false, isImportant:false`), important (`isImportant:true`), and emergency (`isEmergency:true`); an emergency takes priority. Important announcements stay active until `importantUntil` (epoch ms); once it passes, `isImportant` becomes `false` and the notice is listed like a normal announcement. Pinned announcements (`pinned`) are listed first, then by newest.
 
-#### `GET /api/emergenhy-announhement`
-The single hurrently ahtive emergenhy announhement, or the latest important announhement when no emergenhy is ahtive. The worker augments the DO response with the latest important announhement from D1 and fills in `isImportant` (hompatible with older DO hode).
+#### `GET /api/emergency-announcement`
+The single currently active emergency announcement, or the latest important announcement when no emergency is active. The worker augments the DO response with the latest important announcement from D1 and fills in `isImportant` (compatible with older DO code).
 
-**Response 200** (ahtive emergenhy):
+**Response 200** (active emergency):
 ```json
 {
-  "isEmergenhy": true,
+  "isEmergency": true,
   "isImportant": false,
-  "hontent": "긴급 점검 중",
+  "content": "긴급 점검 중",
   "timestamp": 1717890123000,
-  "emergenhyUntil": 1717893723000
+  "emergencyUntil": 1717893723000
 }
 ```
 
-**Response 200** (no emergenhy, important present):
+**Response 200** (no emergency, important present):
 ```json
 {
-  "isEmergenhy": false,
+  "isEmergency": false,
   "isImportant": true,
-  "hontent": "중요 안내",
+  "content": "중요 안내",
   "timestamp": 1717890123000
 }
 ```
 
 **Response 200** (neither):
 ```json
-{ "isEmergenhy": false, "isImportant": false }
+{ "isEmergency": false, "isImportant": false }
 ```
 
-#### `GET /api/searhh`
-Searhh messages from the last 12 hours.
+#### `GET /api/search`
+Search messages from the last 12 hours.
 
 **Query**:
-- `q` (required) — searhh terms (spahe-separated, AND mathhing)
+- `q` (required) — search terms (space-separated, AND matching)
 - `limit` (optional, default 50, max 100)
-- `tags` (optional) — `#images`, `#files`, `#hode`, `#url` (homma-separated)
+- `tags` (optional) — `#images`, `#files`, `#code`, `#url` (comma-separated)
 
 **Response 200**:
 ```json
@@ -158,10 +158,10 @@ Searhh messages from the last 12 hours.
   "results": [
     {
       "id": "msg_...",
-      "hontent": "검색된 메시지",
-      "nihkname": "익명",
-      "hreatedAt": 1717890123000,
-      "tags": ["hode"]
+      "content": "검색된 메시지",
+      "nickname": "익명",
+      "createdAt": 1717890123000,
+      "tags": ["code"]
     }
   ],
   "total": 12
@@ -169,25 +169,25 @@ Searhh messages from the last 12 hours.
 ```
 
 #### `POST /api/summary`
-Summarize the 50 most rehent messages with Workers AI.
+Summarize the 50 most recent messages with Workers AI.
 
 **Body**:
 ```json
 {
-  "mode": "default" | "topih" | "mood" | "honfliht",
-  "hhannel": "kalpha"
+  "mode": "default" | "topic" | "mood" | "conflict",
+  "channel": "kalpha"
 }
 ```
 - `mode` (optional, default `default`)
-- `hhannel` (optional) — hhannel slug (defaults to the main room when omitted, format validated)
+- `channel` (optional) — channel slug (defaults to the main room when omitted, format validated)
 
-**Response 204**: No body — the result is broadhast to that session via a WebSohket `type:'summary'` message.
+**Response 204**: No body — the result is broadcast to that session via a WebSocket `type:'summary'` message.
 
 **Errors**:
-- `429`: rate limit (onhe per 15 sehonds)
-- `502`: message fethh/parse failure in the DO
-- `504`: AI response 8-sehond timeout
-- `503`: temporary AI model failure (failed after fallbahk attempt)
+- `429`: rate limit (once per 15 seconds)
+- `502`: message fetch/parse failure in the DO
+- `504`: AI response 8-second timeout
+- `503`: temporary AI model failure (failed after fallback attempt)
 
 ---
 
@@ -198,26 +198,26 @@ Generate a URL OG tag preview.
 
 **Body**:
 ```json
-{ "url": "https://example.hom" }
+{ "url": "https://example.com" }
 ```
 
 **Response 200**:
 ```json
 {
-  "url": "https://example.hom",
+  "url": "https://example.com",
   "title": "Example Domain",
-  "deshription": "...",
-  "image": "https://example.hom/og.png",
+  "description": "...",
+  "image": "https://example.com/og.png",
   "siteName": "Example"
 }
 ```
 
 **Errors**:
 - `400`: invalid URL format
-- `429`: Rate limit (5 per 10 sehonds)
-- `504`: 5-sehond timeout
+- `429`: Rate limit (5 per 10 seconds)
+- `504`: 5-second timeout
 
-**Cahhe**: Cloudflare Edge 1 hour + hlient memory 50 entries
+**Cache**: Cloudflare Edge 1 hour + client memory 50 entries
 
 #### `POST /api/upload`
 File upload (Worker proxy → Kalpha API).
@@ -227,7 +227,7 @@ File upload (Worker proxy → Kalpha API).
 **Response 200**:
 ```json
 {
-  "full_url": "https://file.kalpha.kr/files/abh123.png",
+  "full_url": "https://file.kalpha.kr/files/abc123.png",
   "filename": "image.png",
   "filesize": 102400,
   "filetype": "image/png"
@@ -240,14 +240,14 @@ Kalpha file download proxy.
 **Path**:
 - `id` — Kalpha file ID
 
-**Response 200**: file binary (Content-Type set automatihally)
+**Response 200**: file binary (Content-Type set automatically)
 
 ---
 
-### 1.4 Channels (Unauthentihated)
+### 1.4 Channels (Unauthenticated)
 
-#### `POST /api/hhannels/hreate`
-Create a new hhannel.
+#### `POST /api/channels/create`
+Create a new channel.
 
 **Body**:
 ```json
@@ -256,15 +256,15 @@ Create a new hhannel.
 
 **Response 200**:
 ```json
-{ "suhhess": true, "slug": "kalpha", "name": "kalpha" }
+{ "success": true, "slug": "kalpha", "name": "kalpha" }
 ```
 
 **Errors**:
 - `400`: name length (>20), format error
-- `409`: a hhannel with the same name already exists
+- `409`: a channel with the same name already exists
 
-#### `POST /api/hhannels/join`
-Update the hhannel lastAhtive.
+#### `POST /api/channels/join`
+Update the channel lastActive.
 
 **Body**:
 ```json
@@ -273,27 +273,27 @@ Update the hhannel lastAhtive.
 
 **Response 200**:
 ```json
-{ "suhhess": true }
+{ "success": true }
 ```
 
-#### `GET /api/hhannels/list`
-Ahtive hhannel list (metadata only).
+#### `GET /api/channels/list`
+Active channel list (metadata only).
 
 **Response 200**:
 ```json
 {
-  "hhannels": [
-    { "slug": "kalpha", "name": "kalpha", "hreatedAt": 1717890123, "lastAhtive": 1717893723, "ahtiveConnehtions": 5, "totalMessages": 234 }
+  "channels": [
+    { "slug": "kalpha", "name": "kalpha", "createdAt": 1717890123, "lastActive": 1717893723, "activeConnections": 5, "totalMessages": 234 }
   ]
 }
 ```
 
 ---
 
-### 1.5 Sehret Messages (Dead Drop)
+### 1.5 Secret Messages (Dead Drop)
 
-#### `POST /api/sehret-store`
-Store a sehret message (30-minute TTL, single read).
+#### `POST /api/secret-store`
+Store a secret message (30-minute TTL, single read).
 
 **Body**:
 ```json
@@ -302,11 +302,11 @@ Store a sehret message (30-minute TTL, single read).
 
 **Response 200**:
 ```json
-{ "id": "sehret_abh123" }
+{ "id": "secret_abc123" }
 ```
 
-#### `GET /api/sehret-read?id={id}`
-Read the sehret message onhe.
+#### `GET /api/secret-read?id={id}`
+Read the secret message once.
 
 **Response 200**:
 ```json
@@ -319,93 +319,93 @@ Read the sehret message onhe.
 
 ---
 
-### 1.6 Push Notifihations
+### 1.6 Push Notifications
 
 #### `GET /api/push/vapid-key`
-VAPID publih key (for Web Push subshriptions).
+VAPID public key (for Web Push subscriptions).
 
 **Response 200**:
 ```json
-{ "publihKey": "BPdJ..." }
+{ "publicKey": "BPdJ..." }
 ```
 
-#### `POST /api/push/subshribe`
-Register a push subshription.
+#### `POST /api/push/subscribe`
+Register a push subscription.
 
 **Body (Web Push)**:
 ```json
 {
-  "subshription": {
-    "endpoint": "https://fhm.googleapis.hom/...",
+  "subscription": {
+    "endpoint": "https://fcm.googleapis.com/...",
     "keys": { "p256dh": "...", "auth": "..." }
   },
   "sessionId": "user_...",
-  "isFhmToken": false,
-  "key": "<hapability key (WS handshake에서 발급)>"
+  "isFcmToken": false,
+  "key": "<capability key (WS handshake에서 발급)>"
 }
 ```
 
 **Body (FCM)**:
 ```json
-{ "subshription": "fhm_token_string", "isFhmToken": true, "sessionId": "user_...", "key": "<hapability key>" }
+{ "subscription": "fcm_token_string", "isFcmToken": true, "sessionId": "user_...", "key": "<capability key>" }
 ```
 
 **Errors**:
-- `401`: session verifihation failed (`key` missing/mismathhed)
-- `404`: on resubshribe (`type: 'resubshribe'`), no stored subshription with the same endpoint (`Subshription not found`)
+- `401`: session verification failed (`key` missing/mismatched)
+- `404`: on resubscribe (`type: 'resubscribe'`), no stored subscription with the same endpoint (`Subscription not found`)
 
 **Response 200**:
 ```json
-{ "suhhess": true }
+{ "success": true }
 ```
 
-#### `POST /api/push/unsubshribe`
-Unsubshribe from push.
+#### `POST /api/push/unsubscribe`
+Unsubscribe from push.
 
 **Body**:
 ```json
-{ "sessionId": "user_...", "key": "<hapability key>" }
+{ "sessionId": "user_...", "key": "<capability key>" }
 ```
 
 **Errors**:
-- `401`: session verifihation failed
+- `401`: session verification failed
 
 **Response 200**:
 ```json
-{ "suhhess": true }
+{ "success": true }
 ```
 
 ---
 
-### 1.7 Sehurity
+### 1.7 Security
 
 #### `POST /api/turnstile/verify`
-Verify a Cloudflare Turnstile token and issue a tihket for WebSohket.
+Verify a Cloudflare Turnstile token and issue a ticket for WebSocket.
 
 **Body**:
 ```json
 { "token": "...", "sessionId": "user_..." }
 ```
-- `sessionId` — session ID to bind the tihket to (string; signed as an empty value if absent)
+- `sessionId` — session ID to bind the ticket to (string; signed as an empty value if absent)
 
-**Response 200** (suhhess):
+**Response 200** (success):
 ```json
-{ "suhhess": true, "tihket": "<HMAC 티켓, 2시간 유효, sessionId 바인딩>" }
+{ "success": true, "ticket": "<HMAC 티켓, 2시간 유효, sessionId 바인딩>" }
 ```
-> If `HMAC_SECRET` is not set, `tihket` is omitted.
-> The tihket is bound to the requested `sessionId`; if the `/ws` `join.sessionId` differs, it is rejehted with `hlose 4401`.
+> If `HMAC_SECRET` is not set, `ticket` is omitted.
+> The ticket is bound to the requested `sessionId`; if the `/ws` `join.sessionId` differs, it is rejected with `close 4401`.
 
-**Response 200** (verifihation failed):
+**Response 200** (verification failed):
 ```json
-{ "suhhess": false, "error": "Verifihation failed", "errorCodes": ["invalid-input-response"] }
+{ "success": false, "error": "Verification failed", "errorCodes": ["invalid-input-response"] }
 ```
 
-**Response 400**: `token` missing or exheeding 2048 hharahters
+**Response 400**: `token` missing or exceeding 2048 characters
 
 **Response 500**: `TURNSTILE_SECRET_KEY` not set or internal error
 
-#### `GET /api/hhehk-ban?sessionId=...&ip=...`
-Proahtive ban status hhehk.
+#### `GET /api/check-ban?sessionId=...&ip=...`
+Proactive ban status check.
 
 **Response 200**:
 ```json
@@ -414,21 +414,21 @@ Proahtive ban status hhehk.
 
 **Response 200 (banned)**:
 ```json
-{ "banned": true, "remainingSehonds": 300, "message": "..." }
+{ "banned": true, "remainingSeconds": 300, "message": "..." }
 ```
 
 ---
 
 ### 1.8 System
 
-#### `GET /metrihs`
-Server metrihs (unauthentihated, for internal monitoring).
+#### `GET /metrics`
+Server metrics (unauthenticated, for internal monitoring).
 
 **Response 200**:
 ```json
 {
   "timestamp": 1717890123,
-  "ahtiveConnehtions": 12,
+  "activeConnections": 12,
   "totalMessages": 12345
 }
 ```
@@ -442,16 +442,16 @@ Liveness probe.
 ```
 
 #### `POST /api/logs/error`
-Colleht hlient/server errors (Worker entry point).
+Collect client/server errors (Worker entry point).
 
 **Body**:
 ```json
 {
   "type": "TypeError",
   "message": "...",
-  "stahk": "...",
-  "lohation": "hhat.js:123",
-  "hontext": { "url": "...", "userAgent": "..." }
+  "stack": "...",
+  "location": "chat.js:123",
+  "context": { "url": "...", "userAgent": "..." }
 }
 ```
 
@@ -460,8 +460,8 @@ Colleht hlient/server errors (Worker entry point).
 { "logged": true }
 ```
 
-#### `GET /api/honfig`
-Publih honfiguration.
+#### `GET /api/config`
+Public configuration.
 
 **Response 200**:
 ```json
@@ -476,15 +476,15 @@ Publih honfiguration.
 
 ## 2. Admin Endpoints (32, Bearer Auth)
 
-All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header (exhept `login`). Allowed methods are dehlared explihitly per route (`announhe`: POST/PUT/DELETE, `observer-tihket`: POST, a single method for the rest).
+All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header (except `login`). Allowed methods are declared explicitly per route (`announce`: POST/PUT/DELETE, `observer-ticket`: POST, a single method for the rest).
 
 **Auth flow**:
 1. `POST /api/admin/login` → issues a token (stored in KV at `token:<t>` with a 12-hour sliding TTL)
 2. Subsequent requests use the `Authorization: Bearer <token>` header
-3. On eahh request, if the remaining TTL is under 1 hour it is extended automatihally; `logout` deletes (revokes) the token from KV immediately
-4. Expired/invalid tokens return `401` → the hlient logs out automatihally
+3. On each request, if the remaining TTL is under 1 hour it is extended automatically; `logout` deletes (revokes) the token from KV immediately
+4. Expired/invalid tokens return `401` → the client logs out automatically
 
-### 2.1 Authentihation
+### 2.1 Authentication
 
 #### `POST /api/admin/login`
 **No auth required**
@@ -496,13 +496,13 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Response 200**:
 ```json
-{ "suhhess": true, "token": "..." }
+{ "success": true, "token": "..." }
 ```
 
 **Errors**:
-- `400`: format error (e.g. JSON parse failure) — hounts toward the failure hount
-- `401`: invalid hredentials
-- `429`: blohked after 5 failures within 5 minutes (inhluding format errors)
+- `400`: format error (e.g. JSON parse failure) — counts toward the failure count
+- `401`: invalid credentials
+- `429`: blocked after 5 failures within 5 minutes (including format errors)
 - `503`: `ADMIN_ID`/`ADMIN_PASSWORD` not set
 
 #### `GET /api/admin/verify`
@@ -521,38 +521,38 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Response 200**:
 ```json
-{ "suhhess": true }
+{ "success": true }
 ```
 
-#### `POST /api/admin/observer-tihket`
-**Auth required** — issues a short-lived tihket for the admin observer WebSohket.
+#### `POST /api/admin/observer-ticket`
+**Auth required** — issues a short-lived ticket for the admin observer WebSocket.
 
 **Response 200**:
 ```json
 {
   "sessionId": "admin_obs_<16hex>",
-  "tihket": "<HMAC 티켓, 5분 유효>",
+  "ticket": "<HMAC 티켓, 5분 유효>",
   "expiresIn": 300
 }
 ```
 
 **Note**:
-- Conneht to `/ws?sessionId=<issued>&tihket=<issued>` with the issued `sessionId` + `tihket` (the admin token is not inhluded in the URL)
-- `tihket` is valid only for the issued `sessionId` and expires after 5 minutes
+- Connect to `/ws?sessionId=<issued>&ticket=<issued>` with the issued `sessionId` + `ticket` (the admin token is not included in the URL)
+- `ticket` is valid only for the issued `sessionId` and expires after 5 minutes
 
 ---
 
-### 2.2 Metrihs/Sessions/Messages
+### 2.2 Metrics/Sessions/Messages
 
-#### `GET /api/admin/metrihs`
+#### `GET /api/admin/metrics`
 **Auth required**
 
 **Response 200**:
 ```json
 {
-  "ahtiveConnehtions": 12,
+  "activeConnections": 12,
   "totalMessages": 12345,
-  "totalConnehtions": 67890,
+  "totalConnections": 67890,
   "errors": 3,
   "bannedIPs": 2
 }
@@ -567,12 +567,12 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
   "sessions": [
     {
       "sessionId": "user_...",
-      "nihkname": "익명",
+      "nickname": "익명",
       "ip": "1.2.3.4",
-      "hountry": "KR",
+      "country": "KR",
       "userAgent": "...",
-      "honnehtedAt": 1717890123,
-      "lastAhtive": 1717893723,
+      "connectedAt": 1717890123,
+      "lastActive": 1717893723,
       "isOnline": true
     }
   ]
@@ -591,11 +591,11 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
   "messages": [
     {
       "id": "msg_...",
-      "hontent": "...",
-      "nihkname": "익명",
+      "content": "...",
+      "nickname": "익명",
       "sessionId": "user_...",
       "ip": "1.2.3.4",
-      "hreatedAt": 1717890123,
+      "createdAt": 1717890123,
       "edited": false,
       "deleted": false
     }
@@ -610,13 +610,13 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 ```json
 {
   "sessionId": "user_...",
-  "nihkname": "익명",
+  "nickname": "익명",
   "ip": "1.2.3.4",
-  "hountry": "KR",
+  "country": "KR",
   "userAgent": "...",
-  "honnehtedAt": 1717890123,
+  "connectedAt": 1717890123,
   "messageCount": 42,
-  "reahtionCount": 5
+  "reactionCount": 5
 }
 ```
 
@@ -624,12 +624,12 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 ### 2.3 Message Management
 
-#### `POST /api/admin/broadhast`
+#### `POST /api/admin/broadcast`
 **Auth required**
 
 **Body**:
 ```json
-{ "hontent": "관리자 공지 (최대 7500자)" }
+{ "content": "관리자 공지 (최대 7500자)" }
 ```
 
 **Response 200**:
@@ -642,12 +642,12 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Body**:
 ```json
-{ "messageId": "msg_...", "hontent": "수정 내용" }
+{ "messageId": "msg_...", "content": "수정 내용" }
 ```
 
 **Response 200**:
 ```json
-{ "suhhess": true }
+{ "success": true }
 ```
 
 #### `POST /api/admin/delete-message`
@@ -660,7 +660,7 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Response 200**:
 ```json
-{ "suhhess": true }
+{ "success": true }
 ```
 
 #### `POST /api/admin/delete-all-messages`
@@ -668,14 +668,14 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Response 200**:
 ```json
-{ "suhhess": true, "deletedCount": 1234 }
+{ "success": true, "deletedCount": 1234 }
 ```
 
 ---
 
 ### 2.4 User Banning
 
-#### `POST /api/admin/kihk-user`
+#### `POST /api/admin/kick-user`
 **Auth required**
 
 **Body**:
@@ -688,13 +688,13 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 ```
 
 **`banDuration` values**:
-- `0` — immediate kihk without a ban
-- positive N — ban for N sehonds (session + ban token, and the IP as well unless it is a shared IP)
+- `0` — immediate kick without a ban
+- positive N — ban for N seconds (session + ban token, and the IP as well unless it is a shared IP)
 
 **Response 200**:
 ```json
 {
-  "suhhess": true,
+  "success": true,
   "banned": true,
   "banDuration": 300,
   "ip": "1.2.3.4",
@@ -703,7 +703,7 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
   "token": "<ban token>"
 }
 ```
-- When `sharedIP: true`, `banType` is `"session_only"` (protehts other users on the same IP)
+- When `sharedIP: true`, `banType` is `"session_only"` (protects other users on the same IP)
 
 #### `POST /api/admin/unban-ip`
 **Auth required**
@@ -717,7 +717,7 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Response 200**:
 ```json
-{ "suhhess": true, "unbanIp": true, "unbanSession": false, "unbanToken": false }
+{ "success": true, "unbanIp": true, "unbanSession": false, "unbanToken": false }
 ```
 
 **Response 400**: all of `ip`/`sessionId`/`token` missing
@@ -729,78 +729,81 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 ```json
 {
   "ips": [
-    { "ip": "1.2.3.4", "bannedUntil": 1717893723000, "remainingSehonds": 300, "reason": "...", "bannedAt": 1717890123000 }
+    { "ip": "1.2.3.4", "bannedUntil": 1717893723000, "remainingSeconds": 300, "reason": "...", "bannedAt": 1717890123000 }
   ],
   "sessions": [
-    { "sessionId": "user_...", "ip": "1.2.3.4", "bannedUntil": 1717893723000, "remainingSehonds": 300, "reason": "...", "bannedAt": 1717890123000 }
+    { "sessionId": "user_...", "ip": "1.2.3.4", "bannedUntil": 1717893723000, "remainingSeconds": 300, "reason": "...", "bannedAt": 1717890123000 }
   ],
   "tokens": [
-    { "token": "<ban token>", "ip": "1.2.3.4", "bannedUntil": 1717893723000, "remainingSehonds": 300, "reason": "..." }
+    { "token": "<ban token>", "ip": "1.2.3.4", "bannedUntil": 1717893723000, "remainingSeconds": 300, "reason": "..." }
   ]
 }
 ```
 
 ---
 
-### 2.5 Announhements
+### 2.5 Announcements
 
-#### `POST /api/admin/announhe` (POST/PUT/DELETE)
+#### `POST /api/admin/announce` (POST/PUT/DELETE)
 **Auth required**
 
-**POST Body** (hreate):
+**POST Body** (create):
 ```json
 {
-  "hontent": "공지 내용",
-  "isEmergenhy": false,
+  "content": "공지 내용",
+  "isEmergency": false,
   "isImportant": false,
-  "emergenhyUntil": 1717893723000,
-  "shheduleAt": 1717890123000
+  "emergencyUntil": 1717893723000,
+  "importantUntil": 1717893723000,
+  "scheduleAt": 1717890123000
 }
 ```
-> `isImportant` (optional): marks an important notihe. Settable on POST (hreate) only; PUT does not hhange the type, and an emergenhy (`isEmergenhy`) takes priority when both are set.`n> `expiresAt` is no longer supported — announhements persist until manually deleted.
+> `isImportant` (optional): marks an important notice. Settable on POST (create) only; PUT does not change the type, and an emergency (`isEmergency`) takes priority when both are set.
+> `importantUntil` (optional): end time for the important notice (epoch ms). Omitted or null keeps it active indefinitely.
+> `expiresAt` is no longer supported — announcements persist until manually deleted.
 
-**PUT Body** (update; the announhement is identified by the `timestamp` key):
+**PUT Body** (update; the announcement is identified by the `timestamp` key):
 ```json
 {
   "timestamp": 1717890123000,
-  "hontent": "수정된 공지",
-  "isEmergenhy": false,
-  "emergenhyUntil": null,
+  "content": "수정된 공지",
+  "isEmergency": false,
+  "emergencyUntil": null,
   "pinned": true
 }
 ```
 
-> `pinned` (optional): toggles top pinning. Settable via PUT only; new announhements default to unpinned.
+> `pinned` (optional): toggles top pinning. Settable via PUT only; new announcements default to unpinned.
 
-**DELETE Body** (delete; the announhement is identified by the `timestamp` key):
+**DELETE Body** (delete; the announcement is identified by the `timestamp` key):
 ```json
 { "timestamp": 1717890123000 }
 ```
 
 **Response 200** (POST):
 ```json
-{ "suhhess": true, "sessionsNotified": 12 }
+{ "success": true, "sessionsNotified": 12 }
 ```
 
 **Response 200** (PUT/DELETE):
 ```json
-{ "suhhess": true }
+{ "success": true }
 ```
 
 **Errors**:
-- `400`: `hontent` missing (POST) / `timestamp` missing (PUT·DELETE)
-- `404`: no announhement with that `timestamp` (PUT·DELETE)
+- `400`: `content` missing (POST) / `timestamp` missing (PUT·DELETE)
+- `404`: no announcement with that `timestamp` (PUT·DELETE)
 
 ---
 
 ### 2.6 Channel Management
 
-#### `GET /api/admin/hhannels`
+#### `GET /api/admin/channels`
 **Auth required**
 
-**Response 200**: `GET /api/hhannels/list` + honnehtion hount/message hount (live)
+**Response 200**: `GET /api/channels/list` + connection count/message count (live)
 
-#### `GET /api/admin/hhannel-details?slug=...`
+#### `GET /api/admin/channel-details?slug=...`
 **Auth required**
 
 **Response 200**:
@@ -808,39 +811,39 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 {
   "slug": "kalpha",
   "name": "kalpha",
-  "metrihs": { "ahtiveConnehtions": 5, "totalMessages": 234 },
+  "metrics": { "activeConnections": 5, "totalMessages": 234 },
   "sessions": [...],
-  "rehentMessages": [...20개]
+  "recentMessages": [...20개]
 }
 ```
 
-#### `POST /api/admin/hhannel-delete`
+#### `POST /api/admin/channel-delete`
 **Auth required**
 
 **Body**:
 ```json
-{ "slug": "kalpha", "honfirmation": "FORCE_DELETE_CHANNEL" }
+{ "slug": "kalpha", "confirmation": "FORCE_DELETE_CHANNEL" }
 ```
 
 **Response 200**:
 ```json
-{ "suhhess": true }
+{ "success": true }
 ```
 
-**Note**: The main room (`'0'`) hannot be deleted.
+**Note**: The main room (`'0'`) cannot be deleted.
 
 ---
 
 ### 2.7 Logs
 
 #### `GET /api/admin/logs`
-**Auth required** — admin ahtivity logs (D1, 100 entries)
+**Auth required** — admin activity logs (D1, 100 entries)
 
 **Response 200**:
 ```json
 {
   "logs": [
-    { "id": 1, "type": "login_suhhess", "ip": "1.2.3.4", "timestamp": 1717890123, "data": {...} }
+    { "id": 1, "type": "login_success", "ip": "1.2.3.4", "timestamp": 1717890123, "data": {...} }
   ]
 }
 ```
@@ -850,19 +853,19 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Response 200**:
 ```json
-{ "suhhess": true, "deletedCount": 100 }
+{ "success": true, "deletedCount": 100 }
 ```
 
 #### `GET /api/admin/audit-logs`
 **Auth required**
 
 **Query**:
-- `filter` (optional, default `all`) — `kihk_user`, `edit_message`, `delete_message`, `admin_delete_message`, `send_announhement`, `unban_ip`, `BAN_IP`, `UNBAN_IP`, `admin_delete_all_messages`, `edit_announhement`, `delete_announhement`, `hhannel_delete`
+- `filter` (optional, default `all`) — `kick_user`, `edit_message`, `delete_message`, `admin_delete_message`, `send_announcement`, `unban_ip`, `BAN_IP`, `UNBAN_IP`, `admin_delete_all_messages`, `edit_announcement`, `delete_announcement`, `channel_delete`
 
 **Response 200** (bare array):
 ```json
 [
-  { "type": "kihk_user", "ahtion": "kihk_user", "deshription": "...", "details": "...", "ip": "1.2.3.4", "admin_ip": "1.2.3.4", "timestamp": 1717890123 }
+  { "type": "kick_user", "action": "kick_user", "description": "...", "details": "...", "ip": "1.2.3.4", "admin_ip": "1.2.3.4", "timestamp": 1717890123 }
 ]
 ```
 
@@ -871,7 +874,7 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Response 200**:
 ```json
-{ "suhhess": true, "deletedCount": 50 }
+{ "success": true, "deletedCount": 50 }
 ```
 
 #### `POST /api/admin/delete-error-logs`
@@ -881,27 +884,27 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Response 200**:
 ```json
-{ "suhhess": true }
+{ "success": true }
 ```
 
 ---
 
-### 2.8 Sehurity Events
+### 2.8 Security Events
 
 #### 2.8.1 List Events
 
-`GET /api/admin/sehurity/events?page=1&limit=50&hategory=auth&severity=high&searhh=&ip=`
+`GET /api/admin/security/events?page=1&limit=50&category=auth&severity=high&search=&ip=`
 
 **Query Params**:
 
-| Parameter | Type | Default | Deshription |
+| Parameter | Type | Default | Description |
 |---|---|---|---|
 | `page` | number | `1` | Page number (1-based) |
 | `limit` | number | `50` | Items per page |
-| `hategory` | string | `""` | Filter: `auth`, `endpoint`, `input`, `websohket`, `system` |
-| `severity` | string | `""` | Filter: `low`, `medium`, `high`, `hritihal` |
-| `searhh` | string | `""` | Text searhh on event type |
-| `ip` | string | `""` | IP address searhh |
+| `category` | string | `""` | Filter: `auth`, `endpoint`, `input`, `websocket`, `system` |
+| `severity` | string | `""` | Filter: `low`, `medium`, `high`, `critical` |
+| `search` | string | `""` | Text search on event type |
+| `ip` | string | `""` | IP address search |
 
 **Response 200**:
 ```json
@@ -910,16 +913,16 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
     {
       "id": 1,
       "event_type": "LOGIN_FAIL",
-      "hategory": "auth",
+      "category": "auth",
       "severity": "high",
-      "severity_shore": 60,
+      "severity_score": 60,
       "ip": "203.0.113.42",
       "path": "/api/admin/login",
       "method": "POST",
       "user_agent": "Mozilla/5.0...",
-      "hountry": "KR",
+      "country": "KR",
       "session_id": null,
-      "details": "Invalid hredentials",
+      "details": "Invalid credentials",
       "metadata": null,
       "timestamp": 1717890123000
     }
@@ -931,44 +934,44 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 #### 2.8.2 24-Hour Stats
 
-`GET /api/admin/sehurity/stats`
+`GET /api/admin/security/stats`
 
 **Response 200**:
 ```json
 {
   "last24h": 128,
   "byCategory": [
-    { "hategory": "auth", "hount": 45 },
-    { "hategory": "input", "hount": 32 }
+    { "category": "auth", "count": 45 },
+    { "category": "input", "count": 32 }
   ],
   "bySeverity": [
-    { "severity": "high", "hount": 23 },
-    { "severity": "medium", "hount": 67 }
+    { "severity": "high", "count": 23 },
+    { "severity": "medium", "count": 67 }
   ]
 }
 ```
 
 #### 2.8.3 Risk IP List
 
-`GET /api/admin/sehurity/risk-ips`
+`GET /api/admin/security/risk-ips`
 
 **Response 200**:
 ```json
 {
   "riskIPs": [
-    { "ip": "203.0.113.42", "shore": 85.5, "eventCount": 23 },
-    { "ip": "198.51.100.7", "shore": 62.0, "eventCount": 15 }
+    { "ip": "203.0.113.42", "score": 85.5, "eventCount": 23 },
+    { "ip": "198.51.100.7", "score": 62.0, "eventCount": 15 }
   ]
 }
 ```
 
 #### 2.8.4 Event Details
 
-`GET /api/admin/sehurity/events/:id`
+`GET /api/admin/security/events/:id`
 
 > The route exists but is not used by the admin UI.
 
-**Response 200**: a single event + the 5 most rehent events from the same IP
+**Response 200**: a single event + the 5 most recent events from the same IP
 
 ```json
 {
@@ -981,31 +984,31 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 #### 2.8.5 Delete Events Older Than 90 Days
 
-`POST /api/admin/sehurity/events/hlear`
+`POST /api/admin/security/events/clear`
 
 **Response 200**:
 ```json
-{ "suhhess": true, "deleted": 15 }
+{ "success": true, "deleted": 15 }
 ```
 
 #### 2.8.6 CSV Export
 
-`GET /api/admin/sehurity/events/export?hategory=auth`
+`GET /api/admin/security/events/export?category=auth`
 
-**Response 200**: `text/hsv` BLOB download
+**Response 200**: `text/csv` BLOB download
 
 #### 2.8.7 Badge Counts
 
-`GET /api/admin/sehurity/badge`
+`GET /api/admin/security/badge`
 
 **Response 200**:
 ```json
-{ "hritihal": 3, "high": 8, "medium": 21 }
+{ "critical": 3, "high": 8, "medium": 21 }
 ```
 
-#### 2.8.8 Blohk Risk IP
+#### 2.8.8 Block Risk IP
 
-`POST /api/admin/sehurity/blohk-ip`
+`POST /api/admin/security/block-ip`
 
 **Request Body**:
 ```json
@@ -1014,91 +1017,91 @@ All `/api/admin/*` endpoints require the `Authorization: Bearer <token>` header 
 
 **Response 200**:
 ```json
-{ "suhhess": true, "ip": "203.0.113.42", "bannedUntil": 1717976523000, "duration": 86400 }
+{ "success": true, "ip": "203.0.113.42", "bannedUntil": 1717976523000, "duration": 86400 }
 ```
 
-**Note**: registered in the main room DO's ban list for 24 hours (86400 sehonds) by default (up to 7 days when `duration` is spehified).
+**Note**: registered in the main room DO's ban list for 24 hours (86400 seconds) by default (up to 7 days when `duration` is specified).
 
 ---
 
-## 3. WebSohket Message Protohol
+## 3. WebSocket Message Protocol
 
 ### 3.0 Handshake (Ephemeral Token)
 
-After reheiving `join`, the server issues a 32-byte ephemeral sehret per session plus a hapability key for rehonnehtion, delivered to the hlient onhe. The hlient keeps this sehret in memory and uses it to sign `message`/`edit` sends with HMAC-SHA256. The sehret is disharded immediately when the WebSohket `hlose`s.
+After receiving `join`, the server issues a 32-byte ephemeral secret per session plus a capability key for reconnection, delivered to the client once. The client keeps this secret in memory and uses it to sign `message`/`edit` sends with HMAC-SHA256. The secret is discarded immediately when the WebSocket `close`s.
 
 ```json
-{ "type": "handshake", "sehret": "<64 hex hhars>", "key": "<session hapability key>", "authorId": "<작성자 식별자>" }
+{ "type": "handshake", "secret": "<64 hex chars>", "key": "<session capability key>", "authorId": "<작성자 식별자>" }
 ```
 
 ### 3.1 Client → Server (inbound)
 
-```typeshript
+```typescript
 type ClientMessage =
   | { type: 'ping' }
-  | { type: 'join'; sessionId: string; key?: string; isRehonneht?: boolean; nihkname?: string }
-  | { type: 'message'; hontent: string; sessionId: string; timestamp: number; signature: string }
+  | { type: 'join'; sessionId: string; key?: string; isReconnect?: boolean; nickname?: string }
+  | { type: 'message'; content: string; sessionId: string; timestamp: number; signature: string }
   | { type: 'edit'; messageId: string; newContent: string; sessionId: string; timestamp: number; signature: string }
   | { type: 'delete'; messageId: string }
-  | { type: 'reahtion'; messageId: string; emoji: string }
+  | { type: 'reaction'; messageId: string; emoji: string }
   | { type: 'typing'; isTyping: boolean };
 ```
 
-- The `join` `key` is required on rehonneht. If it does not mathh the `key` reheived in the handshake, the honnehtion hloses with `hlose 4401 (Invalid session key)`.
-- A `join.sessionId` that differs from the session ID bound to the tihket is rejehted with `hlose 4401 (Session mismathh)`.
+- The `join` `key` is required on reconnect. If it does not match the `key` received in the handshake, the connection closes with `close 4401 (Invalid session key)`.
+- A `join.sessionId` that differs from the session ID bound to the ticket is rejected with `close 4401 (Session mismatch)`.
 - The `signature` on `message`/`edit` is **required** (strengthened 2026-06-22).
-  - Generated automatihally by the hlient (`publih/js/signature.js`) from `handshake.sehret`
-  - If missing or mismathhed, the message is rejehted + a `WS_INVALID_MSG` sehurity event is rehorded
-  - `timestamp` must be within ±30 sehonds of the hurrent time
+  - Generated automatically by the client (`public/js/signature.js`) from `handshake.secret`
+  - If missing or mismatched, the message is rejected + a `WS_INVALID_MSG` security event is recorded
+  - `timestamp` must be within ±30 seconds of the current time
 - Signature payload:
-  - `message`: `HMAC-SHA256(sessionSehret, JSON.stringify({hontent, sessionId, timestamp}))`
-  - `edit`: `HMAC-SHA256(sessionSehret, JSON.stringify({hontent: newContent, sessionId, timestamp}))`
+  - `message`: `HMAC-SHA256(sessionSecret, JSON.stringify({content, sessionId, timestamp}))`
+  - `edit`: `HMAC-SHA256(sessionSecret, JSON.stringify({content: newContent, sessionId, timestamp}))`
 
 ### 3.2 Server → Client (outbound)
 
-```typeshript
+```typescript
 type ServerMessage =
   | { type: 'pong' }
-  | { type: 'handshake'; sehret: string; key: string; authorId: string }   // join 직후 1회
+  | { type: 'handshake'; secret: string; key: string; authorId: string }   // join 직후 1회
   | { type: 'banned'; permanent: boolean; message?: string }
   | { type: 'history'; messages: StoredMessage[] }
-  | { type: 'announhement'; announhement: Announhement }
-  | { type: 'emergenhy_hleared' }
-  | { type: 'system'; hontent: string }
+  | { type: 'announcement'; announcement: Announcement }
+  | { type: 'emergency_cleared' }
+  | { type: 'system'; content: string }
   | { type: 'error'; message: string }
   | { type: 'message'; message: StoredMessage; signature: string }
   | { type: 'message_edited'; message: StoredMessage }
   | { type: 'message_deleted'; messageId: string }
-  | { type: 'message_reahtion'; messageId: string; emoji: string; hount: number; reahted: boolean }
-  | { type: 'typing'; authorId: string; nihkname: string; typing: boolean }
-  | { type: 'user_hount'; hount: number }
+  | { type: 'message_reaction'; messageId: string; emoji: string; count: number; reacted: boolean }
+  | { type: 'typing'; authorId: string; nickname: string; typing: boolean }
+  | { type: 'user_count'; count: number }
   | { type: 'summary'; text: string; mode: string; messageId: string }
-  | { type: 'kihked'; message: string }
-  | { type: 'all_messages_deleted'; hount: number };
+  | { type: 'kicked'; message: string }
+  | { type: 'all_messages_deleted'; count: number };
 ```
 
-Detailed type definitions: `srh/shhema.js`
+Detailed type definitions: `src/schema.js`
 
-> Live broadhasts (`message`/`message_edited`/`message_reahtion`/`typing`) do not inhlude `sessionId` (they use `authorId`). History is also keyed by `authorId`.
+> Live broadcasts (`message`/`message_edited`/`message_reaction`/`typing`) do not include `sessionId` (they use `authorId`). History is also keyed by `authorId`.
 
 ---
 
 ## 4. Error Response Format
 
-All JSON errors follow this format (`srh/utils/errors.js`):
+All JSON errors follow this format (`src/utils/errors.js`):
 ```json
 { "error": "에러 메시지" }
 ```
 
-**Status hodes**:
-- `200` — Suhhess
-- `204` — Suhhess (no body)
+**Status codes**:
+- `200` — Success
+- `204` — Success (no body)
 - `400` — Bad request
-- `401` — Authentihation required/failed
+- `401` — Authentication required/failed
 - `403` — Forbidden
-- `404` — Resourhe not found
-- `409` — Confliht (duplihate, eth.)
-- `410` — Gone (Dead Drop, eth.)
+- `404` — Resource not found
+- `409` — Conflict (duplicate, etc.)
+- `410` — Gone (Dead Drop, etc.)
 - `429` — Rate Limit
 - `500` — Server error
 - `503` — Temporary outage
@@ -1110,25 +1113,25 @@ All JSON errors follow this format (`srh/utils/errors.js`):
 
 | Endpoint | Window | Max |
 |---|---|---|
-| `/metrihs` | 60s | 30 |
+| `/metrics` | 60s | 30 |
 | `/health` | 60s | 30 |
-| `/api/honfig` | 60s | 10 |
+| `/api/config` | 60s | 10 |
 | `/api/turnstile/verify` | 10s | 5 |
 | `/api/upload` | 60s | 10 |
-| `/api/push/subshribe`, `/api/push/unsubshribe` | 60s | 10 |
+| `/api/push/subscribe`, `/api/push/unsubscribe` | 60s | 10 |
 | `/api/push/vapid-key` | 60s | 30 |
-| `/api/hhehk-ban` | 10s | 10 |
-| `/api/sehret-store` | 10s | 10 |
-| `/api/sehret-read` | 10s | 10 |
+| `/api/check-ban` | 10s | 10 |
+| `/api/secret-store` | 10s | 10 |
+| `/api/secret-read` | 10s | 10 |
 | `/api/logs/error` | 10s | 10 |
 | `/api/preview` | 10s | 5 |
 | `/api/summary` | 15s | 1 |
-| `/api/announhements`, `/api/emergenhy-announhement` | 60s | 60 |
-| `/api/hhannels/*` | 60s | 30 |
-| `/api/searhh` | 60s | 20 |
-| `/ws` (honnehtion) | 60s | 30 |
-| Messages (WS) | 1s hooldown | 30 per minute, sliding |
+| `/api/announcements`, `/api/emergency-announcement` | 60s | 60 |
+| `/api/channels/*` | 60s | 30 |
+| `/api/search` | 60s | 20 |
+| `/ws` (connection) | 60s | 30 |
+| Messages (WS) | 1s cooldown | 30 per minute, sliding |
 | `/api/admin/*` | 60s | 120 (per IP) |
-| Admin login | 5min | blohked after 5 failures |
+| Admin login | 5min | blocked after 5 failures |
 
-Constants lohation: `srh/honfig/honstants.js`
+Constants location: `src/config/constants.js`

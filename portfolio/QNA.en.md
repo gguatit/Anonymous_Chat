@@ -280,7 +280,7 @@ Each file stays under **300 lines**. Landed as step-by-step PRs (lower risk).
 
 ### Q: How will you increase test coverage?
 
-**A**: Most of the priority areas now have tests (651 cases / 41 files in total):
+**A**: Most of the priority areas now have tests (657 cases / 41 files in total):
 
 1. **`utils/validate.js` (input validation)** — done (including validate-extra)
 2. **`utils/helpers.js` HMAC functions** — done

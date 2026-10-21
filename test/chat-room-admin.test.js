@@ -102,6 +102,52 @@ describe('chat-room admin', () => {
             expect(room.addAuditLog.mock.calls[0][1]).toContain('[IMPORTANT]');
         });
 
+        it('broadcasts importantUntil for an active important notice', async () => {
+            const ws = { send: vi.fn(), close: vi.fn() };
+            const future = Date.now() + 3600000;
+            const room = mockChatRoom({
+                sessions: new Map([['s1', ws]]),
+                announcementHistory: [],
+                currentAnnouncement: null,
+                state: { storage: { put: vi.fn(() => Promise.resolve()) } },
+                addAuditLog: vi.fn(() => Promise.resolve())
+            });
+
+            const req = new Request('https://dummy/admin/announce', {
+                method: 'POST',
+                body: JSON.stringify({ content: '중요 공지', isImportant: true, importantUntil: future, timestamp: 111 }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const res = await dispatchAdminRoute(room, new URL(req.url), req, HMAC);
+
+            expect(res.status).toBe(200);
+            const msg = JSON.parse(ws.send.mock.calls[0][0]);
+            expect(msg.isImportant).toBe(true);
+            expect(msg.importantUntil).toBe(future);
+        });
+
+        it('does not treat an expired important notice as active in its broadcast', async () => {
+            const ws = { send: vi.fn(), close: vi.fn() };
+            const room = mockChatRoom({
+                sessions: new Map([['s1', ws]]),
+                announcementHistory: [],
+                currentAnnouncement: null,
+                state: { storage: { put: vi.fn(() => Promise.resolve()) } },
+                addAuditLog: vi.fn(() => Promise.resolve())
+            });
+
+            const req = new Request('https://dummy/admin/announce', {
+                method: 'POST',
+                body: JSON.stringify({ content: '중요 공지', isImportant: true, importantUntil: Date.now() - 1000, timestamp: 111 }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const res = await dispatchAdminRoute(room, new URL(req.url), req, HMAC);
+
+            expect(res.status).toBe(200);
+            const msg = JSON.parse(ws.send.mock.calls[0][0]);
+            expect(msg.isImportant).toBe(false);
+        });
+
         it('does not broadcast isImportant for an emergency notice', async () => {
             const ws = { send: vi.fn(), close: vi.fn() };
             const room = mockChatRoom({

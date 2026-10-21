@@ -197,6 +197,21 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         expect(forwarded[0].isImportant).toBe(false);
     });
 
+    it('stores important_until in D1 and forwards it for important notices', async () => {
+        const future = Date.now() + 3600000;
+        const res = await sendAnnounce({ content: '중요 공지', isImportant: true, importantUntil: future });
+        expect(res.status).toBe(200);
+        const bindArgs = env.DB_ADMIN.bind.mock.calls[0];
+        expect(bindArgs[6]).toBe(future);
+        expect(forwarded[0].importantUntil).toBe(future);
+    });
+
+    it('drops importantUntil for emergency notices', async () => {
+        const res = await sendAnnounce({ content: '긴급 공지', isEmergency: true, importantUntil: Date.now() + 3600000 });
+        expect(res.status).toBe(200);
+        expect(forwarded[0].importantUntil).toBe(null);
+    });
+
     it('does not forward expiresAt — announcements persist until manual deletion', async () => {
         const res = await sendAnnounce({ content: '영구 공지', expiresAt: Date.now() + 3600000 });
         expect(res.status).toBe(200);

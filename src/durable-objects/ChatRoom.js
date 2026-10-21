@@ -8,7 +8,7 @@ import { OBSERVER_TICKET_TTL_MS } from '../handlers/turnstile.js';
 
 import { dispatchAdminRoute, handleCheckBan, handleBroadcastSummary, notifyAdmin } from './chat-room/admin.js';
 import { validateMessage, sanitizeContentForAI, generateSessionId, generateSessionKey, extractErrorLocation, searchMessages, isLikelyCode } from './chat-room/messages.js';
-import { isEmergencyActive } from './chat-room/announcements.js';
+import { isEmergencyActive, isImportantActive } from './chat-room/announcements.js';
 
 // Truncated session id for logs — full ids are public identifiers, keep them out of persisted logs
 function logId(sessionId) {
@@ -754,7 +754,8 @@ export class ChatRoom {
                     content: this.currentAnnouncement.content,
                     timestamp: this.currentAnnouncement.timestamp,
                     isEmergency: isEmergencyActive(this.currentAnnouncement),
-                    isImportant: !!this.currentAnnouncement.isImportant && !isEmergencyActive(this.currentAnnouncement)
+                    isImportant: isImportantActive(this.currentAnnouncement),
+                    importantUntil: this.currentAnnouncement.importantUntil
                 });
             }
 
@@ -806,7 +807,8 @@ export class ChatRoom {
                     content: this.currentAnnouncement.content,
                     timestamp: this.currentAnnouncement.timestamp,
                     isEmergency: isEmergencyActive(this.currentAnnouncement),
-                    isImportant: !!this.currentAnnouncement.isImportant && !isEmergencyActive(this.currentAnnouncement)
+                    isImportant: isImportantActive(this.currentAnnouncement),
+                    importantUntil: this.currentAnnouncement.importantUntil
                 });
             }
         }
@@ -1626,8 +1628,9 @@ export class ChatRoom {
                 content: this.currentAnnouncement.content,
                 timestamp: this.currentAnnouncement.timestamp,
                 isEmergency: isEmergencyActive(this.currentAnnouncement),
-                isImportant: !!this.currentAnnouncement.isImportant && !isEmergencyActive(this.currentAnnouncement),
-                emergencyUntil: this.currentAnnouncement.emergencyUntil
+                isImportant: isImportantActive(this.currentAnnouncement),
+                emergencyUntil: this.currentAnnouncement.emergencyUntil,
+                importantUntil: this.currentAnnouncement.importantUntil
             };
             this.broadcast(announcementMessage);
             delete this.currentAnnouncement.scheduleAt;

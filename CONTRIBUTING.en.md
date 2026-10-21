@@ -200,7 +200,7 @@ Security-related changes (auth, permissions, input validation, secret handling):
 | Auth/admin | `auth`, `admin-handlers` |
 | Chat/DO/session | `chat-room`, `chat-room-init`, `chat-room-messages`, `chat-room-message-cap`, `chat-room-session-key`, `chat-room-admin`, `channel-registry`, `dead-drop-store`, `websocket-observer` |
 | Messaging/Worker | `web-push`, `fcm-auth`, `preview`, `summary`, `worker-routes`, `handlers` |
-| **Total** | **651 cases / 41 files** |
+| **Total** | **657 cases / 41 files** |
 
 ---
 

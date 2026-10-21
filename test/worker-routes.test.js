@@ -271,6 +271,44 @@ describe('worker router smoke (real worker.fetch)', () => {
         await expect(res.json()).resolves.toMatchObject({ isEmergency: false, isImportant: false });
     });
 
+    it('expires important announcements after important_until', async () => {
+        env.DB_ADMIN.prepare.mockImplementation(() => ({
+            bind: vi.fn(function () { return this; }),
+            all: vi.fn(async () => ({
+                results: [
+                    { timestamp: 3, content: '만료됨', is_emergency: 0, is_important: 1, important_until: Date.now() - 1000 },
+                    { timestamp: 2, content: '진행중', is_emergency: 0, is_important: 1, important_until: Date.now() + 60000 },
+                    { timestamp: 1, content: '계속', is_emergency: 0, is_important: 1, important_until: null }
+                ]
+            })),
+        }));
+        const res = await worker.fetch(makeRequest('/api/announcements'), env);
+        const body = await res.json();
+        expect(body.map(a => a.isImportant)).toEqual([false, true, true]);
+    });
+
+    it('filters expired important notices from the emergency endpoint lookup', async () => {
+        const roomFetch = vi.fn(async () => new Response(JSON.stringify({ isEmergency: false }), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        env = makeEnv({
+            CHAT_ROOM: {
+                idFromName: vi.fn(() => 'room-id'),
+                get: vi.fn(() => ({ fetch: roomFetch })),
+            },
+        });
+        let capturedSql = null;
+        env.DB_ADMIN.prepare.mockImplementation((sql) => {
+            capturedSql = sql;
+            return { bind: vi.fn(function () { return this; }), first: vi.fn(async () => null) };
+        });
+
+        const res = await worker.fetch(makeRequest('/api/emergency-announcement'), env);
+
+        await expect(res.json()).resolves.toMatchObject({ isEmergency: false, isImportant: false });
+        expect(capturedSql).toContain('important_until');
+    });
+
     it('serves /api/config from env values', async () => {
         const res = await worker.fetch(makeRequest('/api/config'), env);
         expect(res.status).toBe(200);

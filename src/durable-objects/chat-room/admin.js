@@ -1,7 +1,7 @@
 import { ADMIN, metrics, MAX_STORED_MESSAGES, FORCE_DELETE_DELAY_MS, MESSAGE_PREVIEW_COUNT, BAN_DURATIONS } from '../../config/constants.js';
 import { sanitizeInput, safeJson, generateMessageSignature } from '../../utils/helpers.js';
 import { constantTimeCompare } from '../../utils/security.js';
-import { isEmergencyActive } from './announcements.js';
+import { isEmergencyActive, isImportantActive } from './announcements.js';
 import { isLikelyCode } from './messages.js';
 
 export function notifyAdmin(chatRoom, action, payload = {}) {
@@ -641,6 +641,7 @@ export async function handleAdminAnnounce(chatRoom, request) {
         const isEmergency = !!data.isEmergency;
         const isImportant = !!data.isImportant && !isEmergency;
         const emergencyUntil = isEmergency && data.emergencyUntil ? Number(data.emergencyUntil) : null;
+        const importantUntil = isImportant && data.importantUntil ? Number(data.importantUntil) : null;
         const scheduleAt = data.scheduleAt || null;
 
         if (!content) {
@@ -655,7 +656,8 @@ export async function handleAdminAnnounce(chatRoom, request) {
             timestamp: Number(data.timestamp) || Date.now(),
             isEmergency,
             isImportant,
-            emergencyUntil
+            emergencyUntil,
+            importantUntil
         };
         // Announcements persist until an admin deletes them — expiresAt is intentionally ignored
         await chatRoom.state.storage.put('currentAnnouncement', chatRoom.currentAnnouncement);
@@ -684,8 +686,9 @@ export async function handleAdminAnnounce(chatRoom, request) {
             content: chatRoom.currentAnnouncement.content,
             timestamp: chatRoom.currentAnnouncement.timestamp,
             isEmergency: isEmergencyActive(chatRoom.currentAnnouncement),
-            isImportant,
-            emergencyUntil: chatRoom.currentAnnouncement.emergencyUntil
+            isImportant: isImportantActive(chatRoom.currentAnnouncement),
+            emergencyUntil: chatRoom.currentAnnouncement.emergencyUntil,
+            importantUntil: chatRoom.currentAnnouncement.importantUntil
         };
 
         let notified = 0;

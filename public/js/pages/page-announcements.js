@@ -69,14 +69,16 @@ export async function init(core) {
             const emergency = type === 'emergency';
             const important = type === 'important';
             const emergencyDuration = parseInt(document.getElementById('emergency-duration')?.value || '0', 10);
+            const importantDuration = parseInt(document.getElementById('important-duration')?.value || '0', 10);
             const schedule = document.getElementById('schedule-checkbox')?.checked;
             const scheduleAt = schedule ? (document.getElementById('schedule-datetime')?.value || null) : null;
-            // Announcements persist until manual deletion; the emergency banner can auto-clear after the chosen duration
+            // Announcements persist until manual deletion; the emergency/important banner can auto-clear after the chosen duration
             await ApiClient.post('/api/admin/announce', {
                 content,
                 isEmergency: emergency,
                 isImportant: important,
                 emergencyUntil: emergency && emergencyDuration > 0 ? Date.now() + emergencyDuration : null,
+                importantUntil: important && importantDuration > 0 ? Date.now() + importantDuration : null,
                 scheduleAt: scheduleAt ? new Date(scheduleAt).getTime() : null,
             });
             input.value = ''; input.dispatchEvent(new Event('input'));
@@ -93,6 +95,8 @@ export async function init(core) {
             const type = document.querySelector('input[name="announce-type"]:checked')?.value || 'normal';
             const dur = document.getElementById('emergency-duration');
             if (dur) dur.classList.toggle('hidden', type !== 'emergency');
+            const importantDur = document.getElementById('important-duration');
+            if (importantDur) importantDur.classList.toggle('hidden', type !== 'important');
         });
     });
     document.getElementById('announce-search')?.addEventListener('input', debounce(() => loadAnnouncements(), 300));
