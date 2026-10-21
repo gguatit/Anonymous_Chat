@@ -57,7 +57,7 @@
                 const isImportant = !isEmergency && item.isImportant;
                 card.className = 'announcement-card fade-in-up bg-gray-800 border rounded-xl p-4 shadow-lg transition-colors ' +
                     (isEmergency ? 'border-red-700/60 hover:border-red-600/80'
-                        : (isImportant ? 'border-amber-700/60 hover:border-amber-600/80' : 'border-yellow-700/40 hover:border-yellow-600/60'));
+                        : (isImportant ? 'border-green-700 hover:border-green-600' : 'border-yellow-700/40 hover:border-yellow-600/60'));
                 card.style.setProperty('--i', i);
 
                 const date = new Date(item.timestamp);
@@ -70,7 +70,7 @@
                     ? `<span class="ml-auto text-xs bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-medium">긴급</span>`
                     : '';
                 const importantBadge = isImportant
-                    ? `<span class="ml-auto text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">중요</span>`
+                    ? `<span class="ml-auto text-xs bg-green-900/30 text-green-300 border border-green-700 px-2 py-0.5 rounded-full font-medium">중요</span>`
                     : '';
                 const pinBadge = item.pinned
                     ? `<span class="ml-auto text-xs bg-yellow-600/20 text-yellow-200 border border-yellow-600/40 px-2 py-0.5 rounded-full font-medium">고정</span>`
@@ -82,10 +82,10 @@
                 const typeLabel = isEmergency
                     ? '<span class="text-xs font-semibold text-red-300">긴급 공지</span>'
                     : (isImportant
-                        ? '<span class="text-xs font-semibold text-amber-300">중요 공지</span>'
+                        ? '<span class="text-xs font-semibold text-green-300">중요 공지</span>'
                         : '<span class="text-xs font-semibold text-yellow-300">관리자 공지</span>');
 
-                const iconClass = isEmergency ? 'text-red-400' : (isImportant ? 'text-amber-400' : 'text-yellow-400');
+                const iconClass = isEmergency ? 'text-red-400' : (isImportant ? 'text-green-400' : 'text-yellow-400');
 
                 const contentHtml = (() => {
                     const esc = escapeHtml(item.content);

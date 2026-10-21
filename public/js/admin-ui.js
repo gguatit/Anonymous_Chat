@@ -291,7 +291,7 @@ export function renderAnnouncements(announcements) {
     container.innerHTML = announcements.map(a => {
         const ts = new Date(a.timestamp).toLocaleString('ko-KR');
         const emergency = a.isEmergency ? '<span class="text-xs bg-red-600 text-white font-bold border border-red-500 px-1.5 py-0.5 rounded ml-1 animate-pulse">긴급</span>' : '';
-        const important = !a.isEmergency && a.isImportant ? '<span class="text-xs bg-amber-600 text-white font-bold border border-amber-500 px-1.5 py-0.5 rounded ml-1">중요</span>' : '';
+        const important = !a.isEmergency && a.isImportant ? '<span class="text-xs bg-green-700 text-white font-bold border border-green-600 px-1.5 py-0.5 rounded ml-1">중요</span>' : '';
         const pinBadge = a.pinned ? '<span class="text-xs bg-yellow-600 text-white font-bold border border-yellow-500 px-1.5 py-0.5 rounded ml-1">고정</span>' : '';
         const content = h(a.content).replace(/\n/g, '<br>').replace(/(https?:\/\/[^\s<>"']+)/g, '<a href="$1" target="_blank" rel="noopener" class="text-blue-400 hover:text-blue-300 underline break-all">$1</a>');
         const pinBtn = `<button class="pin-announce-btn text-xs bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-1 rounded shrink-0" data-timestamp="${a.timestamp}" data-pinned="${a.pinned ? '1' : '0'}">${a.pinned ? '고정해제' : '고정'}</button>`;
@@ -300,7 +300,7 @@ export function renderAnnouncements(announcements) {
         return a.isEmergency
             ? `<div class="bg-red-900/30 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-red-500"><div class="flex-1"><div class="text-xs text-red-300 font-semibold mb-1">${ts}${emergency}${pinBadge}</div><div class="text-sm text-red-100">${content}</div></div><div class="flex flex-col gap-1">${pinBtn}${editBtn}${delBtn}</div></div>`
             : (important
-                ? `<div class="bg-amber-900/20 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-amber-500"><div class="flex-1"><div class="text-xs text-amber-300 font-semibold mb-1">${ts}${important}${pinBadge}</div><div class="text-sm text-amber-50">${content}</div></div><div class="flex flex-col gap-1">${pinBtn}${editBtn}${delBtn}</div></div>`
+                ? `<div class="bg-green-900/30 rounded p-3 flex justify-between items-start gap-4 border-l-4 border-green-600"><div class="flex-1"><div class="text-xs text-green-300 font-semibold mb-1">${ts}${important}${pinBadge}</div><div class="text-sm text-green-50">${content}</div></div><div class="flex flex-col gap-1">${pinBtn}${editBtn}${delBtn}</div></div>`
                 : `<div class="bg-gray-700 rounded p-3 flex justify-between items-start gap-4"><div class="flex-1"><div class="text-xs text-gray-400 mb-1">${ts}${pinBadge}</div><div class="text-sm text-gray-200">${content}</div></div><div class="flex flex-col gap-1">${pinBtn}${editBtn}${delBtn}</div></div>`);
     }).join('');
 

@@ -72,6 +72,7 @@
 #### 개선
 
 - **중요 공지 지속시간**: `announcements.important_until` 컬럼 추가(migration `011_add_announcement_important_until.sql`). 관리자 작성 폼에서 '중요' 선택 시 기간 select가 표시되고 `POST /api/admin/announce`가 `importantUntil`을 저장·DO 전달합니다. `GET /api/announcements`의 `isImportant`와 DO 브로드캐스트(생성·예약 발송·join)·`GET /api/emergency-announcement`의 중요 조회가 모두 만료 시각을 반영하며, 만료 후에는 강제 이동 없이 일반 공지처럼 표시됩니다(자동 삭제 없음). 타입·기간은 생성 시 고정입니다. `src/worker.js`, `src/handlers/admin.js`, `src/durable-objects/chat-room/announcements.js`, `src/durable-objects/chat-room/admin.js`, `src/durable-objects/ChatRoom.js`, `public/js/pages/page-announcements.js`, `public/administrator.html`.
+- **중요 공지 색상·가독성**: 중요 공지를 앰버 → 초록 계열로 변경했습니다(관리자 목록·공지 페이지·안내 배너·작성 폼 라디오 일관). 관리자 목록에서 중요 행 본문이 사전 컴파일된 `public/css/tailwind.min.css`에 없는 `text-amber-50` 스타일을 참조해 흐리게 보이던 문제를, 실제 포함된 초록 계열 유틸리티로 교체해 함께 수정했습니다. `public/js/admin-ui.js`, `public/js/announcements-page.js`, `public/announcements.html`, `public/administrator.html`.
 
 #### 테스트
 
