@@ -70,7 +70,7 @@
 | **푸시** | Web Push (VAPID) + FCM v1 | 표준 Web Push + Android 호환 |
 | **빌드** | esbuild | 10개 엔트리 코드 스플리팅, 1초 이내 빌드 |
 | **프론트** | 바닐라 JS + CSS Custom Properties | 프레임워크 의존성 최소화, 학습 곡선 ↓ |
-| **테스트** | Vitest | 643개 케이스, 41개 파일 |
+| **테스트** | Vitest | 651개 케이스, 41개 파일 |
 | **린팅** | ESLint + Prettier | 코드 스타일 통일 |
 
 ### 선택의 트레이드오프
@@ -357,7 +357,7 @@ self.addEventListener('push', e => {
   - 총 라인 수: ~15,700줄
 
 🧪 테스트
-  - Vitest 643 cases (41개 파일)
+  - Vitest 651 cases (41개 파일)
   - 전체 스위트 20초 이내 통과
   - 커버리지 모듈: rate-limiter, helpers, security, classifier, risk-scorer, security-logger, security routes
 
@@ -385,7 +385,7 @@ self.addEventListener('push', e => {
 
 ### 단기 (1-2개월)
 - [x] 배포 파이프라인 (Cloudflare Workers Builds 자동배포 + 로컬 검증: test·lint·deploy dry-run)
-- [x] 핵심 DO (`ChatRoom.js`) 테스트 보강 (chat-room*.test.js, 총 643건)
+- [x] 핵심 DO (`ChatRoom.js`) 테스트 보강 (chat-room*.test.js, 총 651건)
 - [x] 클라이언트 XSS 핫픽스 (escapeHtml 따옴표 + stored XSS 체인 + SVG 파일 프록시 첨부 강제)
 - [x] CSP 강화 (인라인 핸들러 0건, 스크립트 외부화 — script-src에 unsafe-inline/eval 없음, cdnjs 제거)
 - [x] 옵저버 일회성 티켓·Turnstile join 바인딩·관리자 라우트 리미터·보존 강제 스윕 (2026-09-16 v2)
@@ -672,7 +672,7 @@ Cloudflare D1은:
 ```
 프로젝트명: Anonymous Chat
 스택: Cloudflare Workers + DO + D1 + KV + Workers AI
-규모: 서버 32파일, 클라이언트 30개 소스 모듈 + 6개 페이지 래퍼, 테스트 643건 통과
+규모: 서버 32파일, 클라이언트 30개 소스 모듈 + 6개 페이지 래퍼, 테스트 651건 통과
 핵심 설계:
   1. Ephemeral Token (HMAC 서명, 32-byte secret)
   2. Triple-ban (IP + Session + Token)

@@ -65,14 +65,17 @@ export async function init(core) {
         const content = input?.value?.trim();
         if (!content) return;
         try {
-            const emergency = document.getElementById('emergency-checkbox')?.checked;
+            const type = document.querySelector('input[name="announce-type"]:checked')?.value || 'normal';
+            const emergency = type === 'emergency';
+            const important = type === 'important';
             const emergencyDuration = parseInt(document.getElementById('emergency-duration')?.value || '0', 10);
             const schedule = document.getElementById('schedule-checkbox')?.checked;
             const scheduleAt = schedule ? (document.getElementById('schedule-datetime')?.value || null) : null;
             // Announcements persist until manual deletion; the emergency banner can auto-clear after the chosen duration
             await ApiClient.post('/api/admin/announce', {
                 content,
-                isEmergency: !!emergency,
+                isEmergency: emergency,
+                isImportant: important,
                 emergencyUntil: emergency && emergencyDuration > 0 ? Date.now() + emergencyDuration : null,
                 scheduleAt: scheduleAt ? new Date(scheduleAt).getTime() : null,
             });
@@ -85,9 +88,12 @@ export async function init(core) {
         const dt = document.getElementById('schedule-datetime');
         if (dt) dt.classList.toggle('hidden', !e.target.checked);
     });
-    document.getElementById('emergency-checkbox')?.addEventListener('change', (e) => {
-        const dur = document.getElementById('emergency-duration');
-        if (dur) dur.classList.toggle('hidden', !e.target.checked);
+    document.querySelectorAll('input[name="announce-type"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            const type = document.querySelector('input[name="announce-type"]:checked')?.value || 'normal';
+            const dur = document.getElementById('emergency-duration');
+            if (dur) dur.classList.toggle('hidden', type !== 'emergency');
+        });
     });
     document.getElementById('announce-search')?.addEventListener('input', debounce(() => loadAnnouncements(), 300));
 

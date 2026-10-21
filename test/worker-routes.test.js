@@ -116,7 +116,7 @@ describe('worker router smoke (real worker.fetch)', () => {
         const res = await worker.fetch(makeRequest('/api/announcements'), env);
         expect(res.status).toBe(200);
         const body = await res.json();
-        expect(body).toEqual([{ timestamp: 123, content: '공지 내용', isEmergency: true, pinned: false }]);
+        expect(body).toEqual([{ timestamp: 123, content: '공지 내용', isEmergency: true, isImportant: false, pinned: false }]);
     });
 
     it('marks emergency announcements inactive after their expiry', async () => {
@@ -184,6 +184,91 @@ describe('worker router smoke (real worker.fetch)', () => {
         const body = await res.json();
         expect(body[0]).toMatchObject({ timestamp: 2, pinned: true });
         expect(body[1]).toMatchObject({ timestamp: 1, pinned: false });
+    });
+
+    it('exposes isImportant and lets an emergency take priority', async () => {
+        let capturedSql = null;
+        env.DB_ADMIN.prepare.mockImplementation((sql) => {
+            capturedSql = sql;
+            return {
+                bind: vi.fn(function () { return this; }),
+                all: vi.fn(async () => ({
+                    results: [
+                        { timestamp: 3, content: '중요 공지', is_emergency: 0, is_important: 1 },
+                        { timestamp: 2, content: '둘 다', is_emergency: 1, is_important: 1 },
+                        { timestamp: 1, content: '일반 공지', is_emergency: 0, is_important: 0 }
+                    ]
+                })),
+            };
+        });
+
+        const res = await worker.fetch(makeRequest('/api/announcements'), env);
+
+        expect(res.status).toBe(200);
+        expect(capturedSql).toContain('is_important');
+        const body = await res.json();
+        expect(body.map(a => a.isImportant)).toEqual([true, false, false]);
+        expect(body.map(a => a.isEmergency)).toEqual([false, true, false]);
+    });
+
+    it('augments /api/emergency-announcement with the latest important notice from D1', async () => {
+        const roomFetch = vi.fn(async () => new Response(JSON.stringify({ isEmergency: false }), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        env = makeEnv({
+            CHAT_ROOM: {
+                idFromName: vi.fn(() => 'room-id'),
+                get: vi.fn(() => ({ fetch: roomFetch })),
+            },
+        });
+        env.DB_ADMIN.prepare.mockImplementation(() => ({
+            bind: vi.fn(function () { return this; }),
+            first: vi.fn(async () => ({ timestamp: 999, content: '중요 공지' })),
+        }));
+
+        const res = await worker.fetch(makeRequest('/api/emergency-announcement'), env);
+
+        expect(res.status).toBe(200);
+        await expect(res.json()).resolves.toMatchObject({
+            isEmergency: false, isImportant: true, timestamp: 999, content: '중요 공지'
+        });
+    });
+
+    it('keeps an active emergency answer without querying D1 for important notices', async () => {
+        const emergencyBody = { isEmergency: true, timestamp: 777, content: '긴급 공지', emergencyUntil: null };
+        const roomFetch = vi.fn(async () => new Response(JSON.stringify(emergencyBody), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        env = makeEnv({
+            CHAT_ROOM: {
+                idFromName: vi.fn(() => 'room-id'),
+                get: vi.fn(() => ({ fetch: roomFetch })),
+            },
+        });
+
+        const res = await worker.fetch(makeRequest('/api/emergency-announcement'), env);
+
+        expect(res.status).toBe(200);
+        await expect(res.json()).resolves.toMatchObject({ isEmergency: true, timestamp: 777, content: '긴급 공지' });
+        expect(env.DB_ADMIN.prepare).not.toHaveBeenCalled();
+    });
+
+    it('falls back to isImportant false when the D1 lookup fails', async () => {
+        const roomFetch = vi.fn(async () => new Response(JSON.stringify({ isEmergency: false }), {
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        env = makeEnv({
+            CHAT_ROOM: {
+                idFromName: vi.fn(() => 'room-id'),
+                get: vi.fn(() => ({ fetch: roomFetch })),
+            },
+        });
+        env.DB_ADMIN.prepare.mockImplementation(() => { throw new Error('db down'); });
+
+        const res = await worker.fetch(makeRequest('/api/emergency-announcement'), env);
+
+        expect(res.status).toBe(200);
+        await expect(res.json()).resolves.toMatchObject({ isEmergency: false, isImportant: false });
     });
 
     it('serves /api/config from env values', async () => {

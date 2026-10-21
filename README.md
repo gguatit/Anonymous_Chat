@@ -7,7 +7,7 @@
 [![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/gguatit/badge.svg)](https://hub.xerj.org/contributors/gguatit)
 [![License](https://img.shields.io/badge/License-Commercial-blue.svg)](./COMMERCIAL_LICENSE.md)
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](./SECURITY.md)
-[![Tests](https://img.shields.io/badge/Tests-643%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/Tests-651%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
 
 Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 채팅 서비스입니다.
 회원가입 없이 닉네임만으로 즉시 참여하며, **12시간 후 모든 메시지는 자동 소멸**합니다.
@@ -44,7 +44,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | 링크 프리뷰 | OG 태그 자동 파싱 + 보안 헤더 분석 |
 | 코드 하이라이팅 | Prism.js 단일 스택 (npm 셀프 호스팅 번들 · CDN 미사용) |
 | 다중 채널 | 주제별 독립 채팅방 |
-| 공지사항 | 일반/긴급 공지 + 스케줄링 |
+| 공지사항 | 일반/중요/긴급 공지 + 스케줄링 · 고정 |
 | 푸시 알림 | VAPID Web Push + FCM |
 | PWA | 홈 화면 추가 · 오프라인 셸 · 공유 대상 |
 
@@ -54,7 +54,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 |---|---|
 | 메시지 관리 | 수정 · 삭제 · 전체 삭제 |
 | 사용자 차단 | IP + SessionID 이중 (시간/영구) |
-| 공지사항 관리 | 발송 · 수정 · 삭제 · 긴급 · 만료 |
+| 공지사항 관리 | 발송 · 수정 · 삭제 · 일반/중요/긴급 · 고정 |
 | 채널 관리 | 목록 · 상세 · 강제 삭제 |
 | 감사 로그 | D1 저장 · 필터링 · CSV 내보내기 · `audit_logs` 90일 / `admin_activity_logs`·`error_logs` 30일 정리(쓰기 10회마다 강제) |
 | 오류 추적 | 자동 수집 · 다운로드 · 초기화 |
@@ -88,7 +88,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
 | **푸시** | Web Push (VAPID) + FCM v1 |
 | **빌드** | esbuild (chat · admin · 보안센터 · 관리자 페이지 번들 10종) |
-| **테스트** | Vitest (643 cases · 41 파일) |
+| **테스트** | Vitest (651 cases · 41 파일) |
 | **린팅** | ESLint + Prettier |
 | **프론트** | 바닐라 JS (모듈식) · CSS Custom Properties 테마 · Tailwind(빌드) |
 
@@ -122,7 +122,7 @@ npm run dev
 
 ```bash
 npm run build      # 클라이언트 번들 (esbuild)
-npm test           # 643개 유닛 테스트 (41 파일)
+npm test           # 651개 유닛 테스트 (41 파일)
 npm run lint       # ESLint
 ```
 
@@ -143,12 +143,12 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 ```
 .
 ├── src/                          # Worker (서버)
-│   ├── worker.js                 # 메인 라우터 (559줄)
+│   ├── worker.js                 # 메인 라우터 (588줄)
 │   ├── schema.js                 # JSDoc 타입 정의
 │   ├── config/                   # 상수/설정
 │   ├── handlers/                 # HTTP 핸들러
 │   ├── durable-objects/          # 3개 DO 클래스
-│   │   ├── ChatRoom.js           # WebSocket 채팅 (1735줄)
+│   │   ├── ChatRoom.js           # WebSocket 채팅 (1738줄)
 │   │   ├── ChannelRegistry.js    # 채널 메타데이터
 │   │   ├── DeadDropStore.js      # 비밀 메시지
 │   │   └── chat-room/            # ChatRoom 보조
@@ -189,7 +189,7 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 │   │   └── utils.js              # 공통 유틸
 │   └── css/                      # 테마 + 애니메이션
 │
-├── test/                         # Vitest 643 cases (41 파일)
+├── test/                         # Vitest 651 cases (41 파일)
 ├── migrations/                   # D1 스키마
 ├── docs/                         # 상세 문서
 └── wrangler.toml                 # Cloudflare 설정

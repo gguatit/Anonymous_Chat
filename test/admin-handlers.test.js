@@ -180,6 +180,23 @@ describe('handleAdminAnnounce emergency field mapping', () => {
         expect(Object.hasOwn(forwarded[0], 'isEmergency')).toBe(false);
     });
 
+    it('stores is_important in D1 and forwards isImportant to the DO', async () => {
+        const res = await sendAnnounce({ content: '중요 공지', isImportant: true });
+        expect(res.status).toBe(200);
+        const bindArgs = env.DB_ADMIN.bind.mock.calls[0];
+        expect(bindArgs[5]).toBe(1);
+        expect(forwarded[0].isImportant).toBe(true);
+    });
+
+    it('gives emergency priority when both flags are set', async () => {
+        const res = await sendAnnounce({ content: '둘 다', isEmergency: true, isImportant: true });
+        expect(res.status).toBe(200);
+        const bindArgs = env.DB_ADMIN.bind.mock.calls[0];
+        expect(bindArgs[2]).toBe(1);
+        expect(bindArgs[5]).toBe(0);
+        expect(forwarded[0].isImportant).toBe(false);
+    });
+
     it('does not forward expiresAt — announcements persist until manual deletion', async () => {
         const res = await sendAnnounce({ content: '영구 공지', expiresAt: Date.now() + 3600000 });
         expect(res.status).toBe(200);

@@ -374,6 +374,12 @@ class ChatClient {
                         localStorage.setItem('chatEmergencyRedirectTime', String(Date.now()));
                         location.href = '/announcements.html?from=emergency';
                     }
+                } else if (data.isImportant) {
+                    const seenTs = localStorage.getItem('chatImportantSeenTs');
+                    if (String(data.timestamp) !== seenTs) {
+                        localStorage.setItem('chatImportantSeenTs', String(data.timestamp));
+                        location.href = '/announcements.html?from=important';
+                    }
                 }
                 break;
             case 'emergency_cleared': {
@@ -1109,6 +1115,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         localStorage.removeItem('chatEmergencyRedirectTime');
+    } else if (emergency.isImportant) {
+        const seenTs = localStorage.getItem('chatImportantSeenTs');
+        if (String(emergency.timestamp) !== seenTs) {
+            localStorage.setItem('chatImportantSeenTs', String(emergency.timestamp));
+            location.href = '/announcements.html?from=important';
+            return;
+        }
     } else {
         localStorage.removeItem('chatEmergencySeenTs');
         localStorage.removeItem('chatEmergencyRedirectTime');

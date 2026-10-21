@@ -753,7 +753,8 @@ export class ChatRoom {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
                     timestamp: this.currentAnnouncement.timestamp,
-                    isEmergency: isEmergencyActive(this.currentAnnouncement)
+                    isEmergency: isEmergencyActive(this.currentAnnouncement),
+                    isImportant: !!this.currentAnnouncement.isImportant && !isEmergencyActive(this.currentAnnouncement)
                 });
             }
 
@@ -804,7 +805,8 @@ export class ChatRoom {
                     type: 'announcement',
                     content: this.currentAnnouncement.content,
                     timestamp: this.currentAnnouncement.timestamp,
-                    isEmergency: isEmergencyActive(this.currentAnnouncement)
+                    isEmergency: isEmergencyActive(this.currentAnnouncement),
+                    isImportant: !!this.currentAnnouncement.isImportant && !isEmergencyActive(this.currentAnnouncement)
                 });
             }
         }
@@ -1624,6 +1626,7 @@ export class ChatRoom {
                 content: this.currentAnnouncement.content,
                 timestamp: this.currentAnnouncement.timestamp,
                 isEmergency: isEmergencyActive(this.currentAnnouncement),
+                isImportant: !!this.currentAnnouncement.isImportant && !isEmergencyActive(this.currentAnnouncement),
                 emergencyUntil: this.currentAnnouncement.emergencyUntil
             };
             this.broadcast(announcementMessage);

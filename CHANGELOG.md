@@ -9,6 +9,7 @@
 - [개요](#개요)
 - [범례](#범례)
 - [릴리스](#릴리스)
+  - [2026-10-19](#2026-10-19)
   - [2026-10-16](#2026-10-16)
   - [2026-09-16](#2026-09-16)
   - [2026-09-15](#2026-09-15)
@@ -39,8 +40,8 @@
 | 항목 | 값 |
 |---|---|
 | 시작일 | 2025-12-19 |
-| 최근 업데이트 | 2026-10-16 |
-| 릴리스 수 | 21 |
+| 최근 업데이트 | 2026-10-19 |
+| 릴리스 수 | 22 |
 | 카테고리 | 신규 기능 / 개선 / 버그 수정 / 보안 / 인프라 / 문서 / 아키텍처 / 디자인 / 코드 품질 |
 
 ---
@@ -63,8 +64,20 @@
 
 ## 릴리스
 
-### 2026-10-16
+### 2026-10-19
 
+공지사항에 '중요' 타입을 추가해 일반/중요/긴급 3종으로 확장했습니다. 중요 공지는 채팅 화면에서 공지 페이지로 1회 강제 이동시키되, 빨간 긴급 연출·카운트다운·강제 대기 없이 앰버 톤으로 표시합니다. Vitest 651건(41파일) 전체 통과, lint 0 errors, `wrangler deploy --dry-run` 정상.
+
+#### 신규 기능
+
+- **중요 공지 타입**: `announcements.is_important` 컬럼 추가(migration `010_add_announcement_importance.sql`), 관리자 작성 폼의 긴급 체크박스를 일반/중요/긴급 라디오로 교체했습니다. `POST /api/admin/announce`가 `isImportant`를 받아 D1과 DO 브로드캐스트에 반영하고, 긴급과 동시 지정 시 긴급이 우선합니다(타입은 생성 시 고정, PUT에서 변경 불가). `GET /api/announcements`가 `isImportant`를 반환합니다. `src/worker.js`, `src/handlers/admin.js`, `src/durable-objects/chat-room/admin.js`, `src/durable-objects/ChatRoom.js`.
+- **중요 공지 강제 페이지 안내**: 채팅에서 중요 공지 브로드캐스트 수신(또는 페이지 로드 시 `GET /api/emergency-announcement`) 시 브라우저당 1회 `/announcements.html?from=important`로 이동합니다. 공지 페이지는 앰버 카드·`중요` 배지·앰버 안내 배너만 표시하며 카운트다운·10초 대기·자동 복귀·폴링은 없습니다. 워커가 `GET /api/emergency-announcement` 응답에 D1의 최신 중요 공지를 합성해 구버전 DO에서도 동작합니다. `public/js/chat.js`, `public/js/announcements-page.js`, `public/announcements.html`, `public/js/admin-ui.js`, `public/js/pages/page-announcements.js`, `public/administrator.html`.
+
+#### 테스트
+
+- Vitest 651건(41파일) 전체 통과. 중요 공지 회귀 테스트 8건(목록 매핑·긴급 우선, 긴급 응답 보존·중요 합성·D1 실패 폴백, D1 저장·DO 전달, DO 브로드캐스트·감사 로그)을 추가했습니다.
+
+### 2026-10-16
 소스 전용 보안 감사(run-1)에서 확정된 발견 8건을 수정하고, 공지사항 상단 고정 기능을 추가했습니다. 감사는 커밋 `dda7436` 기준으로 수행되었고, 런타임 사실이 결정적이던 13건은 `needs_validation`으로 분리해 수정 범위에서 제외했습니다. Vitest 643건(41파일) 전체 통과, lint 0 errors, `wrangler deploy --dry-run` 정상.
 
 #### 신규 기능

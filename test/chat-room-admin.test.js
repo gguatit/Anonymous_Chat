@@ -76,6 +76,56 @@ describe('chat-room admin', () => {
         });
     });
 
+    describe('important announcement broadcast', () => {
+        it('broadcasts isImportant and logs [IMPORTANT] for important notices', async () => {
+            const ws = { send: vi.fn(), close: vi.fn() };
+            const room = mockChatRoom({
+                sessions: new Map([['s1', ws]]),
+                announcementHistory: [],
+                currentAnnouncement: null,
+                state: { storage: { put: vi.fn(() => Promise.resolve()) } },
+                addAuditLog: vi.fn(() => Promise.resolve())
+            });
+
+            const req = new Request('https://dummy/admin/announce', {
+                method: 'POST',
+                body: JSON.stringify({ content: '중요 공지', isImportant: true, timestamp: 111 }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const res = await dispatchAdminRoute(room, new URL(req.url), req, HMAC);
+
+            expect(res.status).toBe(200);
+            const msg = JSON.parse(ws.send.mock.calls[0][0]);
+            expect(msg.type).toBe('announcement');
+            expect(msg.isImportant).toBe(true);
+            expect(msg.isEmergency).toBe(false);
+            expect(room.addAuditLog.mock.calls[0][1]).toContain('[IMPORTANT]');
+        });
+
+        it('does not broadcast isImportant for an emergency notice', async () => {
+            const ws = { send: vi.fn(), close: vi.fn() };
+            const room = mockChatRoom({
+                sessions: new Map([['s1', ws]]),
+                announcementHistory: [],
+                currentAnnouncement: null,
+                state: { storage: { put: vi.fn(() => Promise.resolve()) } },
+                addAuditLog: vi.fn(() => Promise.resolve())
+            });
+
+            const req = new Request('https://dummy/admin/announce', {
+                method: 'POST',
+                body: JSON.stringify({ content: '긴급 공지', isEmergency: true, isImportant: true, timestamp: 111 }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const res = await dispatchAdminRoute(room, new URL(req.url), req, HMAC);
+
+            expect(res.status).toBe(200);
+            const msg = JSON.parse(ws.send.mock.calls[0][0]);
+            expect(msg.isEmergency).toBe(true);
+            expect(msg.isImportant).toBe(false);
+        });
+    });
+
     describe('kick revokes the session secret', () => {
         it('deletes the session secret when a user is kicked', async () => {
             const wsMock = { send: vi.fn(), close: vi.fn() };

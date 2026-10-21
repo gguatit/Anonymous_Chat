@@ -9,7 +9,7 @@
 [![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/gguatit/badge.svg)](https://hub.xerj.org/contributors/gguatit)
 [![License](https://img.shields.io/badge/License-Commercial-blue.svg)](./COMMERCIAL_LICENSE.md)
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](./SECURITY.md)
-[![Tests](https://img.shields.io/badge/Tests-643%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/Tests-651%20cases-brightgreen.svg)](./docs/DEVELOPMENT.md)
 
 An anonymous chat service built with Cloudflare Workers · Durable Objects · D1 · Workers AI.
 Join instantly with just a nickname — no sign-up — and **all messages are automatically destroyed after 12 hours**.
@@ -46,7 +46,7 @@ Join instantly with just a nickname — no sign-up — and **all messages are au
 | Link previews | Automatic OG tag parsing + security header analysis |
 | Code highlighting | Single Prism.js stack (npm self-hosted bundle · no CDN) |
 | Multiple channels | Independent chat rooms per topic |
-| Announcements | Normal/urgent announcements + scheduling |
+| Announcements | Normal/important/urgent announcements + scheduling · pinning |
 | Push notifications | VAPID Web Push + FCM |
 | PWA | Add to home screen · offline shell · share target |
 
@@ -90,7 +90,7 @@ Join instantly with just a nickname — no sign-up — and **all messages are au
 | **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
 | **Push** | Web Push (VAPID) + FCM v1 |
 | **Build** | esbuild (10 bundles: chat · admin · security center · admin pages) |
-| **Tests** | Vitest (643 cases · 41 files) |
+| **Tests** | Vitest (651 cases · 41 files) |
 | **Linting** | ESLint + Prettier |
 | **Frontend** | Vanilla JS (modular) · CSS Custom Properties themes · Tailwind (build) |
 
@@ -124,7 +124,7 @@ npm run dev
 
 ```bash
 npm run build      # client bundle (esbuild)
-npm test           # 643 unit tests (41 files)
+npm test           # 651 unit tests (41 files)
 npm run lint       # ESLint
 ```
 
@@ -145,12 +145,12 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 ```
 .
 ├── src/                          # Worker (server)
-│   ├── worker.js                 # main router (559 lines)
+│   ├── worker.js                 # main router (588 lines)
 │   ├── schema.js                 # JSDoc type definitions
 │   ├── config/                   # constants/config
 │   ├── handlers/                 # HTTP handlers
 │   ├── durable-objects/          # 3 DO classes
-│   │   ├── ChatRoom.js           # WebSocket chat (1735 lines)
+│   │   ├── ChatRoom.js           # WebSocket chat (1738 lines)
 │   │   ├── ChannelRegistry.js    # channel metadata
 │   │   ├── DeadDropStore.js      # secret messages
 │   │   └── chat-room/            # ChatRoom helpers
@@ -191,7 +191,7 @@ wrangler d1 migrations apply anonymous-chat-db --remote
 │   │   └── utils.js              # shared utilities
 │   └── css/                      # themes + animations
 │
-├── test/                         # Vitest 643 cases (41 files)
+├── test/                         # Vitest 651 cases (41 files)
 ├── migrations/                   # D1 schema
 ├── docs/                         # detailed documentation
 └── wrangler.toml                 # Cloudflare config

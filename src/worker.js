@@ -115,14 +115,18 @@ const publicRoutes = [
         try {
             const now = Date.now();
             const { results } = await env.DB_ADMIN.prepare(
-                'SELECT timestamp, content, is_emergency, emergency_until, pinned FROM announcements WHERE schedule_at IS NULL OR schedule_at <= ? ORDER BY pinned DESC, timestamp DESC LIMIT 100'
+                'SELECT timestamp, content, is_emergency, emergency_until, is_important, pinned FROM announcements WHERE schedule_at IS NULL OR schedule_at <= ? ORDER BY pinned DESC, timestamp DESC LIMIT 100'
             ).bind(now).all();
-            const list = (results || []).map(r => ({
-                content: r.content,
-                timestamp: r.timestamp,
-                isEmergency: !!r.is_emergency && (!r.emergency_until || now < r.emergency_until),
-                pinned: !!r.pinned
-            }));
+            const list = (results || []).map(r => {
+                const isEmergency = !!r.is_emergency && (!r.emergency_until || now < r.emergency_until);
+                return {
+                    content: r.content,
+                    timestamp: r.timestamp,
+                    isEmergency,
+                    isImportant: !isEmergency && !!r.is_important,
+                    pinned: !!r.pinned
+                };
+            });
             return new Response(JSON.stringify(list), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
         } catch (error) {
             console.error('Announcements D1 read failed:', error);
@@ -135,7 +139,32 @@ const publicRoutes = [
             return jsonError('Rate limit exceeded', 429, req.headers.get('Origin'));
         }
         const resp = await forwardToDO(env, '/emergency-announcement');
-        return new Response(resp.body, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const text = await resp.text();
+        let body = null;
+        try {
+            body = JSON.parse(text);
+        } catch (_e) {
+            body = null;
+        }
+        if (!body || typeof body !== 'object' || body.isEmergency) {
+            return new Response(text, { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+        }
+        // New DO code reports important notices itself; older DOs do not — augment from D1 so
+        // the redirect works regardless of the eventually-consistent DO rollout (FIX-2 lesson).
+        let important = null;
+        try {
+            const now = Date.now();
+            important = await env.DB_ADMIN.prepare(
+                'SELECT timestamp, content FROM announcements WHERE is_important = 1 AND (schedule_at IS NULL OR schedule_at <= ?) ORDER BY timestamp DESC LIMIT 1'
+            ).bind(now).first();
+        } catch (error) {
+            console.error('Important announcement D1 read failed:', error);
+            important = null;
+        }
+        const payload = important
+            ? { ...body, isImportant: true, timestamp: important.timestamp, content: important.content }
+            : { ...body, isImportant: false };
+        return new Response(JSON.stringify(payload), { status: resp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
     }],
     ['/api/channels/create', 'POST', handleChannelCreate],
     ['/api/channels/join', 'POST', handleChannelJoin],

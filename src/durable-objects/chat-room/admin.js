@@ -639,6 +639,7 @@ export async function handleAdminAnnounce(chatRoom, request) {
         const data = await safeJson(request);
         const content = typeof data.content === 'string' ? data.content : '';
         const isEmergency = !!data.isEmergency;
+        const isImportant = !!data.isImportant && !isEmergency;
         const emergencyUntil = isEmergency && data.emergencyUntil ? Number(data.emergencyUntil) : null;
         const scheduleAt = data.scheduleAt || null;
 
@@ -653,6 +654,7 @@ export async function handleAdminAnnounce(chatRoom, request) {
             content: sanitizeInput(content),
             timestamp: Number(data.timestamp) || Date.now(),
             isEmergency,
+            isImportant,
             emergencyUntil
         };
         // Announcements persist until an admin deletes them — expiresAt is intentionally ignored
@@ -682,6 +684,7 @@ export async function handleAdminAnnounce(chatRoom, request) {
             content: chatRoom.currentAnnouncement.content,
             timestamp: chatRoom.currentAnnouncement.timestamp,
             isEmergency: isEmergencyActive(chatRoom.currentAnnouncement),
+            isImportant,
             emergencyUntil: chatRoom.currentAnnouncement.emergencyUntil
         };
 
@@ -690,13 +693,14 @@ export async function handleAdminAnnounce(chatRoom, request) {
             try { ws.send(JSON.stringify(announcementMessage)); notified++; } catch (_e) { /* ignore dead sessions */ }
         }
 
-        await chatRoom.addAuditLog('send_announcement', `Sent announcement: ${content.substring(0, ADMIN.AUDIT_LOG_TRUNCATION)}...${isEmergency ? ' [EMERGENCY]' : ''}`, {
+        await chatRoom.addAuditLog('send_announcement', `Sent announcement: ${content.substring(0, ADMIN.AUDIT_LOG_TRUNCATION)}...${isEmergency ? ' [EMERGENCY]' : ''}${isImportant ? ' [IMPORTANT]' : ''}`, {
             contentLength: content.length,
             sessionsNotified: notified,
-            isEmergency
+            isEmergency,
+            isImportant
         });
 
-        notifyAdmin(chatRoom, 'announcement_sent', { content: content.substring(0, 200), isEmergency, sessionsNotified: notified });
+        notifyAdmin(chatRoom, 'announcement_sent', { content: content.substring(0, 200), isEmergency, isImportant, sessionsNotified: notified });
 
         return new Response(JSON.stringify({
             success: true,
