@@ -74,6 +74,7 @@ Cloudflare Workers AI의 2026-11-20 모델 디커미션에 대응해 AI 요약 �
 
 - **Workers AI 모델 교체(단종 대응)**: 2026-11-20에 요청이 404(`model_not_found`)로 실패하게 되는 모델을 메일 권장 대체 모델로 교체했습니다. primary = `@cf/google/gemma-4-26b-a4b-it`, fallback = `@cf/qwen/qwen3.8-27b` (제공자 이원화 유지). `src/config/constants.js`의 `AI_SUMMARY.MODEL_PRIMARY`·`MODEL_FALLBACK` 2줄 변경이며 API·응답 스키마·바인딩은 그대로입니다. `test/constants.test.js`의 truthiness 단언을 정확한 모델 ID 단언으로 강화했습니다. 관련 문서(README, ARCHITECTURE, DEPLOYMENT, portfolio/PRESENTATION KR/EN)의 모델 표기를 함께 갱신했습니다.
 - **AI 요약 타임아웃·추론 토큰 억제**: 새 모델이 본문 전에 reasoning 토큰을 소비해 8초 타임아웃(폴백 포함 16초)으로 504가 나던 문제를 수정했습니다. AI 호출에 `chat_template_kwargs: { enable_thinking: false }`를 추가해 추론을 끄고(동일 프롬프트 실측 8.4초 → 약 1.4초), `AI_SUMMARY.TIMEOUT_MS`를 8000 → 12000으로 늘려 폴백 여유를 확보했습니다. `src/handlers/summary.js`, `src/config/constants.js`, `test/summary.test.js`, `test/constants.test.js`.
+- **AI 요약 말투·공백 정리**: 시스템 프롬프트가 한국 인터넷 채팅 말투(반말, 구어체)를 지시해 요약이 반말로 출력되던 것을 정중한 존댓말(해요체) 지시와 예시로 교체했고, 모델 응답의 앞뒤 공백·개행을 제거(`.trim()`)했습니다. `src/handlers/summary.js`, `test/summary.test.js`.
 
 ### 2026-10-21
 
