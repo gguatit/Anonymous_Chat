@@ -17,10 +17,10 @@ describe('constants', () => {
         expect(constants.API_RATE_LIMIT).toBeDefined();
     });
 
-    it('should export AI_SUMMARY', () => {
+    it('should export AI_SUMMARY with post-decommission models', () => {
         expect(constants.AI_SUMMARY).toBeDefined();
-        expect(constants.AI_SUMMARY.MODEL_PRIMARY).toBeTruthy();
-        expect(constants.AI_SUMMARY.MODEL_FALLBACK).toBeTruthy();
+        expect(constants.AI_SUMMARY.MODEL_PRIMARY).toBe('@cf/google/gemma-4-26b-a4b-it');
+        expect(constants.AI_SUMMARY.MODEL_FALLBACK).toBe('@cf/qwen/qwen3.8-27b');
     });
 
     it('should export UPLOAD limits', () => {

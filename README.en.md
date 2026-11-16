@@ -87,7 +87,7 @@ Join instantly with just a nickname — no sign-up — and **all messages are au
 | **Runtime** | Cloudflare Workers (Static Assets) |
 | **State** | Durable Objects (3: `ChatRoom`, `ChannelRegistry`, `DeadDropStore`) |
 | **DB** | Cloudflare D1 (logs) · KV (push subscriptions, ephemeral state) |
-| **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
+| **AI** | Workers AI · Gemma 4 26B A4B IT · Qwen 3.8 27B fallback |
 | **Push** | Web Push (VAPID) + FCM v1 |
 | **Build** | esbuild (10 bundles: chat · admin · security center · admin pages) |
 | **Tests** | Vitest (657 cases · 41 files) |
@@ -220,7 +220,7 @@ flowchart LR
     subgraph Storage["Storage"]
         D1[(D1<br/>logs)]
         KV[(KV<br/>push)]
-        AI[Workers AI<br/>Qwen]
+        AI[Workers AI<br/>Gemma 4 26B]
     end
 
     Browser <-->|WS/HTTPS| Worker

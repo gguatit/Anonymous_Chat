@@ -9,6 +9,7 @@
 - [개요](#개요)
 - [범례](#범례)
 - [릴리스](#릴리스)
+  - [2026-11-17](#2026-11-17)
   - [2026-10-21](#2026-10-21)
   - [2026-10-19](#2026-10-19)
   - [2026-10-16](#2026-10-16)
@@ -41,8 +42,8 @@
 | 항목 | 값 |
 |---|---|
 | 시작일 | 2025-12-19 |
-| 최근 업데이트 | 2026-10-21 |
-| 릴리스 수 | 23 |
+| 최근 업데이트 | 2026-11-17 |
+| 릴리스 수 | 24 |
 | 카테고리 | 신규 기능 / 개선 / 버그 수정 / 보안 / 인프라 / 문서 / 아키텍처 / 디자인 / 코드 품질 |
 
 ---
@@ -64,6 +65,14 @@
 ---
 
 ## 릴리스
+
+### 2026-11-17
+
+Cloudflare Workers AI의 2026-11-20 모델 디커미션에 대응해 AI 요약 모델을 교체했습니다. 단종 대상이던 `@cf/qwen/qwen3-30b-a3b-fp8` → `@cf/google/gemma-4-26b-a4b-it`, 구형 `@cf/qwen/qwen1.5-7b-chat` → `@cf/qwen/qwen3.8-27b`로 변경했습니다. Vitest 657건(41파일) 전체 통과, lint 0 errors, `wrangler deploy --dry-run` 정상.
+
+#### 버그 수정
+
+- **Workers AI 모델 교체(단종 대응)**: 2026-11-20에 요청이 404(`model_not_found`)로 실패하게 되는 모델을 메일 권장 대체 모델로 교체했습니다. primary = `@cf/google/gemma-4-26b-a4b-it`, fallback = `@cf/qwen/qwen3.8-27b` (제공자 이원화 유지). `src/config/constants.js`의 `AI_SUMMARY.MODEL_PRIMARY`·`MODEL_FALLBACK` 2줄 변경이며 API·응답 스키마·바인딩은 그대로입니다. `test/constants.test.js`의 truthiness 단언을 정확한 모델 ID 단언으로 강화했습니다. 관련 문서(README, ARCHITECTURE, DEPLOYMENT, portfolio/PRESENTATION KR/EN)의 모델 표기를 함께 갱신했습니다.
 
 ### 2026-10-21
 

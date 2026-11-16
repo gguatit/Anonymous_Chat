@@ -41,7 +41,7 @@ flowchart TB
         D1[(D1 Database<br/>logs)]
         D1_sec[(D1<br/>security_events)]
         KV[(KV<br/>push subscriptions)]
-        AI[Workers AI<br/>Qwen 3 30B]
+        AI[Workers AI<br/>Gemma 4 26B]
     end
 
     External[External API<br/>Kalpha: files/security headers]
@@ -303,7 +303,7 @@ sequenceDiagram
     DO-->>W: {messages: [50]}
 
     W->>AI: env.AI.run(model, prompt)
-    Note over AI: Qwen inference (8s timeout)
+    Note over AI: Gemma 4 inference (8s timeout)
     AI-->>W: {response}
 
     W->>DO: /broadcast-summary (HMAC)

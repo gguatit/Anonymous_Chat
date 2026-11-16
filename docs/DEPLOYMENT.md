@@ -199,7 +199,7 @@ binding = "AI"
 
 **제한**:
 - Free tier: Workers AI 일일 한도 있음
-- 사용 모델: `@cf/qwen/qwen3-30b-a3b-fp8`, `@cf/qwen/qwen1.5-7b-chat` (둘 다 무료 티어 지원)
+- 사용 모델: `@cf/google/gemma-4-26b-a4b-it`, `@cf/qwen/qwen3.8-27b` (둘 다 무료 티어 지원)
 
 ## 7. 빌드
 
@@ -367,7 +367,7 @@ wrangler rollback [deployment-id]
 - 인덱스 사용 확인 (`EXPLAIN QUERY PLAN`)
 
 ### 14.4 AI 요약 실패
-- 모델 사용 가능 확인 (`qwen3-30b-a3b-fp8`, `qwen1.5-7b-chat`)
+- 모델 사용 가능 확인 (`gemma-4-26b-a4b-it`, `qwen3.8-27b`)
 - 8초 타임아웃 내 완료
 - 일일 한도 확인
 

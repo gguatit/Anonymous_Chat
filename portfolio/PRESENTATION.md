@@ -66,7 +66,7 @@
 | **상태** | Durable Objects | 채널별 인스턴스 분리, Sticky Session 보장, 단일 스레드로 Race Condition 방지 |
 | **메인 DB** | Cloudflare D1 (SQLite) | 로그·감사 추적용, SQL 마이그레이션 관리 |
 | **임시 저장** | Cloudflare KV | 푸시 구독, 일시적 상태 |
-| **AI** | Workers AI (Qwen 1.5/3) | 운영 부담 없는 LLM 요약, `/summary` `/topic` `/mood` `/conflict` |
+| **AI** | Workers AI (Gemma 4 / Qwen 3.8) | 운영 부담 없는 LLM 요약, `/summary` `/topic` `/mood` `/conflict` |
 | **푸시** | Web Push (VAPID) + FCM v1 | 표준 Web Push + Android 호환 |
 | **빌드** | esbuild | 10개 엔트리 코드 스플리팅, 1초 이내 빌드 |
 | **프론트** | 바닐라 JS + CSS Custom Properties | 프레임워크 의존성 최소화, 학습 곡선 ↓ |
@@ -106,7 +106,7 @@
     │               │                  │
     ▼               ▼                  ▼
 ┌────────────────────────────────────────────────────┐
-│ Storage: D1 (로그) / KV (푸시) / AI (Qwen)         │
+│ Storage: D1 (로그) / KV (푸시) / AI (Gemma)        │
 └────────────────────────────────────────────────────┘
 ```
 
@@ -137,7 +137,7 @@
 | 메시지 반응 | 6종 이모지, 더블클릭 자동 좋아요 | 반응 카운트 Map |
 | 답장 + 비밀 메시지 | 원본 미리보기, **Dead Drop** (30분 TTL, 1회 읽기) | 별도 DO 인스턴스 |
 | 파일 공유 | 이미지/비디오/오디오/PDF, 100MB | 외부 file.kalpha.kr 프록시 |
-| AI 요약 | `/summary` `/topic` `/mood` `/conflict` | Workers AI Qwen 3 30B → 1.5 7B fallback |
+| AI 요약 | `/summary` `/topic` `/mood` `/conflict` | Workers AI Gemma 4 26B → Qwen 3.8 27B fallback |
 | 메시지 검색 | 키워드 + 태그(`#images` `#code` `#url`) | FTS-like substring 매칭 |
 | 링크 프리뷰 | OG 태그 자동 파싱 + 보안 헤더 분석 | /api/preview SSRF 방어 |
 | 코드 하이라이팅 | Prism.js 자동 감지 | 라인 수 / 알파 비율 heuristic |
@@ -376,7 +376,7 @@ self.addEventListener('push', e => {
   - chat.bundle.js 136KB (gzip ~40KB)
   - 코드 스플리팅 10개 청크
   - DO 단일 스레드로 race condition 0
-  - Workers AI fallback (Qwen 3 → 1.5)
+  - Workers AI fallback (Gemma 4 → Qwen 3.8)
 ```
 
 ---
@@ -512,7 +512,7 @@ GDPR 측면에서 "right to be forgotten" 요청이 오면 → D1 + DO Storage +
 
 ### Q8. AI 요약은 어떻게 작동하나요? 사용자 데이터가 AI 회사에 가지 않나요?
 
-**A**: **Workers AI**를 씁니다. Cloudflare 인프라 안에서 실행되는 **자체 호스팅** Qwen 1.5 7B / Qwen 3 30B 모델이라 외부로 데이터가 나가지 않습니다.
+**A**: **Workers AI**를 씁니다. Cloudflare 인프라 안에서 실행되는 **자체 호스팅** Gemma 4 26B / Qwen 3.8 27B 모델이라 외부로 데이터가 나가지 않습니다.
 
 프롬프트에는:
 - 최근 50개 메시지만 전달 (전체 X)

@@ -96,8 +96,8 @@ export const AI_SUMMARY = {
     RECENT_MESSAGES_COUNT: 50,
     TIMEOUT_MS: 8000,
     RATE_LIMIT: { windowMs: 15000, max: 1 },
-    MODEL_PRIMARY: '@cf/qwen/qwen3-30b-a3b-fp8',
-    MODEL_FALLBACK: '@cf/qwen/qwen1.5-7b-chat',
+    MODEL_PRIMARY: '@cf/google/gemma-4-26b-a4b-it',
+    MODEL_FALLBACK: '@cf/qwen/qwen3.8-27b',
     MAX_TOKENS: 600,
     TEMPERATURE: 0.4,
 };

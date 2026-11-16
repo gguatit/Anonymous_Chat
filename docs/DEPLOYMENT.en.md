@@ -201,7 +201,7 @@ binding = "AI"
 
 **Limits**:
 - Free tier: Workers AI has a daily limit
-- Models used: `@cf/qwen/qwen3-30b-a3b-fp8`, `@cf/qwen/qwen1.5-7b-chat` (both support the free tier)
+- Models used: `@cf/google/gemma-4-26b-a4b-it`, `@cf/qwen/qwen3.8-27b` (both support the free tier)
 
 ## 7. Build
 
@@ -369,7 +369,7 @@ wrangler rollback [deployment-id]
 - Check index usage (`EXPLAIN QUERY PLAN`)
 
 ### 14.4 AI Summary Failures
-- Verify model availability (`qwen3-30b-a3b-fp8`, `qwen1.5-7b-chat`)
+- Verify model availability (`gemma-4-26b-a4b-it`, `qwen3.8-27b`)
 - Completes within the 8-second timeout
 - Check the daily limit
 

@@ -68,7 +68,7 @@
 | **State** | Durable Objects | Per-channel instance isolation, sticky sessions guaranteed, single-threaded to prevent race conditions |
 | **Main DB** | Cloudflare D1 (SQLite) | Logs and audit trails, SQL migration management |
 | **Ephemeral storage** | Cloudflare KV | Push subscriptions, transient state |
-| **AI** | Workers AI (Qwen 1.5/3) | LLM summaries without operational burden; `/summary` `/topic` `/mood` `/conflict` |
+| **AI** | Workers AI (Gemma 4 / Qwen 3.8) | LLM summaries without operational burden; `/summary` `/topic` `/mood` `/conflict` |
 | **Push** | Web Push (VAPID) + FCM v1 | Standard Web Push + Android compatibility |
 | **Build** | esbuild | Code splitting across 10 entries, builds in under a second |
 | **Frontend** | Vanilla JS + CSS Custom Properties | Minimal framework dependency, lower learning curve |
@@ -108,7 +108,7 @@
     │               │                  │
     ▼               ▼                  ▼
 ┌────────────────────────────────────────────────────┐
-│ Storage: D1 (logs) / KV (push) / AI (Qwen)         │
+│ Storage: D1 (logs) / KV (push) / AI (Gemma)        │
 └────────────────────────────────────────────────────┘
 ```
 
@@ -139,7 +139,7 @@
 | Message reactions | 6 emoji, double-click quick like | reaction count Map |
 | Replies + secret messages | Original preview, **Dead Drop** (30-min TTL, one-time read) | separate DO instance |
 | File sharing | Images/video/audio/PDF, 100MB | external file.kalpha.kr proxy |
-| AI summary | `/summary` `/topic` `/mood` `/conflict` | Workers AI Qwen 3 30B → 1.5 7B fallback |
+| AI summary | `/summary` `/topic` `/mood` `/conflict` | Workers AI Gemma 4 26B → Qwen 3.8 27B fallback |
 | Message search | Keywords + tags (`#images` `#code` `#url`) | FTS-like substring matching |
 | Link preview | Auto-parses OG tags + security header analysis | /api/preview SSRF defense |
 | Code highlighting | Prism.js auto-detection | line count / alpha ratio heuristic |
@@ -378,7 +378,7 @@ self.addEventListener('push', e => {
   - chat.bundle.js 136KB (gzip ~40KB)
   - Code splitting into 10 chunks
   - 0 race conditions thanks to DO single-threading
-  - Workers AI fallback (Qwen 3 → 1.5)
+  - Workers AI fallback (Gemma 4 → Qwen 3.8)
 ```
 
 ---
@@ -514,7 +514,7 @@ For GDPR, when a "right to be forgotten" request arrives → we run a script tha
 
 ### Q8. How does AI summarization work? Doesn't user data go to an AI company?
 
-**A**: We use **Workers AI**. The Qwen 1.5 7B / Qwen 3 30B models are **self-hosted** inside Cloudflare's infrastructure, so no data leaves.
+**A**: We use **Workers AI**. The Gemma 4 26B / Qwen 3.8 27B models are **self-hosted** inside Cloudflare's infrastructure, so no data leaves.
 
 The prompt includes:
 - Only the latest 50 messages (not the whole history)

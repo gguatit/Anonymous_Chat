@@ -39,7 +39,7 @@ flowchart TB
         D1[(D1 Database<br/>로그)]
         D1_sec[(D1<br/>security_events)]
         KV[(KV<br/>푸시 구독)]
-        AI[Workers AI<br/>Qwen 3 30B]
+        AI[Workers AI<br/>Gemma 4 26B]
     end
 
     External[외부 API<br/>Kalpha: 파일/보안헤더]
@@ -301,7 +301,7 @@ sequenceDiagram
     DO-->>W: {messages: [50개]}
 
     W->>AI: env.AI.run(model, prompt)
-    Note over AI: Qwen 추론 (8s timeout)
+    Note over AI: Gemma 4 추론 (8s timeout)
     AI-->>W: {response}
 
     W->>DO: /broadcast-summary (HMAC)

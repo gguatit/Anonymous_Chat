@@ -85,7 +85,7 @@ Cloudflare Workers · Durable Objects · D1 · Workers AI로 구현된 익명 �
 | **런타임** | Cloudflare Workers (Static Assets) |
 | **상태** | Durable Objects (3개: `ChatRoom`, `ChannelRegistry`, `DeadDropStore`) |
 | **DB** | Cloudflare D1 (로그) · KV (푸시 구독, 임시 상태) |
-| **AI** | Workers AI · Qwen 3 30B-A3B · Qwen 1.5 7B fallback |
+| **AI** | Workers AI · Gemma 4 26B A4B IT · Qwen 3.8 27B fallback |
 | **푸시** | Web Push (VAPID) + FCM v1 |
 | **빌드** | esbuild (chat · admin · 보안센터 · 관리자 페이지 번들 10종) |
 | **테스트** | Vitest (657 cases · 41 파일) |
@@ -218,7 +218,7 @@ flowchart LR
     subgraph Storage["Storage"]
         D1[(D1<br/>logs)]
         KV[(KV<br/>push)]
-        AI[Workers AI<br/>Qwen]
+        AI[Workers AI<br/>Gemma 4 26B]
     end
 
     Browser <-->|WS/HTTPS| Worker
