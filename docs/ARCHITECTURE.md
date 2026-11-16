@@ -301,7 +301,7 @@ sequenceDiagram
     DO-->>W: {messages: [50개]}
 
     W->>AI: env.AI.run(model, prompt)
-    Note over AI: Gemma 4 추론 (8s timeout)
+    Note over AI: Gemma 4 추론 (12s timeout)
     AI-->>W: {response}
 
     W->>DO: /broadcast-summary (HMAC)
@@ -424,7 +424,7 @@ flowchart LR
 | Tailwind | 300KB CDN → **45KB** 빌드 |
 | 번들 | 19개 모듈 → **10개** (chat, admin-core, admin-main, 관리자 페이지 6, security-center) |
 | WS Reconnect | 지수 백오프, 최대 10회/30s |
-| AI Timeout | 8초 + 15초 레이트리밋 |
+| AI Timeout | 12초 + 15초 레이트리밋 |
 | OG Cache | 1시간 Edge + 50개 클라이언트 메모리 |
 | 푸시 Throttle | 1.5초 (debounce) |
 

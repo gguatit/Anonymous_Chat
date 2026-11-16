@@ -94,7 +94,7 @@ export const TYPING_THROTTLE_MS = 2000;
 // AI summary constants
 export const AI_SUMMARY = {
     RECENT_MESSAGES_COUNT: 50,
-    TIMEOUT_MS: 8000,
+    TIMEOUT_MS: 12000,
     RATE_LIMIT: { windowMs: 15000, max: 1 },
     MODEL_PRIMARY: '@cf/google/gemma-4-26b-a4b-it',
     MODEL_FALLBACK: '@cf/qwen/qwen3.8-27b',

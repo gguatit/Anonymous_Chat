@@ -303,7 +303,7 @@ sequenceDiagram
     DO-->>W: {messages: [50]}
 
     W->>AI: env.AI.run(model, prompt)
-    Note over AI: Gemma 4 inference (8s timeout)
+    Note over AI: Gemma 4 inference (12s timeout)
     AI-->>W: {response}
 
     W->>DO: /broadcast-summary (HMAC)

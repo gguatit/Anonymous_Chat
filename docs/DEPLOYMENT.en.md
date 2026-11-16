@@ -370,7 +370,7 @@ wrangler rollback [deployment-id]
 
 ### 14.4 AI Summary Failures
 - Verify model availability (`gemma-4-26b-a4b-it`, `qwen3.8-27b`)
-- Completes within the 8-second timeout
+- Completes within the 12-second timeout
 - Check the daily limit
 
 ## 15. Post-Deployment Checklist

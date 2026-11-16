@@ -93,7 +93,10 @@ function runWithTimeout(env, model, systemPrompt, userPrompt) {
                 { role: 'user', content: userPrompt }
             ],
             max_tokens: AI_SUMMARY.MAX_TOKENS,
-            temperature: AI_SUMMARY.TEMPERATURE
+            temperature: AI_SUMMARY.TEMPERATURE,
+            // Reasoning models burn the token budget on hidden thinking and blow the timeout;
+            // summaries do not need it (measured: 8.4s -> ~1.4s under the same prompt).
+            chat_template_kwargs: { enable_thinking: false }
         }),
         new Promise((_resolve, reject) => {
             timer = setTimeout(() => reject(new Error('AI request timed out')), AI_SUMMARY.TIMEOUT_MS);

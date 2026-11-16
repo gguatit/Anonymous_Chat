@@ -80,6 +80,7 @@ describe('summary handler', () => {
             expect(options.messages[1].content).toMatch(/^<<<MESSAGES\n/);
             expect(options.messages[1].content).toMatch(/\nMESSAGES>>>$/);
             expect(options.messages[0].content).toContain('<<<MESSAGES ... MESSAGES>>>');
+            expect(options.chat_template_kwargs).toEqual({ enable_thinking: false });
             return 'ok';
         });
         const { env } = makeEnv({ aiImpl });

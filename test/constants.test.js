@@ -21,6 +21,7 @@ describe('constants', () => {
         expect(constants.AI_SUMMARY).toBeDefined();
         expect(constants.AI_SUMMARY.MODEL_PRIMARY).toBe('@cf/google/gemma-4-26b-a4b-it');
         expect(constants.AI_SUMMARY.MODEL_FALLBACK).toBe('@cf/qwen/qwen3.8-27b');
+        expect(constants.AI_SUMMARY.TIMEOUT_MS).toBe(12000);
     });
 
     it('should export UPLOAD limits', () => {

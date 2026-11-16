@@ -186,7 +186,7 @@ Summarize the 50 most recent messages with Workers AI.
 **Errors**:
 - `429`: rate limit (once per 15 seconds)
 - `502`: message fetch/parse failure in the DO
-- `504`: AI response 8-second timeout
+- `504`: AI response 12-second timeout
 - `503`: temporary AI model failure (failed after fallback attempt)
 
 ---

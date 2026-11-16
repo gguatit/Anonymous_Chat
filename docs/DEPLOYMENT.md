@@ -368,7 +368,7 @@ wrangler rollback [deployment-id]
 
 ### 14.4 AI 요약 실패
 - 모델 사용 가능 확인 (`gemma-4-26b-a4b-it`, `qwen3.8-27b`)
-- 8초 타임아웃 내 완료
+- 12초 타임아웃 내 완료
 - 일일 한도 확인
 
 ## 15. 배포 후 체크리스트
